@@ -14,6 +14,10 @@ func init() {
 	cacheModelMap = newModelMap()
 }
 
+var (
+	errBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
+)
+
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.
 // Allow concurrent safe gets and sets to the map.
 type ModelMap struct {
@@ -137,7 +141,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 		args := strings.Split(tag, annotationSeperator)
 		if len(args) == 1 && args[0] != annotationClientID {
-			err = ErrBadJSONAPIStructTag
+			err = errBadJSONAPIStructTag
 			break
 		}
 

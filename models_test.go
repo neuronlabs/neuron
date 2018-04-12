@@ -1,7 +1,6 @@
 package jsonapi
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -129,80 +128,80 @@ type RelationBasicOnPtr struct {
 	BasicPtrRelation *string `jsonapi:"relation,basicptrrelation"`
 }
 
-func (b *Blog) JSONAPILinks() *Links {
-	return &Links{
-		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
-		"comments": Link{
-			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
-			Meta: Meta{
-				"counts": map[string]uint{
-					"likes":    4,
-					"comments": 20,
-				},
-			},
-		},
-	}
-}
+// func (b *Blog) JSONAPILinks() *Links {
+// 	return &Links{
+// 		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
+// 		"comments": Link{
+// 			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
+// 			Meta: Meta{
+// 				"counts": map[string]uint{
+// 					"likes":    4,
+// 					"comments": 20,
+// 				},
+// 			},
+// 		},
+// 	}
+// }
 
-func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
-	if relation == "posts" {
-		return &Links{
-			"related": Link{
-				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
-				Meta: Meta{
-					"count": len(b.Posts),
-				},
-			},
-		}
-	}
-	if relation == "current_post" {
-		return &Links{
-			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
-			"related": Link{
-				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", b.ID),
-			},
-		}
-	}
-	return nil
-}
+// func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
+// 	if relation == "posts" {
+// 		return &Links{
+// 			"related": Link{
+// 				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
+// 				Meta: Meta{
+// 					"count": len(b.Posts),
+// 				},
+// 			},
+// 		}
+// 	}
+// 	if relation == "current_post" {
+// 		return &Links{
+// 			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
+// 			"related": Link{
+// 				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", b.ID),
+// 			},
+// 		}
+// 	}
+// 	return nil
+// }
 
-func (b *Blog) JSONAPIMeta() *Meta {
-	return &Meta{
-		"detail": "extra details regarding the blog",
-	}
-}
+// func (b *Blog) JSONAPIMeta() *Meta {
+// 	return &Meta{
+// 		"detail": "extra details regarding the blog",
+// 	}
+// }
 
-func (b *Blog) JSONAPIRelationshipMeta(relation string) *Meta {
-	if relation == "posts" {
-		return &Meta{
-			"this": map[string]interface{}{
-				"can": map[string]interface{}{
-					"go": []interface{}{
-						"as",
-						"deep",
-						map[string]interface{}{
-							"as": "required",
-						},
-					},
-				},
-			},
-		}
-	}
-	if relation == "current_post" {
-		return &Meta{
-			"detail": "extra current_post detail",
-		}
-	}
-	return nil
-}
+// func (b *Blog) JSONAPIRelationshipMeta(relation string) *Meta {
+// 	if relation == "posts" {
+// 		return &Meta{
+// 			"this": map[string]interface{}{
+// 				"can": map[string]interface{}{
+// 					"go": []interface{}{
+// 						"as",
+// 						"deep",
+// 						map[string]interface{}{
+// 							"as": "required",
+// 						},
+// 					},
+// 				},
+// 			},
+// 		}
+// 	}
+// 	if relation == "current_post" {
+// 		return &Meta{
+// 			"detail": "extra current_post detail",
+// 		}
+// 	}
+// 	return nil
+// }
 
-type BadComment struct {
-	ID   uint64 `jsonapi:"primary,bad-comment"`
-	Body string `jsonapi:"attr,body"`
-}
+// type BadComment struct {
+// 	ID   uint64 `jsonapi:"primary,bad-comment"`
+// 	Body string `jsonapi:"attr,body"`
+// }
 
-func (bc *BadComment) JSONAPILinks() *Links {
-	return &Links{
-		"self": []string{"invalid", "should error"},
-	}
-}
+// func (bc *BadComment) JSONAPILinks() *Links {
+// 	return &Links{
+// 		"self": []string{"invalid", "should error"},
+// 	}
+// }
