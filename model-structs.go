@@ -102,40 +102,35 @@ func (m *ModelStruct) FieldByIndex(index int) (*StructField, error) {
 // there should be some helper which makes nested checks
 // but root function should allow only to check once
 
-func (m *ModelStruct) checkRelationshipHelper(relationship string, level int,
-) (errs []*ErrorObject, err error) {
+func (m *ModelStruct) checkRelationshipHelper(relationship string) (errs []*ErrorObject, err error) {
 	structField, ok := m.relationships[relationship]
 	if !ok {
-		sepIndex := strings.Index(relationship, annotationNestedSeperator)
-		if sepIndex == -1 {
+		split := strings.Split(relationship, annotationNestedSeperator)
+		if len(split) == 1 {
 			errs = append(errs, errNoRelationship(m.collectionType, relationship))
 			return
+		} else if len(split) > maxNestedRelLevel+1 {
+			errs = append(errs, ErrTooManyNestedRelationships(relationship))
 		}
 
-		if level <= 0 {
-			errObj := ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("A nested relationships are not allowed below: %v levels.", maxNestedRelLevel)
-			errs = append(errs, errObj)
-			return
-		}
-
-		sepRelation := relationship[:sepIndex]
+		sepRelation := split[0]
 		structField, ok = m.relationships[sepRelation]
 		if !ok {
 			errs = append(errs, errNoRelationship(m.collectionType, sepRelation))
 			return
 		}
 
-		relM := cacheModelMap.Get(structField.relatedType)
+		relM := cacheModelMap.Get(structField.relatedModelType)
 
 		if relM == nil {
-			err = errNoModelMappedForRel(structField.relatedType, m.modelType, structField.fieldName)
+			err = errNoModelMappedForRel(structField.relatedModelType, m.modelType, structField.fieldName)
 			errs = append(errs, ErrInternalError.Copy())
 			return
 		}
 
 		var errorObjects []*ErrorObject
-		errorObjects, err = relM.checkRelationshipHelper(relationship[sepIndex+1:], level-1)
+		errorObjects, err = relM.
+			checkRelationshipHelper(strings.Join(split[1:], annotationNestedSeperator))
 		errs = append(errs, errorObjects...)
 	}
 	return
@@ -144,36 +139,9 @@ func (m *ModelStruct) checkRelationshipHelper(relationship string, level int,
 // CheckRelationship is search for the modelstruct's relationship
 // named as 'relationship'.
 // The function checks and recursively get nested relationships.
-// Return multiple errors
+// // Return multiple errors
 func (m *ModelStruct) checkRelationship(relationship string) (errs []*ErrorObject, err error) {
-	structField, ok := m.relationships[relationship]
-	if !ok {
-		sepIndex := strings.Index(relationship, annotationNestedSeperator)
-		if sepIndex == -1 {
-			errs = append(errs, errNoRelationship(m.collectionType, relationship))
-			return
-		}
-
-		sepRelation := relationship[:sepIndex]
-		structField, ok = m.relationships[sepRelation]
-		if !ok {
-			errs = append(errs, errNoRelationship(m.collectionType, sepRelation))
-			return
-		}
-
-		relM := cacheModelMap.Get(structField.relatedType)
-
-		if relM == nil {
-			err = errNoModelMappedForRel(structField.relatedType, m.modelType, structField.fieldName)
-			errs = append(errs, ErrInternalError.Copy())
-			return
-		}
-
-		var errorObjects []*ErrorObject
-		errorObjects, err = relM.checkRelationship(relationship[sepIndex+1:])
-		errs = append(errs, errorObjects...)
-	}
-	return
+	return m.checkRelationshipHelper(relationship)
 }
 
 // CheckRelationships is a method that checks if multiple relationships exists in the given model.
@@ -197,7 +165,7 @@ func (m *ModelStruct) checkAttribute(attr string) *ErrorObject {
 	_, ok := m.attributes[attr]
 	if !ok {
 		err := ErrInvalidQueryParameter.Copy()
-		err.Detail = fmt.Sprintf("Object: %v has no attribute: %v", m.collectionType, attr)
+		err.Detail = fmt.Sprintf("Object: '%v' does not have attribute: '%v'", m.collectionType, attr)
 		return err
 	}
 	return nil
@@ -224,7 +192,7 @@ func (m *ModelStruct) checkFields(fields ...string) (errs []*ErrorObject) {
 		_, hasRelationship := m.relationships[field]
 		if !hasRelationship {
 			errObject := ErrInvalidQueryParameter.Copy()
-			errObject.Detail = fmt.Sprintf("Object: %v, has no field: %v", m.collectionType, field)
+			errObject.Detail = fmt.Sprintf("Object: '%v', does not have field: '%v'.", m.collectionType, field)
 			errs = append(errs, errObject)
 		}
 	}
@@ -256,7 +224,8 @@ type StructField struct {
 	// if given structfield defines a relationship it should be non-nil
 	// relationship *Relationship
 	*/
-	relatedType reflect.Type
+	// relatedModelType is a model type for the relationship
+	relatedModelType reflect.Type
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -274,8 +243,10 @@ func (s *StructField) GetFieldType() reflect.Type {
 	return s.refStruct.Type
 }
 
-func (s *StructField) GetRelatedType() reflect.Type {
-	return s.relatedType
+// GetRelatedModelType gets the reflect.Type of the related model
+// used for relationship fields.
+func (s *StructField) GetRelatedModelType() reflect.Type {
+	return s.relatedModelType
 }
 
 /** TO DELETE

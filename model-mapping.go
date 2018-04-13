@@ -180,7 +180,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 		case annotationRelation:
 			structField.jsonAPIName = resName
-			structField.relatedType, err = getRelatedType(structField.refStruct.Type)
+			structField.relatedModelType, err = getRelatedType(structField.refStruct.Type)
 			modelStruct.relationships[resName] = structField
 		}
 	}
@@ -263,9 +263,9 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 func checkModelRelationships(model *ModelStruct) (err error) {
 	for _, rel := range model.relationships {
-		val := cacheModelMap.Get(rel.relatedType)
+		val := cacheModelMap.Get(rel.relatedModelType)
 		if val == nil {
-			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", rel.relatedType, rel.fieldName, model.modelType.Name())
+			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", rel.relatedModelType, rel.fieldName, model.modelType.Name())
 			return err
 		}
 	}
@@ -274,20 +274,20 @@ func checkModelRelationships(model *ModelStruct) (err error) {
 
 func errNoRelationship(jsonapiType, included string) *ErrorObject {
 	err := ErrInvalidResourceName.Copy()
-	err.Detail = fmt.Sprintf("Object: %v, has no relationship named: %v.",
+	err.Detail = fmt.Sprintf("Object: '%v', has no relationship named: '%v'.",
 		jsonapiType, included)
 	return err
 }
 
 func errNoModelMappedForRel(model, relatedTo reflect.Type, fieldName string) error {
-	err := fmt.Errorf("Model %v, not mapped! Relationship to %s is set for '%s' field.",
+	err := fmt.Errorf("Model '%v', not mapped! Relationship to '%s' is set for '%s' field.",
 		model, relatedTo, fieldName,
 	)
 	return err
 }
 
 func errNoRelationshipInModel(sFieldType, modelType reflect.Type, relationship string) error {
-	err := fmt.Errorf("Structfield of type: %s has no relationship within model: %s, in relationship named: %v", sFieldType, modelType, relationship)
+	err := fmt.Errorf("Structfield of type: '%s' has no relationship within model: '%s', in relationship named: %v", sFieldType, modelType, relationship)
 	return err
 }
 
@@ -310,7 +310,7 @@ func getSliceElemType(modelType reflect.Type) (reflect.Type, error) {
 
 func getRelatedType(modelType reflect.Type) (reflect.Type, error) {
 	getError := func() error {
-		return fmt.Errorf("Incorrect relationship type provided. Only allowable are structs, ptr or slices. This type is: %v", modelType)
+		return fmt.Errorf("Incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
 	}
 	switch modelType.Kind() {
 	case reflect.Ptr, reflect.Slice, reflect.Struct:

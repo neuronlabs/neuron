@@ -38,10 +38,10 @@ func BuildScopeMulti(req *http.Request, model interface{},
 	// 	return
 	// }
 
-	scope = newScope(mStruct)
+	scope = newRootScope(mStruct)
 
-	// overLoadPreventer - is a warden upon invalid query parameters
-	var overLoadPreventer int = 5
+	// overloadPreventer - is a warden upon invalid query parameters
+	var overloadPreventer int = 5
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -54,7 +54,7 @@ func BuildScopeMulti(req *http.Request, model interface{},
 		if err != nil {
 			return
 		}
-		overLoadPreventer -= len(errs)
+		overloadPreventer -= len(errs)
 	}
 
 	var errObj *ErrorObject
@@ -64,37 +64,33 @@ func BuildScopeMulti(req *http.Request, model interface{},
 		case key == QueryParamInclude:
 			continue
 		case key == QueryParamSort:
-			errorObjects := scope.RootScope.checkSortFields(value...)
-			overLoadPreventer -= len(errorObjects)
+			errorObjects := scope.checkSortFields(value...)
+			overloadPreventer -= len(errorObjects)
 			errs = append(errs, errorObjects...)
 		case key == QueryParamPageLimit:
-			scope.RootScope.Pagination.Limit, errObj = scope.RootScope.
-				preparePaginatedValue(key, value[0])
+			scope.Pagination.Limit, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
 				errs = append(errs, errObj)
-				overLoadPreventer--
+				overloadPreventer--
 				break
 			}
 		case key == QueryParamPageOffset:
-			scope.RootScope.Pagination.Offset, errObj = scope.RootScope.
-				preparePaginatedValue(key, value[0])
+			scope.Pagination.Offset, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
 				errs = append(errs, errObj)
-				overLoadPreventer--
+				overloadPreventer--
 			}
 		case key == QueryParamPageNumber:
-			scope.RootScope.Pagination.PageNumber, errObj = scope.RootScope.
-				preparePaginatedValue(key, value[0])
+			scope.Pagination.PageNumber, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
 				errs = append(errs, errObj)
-				overLoadPreventer--
+				overloadPreventer--
 			}
 		case key == QueryParamPageSize:
-			scope.RootScope.Pagination.PageSize, errObj = scope.RootScope.
-				preparePaginatedValue(key, value[0])
+			scope.Pagination.PageSize, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
 				errs = append(errs, errObj)
-				overLoadPreventer--
+				overloadPreventer--
 			}
 		case strings.HasPrefix(key, QueryParamFilter):
 			// filter[collection]
@@ -105,15 +101,15 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			var errorObjects []*ErrorObject
 			errorObjects = scope.setSortFields(value...)
 			errs = append(errs, errorObjects...)
-			overLoadPreventer -= len(errorObjects)
+			overloadPreventer -= len(errorObjects)
 		default:
 			// Check if it is an attribute to query for
 			var errorObjects []*ErrorObject
-			errorObjects = scope.RootScope.checkFields(key)
-			overLoadPreventer -= len(errorObjects)
+			errorObjects = scope.checkFields(key)
+			overloadPreventer -= len(errorObjects)
 			errs = append(errs, errorObjects...)
 		}
-		if overLoadPreventer <= 0 {
+		if overloadPreventer <= 0 {
 			return
 		}
 	}
@@ -121,27 +117,64 @@ func BuildScopeMulti(req *http.Request, model interface{},
 }
 
 func BuildScopeSingle(req *http.Request, model interface{},
-) (scope *SubScope, errs []*ErrorObject, err error) {
+) (scope *Scope, errs []*ErrorObject, err error) {
 	// get model type
 	return
 
 }
 
 type Scope struct {
-	RootScope *SubScope
-	Error     error
+	// Struct is a modelStruct this scope is based on
+	Struct *ModelStruct
 
-	included         []string
-	collectionScopes map[string]*SubScope
+	// RelatedField is a structField to which Subscope this one belongs to
+	RelatedField *StructField
+
+	// Root defines the root of the provided scope
+	Root *Scope
+
+	// Value is a value for given subscope
+	Value interface{}
+
+	// Filters contain fields by which the main value is being filtered.
+	Filters [][]interface{}
+
+	// Fields represents fields used for this subscope - jsonapi 'fields[collection]'
+	Fields []*StructField
+
+	// Included subscopes
+	SubScopes []*Scope
+
+	// SortFields
+	Sorts []*SortField
+
+	// Pagination
+	Pagination *Pagination
+
+	isRoot           bool
+	collectionScopes map[string]*Scope
 }
 
-func newScope(mStruct *ModelStruct) *Scope {
-	scope := &Scope{
-		RootScope:        newSubScope(mStruct),
-		collectionScopes: make(map[string]*SubScope),
-	}
-	scope.collectionScopes[mStruct.collectionType] = scope.RootScope
+func newRootScope(mStruct *ModelStruct) *Scope {
+	scope := newSubScope(mStruct)
+	scope.collectionScopes = make(map[string]*Scope)
+	scope.collectionScopes[mStruct.collectionType] = scope
+	scope.isRoot = true
 	return scope
+}
+
+func newSubScope(modelStruct *ModelStruct) *Scope {
+	scope := &Scope{Struct: modelStruct}
+	scope.Value = reflect.New(modelStruct.modelType)
+	return scope
+}
+
+func (s *Scope) GetFields() []*StructField {
+	return s.Fields
+}
+
+func (s *Scope) GetSortFields() (fields []*SortField) {
+	return s.Sorts
 }
 
 // SetSortFields sets the sort fields for given string array.
@@ -156,7 +189,7 @@ func (s *Scope) setSortFields(sortFields ...string) (errs []*ErrorObject) {
 		} else {
 			order = AscendingOrder
 		}
-		err = s.RootScope.Struct.checkAttribute(sortField)
+		err = s.Struct.checkAttribute(sortField)
 		if err != nil {
 			errs = append(errs, err)
 			errored = true
@@ -165,8 +198,8 @@ func (s *Scope) setSortFields(sortFields ...string) (errs []*ErrorObject) {
 		if errored {
 			continue
 		}
-		sort := &SortField{StructField: s.RootScope.Struct.attributes[sortField], Order: order}
-		s.RootScope.Sorts = append(s.RootScope.Sorts, sort)
+		sort := &SortField{StructField: s.Struct.attributes[sortField], Order: order}
+		s.Sorts = append(s.Sorts, sort)
 	}
 	return
 }
@@ -175,7 +208,11 @@ func (s *Scope) buildIncludedScopes(includedList ...string,
 ) (errs []*ErrorObject, err error) {
 	var errorObjects []*ErrorObject
 	for _, included := range includedList {
-		errorObjects, err = s.RootScope.buildSubScopes(included, s.collectionScopes)
+		if strings.Count(included, annotationNestedSeperator) > maxNestedRelLevel+1 {
+			errs = append(errs, ErrTooManyNestedRelationships(included))
+			continue
+		}
+		errorObjects, err = s.buildSubScopes(included, s.collectionScopes)
 		errs = append(errs, errorObjects...)
 		if err != nil {
 			return
@@ -184,45 +221,15 @@ func (s *Scope) buildIncludedScopes(includedList ...string,
 	return
 }
 
-type SubScope struct {
-	Struct *ModelStruct
-	Value  interface{}
-
-	// Filters contain fields by which the main value is being filtered.
-	Filters interface{}
-
-	// RelatedField is a structField to which Subscope this one belongs to
-	RelatedField *StructField
-	Fields       []*StructField
-	SubScopes    []*SubScope
-	Sorts        []*SortField
-	Pagination   *Pagination
-}
-
-func newSubScope(modelStruct *ModelStruct) *SubScope {
-	scope := &SubScope{Struct: modelStruct}
-	scope.Value = reflect.New(modelStruct.modelType)
-	return scope
-}
-
-func (s *SubScope) GetFields() []*StructField {
-	return s.Fields
-}
-
-func (s *SubScope) GetSortFields() (fields []*SortField) {
-	return s.Sorts
-}
-
 // build sub scopes for provided included argument.
-func (s *SubScope) buildSubScopes(included string, collectionScopes map[string]*SubScope,
+func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Scope,
 ) (errs []*ErrorObject, err error) {
 
-	var sub *SubScope
+	var sub *Scope
 
 	// Check if the included is in relationships
 	sField, ok := s.Struct.relationships[included]
 	if !ok {
-		// get index of 'annotationNestedSeperator'
 		index := strings.Index(included, annotationNestedSeperator)
 		if index == -1 {
 			errs = append(errs, errNoRelationship(s.Struct.collectionType, included))
@@ -239,17 +246,11 @@ func (s *SubScope) buildSubScopes(included string, collectionScopes map[string]*
 		// Check if no other scope for this collection within given 'subscope' exists
 		sub = s.getCollectionScope(seperated)
 		if sub == nil {
-			// if sField.relationship == nil {
-			// 	err = errNoRelationshipInModel(sField.refStruct.Type,
-			// 		s.Struct.modelType, included)
-			// 	errs = append(errs, ErrInternalError.Copy())
-			// 	return
-			// }
 
-			relatedMStruct := cacheModelMap.Get(sField.relatedType)
+			relatedMStruct := cacheModelMap.Get(sField.relatedModelType)
 			if relatedMStruct == nil {
 				err = errNoModelMappedForRel(
-					sField.relatedType,
+					sField.relatedModelType,
 					sField.refStruct.Type,
 					sField.fieldName,
 				)
@@ -285,21 +286,21 @@ func (s *SubScope) buildSubScopes(included string, collectionScopes map[string]*
 	return
 }
 
-func (s *SubScope) checkSortFields(fields ...string,
+func (s *Scope) checkSortFields(fields ...string,
 ) []*ErrorObject {
 	return s.Struct.checkAttributes(fields...)
 }
 
-func (s *SubScope) checkFilterFields(fields ...string,
+func (s *Scope) checkFilterFields(fields ...string,
 ) []*ErrorObject {
 	return s.Struct.checkAttributes(fields...)
 }
 
-func (s *SubScope) checkFields(fields ...string) []*ErrorObject {
+func (s *Scope) checkFields(fields ...string) []*ErrorObject {
 	return s.Struct.checkFields(fields...)
 }
 
-func (s *SubScope) getCollectionScope(collection string) *SubScope {
+func (s *Scope) getCollectionScope(collection string) *Scope {
 	for _, sub := range s.SubScopes {
 		if sub.Struct.collectionType == collection {
 			return sub
@@ -308,7 +309,7 @@ func (s *SubScope) getCollectionScope(collection string) *SubScope {
 	return nil
 }
 
-func (s *SubScope) setSubScopes() {
+func (s *Scope) setSubScopes() {
 	for _, subscope := range s.SubScopes {
 		subscope.Value = reflect.New(subscope.Struct.modelType)
 		// val := reflect.ValueOf(sub.Value)
@@ -316,7 +317,7 @@ func (s *SubScope) setSubScopes() {
 	}
 }
 
-func (s *SubScope) preparePaginatedValue(key, value string) (int, *ErrorObject) {
+func (s *Scope) preparePaginatedValue(key, value string) (int, *ErrorObject) {
 	val, err := strconv.Atoi(value)
 	if err != nil {
 		errObj := ErrInvalidQueryParameter.Copy()

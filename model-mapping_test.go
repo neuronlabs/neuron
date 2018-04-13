@@ -217,12 +217,3 @@ func TestGetRelatedType(t *testing.T) {
 func clearMap() {
 	cacheModelMap = newModelMap()
 }
-
-func assertPanic(t *testing.T, testFunc func()) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("The function: %v should panic.", testFunc)
-		}
-	}()
-	testFunc()
-}
