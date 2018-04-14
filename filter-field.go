@@ -5,11 +5,63 @@ import (
 	"reflect"
 )
 
+/**
+
+TO IMPLEMENT:
+
+- checking filter field for possibility of filter operator
+- checking for the negating fields i.e.
+- checking for the shortcuts i.e. [not][gt] = le
+- disabling / controlling filtering in jsonapi struct tags
+- design filtering policy.
+
+*/
+
+type FilterOperator int
+
+const (
+	// Logical Operators
+	OpEqual FilterOperator = iota
+	OpNotEqual
+	OpGreaterThan
+	OpGreaterEqual
+	OpLessThan
+	OpLessEqual
+	OpNot
+	OpOr
+	OpAnd
+
+	// Strings Only operators
+	OpContains
+	OpStartsWith
+	OpEndsWith
+)
+
+var operatorsValue = map[string]FilterOperator{
+	annotationEqual:        OpEqual,
+	annotationNotEqual:     OpNotEqual,
+	annotationGreaterThan:  OpGreaterThan,
+	annotationGreaterEqual: OpGreaterEqual,
+	annotationLessThan:     OpLessThan,
+	annotationLessEqual:    OpLessEqual,
+	annotationNot:          OpNot,
+	annotationOr:           OpOr,
+	annotationAnd:          OpAnd,
+	annotationContains:     OpContains,
+	annotationStartsWith:   OpStartsWith,
+	annotationEndsWith:     OpEndsWith,
+}
+
+type FilterValue struct {
+	Value          []interface{}
+	ValueOperators []FilterOperator
+}
+
 type FilterField struct {
 	*StructField
 
 	// Values are the filter values already checked for the type correction.
-	Values []interface{}
+	Values []*FilterValue
 	values []string
 }
 
@@ -83,4 +135,32 @@ func (f *FilterField) setValue(value string) (errs []*ErrorObject, er error) {
 	case annotationRelation:
 	}
 	return
+}
+
+func splitBrackets(bracketed string, parameter string) (values []string, err *ErrorObject) {
+	// look for values in
+	var startIndex int = -1
+	var endIndex int = -1
+	for i := 0; i < len(bracketed); i++ {
+		c := bracketed[i]
+		switch c {
+		case annotationOpenedBracket:
+			startIndex = i
+		case annotationClosedBracket:
+			// if opening bracket not set or in case of more than one brackets
+			// if start was not set before this endIndex
+			if startIndex == -1 || startIndex < endIndex {
+				err = ErrInvalidQueryParameter.Copy()
+				err.Detail = fmt.Sprintf("Invalid '%s' parameter. Close square bracket ']' found, befwithout opening ('[') in '%s'.", parameter, bracketed)
+				return
+			}
+			endIndex = i
+			values = append(values, bracketed[startIndex:endIndex])
+		}
+	}
+	if (startIndex != -1 && endIndex == -1) || startIndex > endIndex {
+		err = ErrInvalidQueryParameter.Copy()
+		err.Detail = fmt.Sprintf("Invalid '%s' parameter. Open square bracket '[' found, without closing (']') in: '%s'.", parameter, bracketed)
+		return
+	}
 }

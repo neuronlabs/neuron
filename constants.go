@@ -12,12 +12,27 @@ const (
 	annotationSeperator         = ","
 	annotationRelationSeperator = ":"
 	annotationNestedSeperator   = "."
-	annotationOpenedBracket     = "["
-	annotationClosedBracket     = "]"
+	annotationOpenedBracket     = '['
+	annotationClosedBracket     = ']'
 
 	annotationsManyToMany = "many2many"
 
-	defaultIDField = "ID"
+	// FILTERS
+	// logical filters
+	annotationEqual        = "eq"
+	annotationNotEqual     = "ne"
+	annotationGreaterThan  = "gt"
+	annotationGreaterEqual = "ge"
+	annotationLessThan     = "lt"
+	annotationLessEqual    = "le"
+	annotationNot          = "not"
+	annotationOr           = "or"
+	annotationAnd          = "and"
+
+	// string only filters
+	annotationContains   = "contains"
+	annotationStartsWith = "startswith"
+	annotationEndsWith   = "endswith"
 
 	iso8601TimeFormat = "2006-01-02T15:04:05Z"
 
