@@ -112,7 +112,7 @@ type Blog struct {
 	ClientID      string    `jsonapi:"client-id"`
 	Title         string    `jsonapi:"attr,title"`
 	Posts         []*Post   `jsonapi:"relation,posts,reltype:hasmany"`
-	CurrentPost   *Post     `jsonapi:"relation,current_post,type:hasone,fk:CurrentPostID,assoc_fk:ID"`
+	CurrentPost   *Post     `jsonapi:"relation,current-post,type:hasone,fk:CurrentPostID,assoc_fk:ID"`
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`

@@ -94,6 +94,13 @@ func PrecomputeModels(models ...interface{}) error {
 		if err != nil {
 			return err
 		}
+		model.initCheckFieldTypes()
+		model.initComputeSortedFields()
+		model.initComputeThisIncludedCount()
+	}
+
+	for _, model := range cacheModelMap.models {
+		model.nestedIncludedCount = model.initComputeNestedIncludedCount(0)
 	}
 
 	return nil
@@ -177,11 +184,17 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		case annotationAttribute:
 			structField.jsonAPIName = resName
 			modelStruct.attributes[resName] = structField
+			structField.canBeSortedBy = true
 
 		case annotationRelation:
 			structField.jsonAPIName = resName
-			structField.relatedModelType, err = getRelatedType(structField.refStruct.Type)
+			err = setRelatedType(structField)
 			modelStruct.relationships[resName] = structField
+			structField.isRelationship = true
+
+			if !structField.isListRelated {
+				structField.canBeSortedBy = true
+			}
 		}
 	}
 	if assignedFields == 0 {
@@ -308,22 +321,30 @@ func getSliceElemType(modelType reflect.Type) (reflect.Type, error) {
 	return modelType, nil
 }
 
-func getRelatedType(modelType reflect.Type) (reflect.Type, error) {
+func setRelatedType(sField *StructField) error {
+
+	modelType := sField.refStruct.Type
+	// get error function
 	getError := func() error {
 		return fmt.Errorf("Incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
 	}
+
 	switch modelType.Kind() {
 	case reflect.Ptr, reflect.Slice, reflect.Struct:
 	default:
 		err := getError()
-		return modelType, err
+		return err
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
+		if modelType.Kind() == reflect.Slice {
+			sField.isListRelated = true
+		}
 		modelType = modelType.Elem()
 	}
 	if modelType.Kind() != reflect.Struct {
 		err := getError()
-		return modelType, err
+		return err
 	}
-	return modelType, nil
+	sField.relatedModelType = modelType
+	return nil
 }

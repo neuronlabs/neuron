@@ -37,6 +37,13 @@ type ModelStruct struct {
 	// The field's index is the same as in the original model - for private or
 	// non-settable fields the index would be nil
 	fields []*StructField
+
+	// sortFieldCount is the number of sortable fields in the model
+	sortFieldCount int
+
+	// maximum included Count for this model struct
+	thisIncludedCount   int
+	nestedIncludedCount int
 }
 
 // GetType - gets the reflect.Type of the model that modelstruct is based on.
@@ -84,20 +91,6 @@ func (m *ModelStruct) FieldByIndex(index int) (*StructField, error) {
 
 	return sField, nil
 }
-
-/** TO DELETE
-// // FieldIndexByName returns the field index by provided name.
-// // If not found return -1.
-// func (m *ModelStruct) fieldIndexByName(name string) int {
-// 	for i := 0; i < m.modelType.NumField(); i++ {
-// 		if m.modelType.Field(i).Name == name {
-// 			return i
-// 		}
-// 	}
-// 	return -1
-// }
-
-*/
 
 // there should be some helper which makes nested checks
 // but root function should allow only to check once
@@ -199,6 +192,60 @@ func (m *ModelStruct) checkFields(fields ...string) (errs []*ErrorObject) {
 	return
 }
 
+func (m *ModelStruct) initComputeSortedFields() {
+	for _, sField := range m.fields {
+		if sField != nil && sField.canBeSortedBy {
+			m.sortFieldCount++
+		}
+	}
+	return
+}
+
+func (m *ModelStruct) initComputeThisIncludedCount() {
+	m.thisIncludedCount = len(m.relationships)
+	return
+}
+
+func (m *ModelStruct) initComputeNestedIncludedCount(level int) int {
+	var nestedCount int
+	if level != 0 {
+		nestedCount += m.thisIncludedCount
+	}
+
+	for _, relationship := range m.relationships {
+		mStruct := cacheModelMap.Get(relationship.GetRelatedModelType())
+		if mStruct == nil {
+			panic(fmt.Sprintf("Model not mapped: %v", relationship.GetRelatedModelType()))
+		}
+		if level < maxNestedRelLevel {
+			nestedCount += mStruct.initComputeNestedIncludedCount(level + 1)
+		}
+	}
+
+	return nestedCount
+}
+
+func (m *ModelStruct) initCheckFieldTypes() error {
+	for _, field := range m.fields {
+		if field != nil {
+			err := field.initCheckFieldType()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *ModelStruct) getMaxIncludedCount() int {
+	return m.thisIncludedCount + m.nestedIncludedCount
+}
+
+func (m *ModelStruct) getSortFieldCount() int {
+	return m.sortFieldCount
+}
+
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
@@ -226,6 +273,13 @@ type StructField struct {
 	*/
 	// relatedModelType is a model type for the relationship
 	relatedModelType reflect.Type
+
+	// can be sorted
+	canBeSortedBy bool
+
+	isRelationship bool
+	// isListRelated
+	isListRelated bool
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -249,44 +303,49 @@ func (s *StructField) GetRelatedModelType() reflect.Type {
 	return s.relatedModelType
 }
 
-/** TO DELETE
-// // GetRelationship - gets the relationship for given structfield
-// // The function returns also a check flag if the relationship was set for given structField
-// func (s *StructField) GetRelationship() (Relationship, bool) {
-// 	if s.relationship == nil {
-// 		return Relationship{}, false
-// 	}
-// 	return *s.relationship, true
-// }
+func (s *StructField) initCheckFieldType() error {
+	fieldType := s.refStruct.Type
+	switch s.jsonAPIResKind {
+	case annotationPrimary:
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+		switch fieldType.Kind() {
+		case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
+			reflect.Uint32, reflect.Uint64:
+		default:
+			err := fmt.Errorf("Invalid primary field type: %s", fieldType)
+			return err
+		}
+	case annotationAttribute:
+		// almost any type
+		switch fieldType.Kind() {
+		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
+			err := fmt.Errorf("Invalid attribute field type: %v", fieldType)
+			return err
+		}
 
-
-
-// // RelationshipType defines an 'enum' for relationship type.
-// type RelationshipType int
-
-// const (
-// 	// UnknownRelation - not defined relationship type
-// 	UnknownRelation RelationshipType = iota
-
-// 	// BelongsTo is a relationship of 'belongsto' type
-// 	BelongsTo
-
-// 	// HasOne is a relationship of one-to-one ('hasone') type
-// 	HasOne
-
-// 	// HasMany is a relationship of one-to-many ('hasone') type
-// 	HasMany
-
-// 	// ManyToMany is a relationship of many-to-many type
-// 	ManyToMany
-// )
-
-// // Relationship contains information about the relationship between models.
-// type Relationship struct {
-// 	// Kind describes the relationship kind
-// 	Type RelationshipType
-
-// 	// RelatedType is a related model type.
-// 	RelatedModelType reflect.Type
-// }
-*/
+	case annotationRelation:
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+		switch fieldType.Kind() {
+		case reflect.Struct:
+		case reflect.Slice:
+			fieldType = fieldType.Elem()
+			if fieldType.Kind() == reflect.Ptr {
+				fieldType = fieldType.Elem()
+			}
+			if fieldType.Kind() != reflect.Struct {
+				goto Gofallthrough
+			}
+		Gofallthrough:
+			fallthrough
+		default:
+			err := fmt.Errorf("Invalid field type for the relationship.", fieldType)
+			return err
+		}
+	}
+	return nil
+}

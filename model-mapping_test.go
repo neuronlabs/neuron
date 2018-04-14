@@ -152,63 +152,64 @@ func TestGetSliceElemType(t *testing.T) {
 	}
 }
 
-func TestGetRelatedType(t *testing.T) {
+func TestSetRelatedType(t *testing.T) {
 	// Providing type struct
-	var refType, relType reflect.Type
 	var err error
-	refType = reflect.TypeOf(Car{})
-	relType, err = getRelatedType(refType)
+	var sField *StructField = &StructField{}
+
+	sField.refStruct.Type = reflect.TypeOf(Car{})
+	err = setRelatedType(sField)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if refType != relType {
+	if sField.relatedModelType != sField.refStruct.Type {
 		t.Error("These should be the same type")
 	}
 
 	// Ptr type
-	refType = reflect.TypeOf(&Car{})
-	relType, err = getRelatedType(refType)
+	sField.refStruct.Type = reflect.TypeOf(&Car{})
+	err = setRelatedType(sField)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if relType != refType.Elem() {
+	if sField.relatedModelType != sField.refStruct.Type.Elem() {
 		t.Error("Pointer type should be the same")
 	}
 
 	//Slice of ptr
-	refType = reflect.TypeOf([]*Car{})
-	relType, err = getRelatedType(relType)
+	sField.refStruct.Type = reflect.TypeOf([]*Car{})
+	err = setRelatedType(sField)
 	if err != nil {
 		t.Error(err)
 	}
-	if relType != refType.Elem().Elem() {
+	if sField.relatedModelType != sField.refStruct.Type.Elem().Elem() {
 		t.Error("Error in slice of ptr")
 	}
 
 	// Slice
-	refType = reflect.TypeOf([]Car{})
-	relType, err = getRelatedType(relType)
+	sField.refStruct.Type = reflect.TypeOf([]Car{})
+	err = setRelatedType(sField)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if relType != refType.Elem() {
+	if sField.relatedModelType != sField.refStruct.Type.Elem() {
 		t.Error("Error in slice")
 	}
 
 	// basic type
-	refType = reflect.TypeOf("string")
-	_, err = getRelatedType(refType)
+	sField.refStruct.Type = reflect.TypeOf("string")
+	err = setRelatedType(sField)
 	if err == nil {
 		t.Error("String should throw error")
 	}
 
 	// ptr to basic type
 	var b string = "String"
-	refType = reflect.TypeOf(&b)
-	_, err = getRelatedType(refType)
+	sField.refStruct.Type = reflect.TypeOf(&b)
+	err = setRelatedType(sField)
 	if err == nil {
 		t.Error("Ptr to string should throw error")
 	}

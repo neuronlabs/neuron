@@ -172,3 +172,102 @@ func TestStructFieldGetters(t *testing.T) {
 	// related for primary should be zero
 	assertNil(t, primary.GetRelatedModelType())
 }
+
+func TestGetSortFieldCount(t *testing.T) {
+	clearMap()
+	PrecomputeModels(&User{}, &Pet{})
+
+	mStruct := MustGetModelStruct(&User{})
+
+	assertNotNil(t, mStruct)
+
+}
+
+func TestComputeNestedIncludeCount(t *testing.T) {
+	PrecomputeModels(&User{}, &Pet{})
+	mUser := MustGetModelStruct(&User{})
+
+	assertTrue(t, mUser.getMaxIncludedCount() == 2)
+
+	clearMap()
+	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	mBlog := MustGetModelStruct(&Blog{})
+
+	assertTrue(t, mBlog.getMaxIncludedCount() == 6)
+	assertTrue(t, MustGetModelStruct(&Post{}).getMaxIncludedCount() == 2)
+
+	clearMap()
+	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	mBlog = MustGetModelStruct(&Blog{})
+	// set some model struct to nil
+	cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
+
+	assertPanic(t, func() { mBlog.initComputeNestedIncludedCount(0) })
+}
+
+func TestInitCheckFieldTypes(t *testing.T) {
+	type invalidPrimary struct {
+		ID float64 `jsonapi:"primary,invalids"`
+	}
+	clearMap()
+	err := buildModelStruct(&invalidPrimary{}, cacheModelMap)
+	assertNil(t, err)
+
+	mStruct := MustGetModelStruct(&invalidPrimary{})
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+	// attribute of type chan
+	type invalidAttribute struct {
+		ID       int           `jsonapi:"primary,invalidAttr"`
+		ChanAttr chan (string) `jsonapi:"attr,channel"`
+	}
+	err = buildModelStruct(&invalidAttribute{}, cacheModelMap)
+	assertNil(t, err)
+
+	mStruct = MustGetModelStruct(&invalidAttribute{})
+
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+	//attribute of type func
+	type invAttrFunc struct {
+		ID       int          `jsonapi:"primary,invAttrFunc"`
+		FuncAttr func(string) `jsonapi:"attr,func-attr"`
+	}
+	err = buildModelStruct(&invAttrFunc{}, cacheModelMap)
+	assertNil(t, err)
+
+	mStruct = MustGetModelStruct(&invAttrFunc{})
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+	// relationship of type not a struct/ ptr struct / slice
+	type invalidRelBasic struct {
+		ID    int    `jsonapi:"primary,invRelBasic"`
+		Basic string `jsonapi:"relation,basic"`
+	}
+	inv := invalidRelBasic{}
+	mStruct = &ModelStruct{fields: []*StructField{{
+		jsonAPIResKind: annotationRelation,
+		refStruct:      reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
+	}
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+	mStruct = &ModelStruct{fields: []*StructField{{
+		jsonAPIResKind: annotationRelation,
+		refStruct:      reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
+	}
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+	strVal := "val"
+	mStruct = &ModelStruct{fields: []*StructField{{
+		jsonAPIResKind: annotationRelation,
+		refStruct:      reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
+	}
+	err = mStruct.initCheckFieldTypes()
+	assertError(t, err)
+
+}
