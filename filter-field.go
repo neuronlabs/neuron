@@ -34,29 +34,51 @@ const (
 	OpEndsWith
 )
 
-var operatorsValue = map[string]FilterOperator{
-	annotationEqual:        OpEqual,
-	annotationNotEqual:     OpNotEqual,
-	annotationGreaterThan:  OpGreaterThan,
-	annotationGreaterEqual: OpGreaterEqual,
-	annotationLessThan:     OpLessThan,
-	annotationLessEqual:    OpLessEqual,
-	// stronly
-	annotationContains:   OpContains,
-	annotationStartsWith: OpStartsWith,
-	annotationEndsWith:   OpEndsWith,
-}
+var (
+	operatorsValue = map[string]FilterOperator{
+		annotationEqual:        OpEqual,
+		annotationNotEqual:     OpNotEqual,
+		annotationGreaterThan:  OpGreaterThan,
+		annotationGreaterEqual: OpGreaterEqual,
+		annotationLessThan:     OpLessThan,
+		annotationLessEqual:    OpLessEqual,
+		// stronly
+		annotationContains:   OpContains,
+		annotationStartsWith: OpStartsWith,
+		annotationEndsWith:   OpEndsWith,
+	}
+	operatorsStr = []string{
+		annotationEqual,
+		annotationNotEqual,
+		annotationGreaterThan,
+		annotationGreaterEqual,
+		annotationLessThan,
+		annotationLessEqual,
+		annotationContains,
+		annotationStartsWith,
+		annotationEndsWith,
+	}
+)
 
 func (f FilterOperator) isBasic() bool {
-	return f <= OpLessEqual
+	return f == OpEqual || f == OpNotEqual
 }
 
-// func (f FilterOperator) isExtended() bool {
-// 	return !f.isBasic() && !f.isStringOnly()
-// }
+func (f FilterOperator) isRangable() bool {
+	return f > OpNotEqual && f < OpContains
+}
 
 func (f FilterOperator) isStringOnly() bool {
-	return f >= OpContains
+	return f >= OpContains && f <= OpEndsWith
+}
+
+func (f FilterOperator) String() string {
+	var str string
+	if int(f) > len(operatorsStr)-1 || int(f) < 0 {
+		str = "unknown operator"
+	}
+	str = operatorsStr[int(f)]
+	return str
 }
 
 type FilterValues struct {
@@ -90,11 +112,18 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		internal bool
 		er       error
 		errObj   *ErrorObject
+
+		opInvalid = func() {
+			errObj = ErrUnsupportedQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.jsonAPIName)
+			errs = append(errs, errObj)
+		}
 	)
 
-	// if f.GetFieldType().Kind() == reflect.Ptr {
-	// 	isPointer = true
-	// }
+	if op > OpEndsWith {
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprint("The filter operator: '%s' is not supported by the server.", op)
+	}
 
 	t := f.getDereferencedType()
 	// create new FilterValue
@@ -104,6 +133,17 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 	// Add and check all values for given field type
 	switch f.jsonAPIType {
 	case Primary:
+		switch t.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if op > OpLessEqual {
+				opInvalid()
+			}
+		case reflect.String:
+			if !op.isBasic() {
+				opInvalid()
+			}
+		}
 		for _, value := range values {
 			fieldValue := reflect.New(t).Elem()
 			er, internal = setPrimaryField(value, fieldValue)
@@ -123,6 +163,13 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 
 		// if it is of integer type check which kind of it
 	case Attribute:
+		switch t.Kind() {
+		case reflect.String:
+		default:
+			if op.isStringOnly() {
+				opInvalid()
+			}
+		}
 		for _, value := range values {
 			fieldValue := reflect.New(t).Elem()
 			er, internal = setAttributeField(value, fieldValue)
@@ -149,19 +196,6 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		errs = append(errs, errObj)
 		err = fmt.Errorf("JSONAPIType not set for this field -  index:%d, name: %s", f.getFieldIndex(), f.fieldName)
 	}
-	return
-}
-
-func (f *FilterField) setValue(value string) (errs []*ErrorObject, err error) {
-	// var er error
-	// var internal bool
-
-	// t := f.getDereferencedType()
-	// v := reflect.New(t)
-
-	// if internal {
-	// 	err = er
-	// }
 	return
 }
 

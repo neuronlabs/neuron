@@ -193,17 +193,26 @@ func (m *ModelStruct) checkAttributes(attrs ...string) (errs []*ErrorObject) {
 	return
 }
 
+func (m *ModelStruct) checkField(field string) (sField *StructField, err *ErrorObject) {
+	var hasAttribute, hasRelationship bool
+	sField, hasAttribute = m.attributes[field]
+	if hasAttribute {
+		return sField, nil
+	}
+	sField, hasRelationship = m.relationships[field]
+	if !hasRelationship {
+		errObject := ErrInvalidQueryParameter.Copy()
+		errObject.Detail = fmt.Sprintf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		return nil, errObject
+	}
+	return sField, nil
+}
+
 func (m *ModelStruct) checkFields(fields ...string) (errs []*ErrorObject) {
 	for _, field := range fields {
-		_, hasAttribute := m.attributes[field]
-		if hasAttribute {
-			continue
-		}
-		_, hasRelationship := m.relationships[field]
-		if !hasRelationship {
-			errObject := ErrInvalidQueryParameter.Copy()
-			errObject.Detail = fmt.Sprintf("Object: '%v', does not have field: '%v'.", m.collectionType, field)
-			errs = append(errs, errObject)
+		_, err := m.checkField(field)
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return
@@ -215,6 +224,10 @@ func (m *ModelStruct) getMaxIncludedCount() int {
 
 func (m *ModelStruct) getSortFieldCount() int {
 	return m.sortFieldCount
+}
+
+func (m *ModelStruct) getWorkingFieldCount() int {
+	return len(m.attributes) + len(m.relationships)
 }
 
 func (m *ModelStruct) initComputeSortedFields() {

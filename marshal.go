@@ -76,24 +76,15 @@ func setAttributeField(value string, fieldValue reflect.Value) (err error, inter
 		} else {
 			// structs are not allowed as attribute
 			internal = true
+			err = fmt.Errorf("The struct is not allowed as an attribute. FieldName: '%s'", t.Name())
 		}
 	case reflect.Complex64, reflect.Complex128:
 		// not implemented
 	default:
 		// unknown field
+		err = fmt.Errorf("Unsupported field type as an attribute: '%s'.", t.Name())
 		internal = true
 	}
-	return
-}
-
-func setRelationshipField(value string, fieldValue reflect.Value, sField *StructField,
-) (err error, internal bool) {
-	t := fieldValue.Elem().Type()
-	switch t.Kind() {
-	case reflect.Struct:
-
-	}
-
 	return
 }
 

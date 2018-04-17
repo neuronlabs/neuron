@@ -35,6 +35,17 @@ func BuildScopeMulti(req *http.Request, model interface{},
 		return
 	}
 
+	// overloadPreventer - is a warden upon invalid query parameters
+	var (
+		overloadPreventer int = 5
+		errObj            *ErrorObject
+		errorObjects      []*ErrorObject
+		addErrors         = func(errObjects ...*ErrorObject) {
+			errs = append(errs, errObjects...)
+			overloadPreventer -= len(errObjects)
+		}
+	)
+
 	// // Check if parameters are in the request context
 	// params, ok := req.Context().Value(ParamsKey).(URLParams)
 	// if !ok {
@@ -44,9 +55,6 @@ func BuildScopeMulti(req *http.Request, model interface{},
 
 	scope = newRootScope(mStruct)
 
-	// overloadPreventer - is a warden upon invalid query parameters
-	var overloadPreventer int = 5
-
 	// Get URLQuery
 	q := req.URL.Query()
 
@@ -55,47 +63,35 @@ func BuildScopeMulti(req *http.Request, model interface{},
 	if ok {
 		// build included scopes
 		errs, err = scope.buildIncludedScopes(included...)
-		if err != nil {
+		if err != nil || len(errs) > 0 {
 			return
 		}
-		overloadPreventer -= len(errs)
 	}
-
-	var errObj *ErrorObject
-	var errorObjects []*ErrorObject
 
 	for key, value := range q {
 		switch {
 		case key == QueryParamInclude:
 			continue
-		case key == QueryParamSort:
-			errorObjects = scope.setSortFields(value...)
-			errs = append(errs, errorObjects...)
-			overloadPreventer -= len(errorObjects)
 		case key == QueryParamPageLimit:
 			scope.Pagination.Limit, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
-				errs = append(errs, errObj)
-				overloadPreventer--
+				addErrors(errObj)
 				break
 			}
 		case key == QueryParamPageOffset:
 			scope.Pagination.Offset, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
-				errs = append(errs, errObj)
-				overloadPreventer--
+				addErrors(errObj)
 			}
 		case key == QueryParamPageNumber:
 			scope.Pagination.PageNumber, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
-				errs = append(errs, errObj)
-				overloadPreventer--
+				addErrors(errObj)
 			}
 		case key == QueryParamPageSize:
 			scope.Pagination.PageSize, errObj = scope.preparePaginatedValue(key, value[0])
 			if errObj != nil {
-				errs = append(errs, errObj)
-				overloadPreventer--
+				addErrors(errObj)
 			}
 		case strings.HasPrefix(key, QueryParamFilter):
 			// filter[field]
@@ -104,29 +100,92 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			splitted, err = splitBracketParameter(key[len(QueryParamFilter):])
 			if err != nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The query parameter filter has invalid form. %s", err)
-				errs = append(errs, errObj)
+				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s.", err)
+				addErrors(errObj)
 				continue
 			}
 
-			_, errorObjects, err = scope.
-				newFilterField(splitted[0], value, scope.Struct, splitted[1:]...)
+			collection := splitted[0]
+
+			filterScope := scope.collectionScopes[collection]
+			if filterScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The collection: '%s' is invalid or not included in query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			_, errorObjects, err = filterScope.
+				newFilterField(splitted[0], value, filterScope.Struct, splitted[1:]...)
 			errs = append(errs, errorObjects...)
 			if err != nil {
 				return
 			}
 
+		case key == QueryParamSort:
+			// sort[collection]
+			// check if is in attrs or
+			// var splitted []string
+			// splitted, err = splitBracketParameter(key[len(QueryParamSort):])
+			// if err != nil {
+			// 	errObj = ErrInvalidQueryParameter.Copy()
+			// 	errObj.Detail = fmt.Sprintf("The sort parameter: '%s' is of invalid form. %s.",
+			// 		key, err)
+			// 	addErrors(errObj)
+			// 	continue
+			// }
+			// if len(splitted) > 1 {
+			// 	// how?
+			// 	errObj = ErrInvalidQueryParameter.Copy()
+			// 	errObj.Detail = fmt.Sprintf("The sort parameter: '%s' is of invalid form. Nested sorting is not supported.", key)
+			// 	addErrors(errObj)
+			// 	continue
+			// }
+			// collection := splitted[0]
+			// sortScope := scope.collectionScopes[collection]
+			// if sortScope == nil {
+			// 	errObj = ErrInvalidQueryParameter.Copy()
+			// 	errObj.Detail = fmt.Sprintf("The collection: '%s' for the sort parameter is invalid or not included to the query.", collection)
+			// 	addErrors(errObj)
+			// 	continue
+			// }
+
+			errorObjects = scope.setSortFields(value...)
+			addErrors(errorObjects...)
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
-			// check if is in attrs or
+			var splitted []string
+			splitted, err = splitBracketParameter(key[len(QueryParamFields):])
+			if err != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", err)
+				addErrors(errObj)
+			}
+			if len(splitted) > 1 {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
+				addErrors(errObj)
+			}
+			collection := splitted[0]
+			fieldsScope := scope.collectionScopes[collection]
+			if fieldsScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprint("The collection: '%s' in fields parameter is invalid or not included to the query.")
+				addErrors(errObj)
+			}
 
 		default:
 			// Check if it is an attribute to query for
-			var errorObjects []*ErrorObject
-			errorObjects = scope.checkFields(key)
-			overloadPreventer -= len(errorObjects)
-			errs = append(errs, errorObjects...)
+			// var errorObjects []*ErrorObject
+			// errorObjects = scope.checkFields(key)
+			// overloadPreventer -= len(errorObjects)
+			// errs = append(errs, errorObjects...)
+
+			errObj = ErrUnsupportedQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
+			addErrors(errObj)
 		}
+
 		if overloadPreventer <= 0 {
 			return
 		}
@@ -582,6 +641,32 @@ func (s *Scope) getScopeForField(sField *StructField) *Scope {
 		}
 	}
 	return nil
+}
+
+// fields[collection] = field1, field2
+func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
+	var (
+		errObj *ErrorObject
+	)
+
+	if len(fields) > s.Struct.getWorkingFieldCount() {
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Too many working fields to include ")
+		errs = append(errs, errObj)
+		return
+	}
+
+	for _, field := range fields {
+		sField, err := s.Struct.checkField(field)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		s.Fields = append(s.Fields, sField)
+	}
+
+	return
+
 }
 
 func (s *Scope) preparePaginatedValue(key, value string) (int, *ErrorObject) {
