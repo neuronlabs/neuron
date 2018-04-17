@@ -27,9 +27,6 @@ const (
 	OpGreaterEqual
 	OpLessThan
 	OpLessEqual
-	OpNot
-	OpOr
-	OpAnd
 
 	// Strings Only operators
 	OpContains
@@ -44,25 +41,40 @@ var operatorsValue = map[string]FilterOperator{
 	annotationGreaterEqual: OpGreaterEqual,
 	annotationLessThan:     OpLessThan,
 	annotationLessEqual:    OpLessEqual,
-	annotationNot:          OpNot,
-	annotationOr:           OpOr,
-	annotationAnd:          OpAnd,
-	annotationContains:     OpContains,
-	annotationStartsWith:   OpStartsWith,
-	annotationEndsWith:     OpEndsWith,
+	// stronly
+	annotationContains:   OpContains,
+	annotationStartsWith: OpStartsWith,
+	annotationEndsWith:   OpEndsWith,
 }
 
-type FilterValue struct {
-	Value          []interface{}
-	ValueOperators []FilterOperator
+func (f FilterOperator) isBasic() bool {
+	return f <= OpLessEqual
+}
+
+// func (f FilterOperator) isExtended() bool {
+// 	return !f.isBasic() && !f.isStringOnly()
+// }
+
+func (f FilterOperator) isStringOnly() bool {
+	return f >= OpContains
+}
+
+type FilterValues struct {
+	Values   []interface{}
+	Operator FilterOperator
 }
 
 type FilterField struct {
 	*StructField
 
-	// Values are the filter values already checked for the type correction.
-	Values []*FilterValue
-	values []string
+	// PrimFilters are the filter values for the primary field
+	PrimFilters []*FilterValues
+
+	// AttrFilters are the filter values for given attribute FilterField
+	AttrFilters []*FilterValues
+
+	// RelFilters are the filter values for given relationship FilterField
+	RelFilters []*FilterField
 }
 
 func (f *FilterField) checkValues() (errs []*ErrorObject) {
@@ -71,87 +83,131 @@ func (f *FilterField) checkValues() (errs []*ErrorObject) {
 }
 
 // setValues set the string type values to the related field values
-func (f *FilterField) setValues() (errs []*ErrorObject) {
+func (f *FilterField) setValues(collection string, values []string, op FilterOperator,
+) (errs []*ErrorObject, err error) {
+	// var errObj *ErrorObject
+	var (
+		internal bool
+		er       error
+		errObj   *ErrorObject
+	)
 
-	// check if the field is relation
-	for _, value := range f.values {
-		// check if correct and append to values
+	// if f.GetFieldType().Kind() == reflect.Ptr {
+	// 	isPointer = true
+	// }
 
-		// check if value is coorect
-		if value == "" {
-			// otherwise set an error
-			errObj := ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Invalid filter parameter value: %s, for field: %s", value, f.jsonAPIName)
-			errs = append(errs, errObj)
-			continue
+	t := f.getDereferencedType()
+	// create new FilterValue
+	fv := new(FilterValues)
+	fv.Operator = op
+
+	// Add and check all values for given field type
+	switch f.jsonAPIType {
+	case Primary:
+		for _, value := range values {
+			fieldValue := reflect.New(t).Elem()
+			er, internal = setPrimaryField(value, fieldValue)
+			if internal {
+				err = er
+				return
+			}
+			if er != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Invalid filter value for primary field for collection: '%s'. %s. ", collection, er)
+				errs = append(errs, errObj)
+			}
+			fv.Values = append(fv.Values, fieldValue.Interface())
 		}
-		changedValue := value
-		f.Values = append(f.Values, changedValue)
-	}
-	return
-}
 
-func (f *FilterField) setValue(value string) (errs []*ErrorObject, er error) {
-	switch f.jsonAPIResKind {
-	case annotationPrimary:
-		// set id field
-		fieldType := f.GetFieldType()
+		f.PrimFilters = append(f.PrimFilters, fv)
 
-		if fieldType.Kind() == reflect.Ptr {
-			fieldType = fieldType.Elem()
-		}
-		fieldValue := reflect.New(fieldType)
-
-		var err error
-		// if the id field is of string type set it to the value
-		switch fieldType.Kind() {
-		case reflect.String:
-			fieldValue.SetString(value)
-		case reflect.Int:
-			err = setIntField(value, fieldValue, 64)
-		case reflect.Int16:
-			err = setIntField(value, fieldValue, 16)
-		case reflect.Int32:
-			err = setIntField(value, fieldValue, 32)
-		case reflect.Int64:
-			err = setIntField(value, fieldValue, 64)
-		case reflect.Uint:
-			err = setUintField(value, fieldValue, 64)
-		case reflect.Uint16:
-			err = setUintField(value, fieldValue, 16)
-		case reflect.Uint32:
-			err = setUintField(value, fieldValue, 32)
-		case reflect.Uint64:
-			err = setUintField(value, fieldValue, 64)
-		default:
-			// should never happen - model checked at precomputation.
-			er = fmt.Errorf("Internal error. Invalid model primary field format: %v",
-				fieldType)
-			return
-		}
-		fmt.Println(err)
 		// if it is of integer type check which kind of it
-	case annotationAttribute:
-	case annotationRelation:
+	case Attribute:
+		for _, value := range values {
+			fieldValue := reflect.New(t).Elem()
+			er, internal = setAttributeField(value, fieldValue)
+			if internal {
+				err = er
+				return
+			}
+			if er != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.jsonAPIName, collection, er)
+				errs = append(errs, errObj)
+			}
+			fv.Values = append(fv.Values, fieldValue)
+		}
+
+		f.AttrFilters = append(f.AttrFilters, fv)
+	case RelationshipSingle, RelationshipMultiple:
+		errObj = ErrInternalError.Copy()
+		errs = append(errs, errObj)
+		err = fmt.Errorf("Setting values for the relationship field directly!: FieldName: %s, Collection: '%s'", f.fieldName, collection)
+		return
+	default:
+		errObj = ErrInternalError.Copy()
+		errs = append(errs, errObj)
+		err = fmt.Errorf("JSONAPIType not set for this field -  index:%d, name: %s", f.getFieldIndex(), f.fieldName)
 	}
 	return
 }
 
-func splitBrackets(bracketed string, parameter string) (values []string, err *ErrorObject) {
+func (f *FilterField) setValue(value string) (errs []*ErrorObject, err error) {
+	// var er error
+	// var internal bool
+
+	// t := f.getDereferencedType()
+	// v := reflect.New(t)
+
+	// if internal {
+	// 	err = er
+	// }
+	return
+}
+
+func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
+	var found bool
+	for _, rel := range f.RelFilters {
+		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
+			found = true
+			if l := len(appendFilter.PrimFilters); l > 0 {
+				rel.PrimFilters = append(rel.PrimFilters, appendFilter.PrimFilters[l-1])
+			}
+
+			if l := len(appendFilter.AttrFilters); l > 0 {
+				rel.AttrFilters = append(rel.AttrFilters, appendFilter.AttrFilters[l-1])
+			}
+		}
+	}
+	if !found {
+		f.RelFilters = append(f.RelFilters, appendFilter)
+	}
+	return
+}
+
+func splitBracketParameter(bracketed string) (values []string, err error) {
 	// look for values in
+	doubleOpen := func() error {
+		return fmt.Errorf("Open square bracket '[' found, without closing ']' in: '%s'.",
+			bracketed)
+	}
+
 	var startIndex int = -1
 	var endIndex int = -1
 	for i := 0; i < len(bracketed); i++ {
 		c := bracketed[i]
 		switch c {
 		case annotationOpenedBracket:
+			if startIndex > endIndex {
+				err = doubleOpen()
+				return
+			}
 			startIndex = i
 		case annotationClosedBracket:
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {
-				err = ErrInvalidQueryParameter.Copy()
-				err.Detail = fmt.Sprintf("Invalid '%s' parameter. Close square bracket ']' found, befwithout opening ('[') in '%s'.", parameter, bracketed)
+				err = fmt.Errorf("Close square bracket ']' found, without opening '[' in '%s'.", bracketed)
 				return
 			}
 			endIndex = i
@@ -159,8 +215,8 @@ func splitBrackets(bracketed string, parameter string) (values []string, err *Er
 		}
 	}
 	if (startIndex != -1 && endIndex == -1) || startIndex > endIndex {
-		err = ErrInvalidQueryParameter.Copy()
-		err.Detail = fmt.Sprintf("Invalid '%s' parameter. Open square bracket '[' found, without closing (']') in: '%s'.", parameter, bracketed)
+		err = doubleOpen()
 		return
 	}
+	return
 }

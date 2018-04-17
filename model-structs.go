@@ -8,6 +8,23 @@ import (
 
 var maxNestedRelLevel int = 1
 
+// JSONAPIType is an enum that defines the following field type (i.e. 'primary', 'attribute')
+type JSONAPIType int
+
+const (
+	UnknownType JSONAPIType = iota
+	// Primary is a 'primary' field
+	Primary
+	// Attribute is an 'attribute' field
+	Attribute
+
+	// RelationshipSingle is a 'relationship' with single object
+	RelationshipSingle
+
+	// RelationshipMultiple is a 'relationship' with multiple objects
+	RelationshipMultiple
+)
+
 // ModelStruct is a computed representation of the jsonapi models.
 // Contain information about the model like the collection type,
 // distinction of the field types (primary, attributes, relationships).
@@ -192,9 +209,17 @@ func (m *ModelStruct) checkFields(fields ...string) (errs []*ErrorObject) {
 	return
 }
 
+func (m *ModelStruct) getMaxIncludedCount() int {
+	return m.thisIncludedCount + m.nestedIncludedCount
+}
+
+func (m *ModelStruct) getSortFieldCount() int {
+	return m.sortFieldCount
+}
+
 func (m *ModelStruct) initComputeSortedFields() {
 	for _, sField := range m.fields {
-		if sField != nil && sField.canBeSortedBy {
+		if sField != nil && sField.canBeSorted() {
 			m.sortFieldCount++
 		}
 	}
@@ -238,53 +263,31 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 	return nil
 }
 
-func (m *ModelStruct) getMaxIncludedCount() int {
-	return m.thisIncludedCount + m.nestedIncludedCount
-}
-
-func (m *ModelStruct) getSortFieldCount() int {
-	return m.sortFieldCount
-}
-
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
-	// modelIndex defines field's index in the model used with reflect.Type.Field(index)
-	modelIndex int
-
 	// FieldName
 	fieldName string
-
-	// JSONAPIResKind is jsonapi specific resource type (i.e. primary, attr, relationship)
-	jsonAPIResKind string
 
 	// JSONAPIName is jsonapi field name - representation for json
 	jsonAPIName string
 
-	// IsPrimary is flag for primary keys
-	isPrimary bool
+	// fieldType
+	jsonAPIType JSONAPIType
 
 	// Given Field
 	refStruct reflect.StructField
 
-	/** TO DELETE
-	// if given structfield defines a relationship it should be non-nil
-	// relationship *Relationship
-	*/
 	// relatedModelType is a model type for the relationship
 	relatedModelType reflect.Type
 
-	// can be sorted
-	canBeSortedBy bool
-
-	isRelationship bool
 	// isListRelated
 	isListRelated bool
 }
 
 // GetFieldIndex - gets the field index in the given model
 func (s *StructField) GetFieldIndex() int {
-	return s.modelIndex
+	return s.getFieldIndex()
 }
 
 // GetFieldName - gets the field name for given model
@@ -300,13 +303,42 @@ func (s *StructField) GetFieldType() reflect.Type {
 // GetRelatedModelType gets the reflect.Type of the related model
 // used for relationship fields.
 func (s *StructField) GetRelatedModelType() reflect.Type {
+	return s.getRelatedModelType()
+}
+
+// GetJSONAPIType gets the JSONAPIType of the given struct field
+func (s *StructField) GetJSONAPIType() JSONAPIType {
+	return s.jsonAPIType
+}
+
+func (s *StructField) canBeSorted() bool {
+	switch s.jsonAPIType {
+	case RelationshipSingle, RelationshipMultiple, Attribute:
+		return true
+	}
+	return false
+}
+
+func (s *StructField) getRelatedModelType() reflect.Type {
 	return s.relatedModelType
+}
+
+func (s *StructField) getDereferencedType() reflect.Type {
+	var t reflect.Type = s.refStruct.Type
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t
+}
+
+func (s *StructField) getFieldIndex() int {
+	return s.refStruct.Index[0]
 }
 
 func (s *StructField) initCheckFieldType() error {
 	fieldType := s.refStruct.Type
-	switch s.jsonAPIResKind {
-	case annotationPrimary:
+	switch s.jsonAPIType {
+	case Primary:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
@@ -318,7 +350,7 @@ func (s *StructField) initCheckFieldType() error {
 			err := fmt.Errorf("Invalid primary field type: %s", fieldType)
 			return err
 		}
-	case annotationAttribute:
+	case Attribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
@@ -326,7 +358,7 @@ func (s *StructField) initCheckFieldType() error {
 			return err
 		}
 
-	case annotationRelation:
+	case RelationshipSingle, RelationshipMultiple:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}

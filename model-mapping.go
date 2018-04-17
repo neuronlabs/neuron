@@ -152,49 +152,49 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			break
 		}
 
-		var resType, resName string
+		var resName string
 		if len(args) > 1 {
 			resName = args[1]
 		}
-
-		resType = args[0]
 
 		tField := modelType.Field(i)
 
 		structField := new(StructField)
 		structField.refStruct = tField
-		structField.modelIndex = i
 		structField.fieldName = tField.Name
-		structField.jsonAPIResKind = resType
 
 		modelStruct.fields[i] = structField
 		assignedFields++
 
+		/**
+
+		TO DO:
+
+		- throw error on duplicated field names
+
+		*/
+
 		switch kind := args[0]; kind {
 		case annotationPrimary:
-			structField.isPrimary = true
 			structField.jsonAPIName = "id"
+			structField.jsonAPIType = Primary
 
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
 		case annotationClientID:
 			structField.jsonAPIName = "id"
+			structField.jsonAPIType = Primary
 
 			modelStruct.clientID = structField
 		case annotationAttribute:
 			structField.jsonAPIName = resName
+			structField.jsonAPIType = Attribute
 			modelStruct.attributes[resName] = structField
-			structField.canBeSortedBy = true
 
 		case annotationRelation:
 			structField.jsonAPIName = resName
 			err = setRelatedType(structField)
 			modelStruct.relationships[resName] = structField
-			structField.isRelationship = true
-
-			if !structField.isListRelated {
-				structField.canBeSortedBy = true
-			}
 		}
 	}
 	if assignedFields == 0 {
@@ -210,69 +210,6 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	modelMap.Set(modelType, modelStruct)
 	return err
 }
-
-/** TO DELETE
-// func joinRelationships(modelMap *ModelMap) error {
-// 	for _, model := range modelMap.models {
-// 		err := buildRelationships(model, modelMap)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func buildRelationships(model *ModelStruct, modelMap *ModelMap) error {
-// 	var err error
-// 	for _, sField := range model.relationships {
-
-// 		err = buildRelationship(model, sField)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		relatedTo := new(Relationship)
-// 		relatedTo.RelatedModelType = model.modelType
-// 		relatedTo.Type = BelongsTo
-// 		// GetRelatedModel
-// 		relatedModel := modelMap.Get(sField.relationship.RelatedModelType)
-// 		if relatedModel == nil {
-// 			err = fmt.Errorf("Related model: %v not found in the model map", sField.relationship.RelatedModelType)
-// 			break
-// 		}
-// 		relatedModel.relatedTo = append(relatedModel.relatedTo, relatedTo)
-// 	}
-// 	return err
-// }
-
-// func buildRelationship(modelStruct *ModelStruct, sField *StructField) (err error) {
-// 	var relatedType reflect.Type
-// 	relatedType = sField.refStruct.Type
-
-// 	for relatedType.Kind() == reflect.Ptr {
-// 		relatedType = relatedType.Elem()
-// 	}
-
-// 	switch relatedType.Kind() {
-// 	case reflect.Slice:
-// 		relatedType = getSliceElemType(relatedType)
-// 		if sField.relationship.Type == UnknownRelation {
-// 			sField.relationship.Type = HasMany
-// 		}
-// 	case reflect.Struct:
-// 		if sField.relationship.Type == UnknownRelation {
-// 			sField.relationship.Type = HasOne
-// 		}
-// 	default:
-// 		err = fmt.Errorf("Invalid relationship type: %v", relatedType)
-// 		return
-// 	}
-
-// 	sField.relationship.RelatedModelType = relatedType
-// 	return
-// }
-
-*/
 
 func checkModelRelationships(model *ModelStruct) (err error) {
 	for _, rel := range model.relationships {
@@ -337,13 +274,18 @@ func setRelatedType(sField *StructField) error {
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
 		if modelType.Kind() == reflect.Slice {
-			sField.isListRelated = true
+			sField.jsonAPIType = RelationshipMultiple
 		}
 		modelType = modelType.Elem()
 	}
+
 	if modelType.Kind() != reflect.Struct {
 		err := getError()
 		return err
+	}
+
+	if sField.jsonAPIType == UnknownType {
+		sField.jsonAPIType = RelationshipSingle
 	}
 	sField.relatedModelType = modelType
 	return nil

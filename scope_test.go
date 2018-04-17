@@ -23,6 +23,11 @@ func TestScopeSetSortFields(t *testing.T) {
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
 
+	// get too many sortfields
+	errs = userRootScope.setSortFields("name", "surname", "somethingelse")
+	assertNotEmpty(t, errs)
+	t.Log(errs)
+
 	// check multiple with multiple sortable fields
 	PrecomputeModels(&Driver{}, &Car{})
 	driverModelStruct := MustGetModelStruct(&Driver{})
@@ -146,45 +151,158 @@ func TestBuildIncludedScopes(t *testing.T) {
 	assertEmpty(t, commentsScope.SubScopes)
 }
 
-func TestScopeCheckFields(t *testing.T) {
-	clearMap()
-	blogScope := getBlogScope()
+func TestNewFilterField(t *testing.T) {
+
 	var errs []*ErrorObject
 	var err error
 
-	// filter attribute
-	errs, err = blogScope.checkFilterField("title", "SomeValue")
-	assertNil(t, err)
-	assertEmpty(t, errs)
+	var correctParams [][]string = [][]string{
+		{"id"},
+		{"id", "eq"},
+		{"title"},
+		{"title", "gt"},
+		{"current-post", "id"},
+		{"current-post", "id", "eq"},
+		{"current-post", "title", "lt"},
+		{"posts", "id", "gt"},
+		{"posts", "body", "contains"},
+	}
+	var correctValues [][]string = [][]string{
+		{"1", "2"},
+		{"3", "256"},
+		{"maciek", "21-mietek"},
+		{"mincek"},
+		{"11", "124"},
+		{"15", "634"},
+		{"the tile of post", "this title"},
+		{"333"},
+		{"This is in contain"},
+	}
 
-	// relationship (list type)
-	errs, err = blogScope.checkFilterField("posts", "1")
-	assertNil(t, err)
-	assertEmpty(t, errs)
+	blogScope := getBlogScope()
+	for i := range correctParams {
+		_, errs, err = blogScope.newFilterField("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
+		if err != nil {
+			t.Log(i)
+			t.Log(correctParams[i])
+		}
+		assertNil(t, err)
+		assertEmpty(t, errs)
 
-	errs, err = blogScope.checkFilterField("current-post", "2")
-	assertNil(t, err)
-	assertEmpty(t, errs)
+	}
+	for k, v := range blogScope.Filters {
+		t.Logf("Key: %v, FieldName: %v", k, v.fieldName)
 
-	// blog does not have field 'name'
-	errs, err = blogScope.checkFilterField("name", "some name")
-	assertNil(t, err)
-	assertNotEmpty(t, errs)
+		for _, f := range v.PrimFilters {
+			t.Logf("Primary field filter: %v", f)
+		}
 
-	// assign invalid value for relationships
-	errs, err = blogScope.checkFilterField("posts", "something not int")
-	assertNil(t, err)
-	// assertNotEmpty(t, errs)
+		for _, f := range v.AttrFilters {
+			t.Logf("AttrFilters: %v", f)
+		}
 
-	errs, err = blogScope.checkFilterField("current-post", "not an int")
-	assertNil(t, err)
-	// assertNotEmpty(t, errs)
+		for _, f := range v.RelFilters {
+			t.Logf("RelFilter FieldName: %s", f.fieldName)
+			for _, fv := range f.PrimFilters {
+				t.Logf("Primary filters:%v", fv)
+			}
 
-	// assign invalid value for some attribute
-	errs, err = blogScope.checkFilterField("view_count", "too many")
-	assertNil(t, err)
-	// assertNotEmpty(t, errs)
+			for _, fv := range f.AttrFilters {
+				t.Logf("Attrs: %v", fv)
+			}
+			t.Logf("\n")
+		}
+		t.Logf("\n")
 
+	}
+
+	var invParams [][]string = [][]string{
+		{},
+		{"current-post"},
+		{"invalid"},
+		{"current-post", "invalid"},
+		{"invalid", "subfield"},
+		{"title", "nosuchoperator"},
+		{"invalid-field", "with", "operator"},
+		{"title", "with", "operator"},
+		{"so", "many", "parameters", "here"},
+	}
+
+	var invValues [][]string = [][]string{
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+		{},
+	}
+
+	for i := range invParams {
+		blogScope := getBlogScope()
+		t.Log(i)
+		_, errs, err = blogScope.newFilterField("blogs", invValues[i], blogScope.Struct, invParams[i]...)
+		assertNil(t, err)
+		assertNotEmpty(t, errs)
+		t.Logf("%d: %s", i, errs)
+	}
+
+	internalParameters := [][]string{
+		{"current-post", "id"},
+		{"current-post", "title", "eq"},
+	}
+
+	// internal errors
+	internalValues := [][]string{
+		{"1"},
+		{"title"},
+	}
+
+	for i := range internalParameters {
+		clearMap()
+		blgoScope := getBlogScope()
+		cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
+		_, errs, err = blgoScope.newFilterField("blogs", internalValues[i], blgoScope.Struct, internalParameters[i]...)
+		assertError(t, err)
+		assertNotEmpty(t, errs)
+	}
+}
+
+func BenchmarkEmptyMap(b *testing.B) {
+	var mp map[int]*FilterField
+	for i := 0; i < b.N; i++ {
+		mp = make(map[int]*FilterField)
+	}
+	if mp != nil {
+	}
+}
+
+func BenchmarkEmptySlice(b *testing.B) {
+	s := getBlogScope()
+	l := s.Struct.modelType.NumField()
+
+	var arr []*FilterField
+
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < l; j++ {
+			arr = append(arr, &FilterField{})
+		}
+		arr = nil
+	}
+}
+
+func BenchmarkEmptyArr(b *testing.B) {
+	s := getBlogScope()
+	l := s.Struct.modelType.NumField()
+	var arr []*FilterField
+	for i := 0; i < b.N; i++ {
+		arr = make([]*FilterField, l)
+	}
+	if len(arr) == 0 {
+
+	}
 }
 
 func getBlogScope() *Scope {

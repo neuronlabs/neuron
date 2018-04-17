@@ -18,6 +18,9 @@ const (
 	annotationsManyToMany = "many2many"
 
 	// FILTERS
+	// disable for filtering purpose
+	annotationNoFilter = "nofilter"
+
 	// logical filters
 	annotationEqual        = "eq"
 	annotationNotEqual     = "ne"
@@ -25,9 +28,11 @@ const (
 	annotationGreaterEqual = "ge"
 	annotationLessThan     = "lt"
 	annotationLessEqual    = "le"
-	annotationNot          = "not"
-	annotationOr           = "or"
-	annotationAnd          = "and"
+
+	// not used currently
+	// annotationNot = "not"
+	// annotationOr  = "or"
+	// annotationAnd = "and"
 
 	// string only filters
 	annotationContains   = "contains"
@@ -79,6 +84,8 @@ const (
 	// QueryParamPageCursor is a JSON API query parameter used with a cursor-based
 	// strategy
 	QueryParamPageCursor = "page[cursor]"
+
+	QueryParamPageTotal = "page[total]"
 
 	// QueryParamInclude
 	QueryParamInclude = "include"

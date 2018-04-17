@@ -99,6 +99,22 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			}
 		case strings.HasPrefix(key, QueryParamFilter):
 			// filter[field]
+			var splitted []string
+			// get other operators
+			splitted, err = splitBracketParameter(key[len(QueryParamFilter):])
+			if err != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The query parameter filter has invalid form. %s", err)
+				errs = append(errs, errObj)
+				continue
+			}
+
+			_, errorObjects, err = scope.
+				newFilterField(splitted[0], value, scope.Struct, splitted[1:]...)
+			errs = append(errs, errorObjects...)
+			if err != nil {
+				return
+			}
 
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
@@ -122,7 +138,6 @@ func BuildScopeSingle(req *http.Request, model interface{},
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// get model type
 	return
-
 }
 
 type Scope struct {
@@ -139,7 +154,7 @@ type Scope struct {
 	Value interface{}
 
 	// Filters contain fields by which the main value is being filtered.
-	Filters []*FilterField
+	Filters map[int]*FilterField
 
 	// Fields represents fields used for this subscope - jsonapi 'fields[collection]'
 	Fields []*StructField
@@ -188,7 +203,7 @@ func (s *Scope) setSortFields(sortFields ...string) (errs []*ErrorObject) {
 	// If the number of sort fields is too long then do not allow
 	if len(sortFields) > s.Struct.getSortFieldCount() {
 		err = ErrOutOfRangeQueryParameterValue.Copy()
-		err.Detail = fmt.Sprintf("The sort parameter for the '%v' collection is too long. The permissible length is up to the number of collection attributes with has-one relationships.", s.Struct.collectionType)
+		err.Detail = fmt.Sprintf("There are too many sort parameters for the '%v' collection.", s.Struct.collectionType)
 		errs = append(errs, err)
 		return
 	}
@@ -311,10 +326,10 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 		// Check if no other scope for this collection within given 'subscope' exists
 		sub = s.getScopeForField(sField)
 		if sub == nil {
-			relatedMStruct := cacheModelMap.Get(sField.relatedModelType)
+			relatedMStruct := cacheModelMap.Get(sField.getRelatedModelType())
 			if relatedMStruct == nil {
 				err = errNoModelMappedForRel(
-					sField.relatedModelType,
+					sField.getRelatedModelType(),
 					sField.refStruct.Type,
 					sField.fieldName,
 				)
@@ -330,11 +345,11 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 		sub = s.getScopeForField(sField)
 		if sub == nil {
 			// if sField was found
-			relatedMStruct := cacheModelMap.Get(sField.relatedModelType)
+			relatedMStruct := cacheModelMap.Get(sField.getRelatedModelType())
 			if relatedMStruct == nil {
 				err = errNoModelMappedForRel(
 					sField.refStruct.Type,
-					sField.relatedModelType,
+					sField.getRelatedModelType(),
 					sField.fieldName,
 				)
 				errs = append(errs, ErrInternalError.Copy())
@@ -349,36 +364,210 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 	return
 }
 
-func (s *Scope) checkFilterField(field string, values ...string,
-) (errorObjects []*ErrorObject, err error) {
-	// checks if given fields exists in the attributes
-	sField := s.Struct.attributes[field]
+// splitted contains filter fields after filter[collection]
+// i.e. /blogs?filter[blogs][posts][id][ne]=10
+// splitted should be then [posts, id, ne]
+func (s *Scope) newFilterField(
+	collection string,
+	values []string,
+	m *ModelStruct,
+	splitted ...string,
+) (fField *FilterField, errs []*ErrorObject, err error) {
+	var (
+		sField     *StructField
+		relMStruct *ModelStruct
+		op         FilterOperator
+		ok         bool
+		fieldName  string
 
-	if sField == nil {
-		// if field is not in attributes if given field exists in relationships
-		sField = s.Struct.relationships[field]
-
-		if sField == nil {
-			// if given scope's model does not contain given field
-			errObj := ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Invalid filter parameter. The collection '%s' does not contain field: '%s' ", s.Struct.collectionType, field)
-			errorObjects = append(errorObjects, errObj)
+		errObj     *ErrorObject
+		errObjects []*ErrorObject
+		// private function for returning ErrObject
+		invalidName = func(fieldName, collection string) {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid filter field name: '%s' for the '%s' collection.", fieldName, collection)
+			errs = append(errs, errObj)
 			return
 		}
-	}
-	filterField := &FilterField{StructField: sField, Values: []interface{}{values}}
+		invalidOperator = func(operator string) {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' for the '%s' field.", operator, fieldName)
+			errs = append(errs, errObj)
+			return
+		}
 
-	errorObjects = filterField.checkValues()
-	if len(errorObjects) != 0 {
+		// creates new filter field if is nil and adds it to the scope
+		setFilterField = func() {
+			// get the filter field from the scope if exists.
+
+			var sameStruct bool = m == s.Struct
+			if sameStruct {
+				fField = s.Filters[sField.getFieldIndex()]
+			}
+
+			if fField == nil {
+				fField = new(FilterField)
+				fField.StructField = sField
+				if sameStruct {
+					s.Filters[sField.getFieldIndex()] = fField
+				}
+			}
+
+		}
+	)
+
+	if s.Filters == nil {
+		s.Filters = make(map[int]*FilterField)
+	}
+
+	// check if any parameters are set for filtering
+	if len(splitted) == 0 {
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprint("Too few filter parameters. Valid format is: filter[collection][field][subfield|operator]([operator])*.")
+		errs = append(errs, errObj)
 		return
 	}
 
-	errorObjects = filterField.setValues()
-	if len(errorObjects) != 0 {
+	// for all cases first value should be a fieldName
+	fieldName = splitted[0]
+
+	switch len(splitted) {
+	case 1:
+		// if there is only one argument it must be an attribute.
+		if fieldName == "id" {
+			sField = m.primary
+		} else {
+			sField, ok = m.attributes[fieldName]
+			if !ok {
+				_, ok = m.relationships[fieldName]
+				if ok {
+					errObj = ErrInvalidQueryParameter.Copy()
+					errObj.Detail = fmt.Sprintf("Provided filter field: '%s' is a relationship. In order to filter a relationship specify the relationship's field. i.e. '/%s?filter[%s][id]=123'", fieldName, m.collectionType, fieldName)
+					errs = append(errs, errObj)
+					return
+				}
+				invalidName(fieldName, m.collectionType)
+				return
+			}
+		}
+		setFilterField()
+		op = OpEqual
+		errObjects, err = fField.setValues(m.collectionType, values, op)
+		if err != nil {
+			return
+		}
+	case 2:
+		if fieldName == "id" {
+			sField = m.primary
+		} else {
+			sField, ok = m.attributes[fieldName]
+			if !ok {
+				// jeżeli relacja ->
+				sField, ok = m.relationships[fieldName]
+				if !ok {
+					invalidName(fieldName, m.collectionType)
+					return
+				}
+
+				// if field were already used
+				setFilterField()
+
+				// get model type for given field
+
+				relMStruct = cacheModelMap.Get(sField.getRelatedModelType())
+				if relMStruct == nil {
+					// err is internal
+					err = fmt.Errorf("Unmapped model: %s.", sField.getRelatedModelType())
+					errs = append(errs, ErrInternalError.Copy())
+					return
+				}
+
+				// relFilter is a FilterField for specific field in relationship
+				var relFilter *FilterField
+
+				relFilter, errObjects, err = s.newFilterField(
+					fieldName,
+					values,
+					relMStruct,
+					splitted[1:]...,
+				)
+				errs = append(errs, errObjects...)
+				if err != nil || len(errs) > 0 {
+					return
+				}
+				fField.appendRelFilter(relFilter)
+
+				return
+			}
+		}
+		// jeżeli attribute ->
+		op, ok = operatorsValue[splitted[1]]
+		if !ok {
+			invalidOperator(splitted[1])
+			return
+		}
+		setFilterField()
+		errObjects, err = fField.setValues(m.collectionType, values, op)
+		errs = append(errs, errObjects...)
+		if err != nil {
+			return
+		}
+	case 3:
+		// musi być relacja
+		sField, ok = m.relationships[fieldName]
+		if !ok {
+			// moze ktos podal attribute
+			_, ok = m.attributes[fieldName]
+			if !ok {
+				invalidName(fieldName, m.collectionType)
+				return
+			}
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Too many parameters for the attribute field: '%s'.", fieldName)
+			errs = append(errs, errObj)
+			return
+		}
+		setFilterField()
+		relMStruct = cacheModelMap.Get(sField.getRelatedModelType())
+		if relMStruct == nil {
+			err = fmt.Errorf("Unmapped model: %s.", sField.getRelatedModelType())
+			errs = append(errs, ErrInternalError.Copy())
+			return
+		}
+
+		var relFilter *FilterField
+
+		// get relationship's filter for specific field (filterfield)
+		relFilter, errObjects, err = s.newFilterField(
+			fieldName,
+			values,
+			relMStruct,
+			splitted[1:]...,
+		)
+		errs = append(errs, errObjects...)
+		if err != nil {
+			return
+		}
+
+		fField.appendRelFilter(relFilter)
+	default:
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.
+			Sprintf("Too many filter parameters for '%s' collection. ", collection)
+		errs = append(errs, errObj)
+		_, ok = m.attributes[fieldName]
+		if !ok {
+			_, ok = m.relationships[fieldName]
+			if !ok {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.
+					Sprintf("Invalid field name: '%s' for '%s' collection.", fieldName, collection)
+				errs = append(errs, errObj)
+			}
+		}
 		return
 	}
 
-	s.Filters = append(s.Filters, filterField)
 	return
 }
 
@@ -434,7 +623,7 @@ type SortField struct {
 
 // get collection name from query parameters containing '[...]' i.e. fields[collection]
 func retrieveCollectionName(queryParam string) (string, *ErrorObject) {
-	opened := strings.Index(queryParam, annotationOpenedBracket)
+	opened := strings.Index(queryParam, string(annotationOpenedBracket))
 
 	if opened == -1 {
 		// no opening
@@ -443,7 +632,7 @@ func retrieveCollectionName(queryParam string) (string, *ErrorObject) {
 		return "", err
 	}
 
-	closed := strings.Index(queryParam, annotationClosedBracket)
+	closed := strings.Index(queryParam, string(annotationClosedBracket))
 	if closed == -1 || closed != len(queryParam)-1 {
 		// no closing
 		err := ErrUnsupportedQueryParameter.Copy()

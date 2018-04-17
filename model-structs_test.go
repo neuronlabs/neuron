@@ -119,7 +119,7 @@ func TestGettersModelStruct(t *testing.T) {
 
 	primary := mStruct.GetPrimaryField()
 	assertTrue(t, primary.fieldName == "ID")
-	assertTrue(t, primary.isPrimary)
+	assertTrue(t, primary.jsonAPIType == Primary)
 
 	// AttrField
 	nameField := mStruct.GetAttributeField("name")
@@ -249,24 +249,25 @@ func TestInitCheckFieldTypes(t *testing.T) {
 	}
 	inv := invalidRelBasic{}
 	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIResKind: annotationRelation,
-		refStruct:      reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
+		jsonAPIType: RelationshipSingle,
+		refStruct:   reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
 	}
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
 	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIResKind: annotationRelation,
-		refStruct:      reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
+		jsonAPIType: RelationshipSingle,
+		refStruct:   reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
 	}
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
 	strVal := "val"
 	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIResKind: annotationRelation,
-		refStruct:      reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
+		jsonAPIType: RelationshipSingle,
+		refStruct:   reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
 	}
+
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
