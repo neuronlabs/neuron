@@ -89,11 +89,8 @@ type FilterValues struct {
 type FilterField struct {
 	*StructField
 
-	// PrimFilters are the filter values for the primary field
-	PrimFilters []*FilterValues
-
 	// AttrFilters are the filter values for given attribute FilterField
-	AttrFilters []*FilterValues
+	Values []*FilterValues
 
 	// RelFilters are the filter values for given relationship FilterField
 	RelFilters []*FilterField
@@ -153,13 +150,13 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 			}
 			if er != nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Invalid filter value for primary field for collection: '%s'. %s. ", collection, er)
+				errObj.Detail = fmt.Sprintf("Invalid filter value for primary field in collection: '%s'. %s. ", collection, er)
 				errs = append(errs, errObj)
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
 		}
 
-		f.PrimFilters = append(f.PrimFilters, fv)
+		f.Values = append(f.Values, fv)
 
 		// if it is of integer type check which kind of it
 	case Attribute:
@@ -185,7 +182,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 			fv.Values = append(fv.Values, fieldValue)
 		}
 
-		f.AttrFilters = append(f.AttrFilters, fv)
+		f.Values = append(f.Values, fv)
 	case RelationshipSingle, RelationshipMultiple:
 		errObj = ErrInternalError.Copy()
 		errs = append(errs, errObj)
@@ -204,12 +201,9 @@ func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
 	for _, rel := range f.RelFilters {
 		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
 			found = true
-			if l := len(appendFilter.PrimFilters); l > 0 {
-				rel.PrimFilters = append(rel.PrimFilters, appendFilter.PrimFilters[l-1])
-			}
 
-			if l := len(appendFilter.AttrFilters); l > 0 {
-				rel.AttrFilters = append(rel.AttrFilters, appendFilter.AttrFilters[l-1])
+			if l := len(appendFilter.Values); l > 0 {
+				rel.Values = append(rel.Values, appendFilter.Values[l-1])
 			}
 		}
 	}
@@ -245,7 +239,7 @@ func splitBracketParameter(bracketed string) (values []string, err error) {
 				return
 			}
 			endIndex = i
-			values = append(values, bracketed[startIndex:endIndex])
+			values = append(values, bracketed[startIndex+1:endIndex])
 		}
 	}
 	if (startIndex != -1 && endIndex == -1) || startIndex > endIndex {

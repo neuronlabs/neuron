@@ -61,6 +61,9 @@ type ModelStruct struct {
 	// maximum included Count for this model struct
 	thisIncludedCount   int
 	nestedIncludedCount int
+
+	modelURL           string
+	collectionURLIndex int
 }
 
 // GetType - gets the reflect.Type of the model that modelstruct is based on.
@@ -107,6 +110,27 @@ func (m *ModelStruct) FieldByIndex(index int) (*StructField, error) {
 	}
 
 	return sField, nil
+}
+
+func (m *ModelStruct) SetModelURL(url string) error {
+	return m.setModelURL(url)
+}
+
+func (m *ModelStruct) setModelURL(url string) error {
+	splitted := strings.Split(url, "/")
+	for i, v := range splitted {
+		if v == m.collectionType {
+			m.collectionURLIndex = i
+			break
+		}
+	}
+	if m.collectionURLIndex == -1 {
+		err := fmt.Errorf("The url provided for model struct does not contain collection name. URL: '%s'. Collection: '%s'.", url, m.collectionType)
+		return err
+	}
+	m.modelURL = url
+
+	return nil
 }
 
 // there should be some helper which makes nested checks

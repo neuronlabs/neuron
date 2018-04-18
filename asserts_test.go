@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -43,13 +44,13 @@ func assertErrorObjects(t *testing.T, errs ...*ErrorObject) {
 }
 
 func assertNotNil(t *testing.T, obj interface{}) {
-	if obj == nil {
+	if isNil(obj) {
 		t.Errorf("Provided obj: '%v' should not be nil.", obj)
 	}
 }
 
 func assertNil(t *testing.T, obj interface{}) {
-	if obj != nil {
+	if !isNil(obj) {
 		t.Errorf("Provided obj: %v is not nil.", obj)
 	}
 }
@@ -86,6 +87,18 @@ func assertNotEmpty(t *testing.T, obj interface{}) {
 	}
 }
 
+func assertEqual(t *testing.T, expected, actual interface{}) {
+	if !areEqual(expected, actual) {
+		t.Errorf("Objects: %s and %s  are not equal.", expected, actual)
+	}
+}
+
+func assertNotEqual(t *testing.T, expected, actual interface{}) {
+	if areEqual(expected, actual) {
+		t.Errorf("Objects: %s and %s are equal.", expected, actual)
+	}
+}
+
 func isEmpty(obj interface{}) bool {
 	v := reflect.ValueOf(obj)
 	switch v.Kind() {
@@ -101,4 +114,33 @@ func isEmpty(obj interface{}) bool {
 		zero := reflect.Zero(v.Type())
 		return reflect.DeepEqual(obj, zero)
 	}
+}
+
+func isNil(obj interface{}) bool {
+	if obj == nil {
+		return true
+	}
+
+	v := reflect.ValueOf(obj)
+	k := v.Kind()
+	if k >= reflect.Chan && k <= reflect.Slice && v.IsNil() {
+		return true
+	}
+	return false
+}
+
+func areEqual(expected, actual interface{}) bool {
+	if expected == nil || actual == nil {
+		return expected == actual
+	}
+	if exp, ok := expected.([]byte); ok {
+		act, ok := actual.([]byte)
+		if !ok {
+			return false
+		} else if exp == nil || act == nil {
+			return exp == nil && act == nil
+		}
+		return bytes.Equal(exp, act)
+	}
+	return reflect.DeepEqual(expected, actual)
 }

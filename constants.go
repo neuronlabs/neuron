@@ -4,6 +4,7 @@ const (
 	// StructTag annotation strings
 	annotationJSONAPI           = "jsonapi"
 	annotationPrimary           = "primary"
+	annotationID                = "id"
 	annotationClientID          = "client-id"
 	annotationAttribute         = "attr"
 	annotationRelation          = "relation"

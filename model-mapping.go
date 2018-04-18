@@ -106,6 +106,14 @@ func PrecomputeModels(models ...interface{}) error {
 	return nil
 }
 
+func SetModelURL(model interface{}, url string) error {
+	mStruct, err := getModelStruct(model)
+	if err != nil {
+		return err
+	}
+	return mStruct.setModelURL(url)
+}
+
 func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	var err error
 
@@ -133,6 +141,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	modelStruct.attributes = make(map[string]*StructField)
 	modelStruct.relationships = make(map[string]*StructField)
 	modelStruct.fields = make([]*StructField, modelType.NumField())
+	modelStruct.collectionURLIndex = -1
 
 	var assignedFields int
 	for i := 0; i < modelType.NumField(); i++ {

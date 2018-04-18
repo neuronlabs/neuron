@@ -2,7 +2,11 @@ package jsonapi
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -183,38 +187,38 @@ func TestNewFilterField(t *testing.T) {
 	for i := range correctParams {
 		_, errs, err = blogScope.newFilterField("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
 		if err != nil {
-			t.Log(i)
-			t.Log(correctParams[i])
+			// t.Log(i)
+			// t.Log(correctParams[i])
 		}
 		assertNil(t, err)
 		assertEmpty(t, errs)
 
 	}
-	for k, v := range blogScope.Filters {
-		t.Logf("Key: %v, FieldName: %v", k, v.fieldName)
+	// for k, v := range blogScope.Filters {
+	// 	t.Logf("Key: %v, FieldName: %v", k, v.fieldName)
 
-		for _, f := range v.PrimFilters {
-			t.Logf("Primary field filter: %v", f)
-		}
+	// 	for _, f := range v.PrimFilters {
+	// 		// t.Logf("Primary field filter: %v", f)
+	// 	}
 
-		for _, f := range v.AttrFilters {
-			t.Logf("AttrFilters: %v", f)
-		}
+	// 	for _, f := range v.AttrFilters {
+	// 		// t.Logf("AttrFilters: %v", f)
+	// 	}
 
-		for _, f := range v.RelFilters {
-			t.Logf("RelFilter FieldName: %s", f.fieldName)
-			for _, fv := range f.PrimFilters {
-				t.Logf("Primary filters:%v", fv)
-			}
+	// 	for _, f := range v.RelFilters {
+	// 		// t.Logf("RelFilter FieldName: %s", f.fieldName)
+	// 		for _, fv := range f.PrimFilters {
+	// 			// t.Logf("Primary filters:%v", fv)
+	// 		}
 
-			for _, fv := range f.AttrFilters {
-				t.Logf("Attrs: %v", fv)
-			}
-			t.Logf("\n")
-		}
-		t.Logf("\n")
+	// 		for _, fv := range f.AttrFilters {
+	// 			// t.Logf("Attrs: %v", fv)
+	// 		}
+	// 		// t.Logf("\n")
+	// 	}
+	// 	// t.Logf("\n")
 
-	}
+	// }
 
 	var invParams [][]string = [][]string{
 		{},
@@ -242,11 +246,11 @@ func TestNewFilterField(t *testing.T) {
 
 	for i := range invParams {
 		blogScope := getBlogScope()
-		t.Log(i)
+		// t.Log(i)
 		_, errs, err = blogScope.newFilterField("blogs", invValues[i], blogScope.Struct, invParams[i]...)
 		assertNil(t, err)
 		assertNotEmpty(t, errs)
-		t.Logf("%d: %s", i, errs)
+		// t.Logf("%d: %s", i, errs)
 	}
 
 	internalParameters := [][]string{
@@ -268,6 +272,273 @@ func TestNewFilterField(t *testing.T) {
 		assertError(t, err)
 		assertNotEmpty(t, errs)
 	}
+}
+
+func TestBuildMultiScope(t *testing.T) {
+	var (
+		err   error
+		req   *http.Request
+		scope *Scope
+		errs  []*ErrorObject
+	)
+
+	err = PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assertNil(t, err)
+
+	// raw scope without query
+	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertEmpty(t, errs)
+	assertNil(t, err)
+	assertNotNil(t, scope)
+
+	assertNil(t, scope.Root)
+	assertEmpty(t, scope.SubScopes)
+
+	assertEmpty(t, scope.Fields)
+	assertEmpty(t, scope.Filters)
+	assertEmpty(t, scope.Sorts)
+	assertNil(t, scope.Pagination)
+	assertEqual(t, scope.Struct, MustGetModelStruct(&Blog{}))
+	assertNil(t, scope.RelatedField)
+
+	// with include
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current-post", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertEmpty(t, errs)
+	assertNil(t, err)
+	assertNotNil(t, scope)
+
+	assertNotEmpty(t, scope.SubScopes)
+	assertEqual(t, scope.SubScopes[0].Struct, MustGetModelStruct(&Post{}))
+
+	// include internal error
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=posts", nil)
+	cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertError(t, err)
+	assertNotEmpty(t, errs)
+
+	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+
+	// with sorts
+	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=id,-title", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertEqual(t, 2, len(scope.Sorts))
+	assertEqual(t, AscendingOrder, scope.Sorts[0].Order)
+	assertEqual(t, "id", scope.Sorts[0].jsonAPIName)
+	assertEqual(t, DescendingOrder, scope.Sorts[1].Order)
+	assertEqual(t, "title", scope.Sorts[1].jsonAPIName)
+
+	// paginations
+	req = httptest.NewRequest("GET", "/api/v1/blogs?page[size]=4&page[number]=5", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertNotNil(t, scope.Pagination)
+	assertEqual(t, 4, scope.Pagination.PageSize)
+	assertEqual(t, 5, scope.Pagination.PageNumber)
+
+	// pagination limit, offset
+	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=10&page[offset]=5", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertNotNil(t, scope.Pagination)
+	assertEqual(t, 10, scope.Pagination.Limit)
+	assertEqual(t, 5, scope.Pagination.Offset)
+
+	// pagination errors
+	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=have&page[offset]=a&page[size]=nice&page[number]=day", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+	t.Log(errs)
+
+	// filter
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][eq]=12,55", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertEqual(t, 1, len(scope.Filters))
+	assertEqual(t, OpEqual, scope.Filters[0].Values[0].Operator)
+	assertEqual(t, 2, len(scope.Filters[0].Values[0].Values))
+
+	// invalid filter
+	//	- invalid bracket
+	//	- invalid operator
+	//	- invalid value
+	//	- not included collection - 'posts'
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[[blogs][id][eq]=12,55&filter[blogs][id][invalid]=125&filter[blogs][id]=stringval&filter[posts][id]=12&fields[blogs]=id", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	// internal error on filters
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][current-post][id][gt]=15", nil)
+	cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertError(t, err)
+	assertNotEmpty(t, errs)
+
+	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+
+	// fields
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,posts", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	assertEqual(t, 2, len(scope.Fields))
+	assertNotEqual(t, scope.Fields[0].fieldName, scope.Fields[1].fieldName)
+
+	// fields error
+	//	- bracket error
+	//	- nested error
+	//	- invalid collection name
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&fields[blogs]=title&fields[blogs]=posts", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	// unsupported parameter
+	req = httptest.NewRequest("GET", "/api/v1/blogs?title=name", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	// too many errors
+	// after 5 errors the function stops
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&sort=-itle&filter[blog][id]=1&filter[blogs][unknown]=123&filter[blogs][current-post][something]=123", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+}
+
+func TestBuildSingleScope(t *testing.T) {
+	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assertNil(t, err)
+
+	req := httptest.NewRequest("GET", "/api/v1/blogs/55", nil)
+	scope, errs, err := BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertEqual(t, 55, scope.Filters[0].Values[0].Values[0])
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[posts]=title", nil)
+	scope, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertEqual(t, 44, scope.Filters[0].Values[0].Values[0])
+	assertEqual(t, 1, len(scope.SubScopes))
+	assertEqual(t, 1, len(scope.SubScopes[0].Fields))
+
+	// errored
+	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertError(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/posts/1", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertError(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/bad-id", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=invalid", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]]=posts", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs][posts]=title", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[postis]=title", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?title=some-title", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?fields[postis]=title&fields[posts]=idss&fields[posts]=titles&title=sometitle&fields[blogs]=titles,current-posts", nil)
+	_, errs, err = BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+	t.Log(len(errs))
+	t.Log(errs)
+
+}
+
+func TestGetID(t *testing.T) {
+	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assertNil(t, err)
+
+	err = SetModelURL(&Blog{}, "/api/v1/blogs/")
+	assertNil(t, err)
+
+	u, err := url.Parse("/api/v1/blogs/")
+	assertNil(t, err)
+
+	t.Log(u.Path)
+	req := httptest.NewRequest("GET", "/api/v1/blogs/1", nil)
+	mStruct := MustGetModelStruct(&Blog{})
+	var id string
+	id, err = getID(req, mStruct)
+	assertNil(t, err)
+	assertEqual(t, "1", id)
+
+	mStruct.collectionURLIndex = -1
+	id, err = getID(req, mStruct)
+	assertNil(t, err)
+	assertEqual(t, "1", id)
+
+	req = httptest.NewRequest("GET", "/v1/blog/3", nil)
+	id, err = getID(req, mStruct)
+	assertError(t, err)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
+	id, err = getID(req, mStruct)
+	assertError(t, err)
+
+	t.Log(MustGetModelStruct(&Blog{}).collectionURLIndex)
 }
 
 func BenchmarkEmptyMap(b *testing.B) {
@@ -308,5 +579,55 @@ func BenchmarkEmptyArr(b *testing.B) {
 func getBlogScope() *Scope {
 	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	return newRootScope(MustGetModelStruct(&Blog{}))
+}
 
+func BenchmarkCheckMapStrings(b *testing.B) {
+	q := prepareValues()
+
+	for i := 0; i < b.N; i++ {
+		for k := range q {
+			switch {
+			case k == QueryParamPageSize:
+			case k == QueryParamPageNumber:
+			case k == QueryParamPageOffset:
+			case k == QueryParamPageLimit:
+			case k == QueryParamInclude:
+			case k == QueryParamSort:
+			case strings.HasPrefix(k, "fields"):
+			case strings.HasPrefix(k, "filter"):
+			}
+		}
+	}
+}
+
+func BenchmarkCheckMapStrings2(b *testing.B) {
+	q := prepareValues()
+
+	for i := 0; i < b.N; i++ {
+		for k := range q {
+			switch {
+			case k == QueryParamPageSize:
+			case k == QueryParamPageNumber:
+			case k == QueryParamPageOffset:
+			case k == QueryParamPageLimit:
+			case k == QueryParamInclude:
+			case k == QueryParamSort:
+			case k == "fields[blogs]":
+			case k == "fields[posts]":
+			case strings.HasPrefix(k, "filter"):
+			}
+		}
+	}
+}
+
+func prepareValues() url.Values {
+	q := url.Values{}
+	q.Add("page[size]", "3")
+	q.Add("page[number]", "13")
+	q.Add("sort", "+field")
+	q.Add("include", "included")
+	q.Add("fields[blogs]", "some fields")
+	q.Add("fields[posts]", "some fields")
+	q.Add("filter[blogs][id][eq]", "1")
+	return q
 }
