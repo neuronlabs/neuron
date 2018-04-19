@@ -301,7 +301,7 @@ func TestBuildMultiScope(t *testing.T) {
 	assertNil(t, scope.Root)
 	assertEmpty(t, scope.SubScopes)
 
-	assertEmpty(t, scope.Fields)
+	assertNotEmpty(t, scope.Fields)
 	assertEmpty(t, scope.Filters)
 	assertEmpty(t, scope.Sorts)
 	assertNil(t, scope.PaginationScope)
@@ -429,7 +429,8 @@ func TestBuildMultiScope(t *testing.T) {
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
-	assertEqual(t, 2, len(scope.Fields))
+	// title, posts and id
+	assertEqual(t, 3, len(scope.Fields))
 	assertNotEqual(t, scope.Fields[0].fieldName, scope.Fields[1].fieldName)
 
 	// fields error

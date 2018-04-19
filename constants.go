@@ -86,6 +86,9 @@ const (
 	// strategy
 	QueryParamPageCursor = "page[cursor]"
 
+	// QueryParamPageTotal is a JSON API query parameter used in pagination
+	// It tells to API to add information about total-pages or total-count
+	// (depending on the current strategy)
 	QueryParamPageTotal = "page[total]"
 
 	// QueryParamInclude

@@ -853,6 +853,9 @@ type PaginationScope struct {
 	Offset     int
 	PageNumber int
 	PageSize   int
+
+	UseTotal bool
+	Total    int
 }
 
 func (p *PaginationScope) check() error {
