@@ -1,9 +1,29 @@
 package jsonapi
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 )
 
+// MarshalErrors writes a JSON API response using the given `[]error`.
+//
+// For more information on JSON API error payloads, see the spec here:
+// http://jsonapi.org/format/#document-top-level
+// and here: http://jsonapi.org/format/#error-objects.
+func MarshalErrors(w io.Writer, errorObjects []*ErrorObject) error {
+	if err := json.NewEncoder(w).Encode(&ErrorsPayload{Errors: errorObjects}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ErrorsPayload is a serializer struct for representing a valid JSON API errors payload.
+type ErrorsPayload struct {
+	Errors []*ErrorObject `json:"errors"`
+}
+
+// ErrorObject is an struct representing a JSON API error
 type ErrorObject struct {
 	// ID is a unique identifier for this particular occurrence of a problem.
 	ID string `json:"id,omitempty"`
@@ -38,7 +58,8 @@ func (e *ErrorObject) Error() string {
 // AddMeta adds the meta data for given error. Checks if an object has inited meta field.
 func (e *ErrorObject) AddMeta(key string, value interface{}) {
 	if e.Meta == nil {
-		*e.Meta = (make(map[string]interface{}))
+		mp := make(map[string]interface{})
+		e.Meta = &mp
 	}
 	meta := *e.Meta
 	meta[key] = value

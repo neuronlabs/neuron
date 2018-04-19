@@ -76,6 +76,7 @@ func (f FilterOperator) String() string {
 	var str string
 	if int(f) > len(operatorsStr)-1 || int(f) < 0 {
 		str = "unknown operator"
+		return str
 	}
 	str = operatorsStr[int(f)]
 	return str
@@ -86,33 +87,27 @@ type FilterValues struct {
 	Operator FilterOperator
 }
 
-type FilterField struct {
-	*StructField
+type FilterScope struct {
+	Field *StructField
 
-	// AttrFilters are the filter values for given attribute FilterField
+	// AttrFilters are the filter values for given attribute FilterScope
 	Values []*FilterValues
 
-	// RelFilters are the filter values for given relationship FilterField
-	RelFilters []*FilterField
-}
-
-func (f *FilterField) checkValues() (errs []*ErrorObject) {
-	// check the length of the values provided
-	return
+	// Relationships are the filter values for given relationship FilterScope
+	Relationships []*FilterScope
 }
 
 // setValues set the string type values to the related field values
-func (f *FilterField) setValues(collection string, values []string, op FilterOperator,
-) (errs []*ErrorObject, err error) {
+func (f *FilterScope) setValues(collection string, values []string, op FilterOperator,
+) (errs []*ErrorObject) {
 	// var errObj *ErrorObject
 	var (
-		internal bool
-		er       error
-		errObj   *ErrorObject
+		er     error
+		errObj *ErrorObject
 
 		opInvalid = func() {
 			errObj = ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.jsonAPIName)
+			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.Field.jsonAPIName)
 			errs = append(errs, errObj)
 		}
 	)
@@ -122,13 +117,13 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		errObj.Detail = fmt.Sprint("The filter operator: '%s' is not supported by the server.", op)
 	}
 
-	t := f.getDereferencedType()
+	t := f.Field.getDereferencedType()
 	// create new FilterValue
 	fv := new(FilterValues)
 	fv.Operator = op
 
 	// Add and check all values for given field type
-	switch f.jsonAPIType {
+	switch f.Field.jsonAPIType {
 	case Primary:
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -143,11 +138,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		}
 		for _, value := range values {
 			fieldValue := reflect.New(t).Elem()
-			er, internal = setPrimaryField(value, fieldValue)
-			if internal {
-				err = er
-				return
-			}
+			er = setPrimaryField(value, fieldValue)
 			if er != nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("Invalid filter value for primary field in collection: '%s'. %s. ", collection, er)
@@ -169,37 +160,33 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		}
 		for _, value := range values {
 			fieldValue := reflect.New(t).Elem()
-			er, internal = setAttributeField(value, fieldValue)
-			if internal {
-				err = er
-				return
-			}
+			er = setAttributeField(value, fieldValue)
 			if er != nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.jsonAPIName, collection, er)
+				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.Field.jsonAPIName, collection, er)
 				errs = append(errs, errObj)
 			}
 			fv.Values = append(fv.Values, fieldValue)
 		}
 
 		f.Values = append(f.Values, fv)
-	case RelationshipSingle, RelationshipMultiple:
-		errObj = ErrInternalError.Copy()
-		errs = append(errs, errObj)
-		err = fmt.Errorf("Setting values for the relationship field directly!: FieldName: %s, Collection: '%s'", f.fieldName, collection)
-		return
-	default:
-		errObj = ErrInternalError.Copy()
-		errs = append(errs, errObj)
-		err = fmt.Errorf("JSONAPIType not set for this field -  index:%d, name: %s", f.getFieldIndex(), f.fieldName)
+		// case RelationshipSingle, RelationshipMultiple:
+		// 	errObj = ErrInternalError.Copy()
+		// 	errs = append(errs, errObj)
+		// 	err = fmt.Errorf("Setting values for the relationship field directly!: FieldName: %s, Collection: '%s'", f.Field.fieldName, collection)
+		// 	return
+		// default:
+		// 	errObj = ErrInternalError.Copy()
+		// 	errs = append(errs, errObj)
+		// 	err = fmt.Errorf("JSONAPIType not set for this field -  index:%d, name: %s", f.Field.getFieldIndex(), f.Field.fieldName)
 	}
 	return
 }
 
-func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
+func (f *FilterScope) appendRelFilter(appendFilter *FilterScope) {
 	var found bool
-	for _, rel := range f.RelFilters {
-		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
+	for _, rel := range f.Relationships {
+		if rel.Field.getFieldIndex() == appendFilter.Field.getFieldIndex() {
 			found = true
 
 			if l := len(appendFilter.Values); l > 0 {
@@ -208,7 +195,7 @@ func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
 		}
 	}
 	if !found {
-		f.RelFilters = append(f.RelFilters, appendFilter)
+		f.Relationships = append(f.Relationships, appendFilter)
 	}
 	return
 }

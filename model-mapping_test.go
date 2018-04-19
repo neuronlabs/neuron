@@ -68,6 +68,13 @@ func TestPrecomputeModels(t *testing.T) {
 		t.Error("No primary field provided.")
 	}
 	clearMap()
+
+	type InvalidPrimaryField struct {
+		ID float64 `jsonapi:"primary,invalids"`
+	}
+
+	err = PrecomputeModels(&InvalidPrimaryField{})
+	assertError(t, err)
 }
 
 func TestGetModelStruct(t *testing.T) {
@@ -213,6 +220,14 @@ func TestSetRelatedType(t *testing.T) {
 	if err == nil {
 		t.Error("Ptr to string should throw error")
 	}
+}
+
+func TestSetModelURL(t *testing.T) {
+	assertNil(t, PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
+
+	assertError(t, SetModelURL(&Blog{}, "/invalid/url"))
+	assertError(t, SetModelURL(&User{}, "/doesnt/matter/"))
+
 }
 
 func clearMap() {

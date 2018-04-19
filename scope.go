@@ -61,6 +61,8 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			return
 		}
 	}
+	// id is always present
+	scope.Fields = append(scope.Fields, scope.Struct.primary)
 
 	for key, value := range q {
 		if len(value) > 1 {
@@ -119,7 +121,7 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			splitValues := strings.Split(value[0], annotationSeperator)
 
 			_, errorObjects, err = filterScope.
-				newFilterField(splitted[0], splitValues, filterScope.Struct, splitted[1:]...)
+				newFilterScope(splitted[0], splitValues, filterScope.Struct, splitted[1:]...)
 			addErrors(errorObjects...)
 			if err != nil {
 				return
@@ -128,7 +130,7 @@ func BuildScopeMulti(req *http.Request, model interface{},
 		case key == QueryParamSort:
 			splitted := strings.Split(value[0], annotationSeperator)
 
-			errorObjects = scope.setSortFields(splitted...)
+			errorObjects = scope.setSortScopes(splitted...)
 			addErrors(errorObjects...)
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
@@ -169,6 +171,19 @@ func BuildScopeMulti(req *http.Request, model interface{},
 			return
 		}
 	}
+	if scope.PaginationScope != nil {
+		er := scope.PaginationScope.check()
+		if er != nil {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Pagination parameters are not valid. %s", er)
+			addErrors(errObj)
+		}
+	}
+
+	// if none fields were set
+	if len(scope.Fields) <= 1 {
+		scope.Fields = scope.Struct.fields
+	}
 
 	return
 }
@@ -201,7 +216,7 @@ func BuildScopeSingle(req *http.Request, model interface{},
 	q := req.URL.Query()
 
 	scope = newRootScope(mStruct)
-	errorObjects, err = scope.setPrimaryFilterField(id)
+	errorObjects, err = scope.setPrimaryFilterScope(id)
 	if err != nil || len(errorObjects) != 0 {
 		errObj = ErrInternalError.Copy()
 		errs = append(errs, errObj)
@@ -288,16 +303,16 @@ type Scope struct {
 	Value interface{}
 
 	// Filters contain fields by which the main value is being filtered.
-	Filters map[int]*FilterField
+	Filters map[int]*FilterScope
 
 	// Fields represents fields used for this subscope - jsonapi 'fields[collection]'
 	Fields []*StructField
 
-	// SortFields
-	Sorts []*SortField
+	// SortScopes
+	Sorts []*SortScope
 
-	// Pagination
-	Pagination *Pagination
+	// PaginationScope
+	PaginationScope *PaginationScope
 
 	collectionScopes map[string]*Scope
 }
@@ -315,63 +330,69 @@ func newSubScope(modelStruct *ModelStruct, relatedField *StructField) *Scope {
 	return scope
 }
 
-func (s *Scope) GetFields() []*StructField {
-	return s.Fields
-}
+// func (s *Scope) GetFields() []*StructField {
+// 	return s.Fields
+// }
 
-func (s *Scope) GetSortFields() (fields []*SortField) {
-	return s.Sorts
-}
+// func (s *Scope) GetSortScopes() (fields []*SortScope) {
+// 	return s.Sorts
+// }
 
-func (s *Scope) SetFilteredField(fieldApiName string, values []string, operator FilterOperator,
-) (errs []*ErrorObject, err error) {
-	if operator > OpEndsWith {
-		err = fmt.Errorf("Invalid operator provided: '%s'", operator)
-		return
-	}
-	_, errs, err = s.newFilterField(s.Struct.collectionType, values, s.Struct, fieldApiName, operator.String())
+// func (s *Scope) SetFilteredField(fieldApiName string, values []string, operator FilterOperator,
+// ) (errs []*ErrorObject, err error) {
+// 	if operator > OpEndsWith {
+// 		err = fmt.Errorf("Invalid operator provided: '%s'", operator)
+// 		return
+// 	}
+// 	_, errs, err = s.newFilterScope(s.Struct.collectionType, values, s.Struct, fieldApiName, operator.String())
+// 	return
+// }
+
+func (s *Scope) setPrimaryFilterScope(value string) (errs []*ErrorObject, err error) {
+	_, errs, err = s.newFilterScope(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
 	return
 }
 
-func (s *Scope) setPrimaryFilterField(value string) (errs []*ErrorObject, err error) {
-	_, errs, err = s.newFilterField(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
-	return
-}
-
-// SetSortFields sets the sort fields for given string array.
-func (s *Scope) setSortFields(sortFields ...string) (errs []*ErrorObject) {
-	var err *ErrorObject
-	var order Order
-	var fields map[string]int = make(map[string]int)
-	var sField *StructField
-	var ok bool
+// SetSortScopes sets the sort fields for given string array.
+func (s *Scope) setSortScopes(sorts ...string) (errs []*ErrorObject) {
+	var (
+		err      *ErrorObject
+		order    Order
+		fields   map[string]int = make(map[string]int)
+		badField                = func(fieldName string) {
+			err = ErrInvalidQueryParameter.Copy()
+			err.Detail = fmt.Sprintf("Provided sort parameter: '%v' is not valid for '%v' collection.", fieldName, s.Struct.collectionType)
+			errs = append(errs, err)
+		}
+		invalidField bool
+	)
 
 	// If the number of sort fields is too long then do not allow
-	if len(sortFields) > s.Struct.getSortFieldCount() {
+	if len(sorts) > s.Struct.getSortScopeCount() {
 		err = ErrOutOfRangeQueryParameterValue.Copy()
 		err.Detail = fmt.Sprintf("There are too many sort parameters for the '%v' collection.", s.Struct.collectionType)
 		errs = append(errs, err)
 		return
 	}
 
-	for i, sortField := range sortFields {
-		if sortField[0] == '-' {
+	for _, sort := range sorts {
+		if sort[0] == '-' {
 			order = DescendingOrder
-			sortField = sortField[1:]
+			sort = sort[1:]
 
 		} else {
 			order = AscendingOrder
 		}
 
 		// check if no dups provided
-		count := fields[sortField]
+		count := fields[sort]
 		count++
 
-		fields[sortField] = count
+		fields[sort] = count
 		if count > 1 {
 			if count == 2 {
 				err = ErrInvalidQueryParameter.Copy()
-				err.Detail = fmt.Sprintf("Sort parameter: %v used more than once.", sortField)
+				err.Detail = fmt.Sprintf("Sort parameter: %v used more than once.", sort)
 				errs = append(errs, err)
 				continue
 			} else if count > 2 {
@@ -379,25 +400,68 @@ func (s *Scope) setSortFields(sortFields ...string) (errs []*ErrorObject) {
 			}
 		}
 
-		if sortField == "id" {
+		invalidField = s.newSortScope(sort, order)
+		if invalidField {
+			badField(sort)
+			continue
+		}
+
+	}
+	return
+}
+
+func (s *Scope) newSortScope(sort string, order Order) (invalidField bool) {
+	var (
+		sField    *StructField
+		ok        bool
+		sortScope *SortScope
+	)
+
+	splitted := strings.Split(sort, annotationNestedSeperator)
+	l := len(splitted)
+	switch {
+	case l == 1:
+		if sort == annotationID {
 			sField = s.Struct.primary
 		} else {
-			sField, ok = s.Struct.attributes[sortField]
+			sField, ok = s.Struct.attributes[sort]
 			if !ok {
-				sField, ok = s.Struct.relationships[sortField]
-				if !ok {
-					err = ErrInvalidQueryParameter.Copy()
-					err.Detail = fmt.Sprintf("Provided sort parameter: '%v' is not valid for '%v' collection.", sortFields[i], s.Struct.collectionType)
-					errs = append(errs, err)
-					continue
-				}
+				invalidField = true
+				return
 			}
 		}
-		sort := &SortField{StructField: sField, Order: order}
-		s.Sorts = append(s.Sorts, sort)
-	}
+		sortScope = &SortScope{Field: sField, Order: order}
+		s.Sorts = append(s.Sorts, sortScope)
+	case l <= (maxNestedRelLevel + 1):
+		sField, ok = s.Struct.relationships[splitted[0]]
 
+		if !ok {
+
+			invalidField = true
+			return
+		}
+		// if true then the nested should be an attribute for given
+		var found bool
+		for i := range s.Sorts {
+			if s.Sorts[i].Field.getFieldIndex() == sField.getFieldIndex() {
+				sortScope = s.Sorts[i]
+				found = true
+				break
+			}
+		}
+		if !found {
+			sortScope = &SortScope{Field: sField}
+		}
+		invalidField = sortScope.setRelationScope(splitted[1:], order)
+		if !found && !invalidField {
+			s.Sorts = append(s.Sorts, sortScope)
+		}
+		return
+	default:
+		invalidField = true
+	}
 	return
+
 }
 
 func (s *Scope) buildIncludedScopes(includedList ...string,
@@ -521,12 +585,12 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 // splitted contains filter fields after filter[collection]
 // i.e. /blogs?filter[blogs][posts][id][ne]=10
 // splitted should be then [posts, id, ne]
-func (s *Scope) newFilterField(
+func (s *Scope) newFilterScope(
 	collection string,
 	values []string,
 	m *ModelStruct,
 	splitted ...string,
-) (fField *FilterField, errs []*ErrorObject, err error) {
+) (fField *FilterScope, errs []*ErrorObject, err error) {
 	var (
 		sField     *StructField
 		relMStruct *ModelStruct
@@ -551,7 +615,7 @@ func (s *Scope) newFilterField(
 		}
 
 		// creates new filter field if is nil and adds it to the scope
-		setFilterField = func() {
+		setFilterScope = func() {
 			// get the filter field from the scope if exists.
 
 			var sameStruct bool = m == s.Struct
@@ -560,8 +624,8 @@ func (s *Scope) newFilterField(
 			}
 
 			if fField == nil {
-				fField = new(FilterField)
-				fField.StructField = sField
+				fField = new(FilterScope)
+				fField.Field = sField
 				if sameStruct {
 					s.Filters[sField.getFieldIndex()] = fField
 				}
@@ -571,7 +635,7 @@ func (s *Scope) newFilterField(
 	)
 
 	if s.Filters == nil {
-		s.Filters = make(map[int]*FilterField)
+		s.Filters = make(map[int]*FilterScope)
 	}
 
 	// check if any parameters are set for filtering
@@ -604,12 +668,10 @@ func (s *Scope) newFilterField(
 				return
 			}
 		}
-		setFilterField()
+		setFilterScope()
 		op = OpEqual
-		errObjects, err = fField.setValues(m.collectionType, values, op)
-		if err != nil {
-			return
-		}
+		errObjects = fField.setValues(m.collectionType, values, op)
+
 	case 2:
 		if fieldName == "id" {
 			sField = m.primary
@@ -624,7 +686,7 @@ func (s *Scope) newFilterField(
 				}
 
 				// if field were already used
-				setFilterField()
+				setFilterScope()
 
 				// get model type for given field
 
@@ -636,10 +698,10 @@ func (s *Scope) newFilterField(
 					return
 				}
 
-				// relFilter is a FilterField for specific field in relationship
-				var relFilter *FilterField
+				// relFilter is a FilterScope for specific field in relationship
+				var relFilter *FilterScope
 
-				relFilter, errObjects, err = s.newFilterField(
+				relFilter, errObjects, err = s.newFilterScope(
 					fieldName,
 					values,
 					relMStruct,
@@ -660,12 +722,9 @@ func (s *Scope) newFilterField(
 			invalidOperator(splitted[1])
 			return
 		}
-		setFilterField()
-		errObjects, err = fField.setValues(m.collectionType, values, op)
+		setFilterScope()
+		errObjects = fField.setValues(m.collectionType, values, op)
 		errs = append(errs, errObjects...)
-		if err != nil {
-			return
-		}
 	case 3:
 		// musi być relacja
 		sField, ok = m.relationships[fieldName]
@@ -681,7 +740,7 @@ func (s *Scope) newFilterField(
 			errs = append(errs, errObj)
 			return
 		}
-		setFilterField()
+		setFilterScope()
 		relMStruct = cacheModelMap.Get(sField.getRelatedModelType())
 		if relMStruct == nil {
 			err = fmt.Errorf("Unmapped model: %s.", sField.getRelatedModelType())
@@ -689,10 +748,10 @@ func (s *Scope) newFilterField(
 			return
 		}
 
-		var relFilter *FilterField
+		var relFilter *FilterScope
 
 		// get relationship's filter for specific field (filterfield)
-		relFilter, errObjects, err = s.newFilterField(
+		relFilter, errObjects, err = s.newFilterScope(
 			fieldName,
 			values,
 			relMStruct,
@@ -725,10 +784,6 @@ func (s *Scope) newFilterField(
 	return
 }
 
-func (s *Scope) checkFields(fields ...string) []*ErrorObject {
-	return s.Struct.checkFields(fields...)
-}
-
 func (s *Scope) getScopeForField(sField *StructField) *Scope {
 	for _, sub := range s.SubScopes {
 		if sub.RelatedField == sField {
@@ -746,7 +801,7 @@ func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
 
 	if len(fields) > s.Struct.getWorkingFieldCount() {
 		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Too many working fields to include ")
+		errObj.Detail = fmt.Sprintf("Too many fields to set.")
 		errs = append(errs, errObj)
 		return
 	}
@@ -777,66 +832,43 @@ func (s *Scope) preparePaginatedValue(key, value string, index int) *ErrorObject
 		return errObj
 	}
 
-	if s.Pagination == nil {
-		s.Pagination = &Pagination{}
+	if s.PaginationScope == nil {
+		s.PaginationScope = &PaginationScope{}
 	}
 	switch index {
 	case 0:
-		s.Pagination.Limit = val
+		s.PaginationScope.Limit = val
 	case 1:
-		s.Pagination.Offset = val
+		s.PaginationScope.Offset = val
 	case 2:
-		s.Pagination.PageNumber = val
+		s.PaginationScope.PageNumber = val
 	case 3:
-		s.Pagination.PageSize = val
+		s.PaginationScope.PageSize = val
 	}
 	return nil
 }
 
-type Pagination struct {
+type PaginationScope struct {
 	Limit      int
 	Offset     int
 	PageNumber int
 	PageSize   int
 }
 
-func (p *Pagination) CheckParameters() error {
+func (p *PaginationScope) check() error {
+	var offsetBased, pageBased bool
+	if p.Limit != 0 || p.Offset != 0 {
+		offsetBased = true
+	}
+	if p.PageNumber != 0 || p.PageSize != 0 {
+		pageBased = true
+	}
+
+	if offsetBased && pageBased {
+		err := errors.New("Both offset-based and page-based pagination are set.")
+		return err
+	}
 	return nil
-}
-
-type Order int
-
-const (
-	AscendingOrder Order = iota
-	DescendingOrder
-)
-
-type SortField struct {
-	*StructField
-	Order Order
-}
-
-// get collection name from query parameters containing '[...]' i.e. fields[collection]
-func retrieveCollectionName(queryParam string) (string, *ErrorObject) {
-	opened := strings.Index(queryParam, string(annotationOpenedBracket))
-
-	if opened == -1 {
-		// no opening
-		err := ErrUnsupportedQueryParameter.Copy()
-		err.Detail = fmt.Sprintf("The %v query parameter is not supported.", queryParam)
-		return "", err
-	}
-
-	closed := strings.Index(queryParam, string(annotationClosedBracket))
-	if closed == -1 || closed != len(queryParam)-1 {
-		// no closing
-		err := ErrUnsupportedQueryParameter.Copy()
-		err.Detail = fmt.Sprintf("The %v query parameter is not supported.", queryParam)
-		return "", err
-	}
-
-	collection := queryParam[opened+1 : closed]
-	return collection, nil
 }
 
 func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {

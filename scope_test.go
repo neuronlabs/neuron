@@ -10,9 +10,13 @@ import (
 	"testing"
 )
 
-func TestScopeSetSortFields(t *testing.T) {
+func TestScopeSetSortScopes(t *testing.T) {
 	// having some scope on the model struct
-	PrecomputeModels(&User{}, &Pet{})
+	clearMap()
+	err := PrecomputeModels(&User{}, &Pet{})
+	assertNil(t, err)
+	// t.Log(err)
+
 	mStruct := MustGetModelStruct(&User{})
 	assertNotNil(t, mStruct)
 
@@ -20,43 +24,45 @@ func TestScopeSetSortFields(t *testing.T) {
 
 	assertNotNil(t, userRootScope)
 
-	errs := userRootScope.setSortFields("-name")
+	errs := userRootScope.setSortScopes("-name")
 	assertEmpty(t, errs)
 
-	errs = userRootScope.setSortFields("name", "-name")
+	errs = userRootScope.setSortScopes("name", "-name")
 	assertNotEmpty(t, errs)
-	fmt.Println(errs)
 
 	// get too many sortfields
-	errs = userRootScope.setSortFields("name", "surname", "somethingelse")
+	errs = userRootScope.setSortScopes("name", "surname", "somethingelse")
 	assertNotEmpty(t, errs)
 	t.Log(errs)
 
 	// check multiple with multiple sortable fields
 	PrecomputeModels(&Driver{}, &Car{})
 	driverModelStruct := MustGetModelStruct(&Driver{})
+
 	assertNotNil(t, driverModelStruct)
 
 	driverRootScope := newRootScope(driverModelStruct)
 	assertNotNil(t, driverRootScope)
 
 	// let's check duplicates
-	errs = driverRootScope.setSortFields("name", "-name")
+	errs = driverRootScope.setSortScopes("name", "-name")
 	assertNotEmpty(t, errs)
 
 	driverRootScope = newRootScope(driverModelStruct)
 	// if duplicate is typed more than or equal to three times no more fields are being checked
-	errs = driverRootScope.setSortFields("name", "-name", "name")
+	errs = driverRootScope.setSortScopes("name", "-name", "name")
 	assertNotEmpty(t, errs)
 
-	errs = driverRootScope.setSortFields("invalid")
+	errs = driverRootScope.setSortScopes("invalid")
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
 }
 
 func TestBuildIncludedScopes(t *testing.T) {
 	// having some scope for possible model
-	PrecomputeModels(&Driver{}, &Car{})
+	clearMap()
+	err := PrecomputeModels(&Driver{}, &Car{})
+	assertNil(t, err)
 
 	mStruct := MustGetModelStruct(&Driver{})
 	assertNotNil(t, mStruct)
@@ -67,7 +73,6 @@ func TestBuildIncludedScopes(t *testing.T) {
 	// having some included parameter that is valid for given model
 	var included []string
 	var errs []*ErrorObject
-	var err error
 
 	included = []string{"favorite-car"}
 	errs, err = driverRootScope.buildIncludedScopes(included...)
@@ -143,7 +148,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotEmpty(t, blogScope.SubScopes)
-
+	// t.Log(blogScope.SubScopes)
 	postScope := blogScope.SubScopes[0]
 	assertNotNil(t, postScope)
 	assertTrue(t, postScope.Struct.GetCollectionType() == "posts")
@@ -155,7 +160,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	assertEmpty(t, commentsScope.SubScopes)
 }
 
-func TestNewFilterField(t *testing.T) {
+func TestNewFilterScope(t *testing.T) {
 
 	var errs []*ErrorObject
 	var err error
@@ -185,7 +190,7 @@ func TestNewFilterField(t *testing.T) {
 
 	blogScope := getBlogScope()
 	for i := range correctParams {
-		_, errs, err = blogScope.newFilterField("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
+		_, errs, err = blogScope.newFilterScope("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
 		if err != nil {
 			// t.Log(i)
 			// t.Log(correctParams[i])
@@ -205,7 +210,7 @@ func TestNewFilterField(t *testing.T) {
 	// 		// t.Logf("AttrFilters: %v", f)
 	// 	}
 
-	// 	for _, f := range v.RelFilters {
+	// 	for _, f := range v.Relationships {
 	// 		// t.Logf("RelFilter FieldName: %s", f.fieldName)
 	// 		for _, fv := range f.PrimFilters {
 	// 			// t.Logf("Primary filters:%v", fv)
@@ -247,7 +252,7 @@ func TestNewFilterField(t *testing.T) {
 	for i := range invParams {
 		blogScope := getBlogScope()
 		// t.Log(i)
-		_, errs, err = blogScope.newFilterField("blogs", invValues[i], blogScope.Struct, invParams[i]...)
+		_, errs, err = blogScope.newFilterScope("blogs", invValues[i], blogScope.Struct, invParams[i]...)
 		assertNil(t, err)
 		assertNotEmpty(t, errs)
 		// t.Logf("%d: %s", i, errs)
@@ -268,10 +273,11 @@ func TestNewFilterField(t *testing.T) {
 		clearMap()
 		blgoScope := getBlogScope()
 		cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
-		_, errs, err = blgoScope.newFilterField("blogs", internalValues[i], blgoScope.Struct, internalParameters[i]...)
+		_, errs, err = blgoScope.newFilterScope("blogs", internalValues[i], blgoScope.Struct, internalParameters[i]...)
 		assertError(t, err)
 		assertNotEmpty(t, errs)
 	}
+
 }
 
 func TestBuildMultiScope(t *testing.T) {
@@ -298,7 +304,7 @@ func TestBuildMultiScope(t *testing.T) {
 	assertEmpty(t, scope.Fields)
 	assertEmpty(t, scope.Filters)
 	assertEmpty(t, scope.Sorts)
-	assertNil(t, scope.Pagination)
+	assertNil(t, scope.PaginationScope)
 	assertEqual(t, scope.Struct, MustGetModelStruct(&Blog{}))
 	assertNil(t, scope.RelatedField)
 
@@ -322,17 +328,32 @@ func TestBuildMultiScope(t *testing.T) {
 	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 
 	// with sorts
-	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=id,-title", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=id,-title,posts.id", nil)
 	scope, errs, err = BuildScopeMulti(req, &Blog{})
 	assertNil(t, err)
 	assertEmpty(t, errs)
+
 	assertNotNil(t, scope)
 
-	assertEqual(t, 2, len(scope.Sorts))
+	assertEqual(t, 3, len(scope.Sorts))
 	assertEqual(t, AscendingOrder, scope.Sorts[0].Order)
-	assertEqual(t, "id", scope.Sorts[0].jsonAPIName)
+	assertEqual(t, "id", scope.Sorts[0].Field.jsonAPIName)
 	assertEqual(t, DescendingOrder, scope.Sorts[1].Order)
-	assertEqual(t, "title", scope.Sorts[1].jsonAPIName)
+	assertEqual(t, "title", scope.Sorts[1].Field.jsonAPIName)
+	assertEqual(t, "posts", scope.Sorts[2].Field.jsonAPIName)
+	assertEqual(t, 1, len(scope.Sorts[2].RelScopes))
+	assertEqual(t, AscendingOrder, scope.Sorts[2].RelScopes[0].Order)
+	assertEqual(t, "id", scope.Sorts[2].RelScopes[0].Field.jsonAPIName)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.id,posts.title", nil)
+	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	assertEqual(t, 1, len(scope.Sorts))
+	assertEqual(t, 2, len(scope.Sorts[0].RelScopes))
+	assertEqual(t, "id", scope.Sorts[0].RelScopes[0].Field.jsonAPIName)
+	assertEqual(t, "title", scope.Sorts[0].RelScopes[1].Field.jsonAPIName)
 
 	// paginations
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[size]=4&page[number]=5", nil)
@@ -341,9 +362,9 @@ func TestBuildMultiScope(t *testing.T) {
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
 
-	assertNotNil(t, scope.Pagination)
-	assertEqual(t, 4, scope.Pagination.PageSize)
-	assertEqual(t, 5, scope.Pagination.PageNumber)
+	assertNotNil(t, scope.PaginationScope)
+	assertEqual(t, 4, scope.PaginationScope.PageSize)
+	assertEqual(t, 5, scope.PaginationScope.PageNumber)
 
 	// pagination limit, offset
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=10&page[offset]=5", nil)
@@ -352,16 +373,20 @@ func TestBuildMultiScope(t *testing.T) {
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
 
-	assertNotNil(t, scope.Pagination)
-	assertEqual(t, 10, scope.Pagination.Limit)
-	assertEqual(t, 5, scope.Pagination.Offset)
+	assertNotNil(t, scope.PaginationScope)
+	assertEqual(t, 10, scope.PaginationScope.Limit)
+	assertEqual(t, 5, scope.PaginationScope.Offset)
 
 	// pagination errors
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=have&page[offset]=a&page[size]=nice&page[number]=day", nil)
 	scope, errs, err = BuildScopeMulti(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
-	t.Log(errs)
+	// t.Log(errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=2&page[number]=1", nil)
+	_, errs, _ = BuildScopeMulti(req, &Blog{})
+	assertNotEmpty(t, errs)
 
 	// filter
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][eq]=12,55", nil)
@@ -381,6 +406,11 @@ func TestBuildMultiScope(t *testing.T) {
 	//	- not included collection - 'posts'
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[[blogs][id][eq]=12,55&filter[blogs][id][invalid]=125&filter[blogs][id]=stringval&filter[posts][id]=12&fields[blogs]=id", nil)
 	scope, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs]=somethingnotid&filter[blogs][id]=againbad&filter[blogs][posts][id]=badid", nil)
+	_, errs, err = BuildScopeMulti(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
@@ -411,6 +441,18 @@ func TestBuildMultiScope(t *testing.T) {
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
+	// field error too many
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,id,posts,comments,this-comment,some-invalid,current-post", nil)
+	_, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	// sorterror
+	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.comments.id,current-post.itle,postes.comm", nil)
+	_, errs, err = BuildScopeMulti(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
 	// unsupported parameter
 	req = httptest.NewRequest("GET", "/api/v1/blogs?title=name", nil)
 	scope, errs, err = BuildScopeMulti(req, &Blog{})
@@ -423,6 +465,14 @@ func TestBuildMultiScope(t *testing.T) {
 	scope, errs, err = BuildScopeMulti(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
+
+	//internal
+	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
+	cacheModelMap.Set(reflect.TypeOf(Blog{}), nil)
+	_, _, err = BuildScopeMulti(req, &Blog{})
+	assertError(t, err)
+	_, _, err = BuildScopeSingle(req, &Blog{})
+	assertError(t, err)
 }
 
 func TestBuildSingleScope(t *testing.T) {
@@ -514,10 +564,10 @@ func TestGetID(t *testing.T) {
 	err = SetModelURL(&Blog{}, "/api/v1/blogs/")
 	assertNil(t, err)
 
-	u, err := url.Parse("/api/v1/blogs/")
+	_, err = url.Parse("/api/v1/blogs/")
 	assertNil(t, err)
 
-	t.Log(u.Path)
+	// t.Log(u.Path)
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1", nil)
 	mStruct := MustGetModelStruct(&Blog{})
 	var id string
@@ -538,13 +588,13 @@ func TestGetID(t *testing.T) {
 	id, err = getID(req, mStruct)
 	assertError(t, err)
 
-	t.Log(MustGetModelStruct(&Blog{}).collectionURLIndex)
+	// t.Log(MustGetModelStruct(&Blog{}).collectionURLIndex)
 }
 
 func BenchmarkEmptyMap(b *testing.B) {
-	var mp map[int]*FilterField
+	var mp map[int]*FilterScope
 	for i := 0; i < b.N; i++ {
-		mp = make(map[int]*FilterField)
+		mp = make(map[int]*FilterScope)
 	}
 	if mp != nil {
 	}
@@ -554,11 +604,11 @@ func BenchmarkEmptySlice(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
 
-	var arr []*FilterField
+	var arr []*FilterScope
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < l; j++ {
-			arr = append(arr, &FilterField{})
+			arr = append(arr, &FilterScope{})
 		}
 		arr = nil
 	}
@@ -567,9 +617,9 @@ func BenchmarkEmptySlice(b *testing.B) {
 func BenchmarkEmptyArr(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
-	var arr []*FilterField
+	var arr []*FilterScope
 	for i := 0; i < b.N; i++ {
-		arr = make([]*FilterField, l)
+		arr = make([]*FilterScope, l)
 	}
 	if len(arr) == 0 {
 
@@ -577,7 +627,10 @@ func BenchmarkEmptyArr(b *testing.B) {
 }
 
 func getBlogScope() *Scope {
-	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	if err != nil {
+		panic(err)
+	}
 	return newRootScope(MustGetModelStruct(&Blog{}))
 }
 

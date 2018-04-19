@@ -94,7 +94,10 @@ func PrecomputeModels(models ...interface{}) error {
 		if err != nil {
 			return err
 		}
-		model.initCheckFieldTypes()
+		err = model.initCheckFieldTypes()
+		if err != nil {
+			return err
+		}
 		model.initComputeSortedFields()
 		model.initComputeThisIncludedCount()
 	}
@@ -171,7 +174,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		structField := new(StructField)
 		structField.refStruct = tField
 		structField.fieldName = tField.Name
-
+		structField.mStruct = modelStruct
 		modelStruct.fields[i] = structField
 		assignedFields++
 
@@ -227,6 +230,7 @@ func checkModelRelationships(model *ModelStruct) (err error) {
 			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", rel.relatedModelType, rel.fieldName, model.modelType.Name())
 			return err
 		}
+		rel.relatedStruct = val
 	}
 	return
 }

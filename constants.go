@@ -47,7 +47,7 @@ const (
 	// see http://jsonapi.org/format/#document-structure
 	MediaType = "application/vnd.api+json"
 
-	// Pagination Constants
+	// PaginationScope Constants
 	//
 	// http://jsonapi.org/format/#fetching-pagination
 

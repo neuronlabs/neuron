@@ -173,14 +173,13 @@ func TestStructFieldGetters(t *testing.T) {
 	assertNil(t, primary.GetRelatedModelType())
 }
 
-func TestGetSortFieldCount(t *testing.T) {
+func TestGetSortScopeCount(t *testing.T) {
 	clearMap()
 	PrecomputeModels(&User{}, &Pet{})
 
 	mStruct := MustGetModelStruct(&User{})
 
 	assertNotNil(t, mStruct)
-
 }
 
 func TestComputeNestedIncludeCount(t *testing.T) {
@@ -270,5 +269,33 @@ func TestInitCheckFieldTypes(t *testing.T) {
 
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
+}
+
+func TestStructSetModelURL(t *testing.T) {
+	clearMap()
+	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assertNil(t, err)
+
+	mStruct := MustGetModelStruct(&Blog{})
+	err = mStruct.SetModelURL("Some/url")
+	assertError(t, err)
+}
+
+func TestGetDereferencedType(t *testing.T) {
+	type someType struct {
+		Field *string
+	}
+	ty := reflect.TypeOf(someType{})
+	sField := &StructField{refStruct: ty.Field(0)}
+	nty := sField.getDereferencedType()
+	assertEqual(t, reflect.TypeOf(""), nty)
+}
+
+func TestGetJSONAPIType(t *testing.T) {
+	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assertNil(t, err)
+
+	mStruct := MustGetModelStruct(&Blog{})
+	assertEqual(t, Primary, mStruct.primary.GetJSONAPIType())
 
 }

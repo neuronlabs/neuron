@@ -89,7 +89,7 @@ func assertNotEmpty(t *testing.T, obj interface{}) {
 
 func assertEqual(t *testing.T, expected, actual interface{}) {
 	if !areEqual(expected, actual) {
-		t.Errorf("Objects: %s and %s  are not equal.", expected, actual)
+		t.Errorf("Objects: %v and %v  are not equal.", expected, actual)
 	}
 }
 

@@ -15,8 +15,12 @@ const (
 	UnknownType JSONAPIType = iota
 	// Primary is a 'primary' field
 	Primary
+
 	// Attribute is an 'attribute' field
 	Attribute
+
+	// ClientID is id set by client
+	ClientID
 
 	// RelationshipSingle is a 'relationship' with single object
 	RelationshipSingle
@@ -55,8 +59,8 @@ type ModelStruct struct {
 	// non-settable fields the index would be nil
 	fields []*StructField
 
-	// sortFieldCount is the number of sortable fields in the model
-	sortFieldCount int
+	// sortScopeCount is the number of sortable fields in the model
+	sortScopeCount int
 
 	// maximum included Count for this model struct
 	thisIncludedCount   int
@@ -246,8 +250,8 @@ func (m *ModelStruct) getMaxIncludedCount() int {
 	return m.thisIncludedCount + m.nestedIncludedCount
 }
 
-func (m *ModelStruct) getSortFieldCount() int {
-	return m.sortFieldCount
+func (m *ModelStruct) getSortScopeCount() int {
+	return m.sortScopeCount
 }
 
 func (m *ModelStruct) getWorkingFieldCount() int {
@@ -257,7 +261,7 @@ func (m *ModelStruct) getWorkingFieldCount() int {
 func (m *ModelStruct) initComputeSortedFields() {
 	for _, sField := range m.fields {
 		if sField != nil && sField.canBeSorted() {
-			m.sortFieldCount++
+			m.sortScopeCount++
 		}
 	}
 	return
@@ -303,6 +307,9 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
+	// model is the model struct that this field is part of.
+	mStruct *ModelStruct
+
 	// FieldName
 	fieldName string
 
@@ -317,9 +324,12 @@ type StructField struct {
 
 	// relatedModelType is a model type for the relationship
 	relatedModelType reflect.Type
+	relatedStruct    *ModelStruct
 
 	// isListRelated
 	isListRelated bool
+
+	omitempty, iso8601 bool
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -384,14 +394,14 @@ func (s *StructField) initCheckFieldType() error {
 			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 			reflect.Uint32, reflect.Uint64:
 		default:
-			err := fmt.Errorf("Invalid primary field type: %s", fieldType)
+			err := fmt.Errorf("Invalid primary field type: %s for the field: %s in model: %s.", fieldType, s.fieldName, s.mStruct.modelType.Name())
 			return err
 		}
 	case Attribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
-			err := fmt.Errorf("Invalid attribute field type: %v", fieldType)
+			err := fmt.Errorf("Invalid attribute field type: %v for field: %s in model: %s", fieldType, s.fieldName, s.mStruct.modelType.Name())
 			return err
 		}
 
@@ -407,12 +417,12 @@ func (s *StructField) initCheckFieldType() error {
 				fieldType = fieldType.Elem()
 			}
 			if fieldType.Kind() != reflect.Struct {
-				goto Gofallthrough
+				err := fmt.Errorf("Invalid slice type: %v, for the relationship: %v", fieldType,
+					s.jsonAPIName)
+				return err
 			}
-		Gofallthrough:
-			fallthrough
 		default:
-			err := fmt.Errorf("Invalid field type for the relationship.", fieldType)
+			err := fmt.Errorf("Invalid field type: %v, for the relationship.: %v", fieldType, s.jsonAPIName)
 			return err
 		}
 	}
