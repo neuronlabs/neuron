@@ -5,9 +5,9 @@ import (
 )
 
 func TestSetRelationScopeSort(t *testing.T) {
-	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
-	mStruct := MustGetModelStruct(&Blog{})
+	mStruct := c.MustGetModelStruct(&Blog{})
 
 	sortScope := &SortScope{Field: mStruct.GetPrimaryField()}
 	inv := sortScope.setRelationScope([]string{}, AscendingOrder)

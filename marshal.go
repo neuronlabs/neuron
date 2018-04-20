@@ -116,16 +116,22 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	node := &Node{Type: scope.Struct.collectionType}
 	modelVal := reflect.ValueOf(value).Elem()
 
+	// set primary
+
+	primStruct := scope.Struct.primary
+	primIndex := primStruct.getFieldIndex()
+	primaryVal := modelVal.Field(primIndex)
+
+	err := setNodePrimary(primaryVal, node, primStruct)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, field := range scope.Fields {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
 
 		switch field.jsonAPIType {
-		case Primary:
-			err := setNodePrimary(fieldValue, node, field)
-			if err != nil {
-				return nil, err
-			}
 		case Attribute:
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
@@ -199,7 +205,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 			}
 			if isSlice {
 				// get RelationshipManyNode
-				relationship, err := visitRelationshipManyNode(fieldValue, field, controller)
+				relationship, err := visitRelationshipManyNode(fieldValue, primaryVal, field, controller)
 				if err != nil {
 					return nil, err
 				}
@@ -212,7 +218,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 					node.Relationships[field.jsonAPIName] = &RelationshipOneNode{Data: nil}
 					continue
 				}
-				relatedNode, err := visitRelationshipNode(fieldValue, field, controller)
+				relatedNode, err := visitRelationshipNode(fieldValue, primaryVal, field, controller)
 				if err != nil {
 					return nil, err
 				}
@@ -228,14 +234,17 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	return node, nil
 }
 
-func visitRelationshipManyNode(manyValue reflect.Value, idval reflect.Value, field *StructField, controller *Controller,
+func visitRelationshipManyNode(
+	manyValue, rootID reflect.Value,
+	field *StructField,
+	controller *Controller,
 ) (*RelationshipManyNode, error) {
 	nodes := []*Node{}
 
 	for i := 0; i < manyValue.Len(); i++ {
 		elemValue := manyValue.Index(i)
 
-		node, err := visitRelationshipNode(elemValue, field, controller)
+		node, err := visitRelationshipNode(elemValue, rootID, field, controller)
 		if err != nil {
 			return nil, err
 		}
@@ -246,7 +255,10 @@ func visitRelationshipManyNode(manyValue reflect.Value, idval reflect.Value, fie
 	return &RelationshipManyNode{Data: nodes}, nil
 }
 
-func visitRelationshipNode(value reflect.Value, field *StructField, controller *Controller,
+func visitRelationshipNode(
+	value, rootID reflect.Value,
+	field *StructField,
+	controller *Controller,
 ) (*Node, error) {
 	mStruct := field.mStruct
 	prim := mStruct.primary
@@ -260,7 +272,6 @@ func visitRelationshipNode(value reflect.Value, field *StructField, controller *
 		return nil, err
 	}
 
-	controller.APIURLBase
 	return node, nil
 }
 

@@ -48,24 +48,21 @@ func TestFilterOperators(t *testing.T) {
 func TestFilterSetValues(t *testing.T) {
 	clearMap()
 	scope := getBlogScope()
-	errs, err := scope.buildIncludedScopes("posts")
-	assertNil(t, err)
+	errs := scope.buildIncludedScopes("posts")
+
 	assertEmpty(t, errs)
 	var f *FilterScope
-	f, errs, err = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "id", "eq")
-	assertNil(t, err)
+	f, errs = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "id", "eq")
+
 	assertEmpty(t, errs)
 	assertNotNil(t, f)
 	errs = f.setValues("blogs", []string{"1"}, FilterOperator(666))
 	assertNotEmpty(t, errs)
-	assertNil(t, err)
 
-	f, errs, err = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "view_count", "startswith")
-	assertNil(t, err)
+	f, errs = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "view_count", "startswith")
 	assertNotEmpty(t, errs)
 
-	f, errs, err = scope.newFilterScope("blogs", []string{"invalid"}, scope.Struct, "view_count", "startswith")
-	assertNil(t, err)
+	f, errs = scope.newFilterScope("blogs", []string{"invalid"}, scope.Struct, "view_count", "startswith")
 	assertNotEmpty(t, errs)
 
 	clearMap()
@@ -73,11 +70,10 @@ func TestFilterSetValues(t *testing.T) {
 	type modelWithStringID struct {
 		ID string `jsonapi:"primary,stringers"`
 	}
-	assertNil(t, PrecomputeModels(&modelWithStringID{}))
-	mStruct := MustGetModelStruct(&modelWithStringID{})
+	assertNil(t, c.PrecomputeModels(&modelWithStringID{}))
+	mStruct := c.MustGetModelStruct(&modelWithStringID{})
 	scope = newRootScope(mStruct)
-	_, errs, err = scope.newFilterScope("stringers", []string{"kkk"}, mStruct, "id", "startswith")
-	assertNil(t, err)
+	_, errs = scope.newFilterScope("stringers", []string{"kkk"}, mStruct, "id", "startswith")
 	assertNotEmpty(t, errs)
 
 }

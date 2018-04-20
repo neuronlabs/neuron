@@ -2,14 +2,17 @@ package jsonapi
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 )
 
 func assertPanic(t *testing.T, testFunc func()) {
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("The function: %v should panic.", testFunc)
+			t.Errorf("The function: %v should panic. \n%s", testFunc, traceInfo(3))
 		}
 	}()
 	testFunc()
@@ -17,13 +20,13 @@ func assertPanic(t *testing.T, testFunc func()) {
 
 func assertError(t *testing.T, err error) {
 	if err == nil {
-		t.Error("Provided error is nil.")
+		t.Errorf("Provided error is nil. \n%s", traceInfo(2))
 	}
 }
 
 func assertNoError(t *testing.T, err error) {
 	if err != nil {
-		t.Error(err)
+		t.Errorf("Given error is not nil: %s. \n%s", err, traceInfo(2))
 	}
 }
 
@@ -38,34 +41,34 @@ func assertErrors(t *testing.T, errs ...error) {
 func assertErrorObjects(t *testing.T, errs ...*ErrorObject) {
 	for _, err := range errs {
 		if err == nil {
-			t.Error("Provided nil error.")
+			t.Errorf("Provided nil error.\n%s", traceInfo(2))
 		}
 	}
 }
 
 func assertNotNil(t *testing.T, obj interface{}) {
 	if isNil(obj) {
-		t.Errorf("Provided obj: '%v' should not be nil.", obj)
+		t.Errorf("Provided obj: '%v' should not be nil.\n%s", obj, traceInfo(2))
 	}
 }
 
 func assertNil(t *testing.T, obj interface{}) {
 	if !isNil(obj) {
-		t.Errorf("Provided obj: %v is not nil.", obj)
+		t.Errorf("Provided obj: %v is not nil.\n%s", obj, traceInfo(2))
 	}
 }
 
 func assertNilErrors(t *testing.T, errs ...error) {
 	for _, err := range errs {
 		if err != nil {
-			t.Error(err)
+			t.Errorf("Given errors are not nil: %s. \n%s", err, traceInfo(2))
 		}
 	}
 }
 
 func assertTrue(t *testing.T, value bool) {
 	if !value {
-		t.Error("Provided value is not true.")
+		t.Error("Provided value is not true. \n%s", traceInfo(2))
 	}
 }
 
@@ -77,25 +80,26 @@ func assertFalse(t *testing.T, value bool) {
 
 func assertEmpty(t *testing.T, obj interface{}) {
 	if !isEmpty(obj) {
-		t.Error("Object is not empty")
+		t.Errorf("Object is not empty. \n%s", traceInfo(2))
 	}
+
 }
 
 func assertNotEmpty(t *testing.T, obj interface{}) {
 	if isEmpty(obj) {
-		t.Error("Object is empty.")
+		t.Errorf("Object is empty. \n%s", traceInfo(2))
 	}
 }
 
 func assertEqual(t *testing.T, expected, actual interface{}) {
 	if !areEqual(expected, actual) {
-		t.Errorf("Objects: %v and %v  are not equal.", expected, actual)
+		t.Errorf("Objects: %v and %v  are not equal. \n%s", expected, actual, traceInfo(2))
 	}
 }
 
 func assertNotEqual(t *testing.T, expected, actual interface{}) {
 	if areEqual(expected, actual) {
-		t.Errorf("Objects: %s and %s are equal.", expected, actual)
+		t.Errorf("Objects: %s and %s are equal. \n%s", expected, actual, traceInfo(2))
 	}
 }
 
@@ -143,4 +147,16 @@ func areEqual(expected, actual interface{}) bool {
 		return bytes.Equal(exp, act)
 	}
 	return reflect.DeepEqual(expected, actual)
+}
+
+func traceInfo(depth int) string {
+	pc, file, line, ok := runtime.Caller(depth)
+	if ok {
+		fnc := runtime.FuncForPC(pc)
+		split := strings.Split(fnc.Name(), "/")
+		info := fmt.Sprintf("%s \n f:\t%s:%d\n", split[len(split)-1], file, line)
+		return info
+	}
+	return ""
+
 }

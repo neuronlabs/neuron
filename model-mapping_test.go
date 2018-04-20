@@ -5,107 +5,6 @@ import (
 	"testing"
 )
 
-func TestPrecomputeModels(t *testing.T) {
-	// input valid models
-	validModels := []interface{}{&User{}, &Pet{}, &Driver{}, &Car{}, &WithPointer{}, &Blog{}, &Post{}, &Comment{}}
-	err := PrecomputeModels(validModels...)
-	if err != nil {
-		t.Error(err)
-	}
-	clearMap()
-
-	// if somehow map is nil
-	cacheModelMap = nil
-	err = PrecomputeModels(&Timestamp{})
-	if err != nil {
-		t.Error(err)
-	}
-
-	// if one of the relationship is not precomputed
-	clearMap()
-	// User has relationship with Pet
-	err = PrecomputeModels(&User{})
-	if err == nil {
-		t.Error("The User is related to Pets and so that should be an error")
-	}
-	clearMap()
-
-	// if one of the models is invalid
-	err = PrecomputeModels(&Timestamp{}, &BadModel{})
-	if err == nil {
-		t.Error("BadModel should not be accepted in precomputation.")
-	}
-
-	// provided Struct type to precompute models
-	err = PrecomputeModels(Timestamp{})
-	if err == nil {
-		t.Error("A pointer to the model should be provided.")
-	}
-
-	// provided ptr to basic type
-	basic := "value"
-	err = PrecomputeModels(&basic)
-	if err == nil {
-		t.Error("Only structs should be accepted!")
-	}
-
-	// provided slice
-	err = PrecomputeModels(&[]*Timestamp{})
-	if err == nil {
-		t.Error("Slice should not be accepted in precomputedModels")
-	}
-
-	// if no tagged fields are provided an error would be thrown
-	err = PrecomputeModels(&ModelNonTagged{})
-	if err == nil {
-		t.Error("Non tagged models are not allowed.")
-	}
-	clearMap()
-
-	// models without primary are not allowed.
-	err = PrecomputeModels(&NoPrimaryModel{})
-	if err == nil {
-		t.Error("No primary field provided.")
-	}
-	clearMap()
-
-	type InvalidPrimaryField struct {
-		ID float64 `jsonapi:"primary,invalids"`
-	}
-
-	err = PrecomputeModels(&InvalidPrimaryField{})
-	assertError(t, err)
-}
-
-func TestGetModelStruct(t *testing.T) {
-	// MustGetModelStruct
-	// if the model is not in the cache map
-	clearMap()
-	assertPanic(t, func() {
-		MustGetModelStruct(Timestamp{})
-	})
-
-	cacheModelMap.Set(reflect.TypeOf(Timestamp{}), &ModelStruct{})
-	mStruct := MustGetModelStruct(Timestamp{})
-	if mStruct == nil {
-		t.Error("The model struct shoud not be nil.")
-	}
-
-	// GetModelStruct
-	// providing ptr should return mStruct
-	var err error
-	_, err = GetModelStruct(&Timestamp{})
-	if err != nil {
-		t.Error(err)
-	}
-
-	// nil model
-	_, err = GetModelStruct(nil)
-	if err == nil {
-		t.Error(err)
-	}
-}
-
 func TestErrorBuildingFunctions(t *testing.T) {
 	var err error
 	err = errNoRelationship("Collection", "Included name")
@@ -222,14 +121,14 @@ func TestSetRelatedType(t *testing.T) {
 	}
 }
 
-func TestSetModelURL(t *testing.T) {
-	assertNil(t, PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
+// func TestSetModelURL(t *testing.T) {
+// 	assertNil(t, PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
 
-	assertError(t, SetModelURL(&Blog{}, "/invalid/url"))
-	assertError(t, SetModelURL(&User{}, "/doesnt/matter/"))
+// 	assertError(t, SetModelURL(&Blog{}, "/invalid/url"))
+// 	assertError(t, SetModelURL(&User{}, "/doesnt/matter/"))
 
-}
+// }
 
 func clearMap() {
-	cacheModelMap = newModelMap()
+	c.Models = newModelMap()
 }

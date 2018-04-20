@@ -155,12 +155,9 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 
 			splitValues := strings.Split(value[0], annotationSeperator)
 
-			_, errorObjects, err = filterScope.
+			_, errorObjects = filterScope.
 				newFilterScope(splitted[0], splitValues, filterScope.Struct, splitted[1:]...)
 			addErrors(errorObjects...)
-			if err != nil {
-				return
-			}
 
 		case key == QueryParamSort:
 			splitted := strings.Split(value[0], annotationSeperator)
@@ -242,7 +239,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	)
 	id, err = getID(req, mStruct)
 	if err != nil {
-		addErrors(ErrInternalError.Copy())
+		errs = append(errs, ErrInternalError.Copy())
 		return
 	}
 
@@ -250,8 +247,8 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	scope = newRootScope(mStruct)
 
-	errorObjects, err = scope.setPrimaryFilterScope(id)
-	if err != nil || len(errorObjects) != 0 {
+	errorObjects = scope.setPrimaryFilterScope(id)
+	if len(errorObjects) != 0 {
 		errObj = ErrInternalError.Copy()
 		errs = append(errs, errObj)
 		return

@@ -5,49 +5,11 @@ import (
 	"testing"
 )
 
-func TestFieldByIndex(t *testing.T) {
-	// having mapped model
-	PrecomputeModels(&Timestamp{})
-
-	mStruct := MustGetModelStruct(&Timestamp{})
-
-	refType := reflect.TypeOf(Timestamp{})
-
-	for i := 0; i < refType.NumField(); i++ {
-		tField := refType.Field(i)
-		sField, err := mStruct.FieldByIndex(i)
-		if err != nil {
-			t.Error(err)
-		}
-
-		if tField.Name != sField.refStruct.Name {
-			t.Errorf("Fields names are not equal: %v != %v", tField.Name, sField.refStruct.Name)
-		}
-	}
-
-	// getting out of range field
-	_, err := mStruct.FieldByIndex(refType.NumField())
-	if err == nil {
-		t.Error("There should be no field")
-	}
-
-	clearMap()
-	// User has one private field getting it from modelstruct by index should throw error
-	PrecomputeModels(&User{}, &Pet{})
-
-	mStruct = MustGetModelStruct(&User{})
-
-	_, err = mStruct.FieldByIndex(0)
-	if err == nil {
-		t.Error("Index with private field should be nil. Thus an error should be returned")
-	}
-}
-
 func TestCheckAttributes(t *testing.T) {
 	clearMap()
-	PrecomputeModels(&User{}, &Pet{})
+	c.PrecomputeModels(&User{}, &Pet{})
 
-	mStruct := MustGetModelStruct(&User{})
+	mStruct := c.MustGetModelStruct(&User{})
 
 	errs := mStruct.checkAttributes("name", "surname")
 	assertNotEmpty(t, errs)
@@ -56,9 +18,9 @@ func TestCheckAttributes(t *testing.T) {
 
 func TestCheckFields(t *testing.T) {
 	clearMap()
-	PrecomputeModels(&User{}, &Pet{})
+	c.PrecomputeModels(&User{}, &Pet{})
 
-	mStruct := MustGetModelStruct(&User{})
+	mStruct := c.MustGetModelStruct(&User{})
 
 	errs := mStruct.checkFields("name", "pets")
 	assertEmpty(t, errs)
@@ -70,9 +32,9 @@ func TestCheckFields(t *testing.T) {
 
 func TestGettersModelStruct(t *testing.T) {
 	clearMap()
-	PrecomputeModels(&User{}, &Pet{})
+	c.PrecomputeModels(&User{}, &Pet{})
 
-	mStruct := MustGetModelStruct(&Pet{})
+	mStruct := c.MustGetModelStruct(&Pet{})
 
 	// Type
 	assertTrue(t, mStruct.GetType() == reflect.TypeOf(Pet{}))
@@ -97,22 +59,14 @@ func TestGettersModelStruct(t *testing.T) {
 	// Fields
 	fields := mStruct.GetFields()
 	assertNotEmpty(t, fields)
-
-	v := reflect.ValueOf(&Pet{}).Elem()
-	refType := v.Type()
-
-	for i := 0; i < refType.NumField(); i++ {
-		assertTrue(t, refType.Field(i).Name == fields[i].fieldName)
-		assertTrue(t, refType.Field(i).Type == fields[i].refStruct.Type)
-	}
 }
 
 func TestStructFieldGetters(t *testing.T) {
 	//having some model struct.
 	clearMap()
 
-	PrecomputeModels(&User{}, &Pet{})
-	mStruct := MustGetModelStruct(&User{})
+	c.PrecomputeModels(&User{}, &Pet{})
+	mStruct := c.MustGetModelStruct(&User{})
 
 	assertNotNil(t, mStruct)
 
@@ -138,33 +92,27 @@ func TestStructFieldGetters(t *testing.T) {
 
 func TestGetSortScopeCount(t *testing.T) {
 	clearMap()
-	PrecomputeModels(&User{}, &Pet{})
+	c.PrecomputeModels(&User{}, &Pet{})
 
-	mStruct := MustGetModelStruct(&User{})
+	mStruct := c.MustGetModelStruct(&User{})
 
 	assertNotNil(t, mStruct)
 }
 
 func TestComputeNestedIncludeCount(t *testing.T) {
-	PrecomputeModels(&User{}, &Pet{})
-	mUser := MustGetModelStruct(&User{})
+	c.PrecomputeModels(&User{}, &Pet{})
+	mUser := c.MustGetModelStruct(&User{})
 
 	assertTrue(t, mUser.getMaxIncludedCount() == 2)
 
 	clearMap()
-	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
-	mBlog := MustGetModelStruct(&Blog{})
+	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	mBlog := c.MustGetModelStruct(&Blog{})
 
 	assertTrue(t, mBlog.getMaxIncludedCount() == 6)
-	assertTrue(t, MustGetModelStruct(&Post{}).getMaxIncludedCount() == 2)
+	assertTrue(t, c.MustGetModelStruct(&Post{}).getMaxIncludedCount() == 2)
 
 	clearMap()
-	PrecomputeModels(&Blog{}, &Post{}, &Comment{})
-	mBlog = MustGetModelStruct(&Blog{})
-	// set some model struct to nil
-	cacheModelMap.Set(reflect.TypeOf(Post{}), nil)
-
-	assertPanic(t, func() { mBlog.initComputeNestedIncludedCount(0) })
 }
 
 func TestInitCheckFieldTypes(t *testing.T) {
@@ -172,10 +120,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 		ID float64 `jsonapi:"primary,invalids"`
 	}
 	clearMap()
-	err := buildModelStruct(&invalidPrimary{}, cacheModelMap)
+	err := buildModelStruct(&invalidPrimary{}, c.Models)
 	assertNil(t, err)
 
-	mStruct := MustGetModelStruct(&invalidPrimary{})
+	mStruct := c.MustGetModelStruct(&invalidPrimary{})
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
@@ -184,10 +132,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 		ID       int           `jsonapi:"primary,invalidAttr"`
 		ChanAttr chan (string) `jsonapi:"attr,channel"`
 	}
-	err = buildModelStruct(&invalidAttribute{}, cacheModelMap)
+	err = buildModelStruct(&invalidAttribute{}, c.Models)
 	assertNil(t, err)
 
-	mStruct = MustGetModelStruct(&invalidAttribute{})
+	mStruct = c.MustGetModelStruct(&invalidAttribute{})
 
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
@@ -197,10 +145,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 		ID       int          `jsonapi:"primary,invAttrFunc"`
 		FuncAttr func(string) `jsonapi:"attr,func-attr"`
 	}
-	err = buildModelStruct(&invAttrFunc{}, cacheModelMap)
+	err = buildModelStruct(&invAttrFunc{}, c.Models)
 	assertNil(t, err)
 
-	mStruct = MustGetModelStruct(&invAttrFunc{})
+	mStruct = c.MustGetModelStruct(&invAttrFunc{})
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
@@ -210,24 +158,31 @@ func TestInitCheckFieldTypes(t *testing.T) {
 		Basic string `jsonapi:"relation,basic"`
 	}
 	inv := invalidRelBasic{}
-	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIType: RelationshipSingle,
-		refStruct:   reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
+	mStruct = &ModelStruct{
+		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
+		fields: []*StructField{{
+			jsonAPIType: RelationshipSingle,
+			refStruct:   reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
 	}
+
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
-	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIType: RelationshipSingle,
-		refStruct:   reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
+	mStruct = &ModelStruct{
+		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
+		fields: []*StructField{{
+			jsonAPIType: RelationshipSingle,
+			refStruct:   reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
 	}
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
 
 	strVal := "val"
-	mStruct = &ModelStruct{fields: []*StructField{{
-		jsonAPIType: RelationshipSingle,
-		refStruct:   reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
+	mStruct = &ModelStruct{
+		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
+		fields: []*StructField{{
+			jsonAPIType: RelationshipSingle,
+			refStruct:   reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
 	}
 
 	err = mStruct.initCheckFieldTypes()
@@ -236,10 +191,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 
 func TestStructSetModelURL(t *testing.T) {
 	clearMap()
-	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 
-	mStruct := MustGetModelStruct(&Blog{})
+	mStruct := c.MustGetModelStruct(&Blog{})
 	err = mStruct.SetModelURL("Some/url")
 	assertError(t, err)
 }
@@ -255,10 +210,10 @@ func TestGetDereferencedType(t *testing.T) {
 }
 
 func TestGetJSONAPIType(t *testing.T) {
-	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 
-	mStruct := MustGetModelStruct(&Blog{})
+	mStruct := c.MustGetModelStruct(&Blog{})
 	assertEqual(t, Primary, mStruct.primary.GetJSONAPIType())
 
 }

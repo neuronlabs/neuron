@@ -228,9 +228,13 @@ func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel in
 }
 
 func (m *ModelStruct) initCheckFieldTypes() error {
+	err := m.primary.initCheckFieldType()
+	if err != nil {
+		return err
+	}
 	for _, field := range m.fields {
 		if field != nil {
-			err := field.initCheckFieldType()
+			err = field.initCheckFieldType()
 			if err != nil {
 				return err
 			}

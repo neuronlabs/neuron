@@ -81,8 +81,8 @@ func newSubScope(modelStruct *ModelStruct, relatedField *StructField) *Scope {
 // 	return
 // }
 
-func (s *Scope) setPrimaryFilterScope(value string) (errs []*ErrorObject, err error) {
-	_, errs, err = s.newFilterScope(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
+func (s *Scope) setPrimaryFilterScope(value string) (errs []*ErrorObject) {
+	_, errs = s.newFilterScope(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
 	return
 }
 
@@ -297,7 +297,7 @@ func (s *Scope) newFilterScope(
 	values []string,
 	m *ModelStruct,
 	splitted ...string,
-) (fField *FilterScope, errs []*ErrorObject, err error) {
+) (fField *FilterScope, errs []*ErrorObject) {
 	var (
 		sField    *StructField
 		op        FilterOperator
@@ -377,6 +377,7 @@ func (s *Scope) newFilterScope(
 		setFilterScope()
 		op = OpEqual
 		errObjects = fField.setValues(m.collectionType, values, op)
+		errs = append(errs, errObjects...)
 
 	case 2:
 		if fieldName == "id" {
@@ -397,18 +398,14 @@ func (s *Scope) newFilterScope(
 				// relFilter is a FilterScope for specific field in relationship
 				var relFilter *FilterScope
 
-				relFilter, errObjects, err = s.newFilterScope(
+				relFilter, errObjects = s.newFilterScope(
 					fieldName,
 					values,
 					sField.relatedStruct,
 					splitted[1:]...,
 				)
 				errs = append(errs, errObjects...)
-				if err != nil || len(errs) > 0 {
-					return
-				}
 				fField.appendRelFilter(relFilter)
-
 				return
 			}
 		}
@@ -441,18 +438,15 @@ func (s *Scope) newFilterScope(
 		var relFilter *FilterScope
 
 		// get relationship's filter for specific field (filterfield)
-		relFilter, errObjects, err = s.newFilterScope(
+		relFilter, errObjects = s.newFilterScope(
 			fieldName,
 			values,
 			sField.relatedStruct,
 			splitted[1:]...,
 		)
 		errs = append(errs, errObjects...)
-		if err != nil {
-			return
-		}
-
 		fField.appendRelFilter(relFilter)
+
 	default:
 		errObj = ErrInvalidQueryParameter.Copy()
 		errObj.Detail = fmt.

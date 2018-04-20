@@ -134,14 +134,6 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		structField.mStruct = modelStruct
 		assignedFields++
 
-		/**
-
-		TO DO:
-
-		- throw error on duplicated field names
-
-		*/
-
 		switch kind := args[0]; kind {
 		case annotationPrimary:
 			// Primary is not a part of fields
@@ -163,8 +155,9 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			// check if no duplicates
 			_, ok := modelStruct.attributes[resName]
 			if ok {
-				err = fmt.Errorf("Duplicated JSONAPIName: %s for model: %v", resName, modelStruct.modelType.Name())
-				return
+				err = fmt.Errorf("Duplicated json:api field name: '%s' for model: '%v'.",
+					resName, modelStruct.modelType.Name())
+				return err
 			}
 			modelStruct.attributes[resName] = structField
 
@@ -172,6 +165,13 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			structField.jsonAPIName = resName
 			modelStruct.fields = append(modelStruct.fields, structField)
 			err = setRelatedType(structField)
+
+			_, ok := modelStruct.relationships[resName]
+			if ok {
+				err = fmt.Errorf("Duplicated json:api field name: '%s' for model '%v'.",
+					resName, modelStruct.modelType.Name())
+				return err
+			}
 			modelStruct.relationships[resName] = structField
 		}
 	}
