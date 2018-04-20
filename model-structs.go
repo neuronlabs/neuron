@@ -137,66 +137,6 @@ func (m *ModelStruct) setModelURL(url string) error {
 	return nil
 }
 
-// there should be some helper which makes nested checks
-// but root function should allow only to check once
-
-func (m *ModelStruct) checkRelationshipHelper(relationship string) (errs []*ErrorObject, err error) {
-	structField, ok := m.relationships[relationship]
-	if !ok {
-		split := strings.Split(relationship, annotationNestedSeperator)
-		if len(split) == 1 {
-			errs = append(errs, errNoRelationship(m.collectionType, relationship))
-			return
-		} else if len(split) > maxNestedRelLevel+1 {
-			errs = append(errs, ErrTooManyNestedRelationships(relationship))
-		}
-
-		sepRelation := split[0]
-		structField, ok = m.relationships[sepRelation]
-		if !ok {
-			errs = append(errs, errNoRelationship(m.collectionType, sepRelation))
-			return
-		}
-
-		relM := cacheModelMap.Get(structField.relatedModelType)
-
-		if relM == nil {
-			err = errNoModelMappedForRel(structField.relatedModelType, m.modelType, structField.fieldName)
-			errs = append(errs, ErrInternalError.Copy())
-			return
-		}
-
-		var errorObjects []*ErrorObject
-		errorObjects, err = relM.
-			checkRelationshipHelper(strings.Join(split[1:], annotationNestedSeperator))
-		errs = append(errs, errorObjects...)
-	}
-	return
-}
-
-// CheckRelationship is search for the modelstruct's relationship
-// named as 'relationship'.
-// The function checks and recursively get nested relationships.
-// // Return multiple errors
-func (m *ModelStruct) checkRelationship(relationship string) (errs []*ErrorObject, err error) {
-	return m.checkRelationshipHelper(relationship)
-}
-
-// CheckRelationships is a method that checks if multiple relationships exists in the given model.
-// Returns array of errors
-func (m *ModelStruct) checkRelationships(relationships ...string,
-) (errs []*ErrorObject, err error) {
-	var errorObjects []*ErrorObject
-	for _, relationship := range relationships {
-		errorObjects, err = m.checkRelationship(relationship)
-		errs = append(errs, errorObjects...)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
 // CheckAttribute - checks if given model contains given attributes. The attributes
 // are checked for jsonapi manner.
 func (m *ModelStruct) checkAttribute(attr string) *ErrorObject {
@@ -272,19 +212,15 @@ func (m *ModelStruct) initComputeThisIncludedCount() {
 	return
 }
 
-func (m *ModelStruct) initComputeNestedIncludedCount(level int) int {
+func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel int) int {
 	var nestedCount int
 	if level != 0 {
 		nestedCount += m.thisIncludedCount
 	}
 
 	for _, relationship := range m.relationships {
-		mStruct := cacheModelMap.Get(relationship.GetRelatedModelType())
-		if mStruct == nil {
-			panic(fmt.Sprintf("Model not mapped: %v", relationship.GetRelatedModelType()))
-		}
 		if level < maxNestedRelLevel {
-			nestedCount += mStruct.initComputeNestedIncludedCount(level + 1)
+			nestedCount += relationship.relatedStruct.initComputeNestedIncludedCount(level+1, maxNestedRelLevel)
 		}
 	}
 

@@ -17,275 +17,6 @@ var (
 	maxPermissibleDuplicates = 3
 )
 
-// URLParams defines url parameters as a map[string]string
-type URLParams map[string]string
-
-type paramsKey struct{}
-
-// ParamsKey is the variable for setting URLParams in the request context.
-var ParamsKey = paramsKey{}
-
-// BuildScopeMulti - build scope for the list request
-func BuildScopeMulti(req *http.Request, model interface{},
-) (scope *Scope, errs []*ErrorObject, err error) {
-	// Get ModelStruct
-	var mStruct *ModelStruct
-	mStruct, err = GetModelStruct(model)
-	if err != nil {
-		return
-	}
-
-	// overloadPreventer - is a warden upon invalid query parameters
-	var (
-		overloadPreventer int = 5
-		errObj            *ErrorObject
-		errorObjects      []*ErrorObject
-		addErrors         = func(errObjects ...*ErrorObject) {
-			errs = append(errs, errObjects...)
-			overloadPreventer -= len(errObjects)
-		}
-	)
-
-	scope = newRootScope(mStruct)
-
-	// Get URLQuery
-	q := req.URL.Query()
-
-	// Check first included in order to create subscopes
-	included, ok := q[QueryParamInclude]
-	if ok {
-		// build included scopes
-		errorObjects, err = scope.buildIncludedScopes(included...)
-		addErrors(errorObjects...)
-		if err != nil || len(errs) > 0 {
-			return
-		}
-	}
-	// id is always present
-	scope.Fields = append(scope.Fields, scope.Struct.primary)
-
-	for key, value := range q {
-		if len(value) > 1 {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
-			addErrors(errObj)
-			continue
-		}
-		switch {
-		case key == QueryParamInclude:
-			continue
-		case key == QueryParamPageLimit:
-			errObj = scope.preparePaginatedValue(key, value[0], 0)
-			if errObj != nil {
-				addErrors(errObj)
-				break
-			}
-		case key == QueryParamPageOffset:
-			errObj = scope.preparePaginatedValue(key, value[0], 1)
-			if errObj != nil {
-				addErrors(errObj)
-			}
-		case key == QueryParamPageNumber:
-			errObj = scope.preparePaginatedValue(key, value[0], 2)
-			if errObj != nil {
-				addErrors(errObj)
-			}
-		case key == QueryParamPageSize:
-			errObj = scope.preparePaginatedValue(key, value[0], 3)
-			if errObj != nil {
-				addErrors(errObj)
-			}
-		case strings.HasPrefix(key, QueryParamFilter):
-			// filter[field]
-			var splitted []string
-			// get other operators
-			var er error
-			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
-			if er != nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
-				addErrors(errObj)
-				continue
-			}
-
-			collection := splitted[0]
-
-			filterScope := scope.collectionScopes[collection]
-			if filterScope == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' is invalid or not included in query.", collection)
-				addErrors(errObj)
-				continue
-			}
-
-			splitValues := strings.Split(value[0], annotationSeperator)
-
-			_, errorObjects, err = filterScope.
-				newFilterScope(splitted[0], splitValues, filterScope.Struct, splitted[1:]...)
-			addErrors(errorObjects...)
-			if err != nil {
-				return
-			}
-
-		case key == QueryParamSort:
-			splitted := strings.Split(value[0], annotationSeperator)
-
-			errorObjects = scope.setSortScopes(splitted...)
-			addErrors(errorObjects...)
-		case strings.HasPrefix(key, QueryParamFields):
-			// fields[collection]
-			var splitted []string
-			var er error
-			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
-			if er != nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
-				addErrors(errObj)
-				continue
-			}
-			if len(splitted) != 1 {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-				addErrors(errObj)
-				continue
-			}
-			collection := splitted[0]
-			fieldsScope := scope.collectionScopes[collection]
-			if fieldsScope == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' in fields parameter is invalid or not included to the query.", collection)
-				addErrors(errObj)
-				continue
-			}
-			splitValues := strings.Split(value[0], annotationSeperator)
-			errorObjects = fieldsScope.setWorkingFields(splitValues...)
-			addErrors(errorObjects...)
-
-		default:
-			errObj = ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
-			addErrors(errObj)
-		}
-
-		if overloadPreventer <= 0 {
-			return
-		}
-	}
-	if scope.PaginationScope != nil {
-		er := scope.PaginationScope.check()
-		if er != nil {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Pagination parameters are not valid. %s", er)
-			addErrors(errObj)
-		}
-	}
-
-	// if none fields were set
-	if len(scope.Fields) <= 1 {
-		scope.Fields = scope.Struct.fields
-	}
-
-	return
-}
-
-func BuildScopeSingle(req *http.Request, model interface{},
-) (scope *Scope, errs []*ErrorObject, err error) {
-	// get model type
-	// Get ModelStruct
-	var mStruct *ModelStruct
-	mStruct, err = GetModelStruct(model)
-	if err != nil {
-		return
-	}
-	var (
-		overloadPreventer = 2
-		addErrors         = func(errObjects ...*ErrorObject) {
-			errs = append(errs, errObjects...)
-			overloadPreventer -= len(errObjects)
-		}
-		errObj       *ErrorObject
-		errorObjects []*ErrorObject
-		id           string
-	)
-	id, err = getID(req, mStruct)
-	if err != nil {
-		addErrors(ErrInternalError.Copy())
-		return
-	}
-
-	q := req.URL.Query()
-
-	scope = newRootScope(mStruct)
-	errorObjects, err = scope.setPrimaryFilterScope(id)
-	if err != nil || len(errorObjects) != 0 {
-		errObj = ErrInternalError.Copy()
-		errs = append(errs, errObj)
-		return
-	}
-
-	// Check first included in order to create subscopes
-	included, ok := q[QueryParamInclude]
-	if ok {
-		// build included scopes
-		errorObjects, err = scope.buildIncludedScopes(included...)
-		addErrors(errorObjects...)
-		if err != nil || len(errs) > 0 {
-			return
-		}
-	}
-	for key, values := range q {
-		if len(values) > 1 {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
-			addErrors(errObj)
-			continue
-		}
-
-		switch {
-		case key == QueryParamInclude:
-			continue
-		case strings.HasPrefix(key, QueryParamFields):
-			// fields[collection]
-			var splitted []string
-			var er error
-			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
-			if er != nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
-				addErrors(errObj)
-				continue
-			}
-			if len(splitted) != 1 {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-				addErrors(errObj)
-				continue
-			}
-			collection := splitted[0]
-			fieldsScope := scope.collectionScopes[collection]
-			if fieldsScope == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' in fields parameter is invalid or not included to the query.", collection)
-				addErrors(errObj)
-				continue
-			}
-			splitValues := strings.Split(values[0], annotationSeperator)
-			errorObjects = fieldsScope.setWorkingFields(splitValues...)
-			addErrors(errorObjects...)
-		default:
-			errObj = ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
-			addErrors(errObj)
-		}
-
-		if overloadPreventer <= 0 {
-			return
-		}
-	}
-
-	return
-}
-
 type Scope struct {
 	// Struct is a modelStruct this scope is based on
 	Struct *ModelStruct
@@ -315,6 +46,8 @@ type Scope struct {
 	PaginationScope *PaginationScope
 
 	collectionScopes map[string]*Scope
+
+	currentErrorCount int
 }
 
 func newRootScope(mStruct *ModelStruct) *Scope {
@@ -465,7 +198,7 @@ func (s *Scope) newSortScope(sort string, order Order) (invalidField bool) {
 }
 
 func (s *Scope) buildIncludedScopes(includedList ...string,
-) (errs []*ErrorObject, err error) {
+) (errs []*ErrorObject) {
 	var errorObjects []*ErrorObject
 	var errObj *ErrorObject
 
@@ -509,18 +242,15 @@ func (s *Scope) buildIncludedScopes(includedList ...string,
 			}
 		}
 
-		errorObjects, err = s.buildSubScopes(included, s.collectionScopes)
+		errorObjects = s.buildSubScopes(included, s.collectionScopes)
 		errs = append(errs, errorObjects...)
-		if err != nil {
-			return
-		}
 	}
 	return
 }
 
 // build sub scopes for provided included argument.
 func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Scope,
-) (errs []*ErrorObject, err error) {
+) (errs []*ErrorObject) {
 
 	var sub *Scope
 
@@ -539,40 +269,17 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 			errs = append(errs, errNoRelationship(s.Struct.collectionType, seperated))
 			return
 		}
-
 		// Check if no other scope for this collection within given 'subscope' exists
 		sub = s.getScopeForField(sField)
 		if sub == nil {
-			relatedMStruct := cacheModelMap.Get(sField.getRelatedModelType())
-			if relatedMStruct == nil {
-				err = errNoModelMappedForRel(
-					sField.getRelatedModelType(),
-					sField.refStruct.Type,
-					sField.fieldName,
-				)
-				errs = append(errs, ErrInternalError.Copy())
-				return
-			}
-			sub = newSubScope(relatedMStruct, sField)
-
+			sub = newSubScope(sField.relatedStruct, sField)
 		}
-		errs, err = sub.buildSubScopes(included[index+1:], collectionScopes)
+		errs = sub.buildSubScopes(included[index+1:], collectionScopes)
 	} else {
 		// check for duplicates
 		sub = s.getScopeForField(sField)
 		if sub == nil {
-			// if sField was found
-			relatedMStruct := cacheModelMap.Get(sField.getRelatedModelType())
-			if relatedMStruct == nil {
-				err = errNoModelMappedForRel(
-					sField.refStruct.Type,
-					sField.getRelatedModelType(),
-					sField.fieldName,
-				)
-				errs = append(errs, ErrInternalError.Copy())
-				return
-			}
-			sub = newSubScope(relatedMStruct, sField)
+			sub = newSubScope(sField.relatedStruct, sField)
 		}
 	}
 	// map collection type to subscope
@@ -592,11 +299,10 @@ func (s *Scope) newFilterScope(
 	splitted ...string,
 ) (fField *FilterScope, errs []*ErrorObject, err error) {
 	var (
-		sField     *StructField
-		relMStruct *ModelStruct
-		op         FilterOperator
-		ok         bool
-		fieldName  string
+		sField    *StructField
+		op        FilterOperator
+		ok        bool
+		fieldName string
 
 		errObj     *ErrorObject
 		errObjects []*ErrorObject
@@ -688,23 +394,13 @@ func (s *Scope) newFilterScope(
 				// if field were already used
 				setFilterScope()
 
-				// get model type for given field
-
-				relMStruct = cacheModelMap.Get(sField.getRelatedModelType())
-				if relMStruct == nil {
-					// err is internal
-					err = fmt.Errorf("Unmapped model: %s.", sField.getRelatedModelType())
-					errs = append(errs, ErrInternalError.Copy())
-					return
-				}
-
 				// relFilter is a FilterScope for specific field in relationship
 				var relFilter *FilterScope
 
 				relFilter, errObjects, err = s.newFilterScope(
 					fieldName,
 					values,
-					relMStruct,
+					sField.relatedStruct,
 					splitted[1:]...,
 				)
 				errs = append(errs, errObjects...)
@@ -741,12 +437,6 @@ func (s *Scope) newFilterScope(
 			return
 		}
 		setFilterScope()
-		relMStruct = cacheModelMap.Get(sField.getRelatedModelType())
-		if relMStruct == nil {
-			err = fmt.Errorf("Unmapped model: %s.", sField.getRelatedModelType())
-			errs = append(errs, ErrInternalError.Copy())
-			return
-		}
 
 		var relFilter *FilterScope
 
@@ -754,7 +444,7 @@ func (s *Scope) newFilterScope(
 		relFilter, errObjects, err = s.newFilterScope(
 			fieldName,
 			values,
-			relMStruct,
+			sField.relatedStruct,
 			splitted[1:]...,
 		)
 		errs = append(errs, errObjects...)

@@ -8,11 +8,11 @@ import (
 	"sync"
 )
 
-var cacheModelMap *ModelMap
+// var cacheModelMap *ModelMap
 
-func init() {
-	cacheModelMap = newModelMap()
-}
+// func init() {
+// 	cacheModelMap = newModelMap()
+// }
 
 var (
 	errBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
@@ -25,36 +25,36 @@ type ModelMap struct {
 	sync.RWMutex
 }
 
-// MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
-// panics if the model does not exists in the map.
-func MustGetModelStruct(model interface{}) *ModelStruct {
-	mStruct, err := getModelStruct(model)
-	if err != nil {
-		panic(err)
-	}
-	return mStruct
-}
+// // MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
+// // panics if the model does not exists in the map.
+// func MustGetModelStruct(model interface{}) *ModelStruct {
+// 	mStruct, err := getModelStruct(model)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return mStruct
+// }
 
-// GetModelStruct returns the ModelStruct for provided model
-// Returns error if provided model does not exists in the PrecomputedMap
-func GetModelStruct(model interface{}) (*ModelStruct, error) {
-	return getModelStruct(model)
-}
+// // GetModelStruct returns the ModelStruct for provided model
+// // Returns error if provided model does not exists in the PrecomputedMap
+// func GetModelStruct(model interface{}) (*ModelStruct, error) {
+// 	return getModelStruct(model)
+// }
 
-func getModelStruct(model interface{}) (*ModelStruct, error) {
-	if model == nil {
-		return nil, errors.New("No model provided.")
-	}
-	modelType := reflect.ValueOf(model).Type()
-	if modelType.Kind() == reflect.Ptr {
-		modelType = modelType.Elem()
-	}
-	mStruct := cacheModelMap.Get(modelType)
-	if mStruct == nil {
-		return nil, fmt.Errorf("Unmapped model provided: %s", modelType.Name())
-	}
-	return mStruct, nil
-}
+// func getModelStruct(model interface{}) (*ModelStruct, error) {
+// 	if model == nil {
+// 		return nil, errors.New("No model provided.")
+// 	}
+// 	modelType := reflect.ValueOf(model).Type()
+// 	if modelType.Kind() == reflect.Ptr {
+// 		modelType = modelType.Elem()
+// 	}
+// 	mStruct := cacheModelMap.Get(modelType)
+// 	if mStruct == nil {
+// 		return nil, fmt.Errorf("Unmapped model provided: %s", modelType.Name())
+// 	}
+// 	return mStruct, nil
+// }
 
 func newModelMap() *ModelMap {
 	var modelMap *ModelMap = &ModelMap{models: make(map[reflect.Type]*ModelStruct)}
@@ -73,48 +73,6 @@ func (m *ModelMap) Get(key reflect.Type) *ModelStruct {
 	m.RLock()
 	defer m.RUnlock()
 	return m.models[key]
-}
-
-// PrecomputeModels precomputes provided models, making it easy to check
-// models relationships and  attributes.
-func PrecomputeModels(models ...interface{}) error {
-	var err error
-	if cacheModelMap == nil {
-		cacheModelMap = newModelMap()
-	}
-
-	for _, model := range models {
-		err = buildModelStruct(model, cacheModelMap)
-		if err != nil {
-			return err
-		}
-	}
-	for _, model := range cacheModelMap.models {
-		err = checkModelRelationships(model)
-		if err != nil {
-			return err
-		}
-		err = model.initCheckFieldTypes()
-		if err != nil {
-			return err
-		}
-		model.initComputeSortedFields()
-		model.initComputeThisIncludedCount()
-	}
-
-	for _, model := range cacheModelMap.models {
-		model.nestedIncludedCount = model.initComputeNestedIncludedCount(0)
-	}
-
-	return nil
-}
-
-func SetModelURL(model interface{}, url string) error {
-	mStruct, err := getModelStruct(model)
-	if err != nil {
-		return err
-	}
-	return mStruct.setModelURL(url)
 }
 
 func buildModelStruct(model interface{}, modelMap *ModelMap) error {
@@ -143,7 +101,6 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 	modelStruct.attributes = make(map[string]*StructField)
 	modelStruct.relationships = make(map[string]*StructField)
-	modelStruct.fields = make([]*StructField, modelType.NumField())
 	modelStruct.collectionURLIndex = -1
 
 	var assignedFields int
@@ -175,7 +132,6 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		structField.refStruct = tField
 		structField.fieldName = tField.Name
 		structField.mStruct = modelStruct
-		modelStruct.fields[i] = structField
 		assignedFields++
 
 		/**
@@ -188,23 +144,33 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 		switch kind := args[0]; kind {
 		case annotationPrimary:
+			// Primary is not a part of fields
 			structField.jsonAPIName = "id"
 			structField.jsonAPIType = Primary
-
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
-		case annotationClientID:
-			structField.jsonAPIName = "id"
-			structField.jsonAPIType = Primary
 
+		case annotationClientID:
+			// ClientID is not a part of fields also
+			structField.jsonAPIName = "id"
+			structField.jsonAPIType = ClientID
 			modelStruct.clientID = structField
 		case annotationAttribute:
 			structField.jsonAPIName = resName
 			structField.jsonAPIType = Attribute
+			modelStruct.fields = append(modelStruct.fields, structField)
+
+			// check if no duplicates
+			_, ok := modelStruct.attributes[resName]
+			if ok {
+				err = fmt.Errorf("Duplicated JSONAPIName: %s for model: %v", resName, modelStruct.modelType.Name())
+				return
+			}
 			modelStruct.attributes[resName] = structField
 
 		case annotationRelation:
 			structField.jsonAPIName = resName
+			modelStruct.fields = append(modelStruct.fields, structField)
 			err = setRelatedType(structField)
 			modelStruct.relationships[resName] = structField
 		}
@@ -223,17 +189,17 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	return err
 }
 
-func checkModelRelationships(model *ModelStruct) (err error) {
-	for _, rel := range model.relationships {
-		val := cacheModelMap.Get(rel.relatedModelType)
-		if val == nil {
-			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", rel.relatedModelType, rel.fieldName, model.modelType.Name())
-			return err
-		}
-		rel.relatedStruct = val
-	}
-	return
-}
+// func checkModelRelationships(model *ModelStruct) (err error) {
+// 	for _, rel := range model.relationships {
+// 		val := cacheModelMap.Get(rel.relatedModelType)
+// 		if val == nil {
+// 			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", rel.relatedModelType, rel.fieldName, model.modelType.Name())
+// 			return err
+// 		}
+// 		rel.relatedStruct = val
+// 	}
+// 	return
+// }
 
 func errNoRelationship(jsonapiType, included string) *ErrorObject {
 	err := ErrInvalidResourceName.Copy()

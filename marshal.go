@@ -1,43 +1,120 @@
 package jsonapi
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"time"
 )
 
-func MarshalScope(scope *Scope) error {
+var (
+	IErrUnexpectedType = errors.
+				New("models should be a struct pointer or slice of struct pointers")
+	IErrExpectedSlice = errors.New("models should be a slice of struct pointers")
+)
 
-	return nil
-}
-
-func marshalScope(scope *Scope) (Payloader, error) {
-	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Kind() {
-	case reflect.Slice:
-		valSlice, err := convertToSliceInterface(&scope.Value)
-		if err != nil {
-			return nil, err
-		}
-	case reflect.Ptr:
-
+func MarshalPayload(w io.Writer, payload Payloader) error {
+	err := json.NewEncoder(w).Encode(payload)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func marshalScopeOne(scope *Scope) (*OnePayload, error) {
+func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
+	scopeValue := reflect.ValueOf(scope.Value)
+	switch scopeValue.Kind() {
+	case reflect.Slice:
+		payloader, err = marshalScopeMany(scope, controller)
+	case reflect.Ptr:
+		payloader, err = marshalScopeOne(scope, controller)
+	}
+	if err != nil {
+		return
+	}
 
-	return nil, nil
+	for _, subscope := range scope.SubScopes {
+		err = marshalSubScope(subscope, payloader.getIncluded(), controller)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
-func marshalScopeMany(scope *Scope) (*ManyPayload, error) {
-	return nil, nil
+func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) error {
+	// get this
+	scopeValue := reflect.ValueOf(scope.Value)
+	switch scopeValue.Kind() {
+	case reflect.Slice:
+		nodes, err := visitScopeManyNodes(scope, controller)
+		if err != nil {
+			return err
+		}
+		*included = append(*included, nodes...)
+	case reflect.Ptr:
+		node, err := visitScopeNode(scope.Value, scope, controller)
+		if err != nil {
+			return err
+		}
+		*included = append(*included, node)
+	}
+	// iterate over subscopes and marshalsubscopes
+	for _, sub := range scope.SubScopes {
+		err := marshalSubScope(sub, included, controller)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func visitScopeNode(scope *Scope) (*Node, error) {
+func marshalScopeOne(scope *Scope, controller *Controller) (*OnePayload, error) {
+	node, err := visitScopeNode(scope.Value, scope, controller)
+	if err != nil {
+		return nil, err
+	}
+	return &OnePayload{Data: node}, nil
+}
+
+func marshalScopeMany(scope *Scope, controller *Controller) (*ManyPayload, error) {
+	nodes, err := visitScopeManyNodes(scope, controller)
+	if err != nil {
+		return nil, err
+	}
+	return &ManyPayload{Data: nodes}, nil
+}
+
+func visitScopeManyNodes(scope *Scope, controller *Controller,
+) ([]*Node, error) {
+	valSlice, err := convertToSliceInterface(&scope.Value)
+	if err != nil {
+		return nil, err
+	}
+	nodes := []*Node{}
+
+	for _, value := range valSlice {
+		node, err := visitScopeNode(value, scope, controller)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
+func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
+) (*Node, error) {
+	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
+		return nil, IErrUnexpectedType
+	}
 	node := &Node{Type: scope.Struct.collectionType}
-	modelVal := reflect.ValueOf(scope.Value).Elem()
+	modelVal := reflect.ValueOf(value).Elem()
 
 	for _, field := range scope.Fields {
 
@@ -122,7 +199,7 @@ func visitScopeNode(scope *Scope) (*Node, error) {
 			}
 			if isSlice {
 				// get RelationshipManyNode
-				relationship, err := visitRelationshipManyNode(fieldValue, field)
+				relationship, err := visitRelationshipManyNode(fieldValue, field, controller)
 				if err != nil {
 					return nil, err
 				}
@@ -135,7 +212,7 @@ func visitScopeNode(scope *Scope) (*Node, error) {
 					node.Relationships[field.jsonAPIName] = &RelationshipOneNode{Data: nil}
 					continue
 				}
-				relatedNode, err := visitRelationshipNode(fieldValue, field)
+				relatedNode, err := visitRelationshipNode(fieldValue, field, controller)
 				if err != nil {
 					return nil, err
 				}
@@ -151,14 +228,14 @@ func visitScopeNode(scope *Scope) (*Node, error) {
 	return node, nil
 }
 
-func visitRelationshipManyNode(manyValue reflect.Value, field *StructField,
+func visitRelationshipManyNode(manyValue reflect.Value, idval reflect.Value, field *StructField, controller *Controller,
 ) (*RelationshipManyNode, error) {
 	nodes := []*Node{}
 
 	for i := 0; i < manyValue.Len(); i++ {
 		elemValue := manyValue.Index(i)
 
-		node, err := visitRelationshipNode(elemValue, field)
+		node, err := visitRelationshipNode(elemValue, field, controller)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +246,8 @@ func visitRelationshipManyNode(manyValue reflect.Value, field *StructField,
 	return &RelationshipManyNode{Data: nodes}, nil
 }
 
-func visitRelationshipNode(value reflect.Value, field *StructField) (*Node, error) {
+func visitRelationshipNode(value reflect.Value, field *StructField, controller *Controller,
+) (*Node, error) {
 	mStruct := field.mStruct
 	prim := mStruct.primary
 	node := &Node{Type: mStruct.collectionType}
@@ -181,6 +259,8 @@ func visitRelationshipNode(value reflect.Value, field *StructField) (*Node, erro
 	if err != nil {
 		return nil, err
 	}
+
+	controller.APIURLBase
 	return node, nil
 }
 
@@ -222,7 +302,7 @@ func setNodePrimary(value reflect.Value, node *Node, field *StructField) (err er
 func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 	vals := reflect.ValueOf(*i)
 	if vals.Kind() != reflect.Slice {
-		return nil, ErrExpectedSlice
+		return nil, IErrExpectedSlice
 	}
 	var response []interface{}
 	for x := 0; x < vals.Len(); x++ {

@@ -43,43 +43,6 @@ func TestFieldByIndex(t *testing.T) {
 	}
 }
 
-func TestCheckRelationships(t *testing.T) {
-	clearMap()
-
-	// let's have some modelstructs with relationships
-	PrecomputeModels(&User{}, &Pet{})
-
-	mStruct := MustGetModelStruct(&User{})
-
-	errs, err := mStruct.checkRelationship("pets")
-	assertNoError(t, err)
-	assertEmpty(t, errs)
-
-	errs, err = mStruct.checkRelationship("pets.owners")
-	assertNilErrors(t, err)
-	assertEmpty(t, errs)
-
-	errs, err = mStruct.checkRelationship("pets.owners.imagined")
-	assertNilErrors(t, err)
-	assertNotEmpty(t, errs)
-	// fmt.Println(errs)
-
-	//Invalid relationship name
-
-	errs, err = mStruct.checkRelationships("petse", "petsa.try")
-	assertNilErrors(t, err)
-	assertNotEmpty(t, errs)
-
-	// if somehow the relationship is not mapped
-	clearMap()
-	buildModelStruct(&User{}, cacheModelMap)
-	mStruct = MustGetModelStruct(&User{})
-
-	_, err = mStruct.checkRelationships("pets.dog")
-	assertError(t, err)
-	clearMap()
-}
-
 func TestCheckAttributes(t *testing.T) {
 	clearMap()
 	PrecomputeModels(&User{}, &Pet{})
