@@ -103,18 +103,18 @@ func (m *ModelStruct) GetFields() []*StructField {
 // FieldByIndex return the StructField for given ModelStruct by the field index
 // if the index is out of the range of Fields or there is no struct field with given index
 // ( private field ) the function returns error
-func (m *ModelStruct) FieldByIndex(index int) (*StructField, error) {
-	if index > len(m.fields)-1 {
-		return nil, fmt.Errorf("Index out of range: %v for fields in model: %s", index, m.modelType)
-	}
+// func (m *ModelStruct) FieldByIndex(index int) (*StructField, error) {
+// 	if index > len(m.fields)-1 {
+// 		return nil, fmt.Errorf("Index out of range: %v for fields in model: %s", index, m.modelType)
+// 	}
 
-	sField := m.fields[index]
-	if sField == nil {
-		return nil, fmt.Errorf("No field with index: %v found for model: %s", index, m.modelType)
-	}
+// 	sField := m.fields[index]
+// 	if sField == nil {
+// 		return nil, fmt.Errorf("No field with index: %v found for model: %s", index, m.modelType)
+// 	}
 
-	return sField, nil
-}
+// 	return sField, nil
+// }
 
 func (m *ModelStruct) SetModelURL(url string) error {
 	return m.setModelURL(url)
