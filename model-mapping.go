@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 // var cacheModelMap *ModelMap
@@ -142,6 +143,24 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
 
+			if len(args) > 2 {
+				for _, arg := range args[2:] {
+					switch arg {
+					case annotationISO8601:
+						structField.iso8601 = true
+					case annotationOmitEmpty:
+						structField.omitempty = true
+					case annotationNoFilter:
+						structField.noFilter = true
+					}
+				}
+			}
+
+			if tField.Type == reflect.TypeOf(time.Time{}) {
+				structField.isTime = true
+			} else if tField.Type == reflect.TypeOf(new(time.Time)) {
+				structField.isPtrTime = true
+			}
 		case annotationClientID:
 			// ClientID is not a part of fields also
 			structField.jsonAPIName = "id"

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -59,7 +58,7 @@ func newRootScope(mStruct *ModelStruct) *Scope {
 
 func newSubScope(modelStruct *ModelStruct, relatedField *StructField) *Scope {
 	scope := &Scope{Struct: modelStruct, RelatedField: relatedField}
-	scope.Value = reflect.New(modelStruct.modelType)
+
 	return scope
 }
 
@@ -284,6 +283,7 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 	}
 	// map collection type to subscope
 	collectionScopes[sub.Struct.collectionType] = sub
+	sub.Fields = sub.Struct.fields
 	s.SubScopes = append(s.SubScopes, sub)
 	sub.Root = s
 	return
@@ -489,7 +489,7 @@ func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
 		errs = append(errs, errObj)
 		return
 	}
-
+	s.Fields = []*StructField{}
 	for _, field := range fields {
 
 		sField, err := s.Struct.checkField(field)

@@ -5,7 +5,7 @@ import "fmt"
 // Payloader is used to encapsulate the One and Many payload types
 type Payloader interface {
 	clearIncluded()
-	getIncluded() *[]*Node
+	setIncluded(included []*Node)
 }
 
 // OnePayload is used to represent a generic JSON API payload where a single
@@ -21,8 +21,8 @@ func (p *OnePayload) clearIncluded() {
 	p.Included = []*Node{}
 }
 
-func (p *OnePayload) getIncluded() *[]*Node {
-	return &p.Included
+func (p *OnePayload) setIncluded(included []*Node) {
+	p.Included = included
 }
 
 // ManyPayload is used to represent a generic JSON API payload where many
@@ -38,8 +38,8 @@ func (p *ManyPayload) clearIncluded() {
 	p.Included = []*Node{}
 }
 
-func (p *ManyPayload) getIncluded() *[]*Node {
-	return &p.Included
+func (p *ManyPayload) setIncluded(included []*Node) {
+	p.Included = included
 }
 
 // Node is used to represent a generic JSON API Resource

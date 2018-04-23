@@ -269,7 +269,7 @@ type StructField struct {
 	// isListRelated
 	isListRelated bool
 
-	omitempty, iso8601 bool
+	omitempty, iso8601, isTime, isPtrTime, noFilter bool
 }
 
 // GetFieldIndex - gets the field index in the given model

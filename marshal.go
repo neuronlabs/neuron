@@ -31,17 +31,25 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 		payloader, err = marshalScopeMany(scope, controller)
 	case reflect.Ptr:
 		payloader, err = marshalScopeOne(scope, controller)
+	default:
+		fmt.Println(scopeValue)
+		err = IErrUnexpectedType
 	}
 	if err != nil {
 		return
 	}
 
+	included := []*Node{}
 	for _, subscope := range scope.SubScopes {
-		err = marshalSubScope(subscope, payloader.getIncluded(), controller)
+		err = marshalSubScope(subscope, &included, controller)
 		if err != nil {
 			return
 		}
 	}
+	if len(included) != 0 {
+		payloader.setIncluded(included)
+	}
+
 	return
 }
 
@@ -122,7 +130,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	primIndex := primStruct.getFieldIndex()
 	primaryVal := modelVal.Field(primIndex)
 
-	err := setNodePrimary(primaryVal, node, primStruct)
+	err := setNodePrimary(primaryVal, node)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +145,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				node.Attributes = make(map[string]interface{})
 			}
 
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+			if field.isTime {
 				t := fieldValue.Interface().(time.Time)
 
 				if t.IsZero() {
@@ -149,7 +157,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				} else {
 					node.Attributes[field.jsonAPIName] = t.Unix()
 				}
-			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+			} else if field.isPtrTime {
 				if fieldValue.IsNil() {
 					if field.omitempty {
 						continue
@@ -193,6 +201,10 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				(isSlice && fieldValue.Len() < 1 || !isSlice && fieldValue.IsNil()) {
 				continue
 			}
+			if node.Relationships == nil {
+				node.Relationships = make(map[string]interface{})
+			}
+
 			// how to handle links?
 			var relLinks *Links
 			if linkableModel, ok := scope.Value.(RelationshipLinkable); ok {
@@ -209,6 +221,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				if err != nil {
 					return nil, err
 				}
+
 				relationship.Links = relLinks
 				relationship.Meta = relMeta
 				node.Relationships[field.jsonAPIName] = relationship
@@ -243,7 +256,7 @@ func visitRelationshipManyNode(
 
 	for i := 0; i < manyValue.Len(); i++ {
 		elemValue := manyValue.Index(i)
-
+		fmt.Println(elemValue.Type())
 		node, err := visitRelationshipNode(elemValue, rootID, field, controller)
 		if err != nil {
 			return nil, err
@@ -252,6 +265,7 @@ func visitRelationshipManyNode(
 		nodes = append(nodes, node)
 
 	}
+
 	return &RelationshipManyNode{Data: nodes}, nil
 }
 
@@ -260,14 +274,18 @@ func visitRelationshipNode(
 	field *StructField,
 	controller *Controller,
 ) (*Node, error) {
-	mStruct := field.mStruct
+	mStruct := field.relatedStruct
 	prim := mStruct.primary
 	node := &Node{Type: mStruct.collectionType}
 
 	index := prim.getFieldIndex()
 
-	nodeValue := value.Index(index)
-	err := setNodePrimary(nodeValue, node, field)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
+	nodeValue := value.Field(index)
+	err := setNodePrimary(nodeValue, node)
 	if err != nil {
 		return nil, err
 	}
@@ -275,12 +293,13 @@ func visitRelationshipNode(
 	return node, nil
 }
 
-func setNodePrimary(value reflect.Value, node *Node, field *StructField) (err error) {
+func setNodePrimary(value reflect.Value, node *Node) (err error) {
 	v := value
 	if v.Kind() == reflect.Ptr {
 		v = reflect.Indirect(v)
 	}
-	switch field.getDereferencedType().Kind() {
+
+	switch v.Kind() {
 	case reflect.String:
 		node.ID = v.Interface().(string)
 	case reflect.Int:
@@ -304,7 +323,7 @@ func setNodePrimary(value reflect.Value, node *Node, field *StructField) (err er
 	case reflect.Uint64:
 		node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
 	default:
-		err = fmt.Errorf("Invalid primary field type: %v.", field.getDereferencedType())
+		err = fmt.Errorf("Invalid primary field type: %v.", v.Type())
 		return err
 	}
 	return nil

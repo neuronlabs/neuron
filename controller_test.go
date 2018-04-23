@@ -158,8 +158,8 @@ func TestBuildScopeMany(t *testing.T) {
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
-	// title, posts and id
-	assertEqual(t, 3, len(scope.Fields))
+	// title, posts
+	assertEqual(t, 2, len(scope.Fields))
 	assertNotEqual(t, scope.Fields[0].fieldName, scope.Fields[1].fieldName)
 
 	// fields error
@@ -224,7 +224,7 @@ func TestBuildScopeSingle(t *testing.T) {
 
 	assertEqual(t, 44, scope.Filters[0].Values[0].Values[0])
 	assertEqual(t, 1, len(scope.SubScopes))
-	assertEqual(t, 1, len(scope.SubScopes[0].Fields))
+	assertEqual(t, scope.SubScopes[0].Fields[0], scope.SubScopes[0].Struct.GetAttributeField("title"))
 
 	// errored
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
