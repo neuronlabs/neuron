@@ -72,7 +72,7 @@ func TestFilterSetValues(t *testing.T) {
 	}
 	assertNil(t, c.PrecomputeModels(&modelWithStringID{}))
 	mStruct := c.MustGetModelStruct(&modelWithStringID{})
-	scope = newRootScope(mStruct)
+	scope = newRootScope(mStruct, false)
 	_, errs = scope.newFilterScope("stringers", []string{"kkk"}, mStruct, "id", "startswith")
 	assertNotEmpty(t, errs)
 

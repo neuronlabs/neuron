@@ -46,7 +46,7 @@ var (
 
 	ErrInvalidResourceName = ErrorObject{
 		Code:   "BRQ006",
-		Title:  "The specified resource name contains invalid characters.",
+		Title:  "The specified resource name is not valid.",
 		Status: "400",
 	}
 

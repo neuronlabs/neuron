@@ -22,7 +22,8 @@ var (
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.
 // Allow concurrent safe gets and sets to the map.
 type ModelMap struct {
-	models map[reflect.Type]*ModelStruct
+	models      map[reflect.Type]*ModelStruct
+	collections map[string]reflect.Type
 	sync.RWMutex
 }
 
@@ -58,7 +59,11 @@ type ModelMap struct {
 // }
 
 func newModelMap() *ModelMap {
-	var modelMap *ModelMap = &ModelMap{models: make(map[reflect.Type]*ModelStruct)}
+	var modelMap *ModelMap = &ModelMap{
+		models:      make(map[reflect.Type]*ModelStruct),
+		collections: make(map[string]reflect.Type),
+	}
+
 	return modelMap
 }
 
@@ -74,6 +79,27 @@ func (m *ModelMap) Get(key reflect.Type) *ModelStruct {
 	m.RLock()
 	defer m.RUnlock()
 	return m.models[key]
+}
+
+func (m *ModelMap) GetByCollection(collection string) *ModelStruct {
+	m.RLock()
+	defer m.RUnlock()
+	t, ok := m.collections[collection]
+	if !ok || t == nil {
+		return nil
+	}
+	return m.models[t]
+}
+
+func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {
+	/**
+
+	TO IMPLEMENT:
+
+	find closest match collection
+
+	*/
+	return []string{}
 }
 
 func buildModelStruct(model interface{}, modelMap *ModelMap) error {

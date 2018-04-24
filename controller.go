@@ -81,7 +81,7 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 		}
 	)
 
-	scope = newRootScope(mStruct)
+	scope = newRootScope(mStruct, true)
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -245,7 +245,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	q := req.URL.Query()
 
-	scope = newRootScope(mStruct)
+	scope = newRootScope(mStruct, true)
 
 	errorObjects = scope.setPrimaryFilterScope(id)
 	if len(errorObjects) != 0 {
@@ -363,6 +363,7 @@ func (c *Controller) PrecomputeModels(models ...interface{}) error {
 		}
 		model.initComputeSortedFields()
 		model.initComputeThisIncludedCount()
+		c.Models.collections[model.collectionType] = model.modelType
 	}
 
 	for _, model := range c.Models.models {

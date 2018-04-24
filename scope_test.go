@@ -23,7 +23,7 @@ func TestScopeSetSortScopes(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&User{})
 	assertNotNil(t, mStruct)
 
-	userRootScope := newRootScope(mStruct)
+	userRootScope := newRootScope(mStruct, false)
 
 	assertNotNil(t, userRootScope)
 
@@ -44,14 +44,14 @@ func TestScopeSetSortScopes(t *testing.T) {
 
 	assertNotNil(t, driverModelStruct)
 
-	driverRootScope := newRootScope(driverModelStruct)
+	driverRootScope := newRootScope(driverModelStruct, false)
 	assertNotNil(t, driverRootScope)
 
 	// let's check duplicates
 	errs = driverRootScope.setSortScopes("name", "-name")
 	assertNotEmpty(t, errs)
 
-	driverRootScope = newRootScope(driverModelStruct)
+	driverRootScope = newRootScope(driverModelStruct, false)
 	// if duplicate is typed more than or equal to three times no more fields are being checked
 	errs = driverRootScope.setSortScopes("name", "-name", "name")
 	assertNotEmpty(t, errs)
@@ -70,7 +70,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&Driver{})
 	assertNotNil(t, mStruct)
 
-	driverRootScope := newRootScope(mStruct)
+	driverRootScope := newRootScope(mStruct, false)
 	assertNotNil(t, driverRootScope)
 
 	// having some included parameter that is valid for given model
@@ -98,7 +98,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	fmt.Println(errs)
 
 	// let's use too many nested includes
-	blogScope = newRootScope(c.MustGetModelStruct(&Blog{}))
+	blogScope = newRootScope(c.MustGetModelStruct(&Blog{}), false)
 	errs = blogScope.buildIncludedScopes("too.many.nesteds")
 
 	assertNotEmpty(t, errs)
@@ -314,7 +314,7 @@ func getBlogScope() *Scope {
 	if err != nil {
 		panic(err)
 	}
-	return newRootScope(c.MustGetModelStruct(&Blog{}))
+	return newRootScope(c.MustGetModelStruct(&Blog{}), true)
 }
 
 func BenchmarkCheckMapStrings(b *testing.B) {

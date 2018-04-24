@@ -207,8 +207,16 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 			// how to handle links?
 			var relLinks *Links
+
 			if linkableModel, ok := scope.Value.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.jsonAPIName)
+			} else if controller.UseLinks {
+
+				link := make(map[string]interface{})
+				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
+				link["related"] = fmt.Sprintf("%s/%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
+				links := Links(link)
+				relLinks = &links
 			}
 
 			var relMeta *Meta
@@ -243,6 +251,15 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				node.Relationships[field.jsonAPIName] = relationship
 			}
 		}
+	}
+
+	if linkable, ok := scope.Value.(Linkable); ok {
+		node.Links = linkable.JSONAPILinks()
+	} else if controller.UseLinks {
+		links := make(map[string]interface{})
+		links["self"] = fmt.Sprintf("%s/%s/%s", c.APIURLBase, scope.Struct.collectionType, node.ID)
+		linksObj := Links(links)
+		node.Links = &(linksObj)
 	}
 	return node, nil
 }

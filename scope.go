@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -49,15 +50,20 @@ type Scope struct {
 	currentErrorCount int
 }
 
-func newRootScope(mStruct *ModelStruct) *Scope {
-	scope := newSubScope(mStruct, nil)
+func newRootScope(mStruct *ModelStruct, multiple bool) *Scope {
+	scope := newSubScope(mStruct, nil, multiple)
 	scope.collectionScopes = make(map[string]*Scope)
 	scope.collectionScopes[mStruct.collectionType] = scope
 	return scope
 }
 
-func newSubScope(modelStruct *ModelStruct, relatedField *StructField) *Scope {
+func newSubScope(modelStruct *ModelStruct, relatedField *StructField, multiple bool) *Scope {
 	scope := &Scope{Struct: modelStruct, RelatedField: relatedField}
+	if relatedField == nil && multiple || (relatedField != nil && relatedField.relatedStruct.modelType.Kind() == reflect.Slice) {
+		scope.Value = reflect.New(reflect.SliceOf(reflect.TypeOf(reflect.New(modelStruct.modelType)))).Elem().Interface()
+	} else {
+		scope.Value = reflect.New(modelStruct.modelType).Interface()
+	}
 
 	return scope
 }
@@ -271,14 +277,23 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 		// Check if no other scope for this collection within given 'subscope' exists
 		sub = s.getScopeForField(sField)
 		if sub == nil {
-			sub = newSubScope(sField.relatedStruct, sField)
+			var isSlice bool
+			if sField.jsonAPIType == RelationshipMultiple {
+				isSlice = true
+			}
+			sub = newSubScope(sField.relatedStruct, sField, isSlice)
+
 		}
 		errs = sub.buildSubScopes(included[index+1:], collectionScopes)
 	} else {
 		// check for duplicates
 		sub = s.getScopeForField(sField)
 		if sub == nil {
-			sub = newSubScope(sField.relatedStruct, sField)
+			var isSlice bool
+			if sField.jsonAPIType == RelationshipMultiple {
+				isSlice = true
+			}
+			sub = newSubScope(sField.relatedStruct, sField, isSlice)
 		}
 	}
 	// map collection type to subscope
