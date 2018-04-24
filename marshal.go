@@ -24,6 +24,10 @@ func MarshalPayload(w io.Writer, payload Payloader) error {
 	return nil
 }
 
+func MarshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
+	return marshalScope(scope, controller)
+}
+
 func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
 	scopeValue := reflect.ValueOf(scope.Value)
 	switch scopeValue.Kind() {
