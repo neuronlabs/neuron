@@ -261,7 +261,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 		node.Links = linkable.JSONAPILinks()
 	} else if controller.UseLinks {
 		links := make(map[string]interface{})
-		links["self"] = fmt.Sprintf("%s/%s/%s", c.APIURLBase, scope.Struct.collectionType, node.ID)
+		links["self"] = fmt.Sprintf("%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID)
 		linksObj := Links(links)
 		node.Links = &(linksObj)
 	}

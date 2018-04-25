@@ -282,6 +282,11 @@ func (s *StructField) GetFieldName() string {
 	return s.fieldName
 }
 
+// GetReflectStructField - gets the reflect.StructField for given field.
+func (s *StructField) GetReflectStructField() reflect.StructField {
+	return s.refStruct
+}
+
 // GetFieldType - gets the field's reflect.Type
 func (s *StructField) GetFieldType() reflect.Type {
 	return s.refStruct.Type

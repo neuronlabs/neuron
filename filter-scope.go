@@ -24,7 +24,9 @@ type FilterOperator int
 const (
 	// Logical Operators
 	OpEqual FilterOperator = iota
+	OpIn
 	OpNotEqual
+	OpNotIn
 	OpGreaterThan
 	OpGreaterEqual
 	OpLessThan
