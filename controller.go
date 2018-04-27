@@ -42,6 +42,8 @@ func New() *Controller {
 	return &Controller{
 		APIURLBase:         "/",
 		Models:             newModelMap(),
+		ErrorLimitMany:     1,
+		ErrorLimitSingle:   1,
 		IncludeNestedLimit: 1,
 	}
 }
@@ -96,8 +98,6 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 			return
 		}
 	}
-	// id is always present
-	scope.Fields = append(scope.Fields, scope.Struct.primary)
 
 	for key, value := range q {
 		if len(value) > 1 {
@@ -160,12 +160,14 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 			addErrors(errorObjects...)
 
 		case key == QueryParamSort:
+			fmt.Println("Sort")
 			splitted := strings.Split(value[0], annotationSeperator)
 
 			errorObjects = scope.setSortScopes(splitted...)
 			addErrors(errorObjects...)
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
+			// fmt.Println("Fields")
 			var splitted []string
 			var er error
 			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
@@ -175,6 +177,7 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 				addErrors(errObj)
 				continue
 			}
+
 			if len(splitted) != 1 {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
@@ -192,7 +195,6 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 			splitValues := strings.Split(value[0], annotationSeperator)
 			errorObjects = fieldsScope.setWorkingFields(splitValues...)
 			addErrors(errorObjects...)
-
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -245,7 +247,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	q := req.URL.Query()
 
-	scope = newRootScope(mStruct, true)
+	scope = newRootScope(mStruct, false)
 
 	errorObjects = scope.setPrimaryFilterScope(id)
 	if len(errorObjects) != 0 {

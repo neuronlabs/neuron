@@ -11,7 +11,7 @@ import (
 // For more information on JSON API error payloads, see the spec here:
 // http://jsonapi.org/format/#document-top-level
 // and here: http://jsonapi.org/format/#error-objects.
-func MarshalErrors(w io.Writer, errorObjects []*ErrorObject) error {
+func MarshalErrors(w io.Writer, errorObjects ...*ErrorObject) error {
 	if err := json.NewEncoder(w).Encode(&ErrorsPayload{Errors: errorObjects}); err != nil {
 		return err
 	}

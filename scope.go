@@ -58,12 +58,34 @@ func newRootScope(mStruct *ModelStruct, multiple bool) *Scope {
 }
 
 func newSubScope(modelStruct *ModelStruct, relatedField *StructField, multiple bool) *Scope {
-	scope := &Scope{Struct: modelStruct, RelatedField: relatedField}
-	if relatedField == nil && multiple || (relatedField != nil && relatedField.relatedStruct.modelType.Kind() == reflect.Slice) {
-		scope.Value = reflect.New(reflect.SliceOf(reflect.TypeOf(reflect.New(modelStruct.modelType)))).Elem().Interface()
-	} else {
-		scope.Value = reflect.New(modelStruct.modelType).Interface()
+	scope := &Scope{
+		Struct:       modelStruct,
+		RelatedField: relatedField,
+		Fields:       []*StructField{modelStruct.primary},
 	}
+	var (
+		makeSlice = func(tp reflect.Type) {
+			scope.Value = reflect.New(reflect.SliceOf(reflect.TypeOf(reflect.New(tp).Interface()))).Interface()
+		}
+		makePtr = func(tp reflect.Type) {
+			scope.Value = reflect.New(tp).Interface()
+		}
+	)
+
+	var tp reflect.Type
+
+	if relatedField == nil {
+		tp = modelStruct.modelType
+	} else {
+		tp = relatedField.relatedModelType
+	}
+	if multiple {
+		makeSlice(tp)
+	} else {
+		makePtr(tp)
+	}
+
+	// fmt.Printf("Scope val type: %v\n", reflect.TypeOf(scope.Value))
 
 	return scope
 }
@@ -75,6 +97,19 @@ func newSubScope(modelStruct *ModelStruct, relatedField *StructField, multiple b
 // func (s *Scope) GetSortScopes() (fields []*SortScope) {
 // 	return s.Sorts
 // }
+
+func (s *Scope) GetFilterScopes() (filters []*FilterScope) {
+	for _, fScope := range s.Filters {
+		filters = append(filters, fScope)
+	}
+	return
+}
+
+func (s *Scope) GetManyValues() ([]interface{}, error) {
+	var v interface{}
+	v = reflect.ValueOf(s.Value).Elem().Interface()
+	return convertToSliceInterface(&v)
+}
 
 // func (s *Scope) SetFilteredField(fieldApiName string, values []string, operator FilterOperator,
 // ) (errs []*ErrorObject, err error) {
@@ -497,14 +532,14 @@ func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
 	var (
 		errObj *ErrorObject
 	)
-
+	fmt.Println(fields)
 	if len(fields) > s.Struct.getWorkingFieldCount() {
 		errObj = ErrInvalidQueryParameter.Copy()
 		errObj.Detail = fmt.Sprintf("Too many fields to set.")
 		errs = append(errs, errObj)
 		return
 	}
-	s.Fields = []*StructField{}
+
 	for _, field := range fields {
 
 		sField, err := s.Struct.checkField(field)
@@ -537,15 +572,28 @@ func (s *Scope) preparePaginatedValue(key, value string, index int) *ErrorObject
 	switch index {
 	case 0:
 		s.PaginationScope.Limit = val
+		s.PaginationScope.Type = OffsetPaginate
 	case 1:
 		s.PaginationScope.Offset = val
+		s.PaginationScope.Type = OffsetPaginate
 	case 2:
 		s.PaginationScope.PageNumber = val
+		s.PaginationScope.Type = PagePaginate
 	case 3:
 		s.PaginationScope.PageSize = val
+		s.PaginationScope.Type = PagePaginate
 	}
 	return nil
 }
+
+// PaginationType is the enum that describes the type of pagination
+type PaginationType int
+
+const (
+	OffsetPaginate PaginationType = iota
+	PagePaginate
+	CursorPaginate
+)
 
 type PaginationScope struct {
 	Limit      int
@@ -555,6 +603,23 @@ type PaginationScope struct {
 
 	UseTotal bool
 	Total    int
+
+	// Describes which pagination type to use.
+	Type PaginationType
+}
+
+func (p *PaginationScope) GetLimitOffset() (limit, offset int) {
+	switch p.Type {
+	case OffsetPaginate:
+		limit = p.Limit
+		offset = p.Offset
+	case PagePaginate:
+		limit = p.PageSize
+		offset = p.PageNumber * p.PageSize
+	case CursorPaginate:
+		// not implemented yet
+	}
+	return
 }
 
 func (p *PaginationScope) check() error {

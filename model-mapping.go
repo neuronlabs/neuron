@@ -143,9 +143,11 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		}
 
 		args := strings.Split(tag, annotationSeperator)
-		if len(args) == 1 && args[0] != annotationClientID {
-			err = errBadJSONAPIStructTag
-			break
+		if len(args) == 1 {
+			if args[0] != annotationClientID && args[0] != "-" {
+				err = fmt.Errorf("Bad JSONAPI struct tag format: %s for model: %v", tag, modelType)
+				break
+			}
 		}
 
 		var resName string

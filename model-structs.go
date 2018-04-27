@@ -303,6 +303,14 @@ func (s *StructField) GetJSONAPIType() JSONAPIType {
 	return s.jsonAPIType
 }
 
+func (s *StructField) IsRelationship() bool {
+	var isRelationship bool
+	if s.jsonAPIType == RelationshipMultiple || s.jsonAPIType == RelationshipSingle {
+		isRelationship = true
+	}
+	return isRelationship
+}
+
 func (s *StructField) canBeSorted() bool {
 	switch s.jsonAPIType {
 	case RelationshipSingle, RelationshipMultiple, Attribute:

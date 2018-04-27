@@ -30,10 +30,10 @@ func MarshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 
 func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
 	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Kind() {
+	switch scopeValue.Elem().Kind() {
 	case reflect.Slice:
 		payloader, err = marshalScopeMany(scope, controller)
-	case reflect.Ptr:
+	case reflect.Struct:
 		payloader, err = marshalScopeOne(scope, controller)
 	default:
 		fmt.Println(scopeValue)
@@ -103,7 +103,8 @@ func marshalScopeMany(scope *Scope, controller *Controller) (*ManyPayload, error
 
 func visitScopeManyNodes(scope *Scope, controller *Controller,
 ) ([]*Node, error) {
-	valSlice, err := convertToSliceInterface(&scope.Value)
+	valInterface := reflect.ValueOf(scope.Value).Elem().Interface()
+	valSlice, err := convertToSliceInterface(&valInterface)
 	if err != nil {
 		return nil, err
 	}
