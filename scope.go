@@ -27,8 +27,20 @@ type Scope struct {
 	// Root defines the root of the provided scope
 	Root *Scope
 
-	// Included subscopes
+	// Subscopes contains filters, fieldsets and values for given included collection
+	// every collection that is inclued would contain it's subscope
+	// if filters, fieldsets are set for non-included scope error should occur
 	SubScopes []*Scope
+
+	// Included contain fields (and its subfields included)
+	Included []*IncludeScope
+
+	// when subscope is for given collection type
+	// then in order to avoid duplicates
+	// when combining from relationships
+	// the key is the primary key
+	// the value is whole entity
+	IncludeValues map[interface{}]interface{}
 
 	// Value is a value for given subscope
 	Value interface{}
