@@ -216,7 +216,7 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 
 	// if none fields were set
 	if len(scope.Fields) <= 1 {
-		scope.Fields = scope.Struct.fields
+		scope.Fields = append(scope.Fields, scope.Struct.fields...)
 	}
 	return
 }
@@ -314,6 +314,10 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 		if scope.currentErrorCount >= c.ErrorLimitSingle {
 			return
 		}
+	}
+
+	if len(scope.Fields) <= 1 {
+		scope.Fields = append(scope.Fields, scope.Struct.fields...)
 	}
 
 	return

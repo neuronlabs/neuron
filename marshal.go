@@ -36,7 +36,6 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	case reflect.Struct:
 		payloader, err = marshalScopeOne(scope, controller)
 	default:
-		fmt.Println(scopeValue)
 		err = IErrUnexpectedType
 	}
 	if err != nil {
@@ -60,14 +59,15 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) error {
 	// get this
 	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Kind() {
+	switch scopeValue.Elem().Kind() {
 	case reflect.Slice:
 		nodes, err := visitScopeManyNodes(scope, controller)
 		if err != nil {
 			return err
 		}
+		fmt.Println(nodes)
 		*included = append(*included, nodes...)
-	case reflect.Ptr:
+	case reflect.Struct:
 		node, err := visitScopeNode(scope.Value, scope, controller)
 		if err != nil {
 			return err
@@ -124,6 +124,7 @@ func visitScopeManyNodes(scope *Scope, controller *Controller,
 func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 ) (*Node, error) {
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
+		fmt.Println(reflect.TypeOf(value))
 		return nil, IErrUnexpectedType
 	}
 	node := &Node{Type: scope.Struct.collectionType}

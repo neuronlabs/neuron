@@ -333,7 +333,7 @@ func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Sco
 	}
 	// map collection type to subscope
 	collectionScopes[sub.Struct.collectionType] = sub
-	sub.Fields = sub.Struct.fields
+	sub.Fields = append(sub.Fields, sub.Struct.fields...)
 	s.SubScopes = append(s.SubScopes, sub)
 	sub.Root = s
 	return
