@@ -14,105 +14,81 @@ var (
 )
 
 var (
+	// used for errors
 	maxPermissibleDuplicates = 3
 )
 
+// Scope contains information about given query for specific collection
+// if the query defines the different collection than the main scope, then
+// every detail about querying (fieldset, filters, sorts) are within new scopes
+// kept in the Subscopes
 type Scope struct {
 	// Struct is a modelStruct this scope is based on
 	Struct *ModelStruct
 
-	// RelatedField is a structField to which Subscope this one belongs to
-	RelatedField *StructField
-
-	// Root defines the root of the provided scope
-	Root *Scope
-
-	// Subscopes contains filters, fieldsets and values for given included collection
-	// every collection that is inclued would contain it's subscope
-	// if filters, fieldsets are set for non-included scope error should occur
-	SubScopes []*Scope
-
-	// Included contain fields (and its subfields included)
-	Included []*IncludeScope
-
-	// when subscope is for given collection type
-	// then in order to avoid duplicates
-	// when combining from relationships
-	// the key is the primary key
-	// the value is whole entity
-	IncludeValues map[interface{}]interface{}
-
-	// Value is a value for given subscope
+	// Value is the values or / value of the queried object / objects
 	Value interface{}
 
-	// Filters contain fields by which the main value is being filtered.
-	Filters map[int]*FilterScope
+	// CollectionScopes contains filters, fieldsets and values for included collections
+	// every collection that is inclued would contain it's subscope
+	// if filters, fieldsets are set for non-included scope error should occur
+	IncludedScopes map[*ModelStruct]*Scope
 
-	// Fields represents fields used for this subscope - jsonapi 'fields[collection]'
-	Fields []*StructField
+	// Included contain fields to include. If the included field is a relationship type, then
+	// specific includefield contains information about it
+	IncludedFields []*IncludeField
 
-	// SortScopes
-	Sorts []*SortScope
+	// IncludeValues contain unique values for given include fields
+	// the key is the - primary key value
+	IncludeValues map[interface{}]struct{}
 
-	// PaginationScope
-	PaginationScope *PaginationScope
+	// PrimaryFilters contain filter for the primary field
+	PrimaryFilters []*FilterField
 
-	collectionScopes map[string]*Scope
+	// RelationshipFilters contain relationship field filters
+	RelationshipFilters []*FilterField
 
-	currentErrorCount int
+	// AttributeFilters contain fitler for the attribute fields
+	AttributeFilters []*FilterField
+
+	// Fields represents fieldset used for this scope - jsonapi 'fields[collection]'
+	Fieldset []*StructField
+
+	// SortFields
+	Sorts []*SortField
+
+	// Pagination
+	Pagination *Pagination
+
+	errorLimit     int
+	maxNestedLevel int
 }
 
-func newRootScope(mStruct *ModelStruct, multiple bool) *Scope {
-	scope := newSubScope(mStruct, nil, multiple)
-	scope.collectionScopes = make(map[string]*Scope)
-	scope.collectionScopes[mStruct.collectionType] = scope
-	return scope
-}
-
-func newSubScope(modelStruct *ModelStruct, relatedField *StructField, multiple bool) *Scope {
+// initialize new scope with added primary field to fieldset
+func newScope(modelStruct *ModelStruct) *Scope {
 	scope := &Scope{
-		Struct:       modelStruct,
-		RelatedField: relatedField,
-		Fields:       []*StructField{modelStruct.primary},
+		Struct:   modelStruct,
+		Fieldset: []*StructField{modelStruct.primary},
 	}
-	var (
-		makeSlice = func(tp reflect.Type) {
-			scope.Value = reflect.New(reflect.SliceOf(reflect.TypeOf(reflect.New(tp).Interface()))).Interface()
-		}
-		makePtr = func(tp reflect.Type) {
-			scope.Value = reflect.New(tp).Interface()
-		}
-	)
-
-	var tp reflect.Type
-
-	if relatedField == nil {
-		tp = modelStruct.modelType
-	} else {
-		tp = relatedField.relatedModelType
-	}
-	if multiple {
-		makeSlice(tp)
-	} else {
-		makePtr(tp)
-	}
-
-	// fmt.Printf("Scope val type: %v\n", reflect.TypeOf(scope.Value))
-
 	return scope
 }
 
-// func (s *Scope) GetFields() []*StructField {
-// 	return s.Fields
-// }
+func newIncludedScope(modelStruct *ModelStruct) *Scope {
+	scope := &Scope{
+		Struct: modelStruct,
+	}
+	scope.Fieldset = append(scope.Fieldset, modelStruct.primary, modelStruct.fields...)
+	return scope
+}
 
-// func (s *Scope) GetSortScopes() (fields []*SortScope) {
-// 	return s.Sorts
-// }
+// Returns the collection name for given scope
+func (s *Scope) GetCollection() string {
+	return s.Struct.collectionType
+}
 
-func (s *Scope) GetFilterScopes() (filters []*FilterScope) {
-	for _, fScope := range s.Filters {
-		filters = append(filters, fScope)
+func (s *Scope) GetIncludedPrimaries() (primaries []interface{}) {
+	for k := range s.IncludeValues {
+		primaries = append(primaries, k)
 	}
 	return
 }
@@ -138,8 +114,150 @@ func (s *Scope) setPrimaryFilterScope(value string) (errs []*ErrorObject) {
 	return
 }
 
-// SetSortScopes sets the sort fields for given string array.
-func (s *Scope) setSortScopes(sorts ...string) (errs []*ErrorObject) {
+// buildIncludeList provide fast checks for the includedList
+// if given include passes use buildInclude method on it.
+func (s *Scope) buildIncludeList(includedList ...string,
+) (errs []*ErrorObject) {
+	var errorObjects []*ErrorObject
+	var errObj *ErrorObject
+
+	// check if the number of included fields is possible
+	if len(includedList) > s.Struct.getMaxIncludedCount() {
+		errObj = ErrOutOfRangeQueryParameterValue.Copy()
+		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
+			s.Struct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+
+	var includedMap map[string]int
+
+	// many includes flag if there is more than one include
+	var manyIncludes bool = len(includedList) > 1
+
+	if manyIncludes {
+		includedMap = make(map[string]int)
+	}
+
+	// having multiple included in the query
+	for _, included := range includedList {
+
+		// check the nested level of every included
+		annotCount := strings.Count(included, annotationNestedSeperator)
+		if annotCount > s.maxNestedLevel {
+			errs = append(errs, ErrTooManyNestedRelationships(included))
+			continue
+		}
+
+		// if there are more than one include
+		if manyIncludes {
+
+			// assert no duplicates are provided in the include list
+			includedCount := includedMap[included]
+			includedCount++
+			includedMap[included] = includedCount
+			if annotCount == 0 && includedCount > 1 {
+				if includedCount == 2 {
+					errObj = ErrInvalidQueryParameter.Copy()
+					errObj.Detail = fmt.Sprintf("Included parameter '%s' used more than once.", included)
+					errs = append(errs, errObj)
+					continue
+				} else if includedCount >= maxPermissibleDuplicates {
+					break
+				}
+			}
+		}
+
+		errs = append(errs, s.buildInclude(included)...)
+		if len(errs) >= s.errorLimit {
+			return
+		}
+	}
+	return
+}
+
+// buildInclude searches for the relationship field within given scope
+// if not found, then tries to seperate the 'included' argument
+// by the 'annotationNestedSeperator'. If seperated correctly
+// it tries to create nested fields.
+// adds IncludeScope for given field.
+func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
+	// relationScope is the scope for the included field
+	var (
+		includeField  *IncludeField
+		isNew         bool
+		relationScope *Scope
+	)
+
+	// search for the 'included' in the model's
+	relationField, ok := s.Struct.relationships[included]
+	if !ok {
+		// no relationship found check nesteds
+		index := strings.Index(included, annotationNestedSeperator)
+		if index == -1 {
+			errs = append(errs, errNoRelationship(s.Struct.collectionType, included))
+			return
+		}
+
+		// root part of included (root.subfield)
+		field := included[:index]
+		relationField, ok := s.Struct.relationships[root]
+		if !ok {
+			errs = append(errs, errNoRelationship(s.Struct.collectionType, field))
+			return
+		}
+
+		// get or create new scope for the included field's collection
+		relationScope = s.createOrGetIncludedScope(relationField.relatedStruct)
+
+		// create new included field
+		includeField, isNew = s.createOrGetIncludeField(relationField, relationScope)
+
+		// set nested fields for includeField
+		errs = append(errs, includeField.buildNestedInclude(included[index+1:], s)...)
+		if errs != nil {
+			return
+		}
+	} else {
+		// get or create new scope for the included field's collection
+		relationScope = s.createOrGetIncludedScope(relationField.relatedStruct)
+
+		// create new includedField
+		includeField, isNew = s.createOrGetIncludeField(relationField, relationScope)
+	}
+
+	if isNew {
+		s.IncludedFields = append(s.IncludedFields, includeField)
+	}
+	return
+}
+
+// createOrGetIncludedScope checks if includeScope exists within given scope.
+// if exists returns it, otherwise create new and returns it.
+func (s *Scope) createOrGetIncludedScope(mStruct *ModelStruct) *Scope {
+	scope, ok := s.IncludedScopes[mStruct]
+	if !ok {
+		scope = newIncludedScope(mStruct)
+		s.IncludedScopes[mStruct] = scope
+	}
+	return scope
+}
+
+// createOrGetIncludeField checks if given include field exists within given scope.
+// if not found create new include field.
+// returns the include field and the flag 'isNew' if the field were newly created.
+func (s *Scope) createOrGetIncludeField(field *StructField, scope *Scope,
+) (includeField *IncludeField, isNew bool) {
+	for _, included := range s.IncludedFields {
+		if included.getFieldIndex() == field.getFieldIndex() {
+			return included, false
+		}
+	}
+	return newIncludeField(field, scope), true
+}
+
+// setSortFields sets the sort fields for given string array.
+func (s *Scope) setSortFields(sorts ...string) (errs []*ErrorObject) {
 	var (
 		err      *ErrorObject
 		order    Order
@@ -185,169 +303,13 @@ func (s *Scope) setSortScopes(sorts ...string) (errs []*ErrorObject) {
 			}
 		}
 
-		invalidField = s.newSortScope(sort, order)
+		invalidField = newSortField(sort, order, s)
 		if invalidField {
 			badField(sort)
 			continue
 		}
 
 	}
-	return
-}
-
-func (s *Scope) newSortScope(sort string, order Order) (invalidField bool) {
-	var (
-		sField    *StructField
-		ok        bool
-		sortScope *SortScope
-	)
-
-	splitted := strings.Split(sort, annotationNestedSeperator)
-	l := len(splitted)
-	switch {
-	case l == 1:
-		if sort == annotationID {
-			sField = s.Struct.primary
-		} else {
-			sField, ok = s.Struct.attributes[sort]
-			if !ok {
-				invalidField = true
-				return
-			}
-		}
-		sortScope = &SortScope{Field: sField, Order: order}
-		s.Sorts = append(s.Sorts, sortScope)
-	case l <= (maxNestedRelLevel + 1):
-		sField, ok = s.Struct.relationships[splitted[0]]
-
-		if !ok {
-
-			invalidField = true
-			return
-		}
-		// if true then the nested should be an attribute for given
-		var found bool
-		for i := range s.Sorts {
-			if s.Sorts[i].Field.getFieldIndex() == sField.getFieldIndex() {
-				sortScope = s.Sorts[i]
-				found = true
-				break
-			}
-		}
-		if !found {
-			sortScope = &SortScope{Field: sField}
-		}
-		invalidField = sortScope.setRelationScope(splitted[1:], order)
-		if !found && !invalidField {
-			s.Sorts = append(s.Sorts, sortScope)
-		}
-		return
-	default:
-		invalidField = true
-	}
-	return
-
-}
-
-func (s *Scope) buildIncludedScopes(includedList ...string,
-) (errs []*ErrorObject) {
-	var errorObjects []*ErrorObject
-	var errObj *ErrorObject
-
-	if len(includedList) > s.Struct.getMaxIncludedCount() {
-		errObj = ErrOutOfRangeQueryParameterValue.Copy()
-		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
-			s.Struct.collectionType)
-		errs = append(errs, errObj)
-		return
-	}
-
-	var includedMap map[string]int
-
-	// many includes flag if there is more than one include
-	var manyIncludes bool = len(includedList) > 1
-
-	if manyIncludes {
-		includedMap = make(map[string]int)
-	}
-
-	for _, included := range includedList {
-		annotCount := strings.Count(included, annotationNestedSeperator)
-		if annotCount > maxNestedRelLevel {
-			errs = append(errs, ErrTooManyNestedRelationships(included))
-			continue
-		}
-
-		if manyIncludes {
-			includedCount := includedMap[included]
-			includedCount++
-			includedMap[included] = includedCount
-			if annotCount == 0 && includedCount > 1 {
-				if includedCount == 2 {
-					errObj = ErrInvalidQueryParameter.Copy()
-					errObj.Detail = fmt.Sprintf("Included parameter '%s' used more than once.", included)
-					errs = append(errs, errObj)
-					continue
-				} else if includedCount >= maxPermissibleDuplicates {
-					break
-				}
-			}
-		}
-
-		errorObjects = s.buildSubScopes(included, s.collectionScopes)
-		errs = append(errs, errorObjects...)
-	}
-	return
-}
-
-// build sub scopes for provided included argument.
-func (s *Scope) buildSubScopes(included string, collectionScopes map[string]*Scope,
-) (errs []*ErrorObject) {
-
-	var sub *Scope
-
-	// Check if the included is in relationships
-	sField, ok := s.Struct.relationships[included]
-	if !ok {
-		index := strings.Index(included, annotationNestedSeperator)
-		if index == -1 {
-			errs = append(errs, errNoRelationship(s.Struct.collectionType, included))
-			return
-		}
-
-		seperated := included[:index]
-		sField, ok := s.Struct.relationships[seperated]
-		if !ok {
-			errs = append(errs, errNoRelationship(s.Struct.collectionType, seperated))
-			return
-		}
-		// Check if no other scope for this collection within given 'subscope' exists
-		sub = s.getScopeForField(sField)
-		if sub == nil {
-			var isSlice bool
-			if sField.jsonAPIType == RelationshipMultiple {
-				isSlice = true
-			}
-			sub = newSubScope(sField.relatedStruct, sField, isSlice)
-
-		}
-		errs = sub.buildSubScopes(included[index+1:], collectionScopes)
-	} else {
-		// check for duplicates
-		sub = s.getScopeForField(sField)
-		if sub == nil {
-			var isSlice bool
-			if sField.jsonAPIType == RelationshipMultiple {
-				isSlice = true
-			}
-			sub = newSubScope(sField.relatedStruct, sField, isSlice)
-		}
-	}
-	// map collection type to subscope
-	collectionScopes[sub.Struct.collectionType] = sub
-	sub.Fields = append(sub.Fields, sub.Struct.fields...)
-	s.SubScopes = append(s.SubScopes, sub)
-	sub.Root = s
 	return
 }
 
@@ -359,7 +321,7 @@ func (s *Scope) newFilterScope(
 	values []string,
 	m *ModelStruct,
 	splitted ...string,
-) (fField *FilterScope, errs []*ErrorObject) {
+) (fField *FilterField, errs []*ErrorObject) {
 	var (
 		sField    *StructField
 		op        FilterOperator
@@ -392,7 +354,7 @@ func (s *Scope) newFilterScope(
 			}
 
 			if fField == nil {
-				fField = new(FilterScope)
+				fField = new(FilterField)
 				fField.Field = sField
 				if sameStruct {
 					s.Filters[sField.getFieldIndex()] = fField
@@ -403,7 +365,7 @@ func (s *Scope) newFilterScope(
 	)
 
 	if s.Filters == nil {
-		s.Filters = make(map[int]*FilterScope)
+		s.Filters = make(map[int]*FilterField)
 	}
 
 	// check if any parameters are set for filtering
@@ -457,8 +419,8 @@ func (s *Scope) newFilterScope(
 				// if field were already used
 				setFilterScope()
 
-				// relFilter is a FilterScope for specific field in relationship
-				var relFilter *FilterScope
+				// relFilter is a FilterField for specific field in relationship
+				var relFilter *FilterField
 
 				relFilter, errObjects = s.newFilterScope(
 					fieldName,
@@ -497,7 +459,7 @@ func (s *Scope) newFilterScope(
 		}
 		setFilterScope()
 
-		var relFilter *FilterScope
+		var relFilter *FilterField
 
 		// get relationship's filter for specific field (filterfield)
 		relFilter, errObjects = s.newFilterScope(
@@ -570,7 +532,7 @@ func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
 
 }
 
-func (s *Scope) preparePaginatedValue(key, value string, index int) *ErrorObject {
+func (s *RootScope) preparePaginatedValue(key, value string, index int) *ErrorObject {
 	val, err := strconv.Atoi(value)
 	if err != nil {
 		errObj := ErrInvalidQueryParameter.Copy()
@@ -578,74 +540,22 @@ func (s *Scope) preparePaginatedValue(key, value string, index int) *ErrorObject
 		return errObj
 	}
 
-	if s.PaginationScope == nil {
-		s.PaginationScope = &PaginationScope{}
+	if s.Pagination == nil {
+		s.Pagination = &Pagination{}
 	}
 	switch index {
 	case 0:
-		s.PaginationScope.Limit = val
-		s.PaginationScope.Type = OffsetPaginate
+		s.Pagination.Limit = val
+		s.Pagination.Type = OffsetPaginate
 	case 1:
-		s.PaginationScope.Offset = val
-		s.PaginationScope.Type = OffsetPaginate
+		s.Pagination.Offset = val
+		s.Pagination.Type = OffsetPaginate
 	case 2:
-		s.PaginationScope.PageNumber = val
-		s.PaginationScope.Type = PagePaginate
+		s.Pagination.PageNumber = val
+		s.Pagination.Type = PagePaginate
 	case 3:
-		s.PaginationScope.PageSize = val
-		s.PaginationScope.Type = PagePaginate
-	}
-	return nil
-}
-
-// PaginationType is the enum that describes the type of pagination
-type PaginationType int
-
-const (
-	OffsetPaginate PaginationType = iota
-	PagePaginate
-	CursorPaginate
-)
-
-type PaginationScope struct {
-	Limit      int
-	Offset     int
-	PageNumber int
-	PageSize   int
-
-	UseTotal bool
-	Total    int
-
-	// Describes which pagination type to use.
-	Type PaginationType
-}
-
-func (p *PaginationScope) GetLimitOffset() (limit, offset int) {
-	switch p.Type {
-	case OffsetPaginate:
-		limit = p.Limit
-		offset = p.Offset
-	case PagePaginate:
-		limit = p.PageSize
-		offset = p.PageNumber * p.PageSize
-	case CursorPaginate:
-		// not implemented yet
-	}
-	return
-}
-
-func (p *PaginationScope) check() error {
-	var offsetBased, pageBased bool
-	if p.Limit != 0 || p.Offset != 0 {
-		offsetBased = true
-	}
-	if p.PageNumber != 0 || p.PageSize != 0 {
-		pageBased = true
-	}
-
-	if offsetBased && pageBased {
-		err := errors.New("Both offset-based and page-based pagination are set.")
-		return err
+		s.Pagination.PageSize = val
+		s.Pagination.Type = PagePaginate
 	}
 	return nil
 }

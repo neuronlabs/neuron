@@ -19,7 +19,7 @@ type Controller struct {
 
 	// Pagination is a pagination scope that defines default pagination.
 	// If nil then the value would not be included
-	Pagination *PaginationScope
+	Pagination *Pagination
 
 	// ErrorLimitMany defiens how fast should the many scope building function finish when error
 	// occurs.
@@ -205,8 +205,8 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 			return
 		}
 	}
-	if scope.PaginationScope != nil {
-		er := scope.PaginationScope.check()
+	if scope.Pagination != nil {
+		er := scope.Pagination.check()
 		if er != nil {
 			errObj = ErrInvalidQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("Pagination parameters are not valid. %s", er)
@@ -383,6 +383,104 @@ func (c *Controller) SetAPIURL(url string) error {
 	// manage the url
 	c.APIURLBase = url
 	return nil
+}
+
+func (c *Controller) buildIncludedScopes(rootScope *Scope, includedList ...string,
+) (errs []*ErrorObject) {
+	var errorObjects []*ErrorObject
+	var errObj *ErrorObject
+
+	if len(includedList) > rootScope.Struct.getMaxIncludedCount() {
+		errObj = ErrOutOfRangeQueryParameterValue.Copy()
+		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
+			rootScope.Struct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+
+	var includedMap map[string]int
+
+	// many includes flag if there is more than one include
+	var manyIncludes bool = len(includedList) > 1
+
+	if manyIncludes {
+		includedMap = make(map[string]int)
+	}
+
+	// having multiple included in the query
+	for _, included := range includedList {
+
+		// check the nested level of every included
+		annotCount := strings.Count(included, annotationNestedSeperator)
+		if annotCount > c.IncludeNestedLimit {
+			errs = append(errs, ErrTooManyNestedRelationships(included))
+			continue
+		}
+
+		// if there are more than one include
+		if manyIncludes {
+
+			// assert no duplicates are provided in the include list
+			includedCount := includedMap[included]
+			includedCount++
+			includedMap[included] = includedCount
+			if annotCount == 0 && includedCount > 1 {
+				if includedCount == 2 {
+					errObj = ErrInvalidQueryParameter.Copy()
+					errObj.Detail = fmt.Sprintf("Included parameter '%s' used more than once.", included)
+					errs = append(errs, errObj)
+					// continue in order to get more errors
+					continue
+				} else if includedCount >= maxPermissibleDuplicates {
+					// but if there is more than one duplicate
+					// it ends fast
+					break
+				}
+			}
+		}
+
+		// build subscopes should build subscope for given gollection
+		errorObjects = rootScope.buildSubScopes(included, rootScope.collectionScopes)
+
+		// the fields should be added to IncludeFields
+
+		errs = append(errs, errorObjects...)
+	}
+	return
+}
+
+func (c *Controller) buildIncluded(rootScope *Scope, included string) (errs []*ErrorObject) {
+		var sub *Scope
+
+	sField, ok := rootScope.Struct.relationships[included]
+	if !ok {
+		// no relationship found check nesteds
+		index := strings.Index(included, annotationNestedSeperator)
+		if index == -1 {
+			errs = append(errs, errNoRelationship(rootScope.Struct.collectionType, included))
+			return
+		}
+
+		seperated := included[:index]
+		sField, ok := rootScope.Struct.relationships[seperated]
+		if !ok {
+			errs = append(errs, errNoRelationship(rootScope.Struct.collectionType, seperated))
+			return
+		}
+
+
+		// Check if no other scope for this collection within given 'subscope' exists
+		// sub = rootScope.getScopeForField(sField)
+		sub = rootScope.collectionScopes[sField.refStruct.Type]
+		if sub == nil {
+			var isSlice bool
+			if sField.jsonAPIType == RelationshipMultiple {
+				isSlice = true
+			}
+			sub = newSubScope(sField.relatedStruct, sField, isSlice)
+
+		}
+		errs = sub.buildSubScopes(included[index+1:], collectionScopes)
 }
 
 func (c *Controller) checkModelRelationships(model *ModelStruct) (err error) {

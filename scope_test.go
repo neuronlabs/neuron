@@ -275,9 +275,9 @@ func TestNewFilterScope(t *testing.T) {
 // }
 
 func BenchmarkEmptyMap(b *testing.B) {
-	var mp map[int]*FilterScope
+	var mp map[int]*FilterField
 	for i := 0; i < b.N; i++ {
-		mp = make(map[int]*FilterScope)
+		mp = make(map[int]*FilterField)
 	}
 	if mp != nil {
 	}
@@ -287,11 +287,11 @@ func BenchmarkEmptySlice(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
 
-	var arr []*FilterScope
+	var arr []*FilterField
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < l; j++ {
-			arr = append(arr, &FilterScope{})
+			arr = append(arr, &FilterField{})
 		}
 		arr = nil
 	}
@@ -300,9 +300,9 @@ func BenchmarkEmptySlice(b *testing.B) {
 func BenchmarkEmptyArr(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
-	var arr []*FilterScope
+	var arr []*FilterField
 	for i := 0; i < b.N; i++ {
-		arr = make([]*FilterScope, l)
+		arr = make([]*FilterField, l)
 	}
 	if len(arr) == 0 {
 

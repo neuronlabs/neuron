@@ -91,18 +91,21 @@ type FilterValues struct {
 	Operator FilterOperator
 }
 
-type FilterScope struct {
+// FilterField is a field that contains information about filters
+type FilterField struct {
 	Field *StructField
 
-	// AttrFilters are the filter values for given attribute FilterScope
+	// AttrFilters are the filter values for given attribute FilterField
 	Values []*FilterValues
 
-	// Relationships are the filter values for given relationship FilterScope
-	Relationships []*FilterScope
+	// if given filterField is a relationship type it should be filter by it's
+	// subfields (for given relation type).
+	// Relationships are the filter values for given relationship FilterField
+	Relationships []*FilterField
 }
 
 // setValues set the string type values to the related field values
-func (f *FilterScope) setValues(collection string, values []string, op FilterOperator,
+func (f *FilterField) setValues(collection string, values []string, op FilterOperator,
 ) (errs []*ErrorObject) {
 	// var errObj *ErrorObject
 	var (
@@ -179,7 +182,7 @@ func (f *FilterScope) setValues(collection string, values []string, op FilterOpe
 	return
 }
 
-func (f *FilterScope) appendRelFilter(appendFilter *FilterScope) {
+func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
 	var found bool
 	for _, rel := range f.Relationships {
 		if rel.Field.getFieldIndex() == appendFilter.Field.getFieldIndex() {

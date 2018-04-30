@@ -9,11 +9,11 @@ func TestSetRelationScopeSort(t *testing.T) {
 	assertNil(t, err)
 	mStruct := c.MustGetModelStruct(&Blog{})
 
-	sortScope := &SortScope{Field: mStruct.GetPrimaryField()}
+	sortScope := &SortField{Field: mStruct.GetPrimaryField()}
 	inv := sortScope.setRelationScope([]string{}, AscendingOrder)
 	assertTrue(t, inv)
 
-	sortScope = &SortScope{Field: mStruct.relationships["posts"]}
+	sortScope = &SortField{Field: mStruct.relationships["posts"]}
 	inv = sortScope.setRelationScope([]string{}, AscendingOrder)
 	assertTrue(t, inv)
 

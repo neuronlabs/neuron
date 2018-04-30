@@ -303,12 +303,13 @@ func (s *StructField) GetJSONAPIType() JSONAPIType {
 	return s.jsonAPIType
 }
 
+// IsRelationship checks if given field is a relationship
 func (s *StructField) IsRelationship() bool {
-	var isRelationship bool
-	if s.jsonAPIType == RelationshipMultiple || s.jsonAPIType == RelationshipSingle {
-		isRelationship = true
-	}
-	return isRelationship
+	return s.isRelationship()
+}
+
+func (s *StructField) isRelationship() bool {
+	return s.jsonAPIType == RelationshipMultiple || s.jsonAPIType == RelationshipSingle
 }
 
 func (s *StructField) canBeSorted() bool {

@@ -51,7 +51,7 @@ func TestFilterSetValues(t *testing.T) {
 	errs := scope.buildIncludedScopes("posts")
 
 	assertEmpty(t, errs)
-	var f *FilterScope
+	var f *FilterField
 	f, errs = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "id", "eq")
 
 	assertEmpty(t, errs)

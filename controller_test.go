@@ -47,7 +47,7 @@ func TestBuildScopeMany(t *testing.T) {
 	assertNotEmpty(t, scope.Fields)
 	assertEmpty(t, scope.Filters)
 	assertEmpty(t, scope.Sorts)
-	assertNil(t, scope.PaginationScope)
+	assertNil(t, scope.Pagination)
 	assertEqual(t, scope.Struct, c.MustGetModelStruct(&Blog{}))
 	assertNil(t, scope.RelatedField)
 
@@ -98,9 +98,9 @@ func TestBuildScopeMany(t *testing.T) {
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
 
-	assertNotNil(t, scope.PaginationScope)
-	assertEqual(t, 4, scope.PaginationScope.PageSize)
-	assertEqual(t, 5, scope.PaginationScope.PageNumber)
+	assertNotNil(t, scope.Pagination)
+	assertEqual(t, 4, scope.Pagination.PageSize)
+	assertEqual(t, 5, scope.Pagination.PageNumber)
 
 	// pagination limit, offset
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=10&page[offset]=5", nil)
@@ -109,9 +109,9 @@ func TestBuildScopeMany(t *testing.T) {
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
 
-	assertNotNil(t, scope.PaginationScope)
-	assertEqual(t, 10, scope.PaginationScope.Limit)
-	assertEqual(t, 5, scope.PaginationScope.Offset)
+	assertNotNil(t, scope.Pagination)
+	assertEqual(t, 10, scope.Pagination.Limit)
+	assertEqual(t, 5, scope.Pagination.Offset)
 
 	// pagination errors
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=have&page[offset]=a&page[size]=nice&page[number]=day", nil)
