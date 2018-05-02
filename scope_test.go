@@ -23,18 +23,18 @@ func TestScopeSetSortScopes(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&User{})
 	assertNotNil(t, mStruct)
 
-	userRootScope := newRootScope(mStruct, false)
+	userRootScope := newScope(mStruct)
 
 	assertNotNil(t, userRootScope)
 
-	errs := userRootScope.setSortScopes("-name")
+	errs := userRootScope.buildSortFields("-name")
 	assertEmpty(t, errs)
 
-	errs = userRootScope.setSortScopes("name", "-name")
+	errs = userRootScope.buildSortFields("name", "-name")
 	assertNotEmpty(t, errs)
 
 	// get too many sortfields
-	errs = userRootScope.setSortScopes("name", "surname", "somethingelse")
+	errs = userRootScope.buildSortFields("name", "surname", "somethingelse")
 	assertNotEmpty(t, errs)
 	t.Log(errs)
 
@@ -44,19 +44,19 @@ func TestScopeSetSortScopes(t *testing.T) {
 
 	assertNotNil(t, driverModelStruct)
 
-	driverRootScope := newRootScope(driverModelStruct, false)
+	driverRootScope := newScope(driverModelStruct)
 	assertNotNil(t, driverRootScope)
 
 	// let's check duplicates
-	errs = driverRootScope.setSortScopes("name", "-name")
+	errs = driverRootScope.buildSortFields("name", "-name")
 	assertNotEmpty(t, errs)
 
-	driverRootScope = newRootScope(driverModelStruct, false)
+	driverRootScope = newScope(driverModelStruct)
 	// if duplicate is typed more than or equal to three times no more fields are being checked
-	errs = driverRootScope.setSortScopes("name", "-name", "name")
+	errs = driverRootScope.buildSortFields("name", "-name", "name")
 	assertNotEmpty(t, errs)
 
-	errs = driverRootScope.setSortScopes("invalid")
+	errs = driverRootScope.buildSortFields("invalid")
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
 }
@@ -70,7 +70,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&Driver{})
 	assertNotNil(t, mStruct)
 
-	driverRootScope := newRootScope(mStruct, false)
+	driverRootScope := newScope(mStruct)
 	assertNotNil(t, driverRootScope)
 
 	// having some included parameter that is valid for given model
@@ -78,12 +78,12 @@ func TestBuildIncludedScopes(t *testing.T) {
 	var errs []*ErrorObject
 
 	included = []string{"favorite-car"}
-	errs = driverRootScope.buildIncludedScopes(included...)
+	errs = driverRootScope.buildIncludeList(included...)
 	assertEmpty(t, errs)
 
 	// if checked again for the same included an ErrorObject should return
 	included = append(included, "favorite-car")
-	errs = driverRootScope.buildIncludedScopes(included...)
+	errs = driverRootScope.buildIncludeList(included...)
 
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
@@ -92,46 +92,46 @@ func TestBuildIncludedScopes(t *testing.T) {
 
 	blogScope := getBlogScope()
 	// let's try too many possible includes - blog has max of 6.
-	errs = blogScope.buildIncludedScopes("some", "thing", "that", "is", "too", "long", "for", "this")
+	errs = blogScope.buildIncludeList("some", "thing", "that", "is", "too", "long", "for", "this")
 
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
 
 	// let's use too many nested includes
-	blogScope = newRootScope(c.MustGetModelStruct(&Blog{}), false)
-	errs = blogScope.buildIncludedScopes("too.many.nesteds")
+	blogScope = newScope(c.MustGetModelStruct(&Blog{}))
+	errs = blogScope.buildIncludeList("too.many.nesteds")
 
 	assertNotEmpty(t, errs)
 	fmt.Println(errs)
 
 	// spam with the same include too many times
 	blogScope = getBlogScope()
-	errs = blogScope.buildIncludedScopes("posts", "posts", "posts", "posts")
+	errs = blogScope.buildIncludeList("posts", "posts", "posts", "posts")
 
 	assertNotEmpty(t, errs)
 	clearMap()
 
 	blogScope = getBlogScope()
-	errs = blogScope.buildIncludedScopes("posts.comments")
+	errs = blogScope.buildIncludeList("posts.comments")
 
 	assertEmpty(t, errs)
 	clearMap()
 
 	// misspelled or invalid nested
 	blogScope = getBlogScope()
-	errs = blogScope.buildIncludedScopes("posts.commentes")
+	errs = blogScope.buildIncludeList("posts.commentes")
 
 	assertNotEmpty(t, errs)
 
 	// misspeled first include in nested
 	blogScope = getBlogScope()
-	errs = blogScope.buildIncludedScopes("postes.comments")
+	errs = blogScope.buildIncludeList("postes.comments")
 
 	assertNotEmpty(t, errs)
 
 	// check created scopes
 	blogScope = getBlogScope()
-	errs = blogScope.buildIncludedScopes("posts.comments", "posts.latest_comment")
+	errs = blogScope.buildIncludeList("posts.comments", "posts.latest_comment")
 
 	assertEmpty(t, errs)
 	assertNotEmpty(t, blogScope.SubScopes)

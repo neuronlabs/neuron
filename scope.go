@@ -52,7 +52,7 @@ type Scope struct {
 	AttributeFilters []*FilterField
 
 	// Fields represents fieldset used for this scope - jsonapi 'fields[collection]'
-	Fieldset []*StructField
+	Fieldset map[string]*StructField
 
 	// SortFields
 	Sorts []*SortField
@@ -60,30 +60,43 @@ type Scope struct {
 	// Pagination
 	Pagination *Pagination
 
-	errorLimit     int
-	maxNestedLevel int
+	errorLimit        int
+	maxNestedLevel    int
+	currentErrorCount int
 }
 
 // initialize new scope with added primary field to fieldset
 func newScope(modelStruct *ModelStruct) *Scope {
 	scope := &Scope{
 		Struct:   modelStruct,
-		Fieldset: []*StructField{modelStruct.primary},
+		Fieldset: make(map[string]*StructField),
 	}
-	return scope
-}
+	// set primary
+	scope.Fieldset[modelStruct.primary.jsonAPIName] = modelStruct.primary
 
-func newIncludedScope(modelStruct *ModelStruct) *Scope {
-	scope := &Scope{
-		Struct: modelStruct,
+	// set all fields
+	for _, field := range modelStruct.fields {
+		scope.Fieldset[field.jsonAPIName] = field
 	}
-	scope.Fieldset = append(scope.Fieldset, modelStruct.primary, modelStruct.fields...)
+
 	return scope
 }
 
 // Returns the collection name for given scope
 func (s *Scope) GetCollection() string {
 	return s.Struct.collectionType
+}
+
+func (s *Scope) SetIncludedPrimaries() (err error) {
+	if s.Value == nil {
+		err = errors.New("Nil value provided for scope.")
+		return
+	}
+
+	for model, scope := range s.IncludedScopes {
+		// check if
+	}
+	return
 }
 
 func (s *Scope) GetIncludedPrimaries() (primaries []interface{}) {
@@ -99,6 +112,63 @@ func (s *Scope) GetManyValues() ([]interface{}, error) {
 	return convertToSliceInterface(&v)
 }
 
+/**
+
+FIELDSET
+
+*/
+
+// fields[collection] = field1, field2
+func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
+	var (
+		errObj *ErrorObject
+	)
+
+	if len(fields) > s.Struct.getWorkingFieldCount() {
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Too many fields to set.")
+		errs = append(errs, errObj)
+		return
+	}
+
+	s.Fieldset = make(map[string]*StructField)
+	// check for duplicates
+	s.Fieldset["id"] = s.Struct.primary
+
+	for _, field := range fields {
+
+		sField, err := s.Struct.checkField(field)
+		if err != nil {
+			if field == "id" {
+				err = ErrInvalidQueryParameter.Copy()
+				err.Detail = "Invalid fields parameter. 'id' is not a field - it is primary key."
+			}
+			errs = append(errs, err)
+			continue
+		}
+		_, ok := s.Fieldset[sField.jsonAPIName]
+		if ok {
+			// duplicate
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.Struct.collectionType)
+			errs = append(errs, errObj)
+			if len(errs) > maxPermissibleDuplicates {
+				return
+			}
+			continue
+		}
+		s.Fieldset[sField.jsonAPIName] = sField
+	}
+
+	return
+
+}
+
+/**
+
+FILTERS
+
+*/
 // func (s *Scope) SetFilteredField(fieldApiName string, values []string, operator FilterOperator,
 // ) (errs []*ErrorObject, err error) {
 // 	if operator > OpEndsWith {
@@ -109,10 +179,228 @@ func (s *Scope) GetManyValues() ([]interface{}, error) {
 // 	return
 // }
 
-func (s *Scope) setPrimaryFilterScope(value string) (errs []*ErrorObject) {
-	_, errs = s.newFilterScope(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
+func (s *Scope) setPrimaryFilterfield(value string) (errs []*ErrorObject) {
+	_, errs = s.buildFilterfield(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
 	return
 }
+
+// splitted contains filter fields after filter[collection]
+// i.e. /blogs?filter[blogs][posts][id][ne]=10
+// splitted should be then [posts, id, ne]
+func (s *Scope) buildFilterfield(
+	collection string,
+	values []string,
+	m *ModelStruct,
+	splitted ...string,
+) (fField *FilterField, errs []*ErrorObject) {
+	var (
+		sField    *StructField
+		op        FilterOperator
+		ok        bool
+		fieldName string
+
+		errObj     *ErrorObject
+		errObjects []*ErrorObject
+		// private function for returning ErrObject
+		invalidName = func(fieldName, collection string) {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid filter field name: '%s' for the '%s' collection.", fieldName, collection)
+			errs = append(errs, errObj)
+			return
+		}
+		invalidOperator = func(operator string) {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' for the '%s' field.", operator, fieldName)
+			errs = append(errs, errObj)
+			return
+		}
+	)
+
+	// check if any parameters are set for filtering
+	if len(splitted) == 0 {
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprint("Too few filter parameters. Valid format is: filter[collection][field][subfield|operator]([operator])*.")
+		errs = append(errs, errObj)
+		return
+	}
+
+	// for all cases first value should be a fieldName
+	fieldName = splitted[0]
+
+	switch len(splitted) {
+	case 1:
+		// if there is only one argument it must be an attribute.
+		if fieldName == "id" {
+			sField = m.primary
+			fField = s.getOrCreatePrimaryFilter(sField)
+		} else {
+			sField, ok = m.attributes[fieldName]
+			if !ok {
+				_, ok = m.relationships[fieldName]
+				if ok {
+					errObj = ErrInvalidQueryParameter.Copy()
+					errObj.Detail = fmt.Sprintf("Provided filter field: '%s' is a relationship. In order to filter a relationship specify the relationship's field. i.e. '/%s?filter[%s][id]=123'", fieldName, m.collectionType, fieldName)
+					errs = append(errs, errObj)
+					return
+				}
+				invalidName(fieldName, m.collectionType)
+				return
+			}
+			fField = s.getOrCreateAttributeFilter(sField)
+		}
+		errObjects = fField.setValues(m.collectionType, values, OpEqual)
+		errs = append(errs, errObjects...)
+
+	case 2:
+		if fieldName == "id" {
+			sField = m.primary
+			fField = s.getOrCreatePrimaryFilter(sField)
+		} else {
+			sField, ok = m.attributes[fieldName]
+			if !ok {
+				// jeżeli relacja ->
+				sField, ok = m.relationships[fieldName]
+				if !ok {
+					invalidName(fieldName, m.collectionType)
+					return
+				}
+
+				// if field were already used
+				fField = s.getOrCreateRelationshipFilter(sField)
+
+				// relFilter is a FilterField for specific field in relationship
+				var relFilter *FilterField
+
+				relFilter, errObjects = s.buildFilterfield(
+					fieldName,
+					values,
+					sField.relatedStruct,
+					splitted[1:]...,
+				)
+				errs = append(errs, errObjects...)
+				fField.addSubfieldFilter(relFilter)
+				return
+			}
+			fField = s.getOrCreateAttributeFilter(sField)
+		}
+		// it is an attribute filter
+		op, ok = operatorsValue[splitted[1]]
+		if !ok {
+			invalidOperator(splitted[1])
+			return
+		}
+		errObjects = fField.setValues(m.collectionType, values, op)
+		errs = append(errs, errObjects...)
+	case 3:
+		// musi być relacja
+		sField, ok = m.relationships[fieldName]
+		if !ok {
+			// moze ktos podal attribute
+			_, ok = m.attributes[fieldName]
+			if !ok {
+				invalidName(fieldName, m.collectionType)
+				return
+			}
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Too many parameters for the attribute field: '%s'.", fieldName)
+			errs = append(errs, errObj)
+			return
+		}
+		fField = s.getOrCreateRelationshipFilter(sField)
+
+		var relFilter *FilterField
+
+		// get relationship's filter for specific field (filterfield)
+		relFilter, errObjects = s.buildFilterfield(
+			fieldName,
+			values,
+			sField.relatedStruct,
+			splitted[1:]...,
+		)
+		errs = append(errs, errObjects...)
+		fField.addSubfieldFilter(relFilter)
+
+	default:
+		errObj = ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.
+			Sprintf("Too many filter parameters for '%s' collection. ", collection)
+		errs = append(errs, errObj)
+		_, ok = m.attributes[fieldName]
+		if !ok {
+			_, ok = m.relationships[fieldName]
+			if !ok {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.
+					Sprintf("Invalid field name: '%s' for '%s' collection.", fieldName, collection)
+				errs = append(errs, errObj)
+			}
+		}
+	}
+	return
+}
+
+func (s *Scope) getOrCreatePrimaryFilter(
+	sField *StructField,
+) (filter *FilterField) {
+	if s.PrimaryFilters == nil {
+		s.PrimaryFilters = []*FilterField{}
+	}
+
+	for _, pf := range s.PrimaryFilters {
+		if pf.getFieldIndex() == sField.getFieldIndex() {
+			filter = pf
+			return
+		}
+	}
+
+	// if not found within primary filters
+	filter = &FilterField{StructField: sField}
+	s.PrimaryFilters = append(s.PrimaryFilters, filter)
+
+	return filter
+}
+
+func (s *Scope) getOrCreateAttributeFilter(
+	sField *StructField,
+) (filter *FilterField) {
+	if s.AttributeFilters == nil {
+		s.AttributeFilters = []*FilterField{}
+	}
+
+	for _, attrFilter := range s.AttributeFilters {
+		if attrFilter.getFieldIndex() == sField.getFieldIndex() {
+			filter = attrFilter
+			return
+		}
+	}
+
+	filter = &FilterField{StructField: sField}
+	s.AttributeFilters = append(s.AttributeFilters, filter)
+	return filter
+}
+
+func (s *Scope) getOrCreateRelationshipFilter(sField *StructField) (filter *FilterField) {
+	if s.RelationshipFilters == nil {
+		s.RelationshipFilters = []*FilterField{}
+	}
+
+	for _, relFilter := range s.RelationshipFilters {
+		if relFilter.getFieldIndex() == sField.getFieldIndex() {
+			filter = relFilter
+			return
+		}
+	}
+
+	filter = &FilterField{StructField: sField}
+	s.RelationshipFilters = append(s.RelationshipFilters, filter)
+	return filter
+}
+
+/**
+
+INCLUDES
+
+*/
 
 // buildIncludeList provide fast checks for the includedList
 // if given include passes use buildInclude method on it.
@@ -201,17 +489,17 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 
 		// root part of included (root.subfield)
 		field := included[:index]
-		relationField, ok := s.Struct.relationships[root]
+		relationField, ok := s.Struct.relationships[field]
 		if !ok {
 			errs = append(errs, errNoRelationship(s.Struct.collectionType, field))
 			return
 		}
 
 		// get or create new scope for the included field's collection
-		relationScope = s.createOrGetIncludedScope(relationField.relatedStruct)
+		relationScope = s.getOrCreateIncludedScope(relationField.relatedStruct)
 
 		// create new included field
-		includeField, isNew = s.createOrGetIncludeField(relationField, relationScope)
+		includeField, isNew = s.getOrCreateIncludeField(relationField, relationScope)
 
 		// set nested fields for includeField
 		errs = append(errs, includeField.buildNestedInclude(included[index+1:], s)...)
@@ -220,10 +508,10 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 		}
 	} else {
 		// get or create new scope for the included field's collection
-		relationScope = s.createOrGetIncludedScope(relationField.relatedStruct)
+		relationScope = s.getOrCreateIncludedScope(relationField.relatedStruct)
 
 		// create new includedField
-		includeField, isNew = s.createOrGetIncludeField(relationField, relationScope)
+		includeField, isNew = s.getOrCreateIncludeField(relationField, relationScope)
 	}
 
 	if isNew {
@@ -234,19 +522,24 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 
 // createOrGetIncludedScope checks if includeScope exists within given scope.
 // if exists returns it, otherwise create new and returns it.
-func (s *Scope) createOrGetIncludedScope(mStruct *ModelStruct) *Scope {
+func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
 	scope, ok := s.IncludedScopes[mStruct]
 	if !ok {
-		scope = newIncludedScope(mStruct)
-		s.IncludedScopes[mStruct] = scope
+		s.createIncludedScope(mStruct)
 	}
+	return scope
+}
+
+func (s *Scope) createIncludedScope(mStruct *ModelStruct) *Scope {
+	scope := newScope(mStruct)
+	s.IncludedScopes[mStruct] = scope
 	return scope
 }
 
 // createOrGetIncludeField checks if given include field exists within given scope.
 // if not found create new include field.
 // returns the include field and the flag 'isNew' if the field were newly created.
-func (s *Scope) createOrGetIncludeField(field *StructField, scope *Scope,
+func (s *Scope) getOrCreateIncludeField(field *StructField, scope *Scope,
 ) (includeField *IncludeField, isNew bool) {
 	for _, included := range s.IncludedFields {
 		if included.getFieldIndex() == field.getFieldIndex() {
@@ -256,8 +549,46 @@ func (s *Scope) createOrGetIncludeField(field *StructField, scope *Scope,
 	return newIncludeField(field, scope), true
 }
 
+/**
+
+PAGINATION
+
+*/
+func (s *Scope) preparePaginatedValue(key, value string, index int) *ErrorObject {
+	val, err := strconv.Atoi(value)
+	if err != nil {
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
+		return errObj
+	}
+
+	if s.Pagination == nil {
+		s.Pagination = &Pagination{}
+	}
+	switch index {
+	case 0:
+		s.Pagination.Limit = val
+		s.Pagination.Type = OffsetPaginate
+	case 1:
+		s.Pagination.Offset = val
+		s.Pagination.Type = OffsetPaginate
+	case 2:
+		s.Pagination.PageNumber = val
+		s.Pagination.Type = PagePaginate
+	case 3:
+		s.Pagination.PageSize = val
+		s.Pagination.Type = PagePaginate
+	}
+	return nil
+}
+
+/**
+
+SORTS
+
+*/
 // setSortFields sets the sort fields for given string array.
-func (s *Scope) setSortFields(sorts ...string) (errs []*ErrorObject) {
+func (s *Scope) buildSortFields(sorts ...string) (errs []*ErrorObject) {
 	var (
 		err      *ErrorObject
 		order    Order
@@ -311,253 +642,6 @@ func (s *Scope) setSortFields(sorts ...string) (errs []*ErrorObject) {
 
 	}
 	return
-}
-
-// splitted contains filter fields after filter[collection]
-// i.e. /blogs?filter[blogs][posts][id][ne]=10
-// splitted should be then [posts, id, ne]
-func (s *Scope) newFilterScope(
-	collection string,
-	values []string,
-	m *ModelStruct,
-	splitted ...string,
-) (fField *FilterField, errs []*ErrorObject) {
-	var (
-		sField    *StructField
-		op        FilterOperator
-		ok        bool
-		fieldName string
-
-		errObj     *ErrorObject
-		errObjects []*ErrorObject
-		// private function for returning ErrObject
-		invalidName = func(fieldName, collection string) {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Provided invalid filter field name: '%s' for the '%s' collection.", fieldName, collection)
-			errs = append(errs, errObj)
-			return
-		}
-		invalidOperator = func(operator string) {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' for the '%s' field.", operator, fieldName)
-			errs = append(errs, errObj)
-			return
-		}
-
-		// creates new filter field if is nil and adds it to the scope
-		setFilterScope = func() {
-			// get the filter field from the scope if exists.
-
-			var sameStruct bool = m == s.Struct
-			if sameStruct {
-				fField = s.Filters[sField.getFieldIndex()]
-			}
-
-			if fField == nil {
-				fField = new(FilterField)
-				fField.Field = sField
-				if sameStruct {
-					s.Filters[sField.getFieldIndex()] = fField
-				}
-			}
-
-		}
-	)
-
-	if s.Filters == nil {
-		s.Filters = make(map[int]*FilterField)
-	}
-
-	// check if any parameters are set for filtering
-	if len(splitted) == 0 {
-		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprint("Too few filter parameters. Valid format is: filter[collection][field][subfield|operator]([operator])*.")
-		errs = append(errs, errObj)
-		return
-	}
-
-	// for all cases first value should be a fieldName
-	fieldName = splitted[0]
-
-	switch len(splitted) {
-	case 1:
-		// if there is only one argument it must be an attribute.
-		if fieldName == "id" {
-			sField = m.primary
-		} else {
-			sField, ok = m.attributes[fieldName]
-			if !ok {
-				_, ok = m.relationships[fieldName]
-				if ok {
-					errObj = ErrInvalidQueryParameter.Copy()
-					errObj.Detail = fmt.Sprintf("Provided filter field: '%s' is a relationship. In order to filter a relationship specify the relationship's field. i.e. '/%s?filter[%s][id]=123'", fieldName, m.collectionType, fieldName)
-					errs = append(errs, errObj)
-					return
-				}
-				invalidName(fieldName, m.collectionType)
-				return
-			}
-		}
-		setFilterScope()
-		op = OpEqual
-		errObjects = fField.setValues(m.collectionType, values, op)
-		errs = append(errs, errObjects...)
-
-	case 2:
-		if fieldName == "id" {
-			sField = m.primary
-		} else {
-			sField, ok = m.attributes[fieldName]
-			if !ok {
-				// jeżeli relacja ->
-				sField, ok = m.relationships[fieldName]
-				if !ok {
-					invalidName(fieldName, m.collectionType)
-					return
-				}
-
-				// if field were already used
-				setFilterScope()
-
-				// relFilter is a FilterField for specific field in relationship
-				var relFilter *FilterField
-
-				relFilter, errObjects = s.newFilterScope(
-					fieldName,
-					values,
-					sField.relatedStruct,
-					splitted[1:]...,
-				)
-				errs = append(errs, errObjects...)
-				fField.appendRelFilter(relFilter)
-				return
-			}
-		}
-		// jeżeli attribute ->
-		op, ok = operatorsValue[splitted[1]]
-		if !ok {
-			invalidOperator(splitted[1])
-			return
-		}
-		setFilterScope()
-		errObjects = fField.setValues(m.collectionType, values, op)
-		errs = append(errs, errObjects...)
-	case 3:
-		// musi być relacja
-		sField, ok = m.relationships[fieldName]
-		if !ok {
-			// moze ktos podal attribute
-			_, ok = m.attributes[fieldName]
-			if !ok {
-				invalidName(fieldName, m.collectionType)
-				return
-			}
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Too many parameters for the attribute field: '%s'.", fieldName)
-			errs = append(errs, errObj)
-			return
-		}
-		setFilterScope()
-
-		var relFilter *FilterField
-
-		// get relationship's filter for specific field (filterfield)
-		relFilter, errObjects = s.newFilterScope(
-			fieldName,
-			values,
-			sField.relatedStruct,
-			splitted[1:]...,
-		)
-		errs = append(errs, errObjects...)
-		fField.appendRelFilter(relFilter)
-
-	default:
-		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.
-			Sprintf("Too many filter parameters for '%s' collection. ", collection)
-		errs = append(errs, errObj)
-		_, ok = m.attributes[fieldName]
-		if !ok {
-			_, ok = m.relationships[fieldName]
-			if !ok {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.
-					Sprintf("Invalid field name: '%s' for '%s' collection.", fieldName, collection)
-				errs = append(errs, errObj)
-			}
-		}
-		return
-	}
-
-	return
-}
-
-func (s *Scope) getScopeForField(sField *StructField) *Scope {
-	for _, sub := range s.SubScopes {
-		if sub.RelatedField == sField {
-			return sub
-		}
-	}
-	return nil
-}
-
-// fields[collection] = field1, field2
-func (s *Scope) setWorkingFields(fields ...string) (errs []*ErrorObject) {
-	var (
-		errObj *ErrorObject
-	)
-	fmt.Println(fields)
-	if len(fields) > s.Struct.getWorkingFieldCount() {
-		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Too many fields to set.")
-		errs = append(errs, errObj)
-		return
-	}
-
-	for _, field := range fields {
-
-		sField, err := s.Struct.checkField(field)
-		if err != nil {
-			if field == "id" {
-				err = ErrInvalidQueryParameter.Copy()
-				err.Detail = "Invalid fields parameter. 'id' is not a field - it is primary key."
-			}
-			errs = append(errs, err)
-			continue
-		}
-		s.Fields = append(s.Fields, sField)
-	}
-
-	return
-
-}
-
-func (s *RootScope) preparePaginatedValue(key, value string, index int) *ErrorObject {
-	val, err := strconv.Atoi(value)
-	if err != nil {
-		errObj := ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
-		return errObj
-	}
-
-	if s.Pagination == nil {
-		s.Pagination = &Pagination{}
-	}
-	switch index {
-	case 0:
-		s.Pagination.Limit = val
-		s.Pagination.Type = OffsetPaginate
-	case 1:
-		s.Pagination.Offset = val
-		s.Pagination.Type = OffsetPaginate
-	case 2:
-		s.Pagination.PageNumber = val
-		s.Pagination.Type = PagePaginate
-	case 3:
-		s.Pagination.PageSize = val
-		s.Pagination.Type = PagePaginate
-	}
-	return nil
 }
 
 func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {

@@ -10,14 +10,18 @@ import (
 func TestMarshalScope(t *testing.T) {
 	scope := getBlogScope()
 	buf := bytes.NewBufferString("")
-	errs := scope.buildIncludedScopes("posts")
+	errs := scope.buildIncludeList("posts")
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*Post{{ID: 1}}}
 
-	scope.Fields = append(scope.Fields, scope.Struct.attributes["title"], scope.Struct.attributes["created_at"], scope.Struct.relationships["posts"])
-	postScope := scope.SubScopes[0]
+	scope.Fieldset["id"] = scope.Struct.primary
+	scope.Fieldset["title"] = scope.Struct.attributes["title"]
+	scope.Fieldset["created_at"] = scope.Struct.attributes["created_at"]
+	scope.Fieldset["posts"] = scope.Struct.relationships["posts"]
+
+	postScope := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
 	postScope.Value = []*Post{{ID: 1, Title: "Post title", Body: "Post body."}}
-	postScope.setWorkingFields("title", "body", "comments", "latest_comment")
+	postScope.buildFieldset("title", "body", "comments", "latest_comment")
 
 	payload, err := marshalScope(scope, c)
 	assertNoError(t, err)
@@ -33,14 +37,14 @@ func TestMarshalScope(t *testing.T) {
 	buf.Reset()
 
 	scope = getBlogScope()
-	errs = scope.buildIncludedScopes("current-post")
+	errs = scope.buildIncludeList("current-post")
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 4, Title: "The title.", CreatedAt: time.Now(), CurrentPost: &Post{ID: 3}}
-	errs = scope.setWorkingFields("title", "created_at", "current-post")
+	errs = scope.buildFieldset("title", "created_at", "current-post")
 	assertEmpty(t, errs)
 
-	scope.SubScopes[0].Value = &Post{ID: 3, Title: "Breaking News!", Body: "Some body"}
-	errs = scope.SubScopes[0].setWorkingFields("title", "body")
+	scope.IncludedScopes[c.MustGetModelStruct(&Post{})].Value = &Post{ID: 3, Title: "Breaking News!", Body: "Some body"}
+	errs = scope.IncludedScopes[c.MustGetModelStruct(&Post{})].buildFieldset("title", "body")
 	assertEmpty(t, errs)
 
 	payload, err = marshalScope(scope, c)
@@ -61,7 +65,7 @@ func TestMarshalScope(t *testing.T) {
 	buf.Reset()
 	scope = getBlogScope()
 	scope.Value = []*Blog{{ID: 4, Title: "The title one."}, {ID: 5, Title: "The title two"}}
-	errs = scope.setWorkingFields("title")
+	errs = scope.buildFieldset("title")
 	assertEmpty(t, errs)
 
 	payload, err = marshalScope(scope, c)

@@ -1,5 +1,9 @@
 package jsonapi
 
+import (
+	"strings"
+)
+
 // Order is an enumerator that describes the order of sorting
 type Order int
 
@@ -52,7 +56,7 @@ func newSortField(sort string, order Order, scope *Scope) (invalidField bool) {
 		// if true then the nested should be an attribute for given
 		var found bool
 		for i := range scope.Sorts {
-			if scope.Sorts[i].Field.getFieldIndex() == sField.getFieldIndex() {
+			if scope.Sorts[i].getFieldIndex() == sField.getFieldIndex() {
 				sortField = scope.Sorts[i]
 				found = true
 				break
@@ -103,7 +107,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 			}
 		}
 
-		s.RelScopes = append(s.RelScopes, &SortField{StructField: sField, Order: order})
+		s.SubFields = append(s.SubFields, &SortField{StructField: sField, Order: order})
 	default:
 		// if length is more than one -> there is a relationship
 		sField := s.relatedStruct.relationships[sortSplitted[0]]
@@ -114,7 +118,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 		// search for the subfields if already created
 		for i := range s.SubFields {
-			if s.SubFields[i].Field.getFieldIndex() == sField.getFieldIndex() {
+			if s.SubFields[i].getFieldIndex() == sField.getFieldIndex() {
 				subField = s.SubFields[i]
 				break
 			}

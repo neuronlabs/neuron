@@ -64,7 +64,7 @@ func Default() *Controller {
 	}
 }
 
-func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
+func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// Get ModelStruct
 	var mStruct *ModelStruct
@@ -82,8 +82,7 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 			scope.currentErrorCount += len(errObjects)
 		}
 	)
-
-	scope = newRootScope(mStruct, true)
+	scope = newScope(mStruct)
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -92,7 +91,7 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 	included, ok := q[QueryParamInclude]
 	if ok {
 		// build included scopes
-		errorObjects = scope.buildIncludedScopes(included...)
+		errorObjects = scope.buildIncludeList(included...)
 		addErrors(errorObjects...)
 		if len(errs) > 0 {
 			return
@@ -145,25 +144,31 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 
 			collection := splitted[0]
 
-			filterScope := scope.collectionScopes[collection]
+			colModel := c.Models.GetByCollection(collection)
+			if colModel == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			filterScope := scope.IncludedScopes[colModel]
 			if filterScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' is invalid or not included in query.", collection)
+				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
 				addErrors(errObj)
 				continue
 			}
 
 			splitValues := strings.Split(value[0], annotationSeperator)
 
-			_, errorObjects = filterScope.
-				newFilterScope(splitted[0], splitValues, filterScope.Struct, splitted[1:]...)
+			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
 			addErrors(errorObjects...)
 
 		case key == QueryParamSort:
 			fmt.Println("Sort")
 			splitted := strings.Split(value[0], annotationSeperator)
-
-			errorObjects = scope.setSortScopes(splitted...)
+			errorObjects = scope.buildSortFields(splitted...)
 			addErrors(errorObjects...)
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
@@ -185,15 +190,22 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 				continue
 			}
 			collection := splitted[0]
-			fieldsScope := scope.collectionScopes[collection]
+			fieldModel := c.Models.GetByCollection(collection)
+			if fieldModel == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
+				continue
+			}
+
+			fieldsScope := scope.IncludedScopes[fieldModel]
 			if fieldsScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' in fields parameter is invalid or not included to the query.", collection)
+				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
 				addErrors(errObj)
 				continue
 			}
 			splitValues := strings.Split(value[0], annotationSeperator)
-			errorObjects = fieldsScope.setWorkingFields(splitValues...)
+			errorObjects = fieldsScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
@@ -214,10 +226,6 @@ func (c *Controller) BuildScopeMany(req *http.Request, model interface{},
 		}
 	}
 
-	// if none fields were set
-	if len(scope.Fields) <= 1 {
-		scope.Fields = append(scope.Fields, scope.Struct.fields...)
-	}
 	return
 }
 
@@ -247,9 +255,9 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	q := req.URL.Query()
 
-	scope = newRootScope(mStruct, false)
+	scope = newScope(mStruct)
 
-	errorObjects = scope.setPrimaryFilterScope(id)
+	errorObjects = scope.setPrimaryFilterfield(id)
 	if len(errorObjects) != 0 {
 		errObj = ErrInternalError.Copy()
 		errs = append(errs, errObj)
@@ -260,7 +268,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	included, ok := q[QueryParamInclude]
 	if ok {
 		// build included scopes
-		errorObjects = scope.buildIncludedScopes(included...)
+		errorObjects = scope.buildIncludeList(included...)
 		addErrors(errorObjects...)
 		if len(errs) > 0 {
 			return
@@ -295,15 +303,23 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 				continue
 			}
 			collection := splitted[0]
-			fieldsScope := scope.collectionScopes[collection]
-			if fieldsScope == nil {
+
+			fieldsetModel := c.Models.GetByCollection(collection)
+			if fieldsetModel == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' in fields parameter is invalid or not included to the query.", collection)
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
+				continue
+			}
+
+			fieldsetScope := scope.IncludedScopes[fieldsetModel]
+			if fieldsetScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
 				addErrors(errObj)
 				continue
 			}
 			splitValues := strings.Split(values[0], annotationSeperator)
-			errorObjects = fieldsScope.setWorkingFields(splitValues...)
+			errorObjects = fieldsetScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
@@ -314,10 +330,6 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 		if scope.currentErrorCount >= c.ErrorLimitSingle {
 			return
 		}
-	}
-
-	if len(scope.Fields) <= 1 {
-		scope.Fields = append(scope.Fields, scope.Struct.fields...)
 	}
 
 	return
@@ -383,104 +395,6 @@ func (c *Controller) SetAPIURL(url string) error {
 	// manage the url
 	c.APIURLBase = url
 	return nil
-}
-
-func (c *Controller) buildIncludedScopes(rootScope *Scope, includedList ...string,
-) (errs []*ErrorObject) {
-	var errorObjects []*ErrorObject
-	var errObj *ErrorObject
-
-	if len(includedList) > rootScope.Struct.getMaxIncludedCount() {
-		errObj = ErrOutOfRangeQueryParameterValue.Copy()
-		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
-			rootScope.Struct.collectionType)
-		errs = append(errs, errObj)
-		return
-	}
-
-	var includedMap map[string]int
-
-	// many includes flag if there is more than one include
-	var manyIncludes bool = len(includedList) > 1
-
-	if manyIncludes {
-		includedMap = make(map[string]int)
-	}
-
-	// having multiple included in the query
-	for _, included := range includedList {
-
-		// check the nested level of every included
-		annotCount := strings.Count(included, annotationNestedSeperator)
-		if annotCount > c.IncludeNestedLimit {
-			errs = append(errs, ErrTooManyNestedRelationships(included))
-			continue
-		}
-
-		// if there are more than one include
-		if manyIncludes {
-
-			// assert no duplicates are provided in the include list
-			includedCount := includedMap[included]
-			includedCount++
-			includedMap[included] = includedCount
-			if annotCount == 0 && includedCount > 1 {
-				if includedCount == 2 {
-					errObj = ErrInvalidQueryParameter.Copy()
-					errObj.Detail = fmt.Sprintf("Included parameter '%s' used more than once.", included)
-					errs = append(errs, errObj)
-					// continue in order to get more errors
-					continue
-				} else if includedCount >= maxPermissibleDuplicates {
-					// but if there is more than one duplicate
-					// it ends fast
-					break
-				}
-			}
-		}
-
-		// build subscopes should build subscope for given gollection
-		errorObjects = rootScope.buildSubScopes(included, rootScope.collectionScopes)
-
-		// the fields should be added to IncludeFields
-
-		errs = append(errs, errorObjects...)
-	}
-	return
-}
-
-func (c *Controller) buildIncluded(rootScope *Scope, included string) (errs []*ErrorObject) {
-		var sub *Scope
-
-	sField, ok := rootScope.Struct.relationships[included]
-	if !ok {
-		// no relationship found check nesteds
-		index := strings.Index(included, annotationNestedSeperator)
-		if index == -1 {
-			errs = append(errs, errNoRelationship(rootScope.Struct.collectionType, included))
-			return
-		}
-
-		seperated := included[:index]
-		sField, ok := rootScope.Struct.relationships[seperated]
-		if !ok {
-			errs = append(errs, errNoRelationship(rootScope.Struct.collectionType, seperated))
-			return
-		}
-
-
-		// Check if no other scope for this collection within given 'subscope' exists
-		// sub = rootScope.getScopeForField(sField)
-		sub = rootScope.collectionScopes[sField.refStruct.Type]
-		if sub == nil {
-			var isSlice bool
-			if sField.jsonAPIType == RelationshipMultiple {
-				isSlice = true
-			}
-			sub = newSubScope(sField.relatedStruct, sField, isSlice)
-
-		}
-		errs = sub.buildSubScopes(included[index+1:], collectionScopes)
 }
 
 func (c *Controller) checkModelRelationships(model *ModelStruct) (err error) {

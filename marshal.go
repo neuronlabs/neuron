@@ -43,7 +43,7 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	}
 
 	included := []*Node{}
-	for _, subscope := range scope.SubScopes {
+	for _, subscope := range scope.IncludedScopes {
 		err = marshalSubScope(subscope, &included, controller)
 		if err != nil {
 			return
@@ -75,7 +75,7 @@ func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) er
 		*included = append(*included, node)
 	}
 	// iterate over subscopes and marshalsubscopes
-	for _, sub := range scope.SubScopes {
+	for _, sub := range scope.IncludedScopes {
 		err := marshalSubScope(sub, included, controller)
 		if err != nil {
 			return err
@@ -141,7 +141,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 		return nil, err
 	}
 
-	for _, field := range scope.Fields {
+	for _, field := range scope.Fieldset {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
 

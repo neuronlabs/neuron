@@ -1,5 +1,9 @@
 package jsonapi
 
+import (
+	"strings"
+)
+
 // IncludeScope is the includes information scope
 // it contains the field to include from the root scope
 // related subscope, and subfields to include.
@@ -122,14 +126,14 @@ func (i *IncludeField) buildNestedInclude(nested string, scope *Scope,
 	if !ok {
 		// if no relationship found, then check if it is possible to separate dots from 'nested'
 		// no relationship found check nesteds
-		index := strings.Index(included, annotationNestedSeperator)
+		index := strings.Index(nested, annotationNestedSeperator)
 		if index == -1 {
-			errs = append(errs, errNoRelationship(i.mStruct.collectionType, included))
+			errs = append(errs, errNoRelationship(i.mStruct.collectionType, nested))
 			return
 		}
 
 		// field part of included (field.subfield)
-		field := included[:index]
+		field := nested[:index]
 		relationField, ok = i.mStruct.relationships[field]
 		if !ok {
 			// still not found - then add error and return
@@ -144,7 +148,7 @@ func (i *IncludeField) buildNestedInclude(nested string, scope *Scope,
 		nestedInclude = i.getOrCreateNestedInclude(relationField)
 	}
 
-	_ = scope.createIncludedScope(nestedInclude.relatedStruct)
+	_ = scope.getOrCreateIncludedScope(nestedInclude.relatedStruct)
 	return
 }
 

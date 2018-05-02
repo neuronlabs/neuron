@@ -48,21 +48,21 @@ func TestFilterOperators(t *testing.T) {
 func TestFilterSetValues(t *testing.T) {
 	clearMap()
 	scope := getBlogScope()
-	errs := scope.buildIncludedScopes("posts")
+	errs := scope.buildIncludeList("posts")
 
 	assertEmpty(t, errs)
 	var f *FilterField
-	f, errs = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "id", "eq")
+	f, errs = scope.buildFilterfield("blogs", []string{"1"}, scope.Struct, "id", "eq")
 
 	assertEmpty(t, errs)
 	assertNotNil(t, f)
 	errs = f.setValues("blogs", []string{"1"}, FilterOperator(666))
 	assertNotEmpty(t, errs)
 
-	f, errs = scope.newFilterScope("blogs", []string{"1"}, scope.Struct, "view_count", "startswith")
+	f, errs = scope.buildFilterfield("blogs", []string{"1"}, scope.Struct, "view_count", "startswith")
 	assertNotEmpty(t, errs)
 
-	f, errs = scope.newFilterScope("blogs", []string{"invalid"}, scope.Struct, "view_count", "startswith")
+	f, errs = scope.buildFilterfield("blogs", []string{"invalid"}, scope.Struct, "view_count", "startswith")
 	assertNotEmpty(t, errs)
 
 	clearMap()
@@ -72,8 +72,8 @@ func TestFilterSetValues(t *testing.T) {
 	}
 	assertNil(t, c.PrecomputeModels(&modelWithStringID{}))
 	mStruct := c.MustGetModelStruct(&modelWithStringID{})
-	scope = newRootScope(mStruct, false)
-	_, errs = scope.newFilterScope("stringers", []string{"kkk"}, mStruct, "id", "startswith")
+	scope = newScope(mStruct)
+	_, errs = scope.buildFilterfield("stringers", []string{"kkk"}, mStruct, "id", "startswith")
 	assertNotEmpty(t, errs)
 
 }

@@ -73,7 +73,7 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
 		return nil, errObj
 	}
 
-	scope := newRootScope(mStruct, false)
+	scope := newScope(mStruct)
 
 	var err error
 	if payload.Included != nil {

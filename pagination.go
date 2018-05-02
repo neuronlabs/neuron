@@ -1,5 +1,9 @@
 package jsonapi
 
+import (
+	"errors"
+)
+
 // PaginationType is the enum that describes the type of pagination
 type PaginationType int
 

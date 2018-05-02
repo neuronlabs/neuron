@@ -93,7 +93,7 @@ type FilterValues struct {
 
 // FilterField is a field that contains information about filters
 type FilterField struct {
-	Field *StructField
+	*StructField
 
 	// AttrFilters are the filter values for given attribute FilterField
 	Values []*FilterValues
@@ -114,7 +114,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 
 		opInvalid = func() {
 			errObj = ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.Field.jsonAPIName)
+			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.jsonAPIName)
 			errs = append(errs, errObj)
 		}
 	)
@@ -124,13 +124,13 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 		errObj.Detail = fmt.Sprint("The filter operator: '%s' is not supported by the server.", op)
 	}
 
-	t := f.Field.getDereferencedType()
+	t := f.getDereferencedType()
 	// create new FilterValue
 	fv := new(FilterValues)
 	fv.Operator = op
 
 	// Add and check all values for given field type
-	switch f.Field.jsonAPIType {
+	switch f.jsonAPIType {
 	case Primary:
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -170,7 +170,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 			er = setAttributeField(value, fieldValue)
 			if er != nil {
 				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.Field.jsonAPIName, collection, er)
+				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.jsonAPIName, collection, er)
 				errs = append(errs, errObj)
 			}
 			fv.Values = append(fv.Values, fieldValue)
@@ -182,10 +182,10 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 	return
 }
 
-func (f *FilterField) appendRelFilter(appendFilter *FilterField) {
+func (f *FilterField) addSubfieldFilter(appendFilter *FilterField) {
 	var found bool
 	for _, rel := range f.Relationships {
-		if rel.Field.getFieldIndex() == appendFilter.Field.getFieldIndex() {
+		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
 			found = true
 
 			if l := len(appendFilter.Values); l > 0 {
