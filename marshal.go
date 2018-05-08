@@ -30,10 +30,10 @@ func MarshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 
 func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
 	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Elem().Kind() {
+	switch scopeValue.Kind() {
 	case reflect.Slice:
 		payloader, err = marshalScopeMany(scope, controller)
-	case reflect.Struct:
+	case reflect.Ptr:
 		payloader, err = marshalScopeOne(scope, controller)
 	default:
 		err = IErrUnexpectedType
@@ -49,6 +49,7 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 			return
 		}
 	}
+
 	if len(included) != 0 {
 		payloader.setIncluded(included)
 	}
@@ -59,7 +60,7 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) error {
 	// get this
 	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Elem().Kind() {
+	switch scopeValue.Kind() {
 	case reflect.Slice:
 		nodes, err := visitScopeManyNodes(scope, controller)
 		if err != nil {
@@ -67,7 +68,7 @@ func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) er
 		}
 		fmt.Println(nodes)
 		*included = append(*included, nodes...)
-	case reflect.Struct:
+	case reflect.Ptr:
 		node, err := visitScopeNode(scope.Value, scope, controller)
 		if err != nil {
 			return err
@@ -103,7 +104,7 @@ func marshalScopeMany(scope *Scope, controller *Controller) (*ManyPayload, error
 
 func visitScopeManyNodes(scope *Scope, controller *Controller,
 ) ([]*Node, error) {
-	valInterface := reflect.ValueOf(scope.Value).Elem().Interface()
+	valInterface := reflect.ValueOf(scope.Value).Interface()
 	valSlice, err := convertToSliceInterface(&valInterface)
 	if err != nil {
 		return nil, err

@@ -74,6 +74,7 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
 	}
 
 	scope := newScope(mStruct)
+	scope.Value = reflect.New(mStruct.modelType).Interface()
 
 	var err error
 	if payload.Included != nil {

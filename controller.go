@@ -84,6 +84,11 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 	)
 	scope = newScope(mStruct)
 
+	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.IncludedScopes[mStruct] = scope
+	scope.maxNestedLevel = c.IncludeNestedLimit
+	scope.IsMany = true
+
 	// Get URLQuery
 	q := req.URL.Query()
 
@@ -91,7 +96,8 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 	included, ok := q[QueryParamInclude]
 	if ok {
 		// build included scopes
-		errorObjects = scope.buildIncludeList(included...)
+		includedFields := strings.Split(included[0], annotationSeperator)
+		errorObjects = scope.buildIncludeList(includedFields...)
 		addErrors(errorObjects...)
 		if len(errs) > 0 {
 			return
@@ -166,13 +172,11 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 			addErrors(errorObjects...)
 
 		case key == QueryParamSort:
-			fmt.Println("Sort")
 			splitted := strings.Split(value[0], annotationSeperator)
 			errorObjects = scope.buildSortFields(splitted...)
 			addErrors(errorObjects...)
 		case strings.HasPrefix(key, QueryParamFields):
 			// fields[collection]
-			// fmt.Println("Fields")
 			var splitted []string
 			var er error
 			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
@@ -257,6 +261,10 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	scope = newScope(mStruct)
 
+	scope.maxNestedLevel = c.IncludeNestedLimit
+	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.IncludedScopes[mStruct] = scope
+
 	errorObjects = scope.setPrimaryFilterfield(id)
 	if len(errorObjects) != 0 {
 		errObj = ErrInternalError.Copy()
@@ -268,7 +276,14 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	included, ok := q[QueryParamInclude]
 	if ok {
 		// build included scopes
-		errorObjects = scope.buildIncludeList(included...)
+		if len(included) != 1 {
+			errObj := ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintln("Duplicated 'included' query parameter.")
+			addErrors(errObj)
+			return
+		}
+		includedFields := strings.Split(included[0], annotationSeperator)
+		errorObjects = scope.buildIncludeList(includedFields...)
 		addErrors(errorObjects...)
 		if len(errs) > 0 {
 			return
@@ -308,6 +323,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 			if fieldsetModel == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
+				addErrors(errObj)
 				continue
 			}
 
@@ -319,6 +335,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 				continue
 			}
 			splitValues := strings.Split(values[0], annotationSeperator)
+
 			errorObjects = fieldsetScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
 		default:

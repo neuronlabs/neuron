@@ -41,8 +41,6 @@ func TestBuildScopeList(t *testing.T) {
 	assertNil(t, err)
 	assertNotNil(t, scope)
 
-	assertEmpty(t, scope.IncludedScopes)
-
 	assertNotEmpty(t, scope.Fieldset)
 	assertEmpty(t, scope.Sorts)
 	assertNil(t, scope.Pagination)
@@ -125,7 +123,9 @@ func TestBuildScopeList(t *testing.T) {
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][eq]=12,55", nil)
 	scope, errs, err = c.BuildScopeList(req, &Blog{})
 	assertNil(t, err)
+
 	assertEmpty(t, errs)
+	// t.Error(errs)
 	assertNotNil(t, scope)
 
 	assertEqual(t, 1, len(scope.PrimaryFilters))
@@ -224,7 +224,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	postsScope := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
 	assertNotNil(t, postsScope)
 	assertEqual(t, 1, len(postsScope.Fieldset))
-	assertNotNil(t, postsScope.Fieldset["title"])
+	// assertNotNil(t, postsScope.Fieldset["title"])
 
 	// errored
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)

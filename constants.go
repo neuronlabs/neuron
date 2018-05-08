@@ -24,7 +24,9 @@ const (
 
 	// logical filters
 	annotationEqual        = "eq"
+	annotationIn           = "in"
 	annotationNotEqual     = "ne"
+	annotationNotIn        = "notin"
 	annotationGreaterThan  = "gt"
 	annotationGreaterEqual = "ge"
 	annotationLessThan     = "lt"

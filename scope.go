@@ -60,9 +60,60 @@ type Scope struct {
 	// Pagination
 	Pagination *Pagination
 
+	IsMany            bool
 	errorLimit        int
 	maxNestedLevel    int
 	currentErrorCount int
+}
+
+// Returns the collection name for given scope
+func (s *Scope) GetCollection() string {
+	return s.Struct.collectionType
+}
+
+// NewValueMany creates empty slice of ptr value for given scope
+// value is of type []*ModelStruct.Type
+func (s *Scope) NewValueMany() {
+	s.newValueMany()
+}
+
+// NewValueSingle creates new value for given scope of a type *ModelStruct.Type
+func (s *Scope) NewValueSingle() {
+	s.newValueSingle()
+}
+
+// SetIncludedPrimaries sets the primary fields for given model
+func (s *Scope) SetIncludedPrimaries() (err error) {
+	if s.Value == nil {
+		err = errors.New("Nil value provided for scope.")
+		return
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			if elem.IsNil() {
+				continue
+			}
+			if err = s.setIncludedPrimary(elem.Interface()); err != nil {
+				return
+			}
+		}
+	case reflect.Ptr:
+		if err = s.setIncludedPrimary(s.Value); err != nil {
+			return
+		}
+	default:
+		err = IErrUnexpectedType
+		return
+	}
+
+	for _, includedScope := range s.IncludedScopes {
+		includedScope.setIncludedFilterValues()
+	}
+	return
 }
 
 // initialize new scope with added primary field to fieldset
@@ -71,8 +122,6 @@ func newScope(modelStruct *ModelStruct) *Scope {
 		Struct:   modelStruct,
 		Fieldset: make(map[string]*StructField),
 	}
-	// set primary
-	scope.Fieldset[modelStruct.primary.jsonAPIName] = modelStruct.primary
 
 	// set all fields
 	for _, field := range modelStruct.fields {
@@ -80,36 +129,6 @@ func newScope(modelStruct *ModelStruct) *Scope {
 	}
 
 	return scope
-}
-
-// Returns the collection name for given scope
-func (s *Scope) GetCollection() string {
-	return s.Struct.collectionType
-}
-
-func (s *Scope) SetIncludedPrimaries() (err error) {
-	if s.Value == nil {
-		err = errors.New("Nil value provided for scope.")
-		return
-	}
-
-	for model, scope := range s.IncludedScopes {
-		// check if
-	}
-	return
-}
-
-func (s *Scope) GetIncludedPrimaries() (primaries []interface{}) {
-	for k := range s.IncludeValues {
-		primaries = append(primaries, k)
-	}
-	return
-}
-
-func (s *Scope) GetManyValues() ([]interface{}, error) {
-	var v interface{}
-	v = reflect.ValueOf(s.Value).Elem().Interface()
-	return convertToSliceInterface(&v)
 }
 
 /**
@@ -132,8 +151,6 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 	}
 
 	s.Fieldset = make(map[string]*StructField)
-	// check for duplicates
-	s.Fieldset["id"] = s.Struct.primary
 
 	for _, field := range fields {
 
@@ -169,15 +186,39 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 FILTERS
 
 */
-// func (s *Scope) SetFilteredField(fieldApiName string, values []string, operator FilterOperator,
-// ) (errs []*ErrorObject, err error) {
-// 	if operator > OpEndsWith {
-// 		err = fmt.Errorf("Invalid operator provided: '%s'", operator)
-// 		return
-// 	}
-// 	_, errs, err = s.newFilterScope(s.Struct.collectionType, values, s.Struct, fieldApiName, operator.String())
-// 	return
-// }
+
+func (s *Scope) setIncludedFilterValues() {
+	var (
+		values []interface{}
+		i      int
+	)
+	if len(s.IncludeValues) == 0 {
+		return
+	}
+	s.newValueMany()
+
+	values = make([]interface{}, len(s.IncludeValues))
+	for v := range s.IncludeValues {
+		values[i] = v
+		i++
+	}
+	s.setPrimaryFilterValues(values...)
+	return
+}
+
+func (s *Scope) setPrimaryFilterValues(values ...interface{}) {
+	filter := s.getOrCreatePrimaryFilter()
+
+	if filter.Values == nil {
+		filter.Values = make([]*FilterValues, 0)
+	}
+
+	fv := &FilterValues{}
+	fv.Values = append(fv.Values, values...)
+	fv.Operator = OpIn
+	filter.Values = append(filter.Values, fv)
+	return
+}
 
 func (s *Scope) setPrimaryFilterfield(value string) (errs []*ErrorObject) {
 	_, errs = s.buildFilterfield(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
@@ -231,8 +272,7 @@ func (s *Scope) buildFilterfield(
 	case 1:
 		// if there is only one argument it must be an attribute.
 		if fieldName == "id" {
-			sField = m.primary
-			fField = s.getOrCreatePrimaryFilter(sField)
+			fField = s.getOrCreatePrimaryFilter()
 		} else {
 			sField, ok = m.attributes[fieldName]
 			if !ok {
@@ -253,8 +293,7 @@ func (s *Scope) buildFilterfield(
 
 	case 2:
 		if fieldName == "id" {
-			sField = m.primary
-			fField = s.getOrCreatePrimaryFilter(sField)
+			fField = s.getOrCreatePrimaryFilter()
 		} else {
 			sField, ok = m.attributes[fieldName]
 			if !ok {
@@ -339,22 +378,22 @@ func (s *Scope) buildFilterfield(
 	return
 }
 
-func (s *Scope) getOrCreatePrimaryFilter(
-	sField *StructField,
-) (filter *FilterField) {
+func (s *Scope) getOrCreatePrimaryFilter() (filter *FilterField) {
 	if s.PrimaryFilters == nil {
 		s.PrimaryFilters = []*FilterField{}
 	}
 
+	primField := s.Struct.primary
+
 	for _, pf := range s.PrimaryFilters {
-		if pf.getFieldIndex() == sField.getFieldIndex() {
+		if pf.getFieldIndex() == primField.getFieldIndex() {
 			filter = pf
 			return
 		}
 	}
 
 	// if not found within primary filters
-	filter = &FilterField{StructField: sField}
+	filter = &FilterField{StructField: primField}
 	s.PrimaryFilters = append(s.PrimaryFilters, filter)
 
 	return filter
@@ -426,6 +465,7 @@ func (s *Scope) buildIncludeList(includedList ...string,
 	if manyIncludes {
 		includedMap = make(map[string]int)
 	}
+	s.IncludedScopes = make(map[*ModelStruct]*Scope)
 
 	// having multiple included in the query
 	for _, included := range includedList {
@@ -455,11 +495,8 @@ func (s *Scope) buildIncludeList(includedList ...string,
 				}
 			}
 		}
-
-		errs = append(errs, s.buildInclude(included)...)
-		if len(errs) >= s.errorLimit {
-			return
-		}
+		errorObjects = s.buildInclude(included)
+		errs = append(errs, errorObjects...)
 	}
 	return
 }
@@ -525,13 +562,15 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
 	scope, ok := s.IncludedScopes[mStruct]
 	if !ok {
-		s.createIncludedScope(mStruct)
+		scope = s.createIncludedScope(mStruct)
 	}
 	return scope
 }
 
 func (s *Scope) createIncludedScope(mStruct *ModelStruct) *Scope {
 	scope := newScope(mStruct)
+	// included scope is always treated as many
+	scope.IsMany = true
 	s.IncludedScopes[mStruct] = scope
 	return scope
 }
@@ -547,6 +586,56 @@ func (s *Scope) getOrCreateIncludeField(field *StructField, scope *Scope,
 		}
 	}
 	return newIncludeField(field, scope), true
+}
+
+func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
+
+	v := reflect.ValueOf(value).Elem()
+
+	for _, field := range s.IncludedFields {
+		// included field is a relationship
+		fieldValue := v.Field(field.getFieldIndex())
+		if fieldValue.IsNil() {
+			continue
+		}
+
+		includedScope, ok := s.IncludedScopes[field.relatedStruct]
+		if !ok {
+			err = fmt.Errorf("Given includeField: '%s' not found within included scopes. ", field.fieldName)
+			return
+		}
+
+		primIndex := field.relatedStruct.primary.getFieldIndex()
+
+		if includedScope.IncludeValues == nil {
+			includedScope.IncludeValues = make(map[interface{}]struct{})
+		}
+		switch fieldValue.Kind() {
+		case reflect.Slice:
+			for i := 0; i < fieldValue.Len(); i++ {
+				// set primary field within scope for given model struct
+				elem := fieldValue.Index(i)
+				if !elem.IsNil() {
+					primValue := elem.Elem().Field(primIndex)
+					if primValue.IsValid() {
+						includedScope.IncludeValues[primValue.Interface()] = struct{}{}
+					}
+				}
+			}
+		case reflect.Ptr:
+			if !fieldValue.IsNil() {
+				primValue := fieldValue.Elem().Field(primIndex)
+				if primValue.IsValid() {
+					includedScope.IncludeValues[primValue.Interface()] = struct{}{}
+				}
+			}
+		default:
+			err = IErrUnexpectedType
+			return
+		}
+
+	}
+	return
 }
 
 /**
@@ -642,6 +731,16 @@ func (s *Scope) buildSortFields(sorts ...string) (errs []*ErrorObject) {
 
 	}
 	return
+}
+
+// VALUES
+
+func (s *Scope) newValueSingle() {
+	s.Value = reflect.New(s.Struct.modelType).Interface()
+}
+
+func (s *Scope) newValueMany() {
+	s.Value = reflect.New(reflect.SliceOf(reflect.New(s.Struct.modelType).Type())).Elem().Interface()
 }
 
 func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {

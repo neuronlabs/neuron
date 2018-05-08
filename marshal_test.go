@@ -55,7 +55,7 @@ func TestMarshalScope(t *testing.T) {
 	// assertTrue(t, strings.Contains(buf.String(),
 	// "\"relationships\":{\"current-post\":{\"data\":{\"type\":\"posts\",\"id\":\"3\"}}}"))
 
-	t.Log(buf.String())
+	// t.Log(buf.String())
 	assertTrue(t, strings.Contains(buf.String(),
 		"\"type\":\"blogs\",\"id\":\"4\",\"attributes\":{\"created_at\":"))
 	// assertTrue(t, strings.Contains(buf.String(),
@@ -74,7 +74,8 @@ func TestMarshalScope(t *testing.T) {
 	err = MarshalPayload(buf, payload)
 	assertNil(t, err)
 
-	// assertTrue(t, strings.Contains(buf.String(), `{"data":[{"type":"blogs","id":"4","attributes":{"title":"The title one."}},{"type":"blogs","id":"5","attributes":{"title":"The title two"}}]}`))
+	assertTrue(t, strings.Contains(buf.String(), `"type":"blogs","id":"4","attributes":{"title":"The title one."}`))
+	assertTrue(t, strings.Contains(buf.String(), `"type":"blogs","id":"5","attributes":{"title":"The title two"}`))
 
 	// t.Log(buf.String())
 
@@ -84,7 +85,7 @@ func TestMarshalScope(t *testing.T) {
 	scope = getBlogScope()
 
 	payload, err = marshalScope(scope, c)
-	assertNil(t, err)
+	assertError(t, err)
 
 	err = MarshalPayload(buf, payload)
 	assertNil(t, err)

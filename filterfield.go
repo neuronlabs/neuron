@@ -41,7 +41,9 @@ const (
 var (
 	operatorsValue = map[string]FilterOperator{
 		annotationEqual:        OpEqual,
+		annotationIn:           OpIn,
 		annotationNotEqual:     OpNotEqual,
+		annotationNotIn:        OpNotIn,
 		annotationGreaterThan:  OpGreaterThan,
 		annotationGreaterEqual: OpGreaterEqual,
 		annotationLessThan:     OpLessThan,
@@ -53,7 +55,9 @@ var (
 	}
 	operatorsStr = []string{
 		annotationEqual,
+		annotationIn,
 		annotationNotEqual,
+		annotationNotIn,
 		annotationGreaterThan,
 		annotationGreaterEqual,
 		annotationLessThan,

@@ -41,6 +41,8 @@ func TestFilterOperators(t *testing.T) {
 	assertFalse(t, OpEqual.isRangable())
 	assertFalse(t, OpEqual.isStringOnly())
 	assertTrue(t, OpContains.isStringOnly())
+	t.Log(OpGreaterThan.String())
+
 	assertEqual(t, annotationGreaterThan, OpGreaterThan.String())
 	assertTrue(t, len(FilterOperator(666).String()) == len("unknown operator"))
 }

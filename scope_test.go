@@ -2,7 +2,9 @@ package jsonapi
 
 import (
 	"fmt"
+	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -84,25 +86,21 @@ func TestBuildIncludedScopes(t *testing.T) {
 	// if checked again for the same included an ErrorObject should return
 	included = append(included, "favorite-car")
 	errs = driverRootScope.buildIncludeList(included...)
-
 	assertNotEmpty(t, errs)
-	fmt.Println(errs)
 
 	clearMap()
 
 	blogScope := getBlogScope()
+
 	// let's try too many possible includes - blog has max of 6.
 	errs = blogScope.buildIncludeList("some", "thing", "that", "is", "too", "long", "for", "this")
 
 	assertNotEmpty(t, errs)
-	fmt.Println(errs)
 
 	// let's use too many nested includes
 	blogScope = newScope(c.MustGetModelStruct(&Blog{}))
 	errs = blogScope.buildIncludeList("too.many.nesteds")
-
 	assertNotEmpty(t, errs)
-	fmt.Println(errs)
 
 	// spam with the same include too many times
 	blogScope = getBlogScope()
@@ -113,7 +111,6 @@ func TestBuildIncludedScopes(t *testing.T) {
 
 	blogScope = getBlogScope()
 	errs = blogScope.buildIncludeList("posts.comments")
-
 	assertEmpty(t, errs)
 	clearMap()
 
@@ -134,17 +131,16 @@ func TestBuildIncludedScopes(t *testing.T) {
 	errs = blogScope.buildIncludeList("posts.comments", "posts.latest_comment")
 
 	assertEmpty(t, errs)
-	assertNotEmpty(t, blogScope.SubScopes)
+	assertNotEmpty(t, blogScope.IncludedScopes)
 	// t.Log(blogScope.SubScopes)
-	postScope := blogScope.SubScopes[0]
+	postScope := blogScope.IncludedScopes[c.MustGetModelStruct(&Post{})]
 	assertNotNil(t, postScope)
 	assertTrue(t, postScope.Struct.GetCollectionType() == "posts")
-	assertTrue(t, len(postScope.SubScopes) == 2)
 
-	commentsScope := postScope.SubScopes[0]
+	commentsScope := blogScope.IncludedScopes[c.MustGetModelStruct(&Comment{})]
 	assertNotNil(t, commentsScope)
 	assertTrue(t, commentsScope.Struct.GetCollectionType() == "comments")
-	assertEmpty(t, commentsScope.SubScopes)
+	assertEmpty(t, commentsScope.IncludedScopes)
 }
 
 func TestNewFilterScope(t *testing.T) {
@@ -176,7 +172,7 @@ func TestNewFilterScope(t *testing.T) {
 
 	blogScope := getBlogScope()
 	for i := range correctParams {
-		_, errs = blogScope.newFilterScope("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
+		_, errs = blogScope.buildFilterfield("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
 		assertEmpty(t, errs)
 
 	}
@@ -233,10 +229,59 @@ func TestNewFilterScope(t *testing.T) {
 	for i := range invParams {
 		blogScope := getBlogScope()
 		// t.Log(i)
-		_, errs = blogScope.newFilterScope("blogs", invValues[i], blogScope.Struct, invParams[i]...)
+		_, errs = blogScope.buildFilterfield("blogs", invValues[i], blogScope.Struct, invParams[i]...)
 		assertNotEmpty(t, errs)
 		// t.Logf("%d: %s", i, errs)
 	}
+
+}
+
+func TestScopeNewValue(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+
+	scope.NewValueSingle()
+	assertEqual(t, reflect.TypeOf(scope.Value), reflect.TypeOf(&Blog{}))
+
+	scope = getBlogScope()
+	scope.NewValueMany()
+	assertEqual(t, reflect.TypeOf(scope.Value), reflect.TypeOf([]*Blog{}))
+}
+
+func TestScopeSetPrimaryFields(t *testing.T) {
+	clearMap()
+	getBlogScope()
+
+	req := httptest.NewRequest("GET", "/api/v1/blogs/1?include=posts,current-post", nil)
+	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 3, Title: "Some title"}, {ID: 4, Title: "Other title"}}, CurrentPost: &Post{ID: 1, Title: "This post"}}
+	err = scope.SetIncludedPrimaries()
+	assertNil(t, err)
+
+	assertTrue(t, len(scope.IncludedScopes) > 0)
+	postScope, ok := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
+	assertTrue(t, ok)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current-post", nil)
+	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	scope.Value = []*Blog{{ID: 2, CurrentPost: &Post{ID: 1}}, {ID: 3, CurrentPost: &Post{ID: 5}}}
+	err = scope.SetIncludedPrimaries()
+	assertNil(t, err)
+
+	assertTrue(t, len(scope.IncludedScopes) > 0)
+
+	postScope = scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
+	assertNotNil(t, postScope)
+
+	// assertEqual(t, []interface{}{1, 5}, postScope.PrimaryFilters[0].Values[0].Values)
 
 }
 
@@ -314,7 +359,9 @@ func getBlogScope() *Scope {
 	if err != nil {
 		panic(err)
 	}
-	return newRootScope(c.MustGetModelStruct(&Blog{}), true)
+	scope := newScope(c.MustGetModelStruct(&Blog{}))
+	scope.maxNestedLevel = c.IncludeNestedLimit
+	return scope
 }
 
 func BenchmarkCheckMapStrings(b *testing.B) {
