@@ -27,7 +27,8 @@ type Scope struct {
 	Struct *ModelStruct
 
 	// Value is the values or / value of the queried object / objects
-	Value interface{}
+	Value        interface{}
+	valueAddress interface{}
 
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
@@ -69,6 +70,10 @@ type Scope struct {
 // Returns the collection name for given scope
 func (s *Scope) GetCollection() string {
 	return s.Struct.collectionType
+}
+
+func (s *Scope) GetValueAddress() interface{} {
+	return s.valueAddress
 }
 
 // NewValueMany creates empty slice of ptr value for given scope
@@ -737,10 +742,14 @@ func (s *Scope) buildSortFields(sorts ...string) (errs []*ErrorObject) {
 
 func (s *Scope) newValueSingle() {
 	s.Value = reflect.New(s.Struct.modelType).Interface()
+	s.valueAddress = s.Value
 }
 
 func (s *Scope) newValueMany() {
-	s.Value = reflect.New(reflect.SliceOf(reflect.New(s.Struct.modelType).Type())).Elem().Interface()
+	val := reflect.New(reflect.SliceOf(reflect.New(s.Struct.modelType).Type()))
+	s.Value = val.Elem().Interface()
+	s.valueAddress = val.Interface()
+
 }
 
 func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {
