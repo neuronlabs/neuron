@@ -85,7 +85,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 	scope = newScope(mStruct)
 
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
-	scope.IncludedScopes[mStruct] = scope
+
 	scope.maxNestedLevel = c.IncludeNestedLimit
 	scope.IsMany = true
 
@@ -158,7 +158,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 				continue
 			}
 
-			filterScope := scope.IncludedScopes[colModel]
+			filterScope := scope.getIncludedScope(colModel)
 			if filterScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
@@ -201,7 +201,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 				continue
 			}
 
-			fieldsScope := scope.IncludedScopes[fieldModel]
+			fieldsScope := scope.getIncludedScope(fieldModel)
 			if fieldsScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
@@ -262,8 +262,6 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	scope = newScope(mStruct)
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
-	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
-	scope.IncludedScopes[mStruct] = scope
 
 	errorObjects = scope.setPrimaryFilterfield(id)
 	if len(errorObjects) != 0 {
@@ -327,7 +325,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 				continue
 			}
 
-			fieldsetScope := scope.IncludedScopes[fieldsetModel]
+			fieldsetScope := scope.getIncludedScope(fieldsetModel)
 			if fieldsetScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)

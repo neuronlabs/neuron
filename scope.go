@@ -121,6 +121,10 @@ func (s *Scope) SetIncludedPrimaries() (err error) {
 	return
 }
 
+func (s *Scope) SetValueFromAddressable() {
+	s.setValueFromAddresable()
+}
+
 // initialize new scope with added primary field to fieldset
 func newScope(modelStruct *ModelStruct) *Scope {
 	scope := &Scope{
@@ -200,7 +204,6 @@ func (s *Scope) setIncludedFilterValues() {
 	if len(s.IncludeValues) == 0 {
 		return
 	}
-	s.newValueMany()
 
 	values = make([]interface{}, len(s.IncludeValues))
 	for v := range s.IncludeValues {
@@ -208,6 +211,7 @@ func (s *Scope) setIncludedFilterValues() {
 		i++
 	}
 	s.setPrimaryFilterValues(values...)
+
 	return
 }
 
@@ -222,6 +226,7 @@ func (s *Scope) setPrimaryFilterValues(values ...interface{}) {
 	fv.Values = append(fv.Values, values...)
 	fv.Operator = OpIn
 	filter.Values = append(filter.Values, fv)
+
 	return
 }
 
@@ -559,12 +564,29 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 	if isNew {
 		s.IncludedFields = append(s.IncludedFields, includeField)
 	}
+
 	return
+}
+
+func (s *Scope) getIncludedScope(mStruct *ModelStruct) *Scope {
+	if s.Struct == mStruct {
+		return s
+	}
+	return s.IncludedScopes[mStruct]
 }
 
 // createOrGetIncludedScope checks if includeScope exists within given scope.
 // if exists returns it, otherwise create new and returns it.
 func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
+	if s.Struct == mStruct {
+		return s
+	}
+
+	if s.IncludedScopes == nil {
+		s.IncludedScopes = make(map[*ModelStruct]*Scope)
+		return s.createIncludedScope(mStruct)
+	}
+
 	scope, ok := s.IncludedScopes[mStruct]
 	if !ok {
 		scope = s.createIncludedScope(mStruct)
@@ -574,9 +596,10 @@ func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
 
 func (s *Scope) createIncludedScope(mStruct *ModelStruct) *Scope {
 	scope := newScope(mStruct)
-	// included scope is always treated as many
 	scope.IsMany = true
 	s.IncludedScopes[mStruct] = scope
+	// included scope is always treated as many
+
 	return scope
 }
 
@@ -600,9 +623,9 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 	for _, field := range s.IncludedFields {
 		// included field is a relationship
 		fieldValue := v.Field(field.getFieldIndex())
-		if fieldValue.IsNil() {
-			continue
-		}
+		// if fieldValue.IsNil() {
+		// 	continue
+		// }
 
 		includedScope, ok := s.IncludedScopes[field.relatedStruct]
 		if !ok {
@@ -622,6 +645,7 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 				elem := fieldValue.Index(i)
 				if !elem.IsNil() {
 					primValue := elem.Elem().Field(primIndex)
+
 					if primValue.IsValid() {
 						includedScope.IncludeValues[primValue.Interface()] = struct{}{}
 					}
@@ -633,6 +657,8 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 				if primValue.IsValid() {
 					includedScope.IncludeValues[primValue.Interface()] = struct{}{}
 				}
+			} else {
+				// error
 			}
 		default:
 			err = IErrUnexpectedType
@@ -747,9 +773,13 @@ func (s *Scope) newValueSingle() {
 
 func (s *Scope) newValueMany() {
 	val := reflect.New(reflect.SliceOf(reflect.New(s.Struct.modelType).Type()))
+
 	s.Value = val.Elem().Interface()
 	s.valueAddress = val.Interface()
+}
 
+func (s *Scope) setValueFromAddresable() {
+	s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
 }
 
 func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {

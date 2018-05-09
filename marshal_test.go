@@ -21,6 +21,8 @@ func TestMarshalScope(t *testing.T) {
 
 	postScope := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
 	postScope.Value = []*Post{{ID: 1, Title: "Post title", Body: "Post body."}}
+	postScope.IncludeValues = make(map[interface{}]struct{})
+	postScope.IncludeValues[1] = struct{}{}
 	postScope.buildFieldset("title", "body", "comments", "latest_comment")
 
 	payload, err := marshalScope(scope, c)
@@ -29,6 +31,7 @@ func TestMarshalScope(t *testing.T) {
 	err = MarshalPayload(buf, payload)
 	assertNoError(t, err)
 	// even if included, there is no
+	t.Log(buf.String())
 	assertTrue(t, strings.Contains(buf.String(), "\"included\":[{\"type\":\"posts\",\"id\":\"1\",\"attributes\":{"))
 	assertTrue(t, strings.Contains(buf.String(), "\"title\":\"My own title.\""))
 	// assertTrue(t, strings.Contains(buf.String(), "\"relationships\":{\"posts\":{\"data\":[{\"type\":\"posts\",\"id\":\"1\"}]}}"))

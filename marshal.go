@@ -43,11 +43,12 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	}
 
 	included := []*Node{}
-	for _, subscope := range scope.IncludedScopes {
-		err = marshalSubScope(subscope, &included, controller)
+	for _, includedScope := range scope.IncludedScopes {
+		err = marshalIncludedScope(includedScope, &included, controller)
 		if err != nil {
 			return
 		}
+		// fmt.Println(includedScope.IncludedScopes)
 	}
 
 	if len(included) != 0 {
@@ -57,7 +58,7 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	return
 }
 
-func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) error {
+func marshalIncludedScope(scope *Scope, included *[]*Node, controller *Controller) error {
 	// get this
 	scopeValue := reflect.ValueOf(scope.Value)
 	switch scopeValue.Kind() {
@@ -66,7 +67,7 @@ func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) er
 		if err != nil {
 			return err
 		}
-		fmt.Println(nodes)
+
 		*included = append(*included, nodes...)
 	case reflect.Ptr:
 		node, err := visitScopeNode(scope.Value, scope, controller)
@@ -77,7 +78,7 @@ func marshalSubScope(scope *Scope, included *[]*Node, controller *Controller) er
 	}
 	// iterate over subscopes and marshalsubscopes
 	for _, sub := range scope.IncludedScopes {
-		err := marshalSubScope(sub, included, controller)
+		err := marshalIncludedScope(sub, included, controller)
 		if err != nil {
 			return err
 		}

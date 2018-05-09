@@ -125,7 +125,7 @@ func TestBuildScopeList(t *testing.T) {
 	assertNil(t, err)
 
 	assertEmpty(t, errs)
-	// t.Error(errs)
+
 	assertNotNil(t, scope)
 
 	assertEqual(t, 1, len(scope.PrimaryFilters))
