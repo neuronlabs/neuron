@@ -233,6 +233,66 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 	return
 }
 
+func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
+) (scope *Scope, errs []*ErrorObject, err error) {
+	var mStruct *ModelStruct
+	mStruct, err = c.getModelStruct(root)
+	if err != nil {
+		return
+	}
+
+	id, related, err := getIDAndRelated(req, mStruct)
+	if err != nil {
+		return
+	}
+
+	relatedField, ok := mStruct.relationships[related]
+	if !ok {
+		// invalid query parameter
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided invalid related field name: '%s', for the collection: '%s'", related, mStruct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+	fmt.Sprintf("%s, %s", id, relatedField.GetFieldName())
+
+	return
+}
+
+func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
+) (scope *Scope, errs []*ErrorObject, err error) {
+	var mStruct *ModelStruct
+	mStruct, err = c.getModelStruct(root)
+	if err != nil {
+		return
+	}
+
+	id, relationship, err := getIDAndRelationship(req, mStruct)
+	if err != nil {
+		return
+	}
+
+	fmt.Sprintf("%s", id)
+
+	relatedField, ok := mStruct.relationships[relationship]
+	if !ok {
+		// invalid query parameter
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided invalid relationship field name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+
+	scope = newScope(mStruct)
+	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	includedScope := scope.createIncludedScope(relatedField.relatedStruct)
+	scope.IncludedFields = []*IncludeField{newIncludeField(relatedField, includedScope)}
+
+	return
+}
+
+// BuildScopeSingle builds the scope for given request and model.
+// It gets and sets the ID from the 'http' request.
 func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// get model type
@@ -249,26 +309,33 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 		}
 		errObj       *ErrorObject
 		errorObjects []*ErrorObject
-		id           string
+		// id           string
 	)
-	id, err = getID(req, mStruct)
-	if err != nil {
-		errs = append(errs, ErrInternalError.Copy())
-		return
-	}
+	// id, err = getID(req, mStruct)
+	// if err != nil {
+	// 	errs = append(errs, ErrInternalError.Copy())
+	// 	return
+	// }
 
 	q := req.URL.Query()
 
 	scope = newScope(mStruct)
+	errs, err = c.setIDFilter(req, scope)
+	if err != nil {
+		return
+	}
+	if len(errs) > 0 {
+		return
+	}
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
 
-	errorObjects = scope.setPrimaryFilterfield(id)
-	if len(errorObjects) != 0 {
-		errObj = ErrInternalError.Copy()
-		errs = append(errs, errObj)
-		return
-	}
+	// errorObjects = scope.setPrimaryFilterfield(id)
+	// if len(errorObjects) != 0 {
+	// 	errObj = ErrInternalError.Copy()
+	// 	errs = append(errs, errObj)
+	// 	return
+	// }
 
 	// Check first included in order to create subscopes
 	included, ok := q[QueryParamInclude]
@@ -371,6 +438,14 @@ func (c *Controller) MustGetModelStruct(model interface{}) *ModelStruct {
 	return mStruct
 }
 
+func (c *Controller) NewScope(model interface{}) (*Scope, error) {
+	mStruct, err := c.GetModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+	return newScope(mStruct), nil
+}
+
 // PrecomputeModels precomputes provided models, making it easy to check
 // models relationships and  attributes.
 func (c *Controller) PrecomputeModels(models ...interface{}) error {
@@ -412,6 +487,15 @@ func (c *Controller) SetAPIURL(url string) error {
 	return nil
 }
 
+// SetIDFilter the method that gets the ID value from the request path, for given scope model.
+// then prepares the primary filter field for given id value.
+// if an internal error occurs returns an 'error'.
+// if user error occurs returns array of *ErrorObject's.
+func (c *Controller) SetIDFilter(req *http.Request, scope *Scope,
+) (errs []*ErrorObject, err error) {
+	return c.setIDFilter(req, scope)
+}
+
 func (c *Controller) checkModelRelationships(model *ModelStruct) (err error) {
 	for _, rel := range model.relationships {
 		val := c.Models.Get(rel.relatedModelType)
@@ -437,4 +521,18 @@ func (c *Controller) getModelStruct(model interface{}) (*ModelStruct, error) {
 		return nil, fmt.Errorf("Unmapped model provided: %s", modelType.Name())
 	}
 	return mStruct, nil
+}
+
+func (c *Controller) setIDFilter(req *http.Request, scope *Scope,
+) (errs []*ErrorObject, err error) {
+	var id string
+	id, err = getID(req, scope.Struct)
+	if err != nil {
+		return
+	}
+	errs = scope.setPrimaryFilterfield(id)
+	if len(errs) > 0 {
+		return
+	}
+	return
 }

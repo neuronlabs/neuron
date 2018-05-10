@@ -67,7 +67,6 @@ func marshalIncludedScope(scope *Scope, included *[]*Node, controller *Controlle
 		if err != nil {
 			return err
 		}
-
 		*included = append(*included, nodes...)
 	case reflect.Ptr:
 		node, err := visitScopeNode(scope.Value, scope, controller)
@@ -126,7 +125,6 @@ func visitScopeManyNodes(scope *Scope, controller *Controller,
 func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 ) (*Node, error) {
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
-		fmt.Println(reflect.TypeOf(value))
 		return nil, IErrUnexpectedType
 	}
 	node := &Node{Type: scope.Struct.collectionType}
@@ -281,7 +279,6 @@ func visitRelationshipManyNode(
 
 	for i := 0; i < manyValue.Len(); i++ {
 		elemValue := manyValue.Index(i)
-		fmt.Println(elemValue.Type())
 		node, err := visitRelationshipNode(elemValue, rootID, field, controller)
 		if err != nil {
 			return nil, err

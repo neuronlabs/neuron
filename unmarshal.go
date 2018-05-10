@@ -46,21 +46,26 @@ var (
 		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
 )
 
-func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
+func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, *ErrorObject, error) {
 	return unmarshalScopeOne(in, c)
 }
 
-func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
+func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *ErrorObject, err error) {
 	payload := new(OnePayload)
-
-	if err := json.NewDecoder(in).Decode(payload); err != nil {
-		return nil, err
+	if err = json.NewDecoder(in).Decode(payload); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if payload.Data == nil {
+		errObj = ErrInvalidJSONDocument.Copy()
+		errObj.Detail = "Specified request contains no data."
+		return
 	}
 
 	collection := payload.Data.Type
 	mStruct := c.Models.GetByCollection(collection)
 	if mStruct == nil {
-		errObj := ErrInvalidResourceName.Copy()
+		errObj = ErrInvalidResourceName.Copy()
 		errObj.Detail = fmt.Sprintf("The specified collection: '%s' is not recognized by the server.", collection)
 
 		if similar := c.Models.getSimilarCollections(collection); len(similar) != 0 {
@@ -70,13 +75,13 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
 			}
 			errObj.Detail += fmt.Sprintf("%s.", similar[len(similar)-1])
 		}
-		return nil, errObj
+		return
 	}
 
-	scope := newScope(mStruct)
-	scope.Value = reflect.New(mStruct.modelType).Interface()
+	scope = newScope(mStruct)
+	scope.newValueSingle()
+	// scope.Value = reflect.New(mStruct.modelType).Interface()
 
-	var err error
 	if payload.Included != nil {
 		includedMap := make(map[string]*Node)
 		for _, included := range payload.Included {
@@ -87,11 +92,7 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {
 	} else {
 		err = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return scope, nil
+	return
 }
 
 // func unmarshalScopeOne(in io.Reader, c *Controller) (*Scope, error) {

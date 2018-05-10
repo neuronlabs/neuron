@@ -597,6 +597,7 @@ func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
 func (s *Scope) createIncludedScope(mStruct *ModelStruct) *Scope {
 	scope := newScope(mStruct)
 	scope.IsMany = true
+
 	s.IncludedScopes[mStruct] = scope
 	// included scope is always treated as many
 
@@ -782,29 +783,62 @@ func (s *Scope) setValueFromAddresable() {
 	s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
 }
 
-func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {
+func getURLVariables(req *http.Request, mStruct *ModelStruct, indexFirst, indexSecond int,
+) (valueFirst, valueSecond string, err error) {
+
 	path := req.URL.Path
+	var invalidURL = func() error {
+		return fmt.Errorf("Provided url is invalid for getting url variables: '%s'", path)
+	}
 	pathSplitted := strings.Split(path, "/")
-	var idIndex int = -1
+	if indexFirst > len(pathSplitted)-1 {
+		err = invalidURL()
+		return
+	}
+	var collectionIndex int = -1
 	if mStruct.collectionURLIndex != -1 {
-		idIndex = mStruct.collectionURLIndex + 1
+		collectionIndex = mStruct.collectionURLIndex
 	} else {
-		for i, spl := range pathSplitted {
-			if spl == mStruct.collectionType {
-				idIndex = i + 1
+		for i, splitted := range pathSplitted {
+			if splitted == mStruct.collectionType {
+				collectionIndex = i
 				break
 			}
 		}
-		if idIndex == -1 {
+		if collectionIndex == -1 {
 			err = fmt.Errorf("The url for given request does not contain collection name: %s", mStruct.collectionType)
 			return
 		}
 	}
 
-	if idIndex > len(pathSplitted)-1 {
-		err = errors.New("Given request does not use id for the model.")
+	if collectionIndex+indexFirst > len(pathSplitted)-1 {
+		err = invalidURL()
 		return
 	}
-	id = pathSplitted[idIndex]
+	valueFirst = pathSplitted[collectionIndex+indexFirst]
+
+	if indexSecond > 0 {
+		if collectionIndex+indexSecond > len(pathSplitted)-1 {
+			err = invalidURL()
+			return
+		}
+		valueSecond = pathSplitted[collectionIndex+indexSecond]
+	}
 	return
+}
+
+func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {
+	id, _, err = getURLVariables(req, mStruct, 1, -1)
+	return
+}
+
+func getIDAndRelationship(req *http.Request, mStruct *ModelStruct,
+) (id, relationship string, err error) {
+	return getURLVariables(req, mStruct, 1, 3)
+
+}
+
+func getIDAndRelated(req *http.Request, mStruct *ModelStruct,
+) (id, related string, err error) {
+	return getURLVariables(req, mStruct, 1, 2)
 }
