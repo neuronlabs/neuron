@@ -52,8 +52,14 @@ func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, *ErrorObject, error
 
 func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *ErrorObject, err error) {
 	payload := new(OnePayload)
-	if err = json.NewDecoder(in).Decode(payload); err != nil {
-		fmt.Println(err)
+
+	if er := json.NewDecoder(in).Decode(payload); er != nil {
+		if serr, ok := er.(*json.SyntaxError); ok {
+			errObj = ErrInvalidJSONDocument.Copy()
+			errObj.Detail = fmt.Sprintf("Syntax Error: %s. At offset: %d.", er.Error(), serr.Offset)
+		} else {
+			err = er
+		}
 		return
 	}
 	if payload.Data == nil {
