@@ -65,11 +65,19 @@ type Scope struct {
 	errorLimit        int
 	maxNestedLevel    int
 	currentErrorCount int
+
+	// CollectionScope is a pointer to the scope containing
+	collectionScope *Scope
+	rootScope       *Scope
 }
 
 // Returns the collection name for given scope
 func (s *Scope) GetCollection() string {
 	return s.Struct.collectionType
+}
+
+func (s *Scope) GetCollectionScope() *Scope {
+	return s.collectionScope
 }
 
 func (s *Scope) GetValueAddress() interface{} {
@@ -519,9 +527,9 @@ func (s *Scope) buildIncludeList(includedList ...string,
 func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 	// relationScope is the scope for the included field
 	var (
-		includeField  *IncludeField
-		isNew         bool
-		relationScope *Scope
+		includeField    *IncludeField
+		isNew           bool
+		collectionScope *Scope
 	)
 
 	// search for the 'included' in the model's
@@ -543,10 +551,10 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 		}
 
 		// get or create new scope for the included field's collection
-		relationScope = s.getOrCreateIncludedScope(relationField.relatedStruct)
+		collectionScope = s.getOrCreateModelsRootScope(relationField.relatedStruct)
 
 		// create new included field
-		includeField, isNew = s.getOrCreateIncludeField(relationField, relationScope)
+		includeField, isNew = s.getOrCreateIncludeField(relationField, collectionScope)
 
 		// set nested fields for includeField
 		errs = append(errs, includeField.buildNestedInclude(included[index+1:], s)...)
@@ -555,10 +563,10 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 		}
 	} else {
 		// get or create new scope for the included field's collection
-		relationScope = s.getOrCreateIncludedScope(relationField.relatedStruct)
+		collectionScope = s.getOrCreateModelsRootScope(relationField.relatedStruct)
 
 		// create new includedField
-		includeField, isNew = s.getOrCreateIncludeField(relationField, relationScope)
+		includeField, isNew = s.getOrCreateIncludeField(relationField, collectionScope)
 	}
 
 	if isNew {
@@ -568,39 +576,58 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 	return
 }
 
-func (s *Scope) getIncludedScope(mStruct *ModelStruct) *Scope {
-	if s.Struct == mStruct {
-		return s
-	}
-	return s.IncludedScopes[mStruct]
+// createModelsRootScope creates scope for given model (mStruct) and
+// stores it within the rootScope.IncludedScopes.
+// Used for collection unique root scopes
+// (filters, fieldsets etc. for given collection scope)
+func (s *Scope) createModelsRootScope(mStruct *ModelStruct) *Scope {
+	scope := s.createModelsScope(mStruct)
+	return scope
 }
 
-// createOrGetIncludedScope checks if includeScope exists within given scope.
-// if exists returns it, otherwise create new and returns it.
-func (s *Scope) getOrCreateIncludedScope(mStruct *ModelStruct) *Scope {
-	if s.Struct == mStruct {
-		return s
+// getModelsRootScope returns the scope for given model that is stored within
+// the rootScope
+func (s *Scope) getModelsRootScope(mStruct *ModelStruct) (collRootScope *Scope) {
+	if s.rootScope == nil {
+		// if 's' is root scope and is related to model that is looking for
+		if s.Struct == mStruct {
+			return s
+		}
+
+		// if 's' is rootScope and mStruct should be within it's Includes
+		if s.IncludedScopes == nil {
+			s.IncludedScopes = make(map[*ModelStruct]*Scope)
+			return nil
+		}
+		return s.IncludedScopes[mStruct]
 	}
 
-	if s.IncludedScopes == nil {
-		s.IncludedScopes = make(map[*ModelStruct]*Scope)
-		return s.createIncludedScope(mStruct)
+	// this should never happen cause if the scope has a root scope it must be stored
+	// within other scope's includedScopes
+	if s.rootScope.IncludedScopes == nil {
+		s.rootScope.IncludedScopes = make(map[*ModelStruct]*Scope)
+		return nil
 	}
+	return s.rootScope.IncludedScopes[mStruct]
+}
 
-	scope, ok := s.IncludedScopes[mStruct]
-	if !ok {
-		scope = s.createIncludedScope(mStruct)
+// getOrCreateModelsRootScope gets ModelsRootScope and if it is null it creates new.
+func (s *Scope) getOrCreateModelsRootScope(mStruct *ModelStruct) *Scope {
+	scope := s.getModelsRootScope(mStruct)
+	if scope == nil {
+		scope = s.createModelsRootScope(mStruct)
 	}
 	return scope
 }
 
-func (s *Scope) createIncludedScope(mStruct *ModelStruct) *Scope {
+// createsModelsScope
+func (s *Scope) createModelsScope(mStruct *ModelStruct) *Scope {
 	scope := newScope(mStruct)
-	scope.IsMany = true
-
-	s.IncludedScopes[mStruct] = scope
-	// included scope is always treated as many
-
+	if s.rootScope == nil {
+		scope.rootScope = s
+	} else {
+		scope.rootScope = s.rootScope
+	}
 	return scope
 }
 

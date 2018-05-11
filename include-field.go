@@ -20,7 +20,7 @@ type IncludeField struct {
 func newIncludeField(field *StructField, scope *Scope) *IncludeField {
 	includeField := new(IncludeField)
 	includeField.StructField = field
-	includeField.Scope = scope
+	includeField.Scope = scope.createModelsScope(field.relatedStruct)
 	return includeField
 }
 
