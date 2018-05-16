@@ -230,12 +230,10 @@ func TestBuildScopeSingle(t *testing.T) {
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
 	_, errs, err = c.BuildScopeSingle(req, &Blog{})
 	assertError(t, err)
-	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/posts/1", nil)
 	_, errs, err = c.BuildScopeSingle(req, &Blog{})
 	assertError(t, err)
-	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/bad-id", nil)
 	_, errs, err = c.BuildScopeSingle(req, &Blog{})

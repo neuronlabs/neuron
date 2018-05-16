@@ -39,9 +39,9 @@ type Scope struct {
 	// specific includefield contains information about it
 	IncludedFields []*IncludeField
 
-	// IncludeValues contain unique values for given include fields
+	// IncludeIDValues contain unique values for given include fields
 	// the key is the - primary key value
-	IncludeValues map[interface{}]struct{}
+	IncludeIDValues *HashSet
 
 	// PrimaryFilters contain filter for the primary field
 	PrimaryFilters []*FilterField
@@ -69,6 +69,7 @@ type Scope struct {
 	// CollectionScope is a pointer to the scope containing
 	collectionScope *Scope
 	rootScope       *Scope
+	currentIncludedFieldIndex int
 }
 
 // Returns the collection name for given scope
@@ -93,6 +94,27 @@ func (s *Scope) NewValueMany() {
 // NewValueSingle creates new value for given scope of a type *ModelStruct.Type
 func (s *Scope) NewValueSingle() {
 	s.newValueSingle()
+}
+
+// NextIncludedField allows iteration over the IncludedFields.
+// If there is any included field it changes the current field index to the next available.
+func (s *Scope) NextIncludedField() bool {
+	if s.currentIncludedFieldIndex > len(s.IncludedFields)-1 {
+		return false
+	}
+	if s.currentIncludedFieldIndex != 0 {
+		s.currentIncludedFieldIndex++
+	}
+	return true
+}
+
+// CurrentIncludedField gets current included field, based on the index
+func (s *Scope) CurrentIncludedField() (*IncludeField, error) {
+	if s.currentIncludedFieldIndex > len(s.IncludedFields)-1 {
+		return nil, errors.New("Getting non-existing included field.")
+	}
+
+	return s.IncludedFields[s.currentIncludedFieldIndex], nil
 }
 
 // SetIncludedPrimaries sets the primary fields for given model
@@ -209,12 +231,12 @@ func (s *Scope) setIncludedFilterValues() {
 		values []interface{}
 		i      int
 	)
-	if len(s.IncludeValues) == 0 {
+	if len(s.IncludeIDValues) == 0 {
 		return
 	}
 
-	values = make([]interface{}, len(s.IncludeValues))
-	for v := range s.IncludeValues {
+	values = make([]interface{}, len(s.IncludeIDValues))
+	for v := range s.IncludeIDValues {
 		values[i] = v
 		i++
 	}
@@ -663,8 +685,8 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 
 		primIndex := field.relatedStruct.primary.getFieldIndex()
 
-		if includedScope.IncludeValues == nil {
-			includedScope.IncludeValues = make(map[interface{}]struct{})
+		if includedScope.IncludeIDValues == nil {
+			includedScope.IncludeIDValues = make(map[interface{}]struct{})
 		}
 		switch fieldValue.Kind() {
 		case reflect.Slice:
@@ -675,7 +697,7 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 					primValue := elem.Elem().Field(primIndex)
 
 					if primValue.IsValid() {
-						includedScope.IncludeValues[primValue.Interface()] = struct{}{}
+						includedScope.IncludeIDValues[primValue.Interface()] = struct{}{}
 					}
 				}
 			}
@@ -683,7 +705,7 @@ func (s *Scope) setIncludedPrimary(value interface{}) (err error) {
 			if !fieldValue.IsNil() {
 				primValue := fieldValue.Elem().Field(primIndex)
 				if primValue.IsValid() {
-					includedScope.IncludeValues[primValue.Interface()] = struct{}{}
+					includedScope.IncludeIDValues[primValue.Interface()] = struct{}{}
 				}
 			} else {
 				// error
