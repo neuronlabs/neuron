@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"reflect"
 	"strings"
 )
 
@@ -15,6 +16,8 @@ type IncludeField struct {
 
 	// if subField is included
 	IncludedSubfields []*IncludeField
+
+	RootScope *Scope
 }
 
 func newIncludeField(field *StructField, scope *Scope) *IncludeField {
@@ -22,6 +25,86 @@ func newIncludeField(field *StructField, scope *Scope) *IncludeField {
 	includeField.StructField = field
 	includeField.Scope = scope
 	return includeField
+}
+
+func (i *IncludeField) getNonUsedFromSingle(value reflect.Value) (interface{}, error) {
+
+	fieldValue := value.Elem().Field(i.getFieldIndex())
+
+	switch fieldValue.Kind() {
+	case reflect.Slice:
+		for j := 0; j < fieldValue.Len(); ji++ {
+			// set primary field within scope for given model struct
+			elem := fieldValue.Index(j)
+			if !elem.IsNil() {
+				primValue := elem.Elem().Field(primIndex)
+
+				if primValue.IsValid() {
+
+					includedScope.IncludeIDValues[primValue.Interface()] = struct{}{}
+				}
+			}
+		}
+	case reflect.Ptr:
+		if !fieldValue.IsNil() {
+			primValue := fieldValue.Elem().Field(primIndex)
+			if primValue.IsValid() {
+				includedScope.IncludeIDValues[primValue.Interface()] = struct{}{}
+			}
+		} else {
+			// error
+		}
+	default:
+		err = IErrUnexpectedType
+		return
+	}
+
+	return nil, nil
+}
+
+func (i *IncludeField) GetNonUsedIDS() ([]interface{}, error) {
+	nonUsed := map[interface{}]struct{}{}
+	i.Scope.IncludeIDValues.Lock()
+	defer i.Scope.IncludeIDValues.Unlock()
+
+	v := reflect.ValueOf(i.RootScope.Value)
+	switch v.Kind() {
+	case reflect.Slice:
+		for j := 0; j < v.Len(); j++ {
+			elem := v.Index(j)
+			if elem.IsNil() {
+				continue
+			}
+
+			value, err := i.getNonUsedFromSingle(elem)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := nonUsed[value]; !ok {
+				nonUsed[value] = struct{}{}
+			}
+		}
+	case reflect.Ptr:
+		value, err := i.getNonUsedFromSingle(v)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := nonUsed[value]; !ok {
+			nonUsed[value] = struct{}{}
+		}
+	default:
+		err := IErrUnexpectedType
+		return nil, err
+	}
+
+	notUsedIDS := make([]interface{}, len(nonUsed))
+
+	j := 0
+	for uniqueID := range nonUsed {
+		notUsedIDS[j] = uniqueID
+		j++
+	}
+	return notUsedIDS, nil
 }
 
 func (i *IncludeField) buildNestedInclude(nested string, scope *Scope,

@@ -74,7 +74,7 @@ func assertTrue(t *testing.T, value bool) {
 
 func assertFalse(t *testing.T, value bool) {
 	if value {
-		t.Error("Provided value is not false")
+		t.Errorf("Provided value is not false. \n%s", traceInfo(2))
 	}
 }
 
