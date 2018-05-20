@@ -45,6 +45,9 @@ type ModelStruct struct {
 	// ClientID field that contains Client-Generated ID
 	clientID *StructField
 
+	// language is a field that contains the language information
+	language *StructField
+
 	// Attributes contain attribute fields
 	attributes map[string]*StructField
 
@@ -98,6 +101,12 @@ func (m *ModelStruct) GetRelationshipField(relationship string) *StructField {
 // GetFields - gets all structFields for given modelstruct (including primary).
 func (m *ModelStruct) GetFields() []*StructField {
 	return m.fields
+}
+
+// GetLanguageField - gets the Language field for given model.
+// If the model does not support i18n the function returns nil structField.
+func (m *ModelStruct) GetLanguageField() *StructField {
+	return m.language
 }
 
 // FieldByIndex return the StructField for given ModelStruct by the field index

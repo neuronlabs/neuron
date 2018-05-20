@@ -152,9 +152,9 @@ func TestNewFilterScope(t *testing.T) {
 		{"id", "eq"},
 		{"title"},
 		{"title", "gt"},
-		{"current-post", "id"},
-		{"current-post", "id", "eq"},
-		{"current-post", "title", "lt"},
+		{"current_post", "id"},
+		{"current_post", "id", "eq"},
+		{"current_post", "title", "lt"},
 		{"posts", "id", "gt"},
 		{"posts", "body", "contains"},
 	}
@@ -204,9 +204,9 @@ func TestNewFilterScope(t *testing.T) {
 
 	var invParams [][]string = [][]string{
 		{},
-		{"current-post"},
+		{"current_post"},
 		{"invalid"},
-		{"current-post", "invalid"},
+		{"current_post", "invalid"},
 		{"invalid", "subfield"},
 		{"title", "nosuchoperator"},
 		{"invalid-field", "with", "operator"},
@@ -248,76 +248,89 @@ func TestScopeNewValue(t *testing.T) {
 	assertEqual(t, reflect.TypeOf(scope.Value), reflect.TypeOf([]*Blog{}))
 }
 
-func TestScopeSetPrimaryFields(t *testing.T) {
+func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	clearMap()
 	getBlogScope()
 
-	req := httptest.NewRequest("GET", "/api/v1/blogs/1?include=posts,current-post", nil)
+	req := httptest.NewRequest("GET", "/api/v1/blogs/1?include=posts,current_post.latest_comment", nil)
 	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
 
-	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 3, Title: "Some title"}, {ID: 4, Title: "Other title"}}, CurrentPost: &Post{ID: 1, Title: "This post"}}
-	err = scope.SetIncludedPrimaries()
+	scope.Value = &Blog{
+		ID:          1,
+		Posts:       []*Post{{ID: 1}, {ID: 3}, {ID: 4}},
+		CurrentPost: &Post{ID: 1},
+	}
+
+	assertEqual(t, 3, scope.GetTotalIncludeFieldCount())
+
+	scope.NextIncludedField()
+	includedField, err := scope.CurrentIncludedField()
+	assertNil(t, err)
+	assertEqual(t, "posts", includedField.jsonAPIName)
+
+	nonUsed, err := includedField.GetNonUsedPrimaries()
 	assertNil(t, err)
 
-	assertTrue(t, len(scope.IncludedScopes) > 0)
-	postScope, ok := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
-	assertTrue(t, ok)
+	assertEqual(t, 3, len(nonUsed))
 
-	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current-post", nil)
+	scope.NextIncludedField()
+	includedField, err = scope.CurrentIncludedField()
+	assertNil(t, err)
+	assertEqual(t, "current_post", includedField.jsonAPIName)
+
+	nonUsed, err = includedField.GetNonUsedPrimaries()
+	assertNil(t, err)
+	assertEmpty(t, nonUsed)
+
+	assertTrue(t, includedField.Scope.NextIncludedField())
+
+	includedField.Scope.Value = &Post{
+		ID:            1,
+		Title:         "This post",
+		LatestComment: &Comment{ID: 2, Body: "This is latest comment"},
+	}
+	nestedIncluded, err := includedField.Scope.CurrentIncludedField()
+	assertNil(t, err)
+	assertEqual(t, "latest_comment", nestedIncluded.jsonAPIName)
+
+	nonUsed, err = nestedIncluded.GetNonUsedPrimaries()
+	assertNil(t, err)
+	assertEqual(t, 1, len(nonUsed))
+
+	assertEmpty(t, nestedIncluded.Scope.PrimaryFilters)
+	nestedIncluded.Scope.SetIDFilters(nonUsed...)
+	assertNotEmpty(t, nestedIncluded.Scope.PrimaryFilters)
+
+	// let's check if empty values are entered.
+	nestedIncluded.Scope.PrimaryFilters = []*FilterField{}
+
+	assertFalse(t, nestedIncluded.Scope.NextIncludedField())
+	assertFalse(t, includedField.Scope.NextIncludedField())
+
+	// After Resetting the pointer goes back to it's position
+	includedField.Scope.ResetIncludedField()
+	assertTrue(t, includedField.Scope.NextIncludedField())
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=posts&filter[posts][id][gt]=0&filter[posts][title][startswith]=this&filter[posts][latest_comment][id][gt]=3", nil)
 	scope, errs, err = c.BuildScopeList(req, &Blog{})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
+	scope.Value = []*Blog{
+		{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}},
+		{ID: 2, Posts: []*Post{{ID: 2}, {ID: 3}}},
+		nil,
+	}
 
-	scope.Value = []*Blog{{ID: 2, CurrentPost: &Post{ID: 1}}, {ID: 3, CurrentPost: &Post{ID: 5}}}
-	err = scope.SetIncludedPrimaries()
+	includedField = scope.IncludedFields[0]
+	includedField.copyFilters()
+	nonUsed, err = includedField.GetNonUsedPrimaries()
 	assertNil(t, err)
-
-	assertTrue(t, len(scope.IncludedScopes) > 0)
-
-	postScope = scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
-	assertNotNil(t, postScope)
-
-	// assertEqual(t, []interface{}{1, 5}, postScope.PrimaryFilters[0].Values[0].Values)
-
+	assertEqual(t, 3, len(nonUsed))
 }
-
-// func TestGetID(t *testing.T) {
-// 	err := PrecomputeModels(&Blog{}, &Post{}, &Comment{})
-// 	assertNil(t, err)
-
-// 	err = SetModelURL(&Blog{}, "/api/v1/blogs/")
-// 	assertNil(t, err)
-
-// 	_, err = url.Parse("/api/v1/blogs/")
-// 	assertNil(t, err)
-
-// 	// t.Log(u.Path)
-// 	req := httptest.NewRequest("GET", "/api/v1/blogs/1", nil)
-// 	mStruct := MustGetModelStruct(&Blog{})
-// 	var id string
-// 	id, err = getID(req, mStruct)
-// 	assertNil(t, err)
-// 	assertEqual(t, "1", id)
-
-// 	mStruct.collectionURLIndex = -1
-// 	id, err = getID(req, mStruct)
-// 	assertNil(t, err)
-// 	assertEqual(t, "1", id)
-
-// 	req = httptest.NewRequest("GET", "/v1/blog/3", nil)
-// 	id, err = getID(req, mStruct)
-// 	assertError(t, err)
-
-// 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
-// 	id, err = getID(req, mStruct)
-// 	assertError(t, err)
-
-// 	// t.Log(MustGetModelStruct(&Blog{}).collectionURLIndex)
-// }
 
 func BenchmarkEmptyMap(b *testing.B) {
 	var mp map[int]*FilterField

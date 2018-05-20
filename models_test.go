@@ -49,6 +49,7 @@ type NoPrimaryModel struct {
 type User struct {
 	privateField int
 	ID           int    `jsonapi:"primary,users"`
+	Lang         string `jsonapi:lang"`
 	Name         string `jsonapi:"attr,name"`
 	Pets         []*Pet `jsonapi:"relation,pets"`
 }
@@ -78,8 +79,18 @@ type Car struct {
 	somePrivateField *uint
 }
 
+type Blog struct {
+	ID            int       `jsonapi:"primary,blogs"`
+	ClientID      string    `jsonapi:"client-id"`
+	Title         string    `jsonapi:"attr,title"`
+	Posts         []*Post   `jsonapi:"relation,posts"`
+	CurrentPost   *Post     `jsonapi:"relation,current_post"`
+	CurrentPostID int       `jsonapi:"attr,current_post_id"`
+	CreatedAt     time.Time `jsonapi:"attr,created_at,iso8601"`
+	ViewCount     int       `jsonapi:"attr,view_count"`
+}
+
 type Post struct {
-	Blog
 	ID            uint64     `jsonapi:"primary,posts"`
 	BlogID        int        `jsonapi:"attr,blog_id"`
 	ClientID      string     `jsonapi:"client-id"`
@@ -105,17 +116,6 @@ type Book struct {
 	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
 	Tags        []string `jsonapi:"attr,tags"`
-}
-
-type Blog struct {
-	ID            int       `jsonapi:"primary,blogs"`
-	ClientID      string    `jsonapi:"client-id"`
-	Title         string    `jsonapi:"attr,title"`
-	Posts         []*Post   `jsonapi:"relation,posts"`
-	CurrentPost   *Post     `jsonapi:"relation,current-post"`
-	CurrentPostID int       `jsonapi:"attr,current_post_id"`
-	CreatedAt     time.Time `jsonapi:"attr,created_at,iso8601"`
-	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
 type RelationOnBasic struct {

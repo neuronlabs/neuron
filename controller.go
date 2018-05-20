@@ -29,6 +29,10 @@ type Controller struct {
 	// occurs
 	ErrorLimitSingle int
 
+	// ErrorLimitRelated defines the upper boundaries for the error count while building
+	// related  or relationship scope.
+	ErrorLimitRelated int
+
 	// IncludeNestedLimit is a maximum value for nested includes (i.e. IncludeNestedLimit = 1
 	// allows ?include=posts.comments but does not allow ?include=posts.comments.author)
 	IncludeNestedLimit int
@@ -44,6 +48,7 @@ func New() *Controller {
 		Models:             newModelMap(),
 		ErrorLimitMany:     1,
 		ErrorLimitSingle:   1,
+		ErrorLimitRelated:  1,
 		IncludeNestedLimit: 1,
 	}
 }
@@ -59,6 +64,7 @@ func Default() *Controller {
 		Models:             newModelMap(),
 		ErrorLimitMany:     5,
 		ErrorLimitSingle:   2,
+		ErrorLimitRelated:  2,
 		IncludeNestedLimit: 1,
 		UseLinks:           true,
 	}
@@ -158,7 +164,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 				continue
 			}
 
-			filterScope := scope.getIncludedScope(colModel)
+			filterScope := scope.getModelsRootScope(colModel)
 			if filterScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
@@ -201,7 +207,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 				continue
 			}
 
-			fieldsScope := scope.getIncludedScope(fieldModel)
+			fieldsScope := scope.getModelsRootScope(fieldModel)
 			if fieldsScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
@@ -230,63 +236,8 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 		}
 	}
 
-	return
-}
-
-func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
-) (scope *Scope, errs []*ErrorObject, err error) {
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(root)
-	if err != nil {
-		return
-	}
-
-	id, related, err := getIDAndRelated(req, mStruct)
-	if err != nil {
-		return
-	}
-
-	relatedField, ok := mStruct.relationships[related]
-	if !ok {
-		// invalid query parameter
-		errObj := ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Provided invalid related field name: '%s', for the collection: '%s'", related, mStruct.collectionType)
-		errs = append(errs, errObj)
-		return
-	}
-	fmt.Sprintf("%s, %s", id, relatedField.GetFieldName())
-
-	return
-}
-
-func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
-) (scope *Scope, errs []*ErrorObject, err error) {
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(root)
-	if err != nil {
-		return
-	}
-
-	id, relationship, err := getIDAndRelationship(req, mStruct)
-	if err != nil {
-		return
-	}
-
-	fmt.Sprintf("%s", id)
-
-	relatedField, ok := mStruct.relationships[relationship]
-	if !ok {
-		// invalid query parameter
-		errObj := ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Provided invalid relationship field name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
-		errs = append(errs, errObj)
-		return
-	}
-
-	scope = newScope(mStruct)
-	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
-	includedScope := scope.createIncludedScope(relatedField.relatedStruct)
-	scope.IncludedFields = []*IncludeField{newIncludeField(relatedField, includedScope)}
+	// Copy the filters for the included fields
+	scope.copyIncludedFilters()
 
 	return
 }
@@ -309,13 +260,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 		}
 		errObj       *ErrorObject
 		errorObjects []*ErrorObject
-		// id           string
 	)
-	// id, err = getID(req, mStruct)
-	// if err != nil {
-	// 	errs = append(errs, ErrInternalError.Copy())
-	// 	return
-	// }
 
 	q := req.URL.Query()
 
@@ -329,13 +274,6 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	}
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
-
-	// errorObjects = scope.setPrimaryFilterfield(id)
-	// if len(errorObjects) != 0 {
-	// 	errObj = ErrInternalError.Copy()
-	// 	errs = append(errs, errObj)
-	// 	return
-	// }
 
 	// Check first included in order to create subscopes
 	included, ok := q[QueryParamInclude]
@@ -392,7 +330,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 				continue
 			}
 
-			fieldsetScope := scope.getIncludedScope(fieldsetModel)
+			fieldsetScope := scope.getModelsRootScope(fieldsetModel)
 			if fieldsetScope == nil {
 				errObj = ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
@@ -402,6 +340,41 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 			splitValues := strings.Split(values[0], annotationSeperator)
 
 			errorObjects = fieldsetScope.buildFieldset(splitValues...)
+			addErrors(errorObjects...)
+		case strings.HasPrefix(key, QueryParamFilter):
+			// filter[field]
+			var splitted []string
+			// get other operators
+			var er error
+			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
+			if er != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
+				addErrors(errObj)
+				continue
+			}
+
+			collection := splitted[0]
+
+			colModel := c.Models.GetByCollection(collection)
+			if colModel == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			filterScope := scope.getModelsRootScope(colModel)
+			if filterScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			splitValues := strings.Split(values[0], annotationSeperator)
+
+			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
 			addErrors(errorObjects...)
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
@@ -413,6 +386,99 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 			return
 		}
 	}
+
+	scope.copyIncludedFilters()
+
+	return
+}
+
+// BuildScopeRelated builds the scope for the related
+func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
+) (scope *Scope, errs []*ErrorObject, err error) {
+	var mStruct *ModelStruct
+	mStruct, err = c.getModelStruct(root)
+	if err != nil {
+		return
+	}
+
+	id, related, err := getIDAndRelated(req, mStruct)
+	if err != nil {
+		return
+	}
+
+	scope = &Scope{
+		Struct:                    mStruct,
+		Fieldset:                  make(map[string]*StructField),
+		currentIncludedFieldIndex: -1,
+	}
+
+	relationField, ok := mStruct.relationships[related]
+	if !ok {
+		// invalid query parameter
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided invalid related field name: '%s', for the collection: '%s'", related, mStruct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+
+	errs = scope.setPrimaryFilterfield(id)
+	if len(errs) > 0 {
+		return
+	}
+
+	scope.Fieldset[related] = relationField
+	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+
+	// preset relationship scope
+	includedField := scope.getOrCreateIncludeField(relationField)
+	includedField.Scope.kind = relatedKind
+	includedField.Scope.Fieldset = nil
+
+	return
+}
+
+func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
+) (scope *Scope, errs []*ErrorObject, err error) {
+	var mStruct *ModelStruct
+	mStruct, err = c.getModelStruct(root)
+	if err != nil {
+		return
+	}
+
+	id, relationship, err := getIDAndRelationship(req, mStruct)
+	if err != nil {
+		return
+	}
+
+	scope = &Scope{
+		Struct:                    mStruct,
+		Fieldset:                  make(map[string]*StructField),
+		currentIncludedFieldIndex: -1,
+	}
+
+	// set primary field filter
+	errs = scope.setPrimaryFilterfield(id)
+	if len(errs) >= c.ErrorLimitRelated {
+		return
+	}
+
+	relationField, ok := mStruct.relationships[relationship]
+	if !ok {
+		// invalid query parameter
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided invalid relationships field name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
+		errs = append(errs, errObj)
+		return
+	}
+
+	// preset root scope
+	scope.Fieldset[relationship] = relationField
+	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+
+	// preset relationship scope
+	includedField := scope.getOrCreateIncludeField(relationField)
+	includedField.Scope.kind = relationshipKind
+	scope.IncludedScopes[includedField.relatedStruct].Fieldset = nil
 
 	return
 }
@@ -436,14 +502,6 @@ func (c *Controller) MustGetModelStruct(model interface{}) *ModelStruct {
 		panic(err)
 	}
 	return mStruct
-}
-
-func (c *Controller) NewScope(model interface{}) (*Scope, error) {
-	mStruct, err := c.GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
-	return newScope(mStruct), nil
 }
 
 // PrecomputeModels precomputes provided models, making it easy to check

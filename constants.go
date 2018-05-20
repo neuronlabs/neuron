@@ -6,6 +6,7 @@ const (
 	annotationPrimary           = "primary"
 	annotationID                = "id"
 	annotationClientID          = "client-id"
+	annotationLangtag           = "lang"
 	annotationAttribute         = "attr"
 	annotationRelation          = "relation"
 	annotationOmitEmpty         = "omitempty"

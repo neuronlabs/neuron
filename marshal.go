@@ -43,18 +43,36 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	}
 
 	included := []*Node{}
-	for _, includedScope := range scope.IncludedScopes {
-		err = marshalIncludedScope(includedScope, &included, controller)
-		if err != nil {
+
+	for _, includedField := range scope.IncludedFields {
+		if err = marshalIncludedField(includedField, &included, controller); err != nil {
 			return
 		}
-		// fmt.Println(includedScope.IncludedScopes)
 	}
 
 	if len(included) != 0 {
 		payloader.setIncluded(included)
 	}
 
+	return
+}
+
+func marshalIncludedField(
+	includedField *IncludeField,
+	included *[]*Node,
+	controller *Controller,
+) (err error) {
+	err = marshalIncludedScope(includedField.Scope, included, controller)
+	if err != nil {
+		return
+	}
+
+	for _, nestedInclude := range includedField.Scope.IncludedFields {
+		err = marshalIncludedField(nestedInclude, included, controller)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -141,7 +159,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 		return nil, err
 	}
 
-	for _, field := range scope.Fieldset {
+	for _, field := range scope.getModelsRootScope(scope.Struct).Fieldset {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
 
@@ -263,7 +281,36 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 		node.Links = linkable.JSONAPILinks()
 	} else if controller.UseLinks {
 		links := make(map[string]interface{})
-		links["self"] = fmt.Sprintf("%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID)
+		var self string
+		switch scope.kind {
+		case rootKind, includedKind:
+			self = fmt.Sprintf("%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID)
+		case relatedKind:
+			if scope.rootScope == nil || len(scope.rootScope.IncludedFields) == 0 {
+				err = fmt.Errorf("Invalid scope provided as related scope. Scope value type: '%s'", scope.Struct.GetType())
+				return nil, err
+			}
+			relatedName := scope.rootScope.IncludedFields[0].jsonAPIName
+			self = fmt.Sprintf("%s/%s/%s/%s",
+				controller.APIURLBase,
+				scope.Struct.collectionType,
+				node.ID,
+				relatedName,
+			)
+		case relationshipKind:
+			if scope.rootScope == nil || len(scope.rootScope.IncludedFields) == 0 {
+				err = fmt.Errorf("Invalid scope provided as related scope. Scope value type: '%s'", scope.Struct.GetType())
+				return nil, err
+			}
+			relatedName := scope.rootScope.IncludedFields[0].jsonAPIName
+			self = fmt.Sprintf("%s/%s/%s/relationships/%s",
+				controller.APIURLBase,
+				scope.Struct.collectionType,
+				node.ID,
+				relatedName,
+			)
+		}
+		links["self"] = self
 		linksObj := Links(links)
 		node.Links = &(linksObj)
 	}

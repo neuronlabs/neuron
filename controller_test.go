@@ -47,7 +47,7 @@ func TestBuildScopeList(t *testing.T) {
 	assertEqual(t, scope.Struct, c.MustGetModelStruct(&Blog{}))
 
 	// with include
-	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current-post", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current_post", nil)
 	scope, errs, err = c.BuildScopeList(req, &Blog{})
 	assertEmpty(t, errs)
 	assertNil(t, err)
@@ -169,13 +169,13 @@ func TestBuildScopeList(t *testing.T) {
 	assertNotEmpty(t, errs)
 
 	// field error too many
-	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,id,posts,comments,this-comment,some-invalid,current-post", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,id,posts,comments,this-comment,some-invalid,current_post", nil)
 	_, errs, err = c.BuildScopeList(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// sorterror
-	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.comments.id,current-post.itle,postes.comm", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.comments.id,current_post.itle,postes.comm", nil)
 	_, errs, err = c.BuildScopeList(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
@@ -188,7 +188,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// too many errors
 	// after 5 errors the function stops
-	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&sort=-itle&filter[blog][id]=1&filter[blogs][unknown]=123&filter[blogs][current-post][something]=123", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&sort=-itle&filter[blog][id]=1&filter[blogs][unknown]=123&filter[blogs][current_post][something]=123", nil)
 	scope, errs, err = c.BuildScopeList(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
@@ -275,7 +275,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
-	req = httptest.NewRequest("GET", "/api/v1/blogs/123?fields[postis]=title&fields[posts]=idss&fields[posts]=titles&title=sometitle&fields[blogs]=titles,current-posts", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?fields[postis]=title&fields[posts]=idss&fields[posts]=titles&title=sometitle&fields[blogs]=titles,current_posts", nil)
 	_, errs, err = c.BuildScopeSingle(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
@@ -353,6 +353,59 @@ func TestPrecomputeModels(t *testing.T) {
 
 	err = c.PrecomputeModels(&InvalidPrimaryField{})
 	assertError(t, err)
+}
+
+func TestBuildScopeRelationship(t *testing.T) {
+	clearMap()
+	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	req := httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/posts", nil)
+	scope, errs, err := c.BuildScopeRelationship(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	assertEqual(t, 1, len(scope.Fieldset))
+
+	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}}
+	postsScope, err := scope.GetPresetRelationshipScope()
+	assertNil(t, err)
+	assertNil(t, postsScope.Fieldset)
+	assertEqual(t, relationshipKind, postsScope.kind)
+	assertEqual(t, reflect.TypeOf([]*Post{}), reflect.TypeOf(postsScope.Value))
+	posts, ok := postsScope.Value.([]*Post)
+	assertTrue(t, ok)
+
+	for _, val := range posts {
+		assertTrue(t, val.ID == 1 || val.ID == 2)
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/current_post", nil)
+	scope, errs, err = c.BuildScopeRelationship(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	scope.Value = &Blog{ID: 2, CurrentPost: &Post{ID: 1}}
+	postScope, err := scope.GetPresetRelationshipScope()
+	assertNil(t, err)
+	assertNil(t, postScope.Fieldset)
+
+	assertEqual(t, relationshipKind, postScope.kind)
+	assertEqual(t, reflect.TypeOf(&Post{}), reflect.TypeOf(postScope.Value))
+
+}
+
+func TestBuildScopeRelated(t *testing.T) {
+	clearMap()
+	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	req := httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
+	scope, errs, err := c.BuildScopeRelated(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	assertEqual(t, 1, len(scope.Fieldset))
+
+	scope.Value = &Blog{}
 }
 
 func TestGetModelStruct(t *testing.T) {

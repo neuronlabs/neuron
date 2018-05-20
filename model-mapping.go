@@ -194,6 +194,8 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			structField.jsonAPIName = "id"
 			structField.jsonAPIType = ClientID
 			modelStruct.clientID = structField
+		case annotationLangtag:
+			modelStruct.language = structField
 		case annotationAttribute:
 			structField.jsonAPIName = resName
 			structField.jsonAPIType = Attribute

@@ -2,28 +2,34 @@ package jsonapi
 
 import (
 	"bytes"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestMarshalScope(t *testing.T) {
-	scope := getBlogScope()
+
 	buf := bytes.NewBufferString("")
-	errs := scope.buildIncludeList("posts")
+
+	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+
+	req := httptest.NewRequest("GET", `/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments,latest_comment`, nil)
+	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*Post{{ID: 1}}}
 
-	scope.Fieldset["id"] = scope.Struct.primary
-	scope.Fieldset["title"] = scope.Struct.attributes["title"]
-	scope.Fieldset["created_at"] = scope.Struct.attributes["created_at"]
-	scope.Fieldset["posts"] = scope.Struct.relationships["posts"]
-
-	postScope := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
+	// assertEqual(t, 1, len(scope.IncludedFields))
+	postInclude := scope.IncludedFields[0]
+	postScope := postInclude.Scope
 	postScope.Value = []*Post{{ID: 1, Title: "Post title", Body: "Post body."}}
-	postScope.IncludeValues = make(map[interface{}]struct{})
-	postScope.IncludeValues[1] = struct{}{}
-	postScope.buildFieldset("title", "body", "comments", "latest_comment")
+
+	currentPost := scope.IncludedFields[1]
+	currentPost.Scope.Value = &Post{ID: 2, Title: "Current One", Body: "This is current post", LatestComment: &Comment{ID: 1}}
+
+	latestComment := currentPost.Scope.IncludedFields[0]
+	latestComment.Scope.Value = &Comment{ID: 1, Body: "This is such a great post", PostID: 2}
 
 	payload, err := marshalScope(scope, c)
 	assertNoError(t, err)
@@ -40,10 +46,10 @@ func TestMarshalScope(t *testing.T) {
 	buf.Reset()
 
 	scope = getBlogScope()
-	errs = scope.buildIncludeList("current-post")
+	errs = scope.buildIncludeList("current_post")
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 4, Title: "The title.", CreatedAt: time.Now(), CurrentPost: &Post{ID: 3}}
-	errs = scope.buildFieldset("title", "created_at", "current-post")
+	errs = scope.buildFieldset("title", "created_at", "current_post")
 	assertEmpty(t, errs)
 
 	scope.IncludedScopes[c.MustGetModelStruct(&Post{})].Value = &Post{ID: 3, Title: "Breaking News!", Body: "Some body"}
@@ -56,7 +62,7 @@ func TestMarshalScope(t *testing.T) {
 	assertNil(t, err)
 
 	// assertTrue(t, strings.Contains(buf.String(),
-	// "\"relationships\":{\"current-post\":{\"data\":{\"type\":\"posts\",\"id\":\"3\"}}}"))
+	// "\"relationships\":{\"current_post\":{\"data\":{\"type\":\"posts\",\"id\":\"3\"}}}"))
 
 	// t.Log(buf.String())
 	assertTrue(t, strings.Contains(buf.String(),
@@ -80,8 +86,6 @@ func TestMarshalScope(t *testing.T) {
 	assertTrue(t, strings.Contains(buf.String(), `"type":"blogs","id":"4","attributes":{"title":"The title one."}`))
 	assertTrue(t, strings.Contains(buf.String(), `"type":"blogs","id":"5","attributes":{"title":"The title two"}`))
 
-	// t.Log(buf.String())
-
 	// scope with no value
 	clearMap()
 	buf.Reset()
@@ -92,7 +96,30 @@ func TestMarshalScope(t *testing.T) {
 
 	err = MarshalPayload(buf, payload)
 	assertNil(t, err)
+}
 
-	t.Log(buf.String())
+func TestMarshalScopeRelationship(t *testing.T) {
+	clearMap()
+	getBlogScope()
+	req := httptest.NewRequest("GET", "/blogs/1/relationships/posts", nil)
+	scope, errs, err := c.BuildScopeRelationship(req, &Blog{})
+
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 3}}}
+
+	postsScope, err := scope.GetPresetRelationshipScope()
+	assertNil(t, err)
+
+	payload, err := c.MarshalScope(postsScope)
+	assertNil(t, err)
+
+	buffer := bytes.NewBufferString("")
+
+	err = MarshalPayload(buffer, payload)
+	assertNil(t, err)
+
+	t.Log(buffer)
 
 }
