@@ -44,8 +44,6 @@ type NoPrimaryModel struct {
 	Name string `jsonapi:"attr,name"`
 }
 
-/** MANY 2 MANY Example */
-
 type User struct {
 	privateField int
 	ID           int    `jsonapi:"primary,users"`
@@ -126,6 +124,12 @@ type RelationOnBasic struct {
 type RelationBasicOnPtr struct {
 	ID               int     `jsonapi:"primary,relationonbasicptr"`
 	BasicPtrRelation *string `jsonapi:"relation,basicptrrelation"`
+}
+
+type Modeli18n struct {
+	ID   int    `jsonapi:"primary,translateable"`
+	Name string `jsonapi:"attr,name,i18n"`
+	Lang string `jsonapi:"lang"`
 }
 
 // func (b *Blog) JSONAPILinks() *Links {

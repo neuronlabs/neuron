@@ -62,6 +62,9 @@ type ModelStruct struct {
 	// non-settable fields the index would be nil
 	fields []*StructField
 
+	// field that are ready for translations
+	i18n []*StructField
+
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
 

@@ -121,13 +121,19 @@ func TestSetRelatedType(t *testing.T) {
 	}
 }
 
-// func TestSetModelURL(t *testing.T) {
-// 	assertNil(t, PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
+func TestI18nModels(t *testing.T) {
+	model := &Modeli18n{}
+	modelMap := newModelMap()
+	err := buildModelStruct(model, modelMap)
+	assertNil(t, err)
 
-// 	assertError(t, SetModelURL(&Blog{}, "/invalid/url"))
-// 	assertError(t, SetModelURL(&User{}, "/doesnt/matter/"))
+	mStruct := modelMap.Get(reflect.TypeOf(Modeli18n{}))
+	assertNotNil(t, mStruct)
+	assertNotNil(t, mStruct.language)
 
-// }
+	assertEqual(t, 1, len(mStruct.i18n))
+	assertTrue(t, mStruct.i18n[0].I18n())
+}
 
 func clearMap() {
 	c.Models = newModelMap()

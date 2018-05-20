@@ -30,7 +30,7 @@ type StructField struct {
 	// isListRelated
 	isListRelated bool
 
-	omitempty, iso8601, isTime, isPtrTime, noFilter bool
+	omitempty, iso8601, isTime, i18n, isPtrTime, noFilter bool
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -67,6 +67,12 @@ func (s *StructField) GetJSONAPIType() JSONAPIType {
 // IsRelationship checks if given field is a relationship
 func (s *StructField) IsRelationship() bool {
 	return s.isRelationship()
+}
+
+// I18n defines if the field is tagged as internationalization ready.
+// This means that the value should be translated
+func (s *StructField) I18n() bool {
+	return s.i18n
 }
 
 func (s *StructField) isRelationship() bool {

@@ -9,12 +9,6 @@ import (
 	"time"
 )
 
-// var cacheModelMap *ModelMap
-
-// func init() {
-// 	cacheModelMap = newModelMap()
-// }
-
 var (
 	errBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
 )
@@ -26,37 +20,6 @@ type ModelMap struct {
 	collections map[string]reflect.Type
 	sync.RWMutex
 }
-
-// // MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
-// // panics if the model does not exists in the map.
-// func MustGetModelStruct(model interface{}) *ModelStruct {
-// 	mStruct, err := getModelStruct(model)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return mStruct
-// }
-
-// // GetModelStruct returns the ModelStruct for provided model
-// // Returns error if provided model does not exists in the PrecomputedMap
-// func GetModelStruct(model interface{}) (*ModelStruct, error) {
-// 	return getModelStruct(model)
-// }
-
-// func getModelStruct(model interface{}) (*ModelStruct, error) {
-// 	if model == nil {
-// 		return nil, errors.New("No model provided.")
-// 	}
-// 	modelType := reflect.ValueOf(model).Type()
-// 	if modelType.Kind() == reflect.Ptr {
-// 		modelType = modelType.Elem()
-// 	}
-// 	mStruct := cacheModelMap.Get(modelType)
-// 	if mStruct == nil {
-// 		return nil, fmt.Errorf("Unmapped model provided: %s", modelType.Name())
-// 	}
-// 	return mStruct, nil
-// }
 
 func newModelMap() *ModelMap {
 	var modelMap *ModelMap = &ModelMap{
@@ -144,7 +107,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 
 		args := strings.Split(tag, annotationSeperator)
 		if len(args) == 1 {
-			if args[0] != annotationClientID && args[0] != "-" {
+			if args[0] != annotationClientID && args[0] != "-" && args[0] != annotationLanguage {
 				err = fmt.Errorf("Bad JSONAPI struct tag format: %s for model: %v", tag, modelType)
 				break
 			}
@@ -170,31 +133,12 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			structField.jsonAPIType = Primary
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
-
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					switch arg {
-					case annotationISO8601:
-						structField.iso8601 = true
-					case annotationOmitEmpty:
-						structField.omitempty = true
-					case annotationNoFilter:
-						structField.noFilter = true
-					}
-				}
-			}
-
-			if tField.Type == reflect.TypeOf(time.Time{}) {
-				structField.isTime = true
-			} else if tField.Type == reflect.TypeOf(new(time.Time)) {
-				structField.isPtrTime = true
-			}
 		case annotationClientID:
 			// ClientID is not a part of fields also
 			structField.jsonAPIName = "id"
 			structField.jsonAPIType = ClientID
 			modelStruct.clientID = structField
-		case annotationLangtag:
+		case annotationLanguage:
 			modelStruct.language = structField
 		case annotationAttribute:
 			structField.jsonAPIName = resName
@@ -209,6 +153,31 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 				return err
 			}
 			modelStruct.attributes[resName] = structField
+
+			// additional options for given tag
+			if len(args) > 2 {
+				for _, arg := range args[2:] {
+					switch arg {
+					case annotationISO8601:
+						structField.iso8601 = true
+					case annotationOmitEmpty:
+						structField.omitempty = true
+					case annotationNoFilter:
+						structField.noFilter = true
+					case annotationI18n:
+						structField.i18n = true
+						if modelStruct.i18n == nil {
+							modelStruct.i18n = make([]*StructField, 0)
+						}
+						modelStruct.i18n = append(modelStruct.i18n, structField)
+					}
+				}
+			}
+			if tField.Type == reflect.TypeOf(time.Time{}) {
+				structField.isTime = true
+			} else if tField.Type == reflect.TypeOf(new(time.Time)) {
+				structField.isPtrTime = true
+			}
 
 		case annotationRelation:
 			structField.jsonAPIName = resName

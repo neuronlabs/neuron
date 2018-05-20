@@ -410,6 +410,7 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		Struct:                    mStruct,
 		Fieldset:                  make(map[string]*StructField),
 		currentIncludedFieldIndex: -1,
+		kind: rootKind,
 	}
 
 	relationField, ok := mStruct.relationships[related]
@@ -429,10 +430,9 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 	scope.Fieldset[related] = relationField
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
 
-	// preset relationship scope
+	// preset related scope
 	includedField := scope.getOrCreateIncludeField(relationField)
 	includedField.Scope.kind = relatedKind
-	includedField.Scope.Fieldset = nil
 
 	return
 }
@@ -454,6 +454,7 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 		Struct:                    mStruct,
 		Fieldset:                  make(map[string]*StructField),
 		currentIncludedFieldIndex: -1,
+		kind: rootKind,
 	}
 
 	// set primary field filter
@@ -478,7 +479,7 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 	// preset relationship scope
 	includedField := scope.getOrCreateIncludeField(relationField)
 	includedField.Scope.kind = relationshipKind
-	scope.IncludedScopes[includedField.relatedStruct].Fieldset = nil
+	includedField.Scope.Fieldset = nil
 
 	return
 }

@@ -255,14 +255,16 @@ FILTERS
 */
 
 func (s *Scope) setIDFilterValues(values ...interface{}) {
-	return s.setPrimaryFilterValues(s.Struct.primary, values...)
+	s.setPrimaryFilterValues(s.Struct.primary, values...)
+	return
 }
 
 func (s *Scope) setLanguageFilterValues(values ...interface{}) {
 	if s.Struct.language == nil {
 		return
 	}
-	return s.setPrimaryFilterValues(s.Struct.language, values...)
+	s.setPrimaryFilterValues(s.Struct.language, values...)
+	return
 }
 
 func (s *Scope) setPrimaryFilterValues(primField *StructField, values ...interface{}) {
@@ -330,7 +332,7 @@ func (s *Scope) buildFilterfield(
 	case 1:
 		// if there is only one argument it must be an attribute.
 		if fieldName == "id" {
-			fField = s.getOrCreatePrimaryFilter()
+			fField = s.getOrCreateIDFilter()
 		} else {
 			sField, ok = m.attributes[fieldName]
 			if !ok {
@@ -351,7 +353,7 @@ func (s *Scope) buildFilterfield(
 
 	case 2:
 		if fieldName == "id" {
-			fField = s.getOrCreatePrimaryFilter()
+			fField = s.getOrCreateIDFilter()
 		} else {
 			sField, ok = m.attributes[fieldName]
 			if !ok {
