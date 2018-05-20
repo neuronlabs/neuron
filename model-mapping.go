@@ -133,6 +133,15 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			structField.jsonAPIType = Primary
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
+			if len(args) > 2 {
+				for _, arg := range args[2:] {
+					switch arg {
+					case annotationNoFilter:
+						structField.noFilter = true
+					}
+				}
+			}
+
 		case annotationClientID:
 			// ClientID is not a part of fields also
 			structField.jsonAPIName = "id"
@@ -191,6 +200,17 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 				return err
 			}
 			modelStruct.relationships[resName] = structField
+
+			if len(args) > 2 {
+				for _, arg := range args[2:] {
+					switch arg {
+					case annotationNoFilter:
+						structField.noFilter = true
+					case annotationOmitEmpty:
+						structField.omitempty = true
+					}
+				}
+			}
 		}
 	}
 	if assignedFields == 0 {

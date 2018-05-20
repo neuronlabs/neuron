@@ -68,7 +68,7 @@ const (
 	// the next page of data
 	KeyNextPage = "next"
 
-	// KeyTotalPgaes is the key to the meta object whose value contains the total
+	// KeyTotalPages is the key to the meta object whose value contains the total
 	// pagination pages
 	KeyTotalPages = "total-pages"
 
