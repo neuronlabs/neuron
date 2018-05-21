@@ -48,9 +48,10 @@ type Scope struct {
 	// specific includefield contains information about it
 	IncludedFields []*IncludeField
 
-	// IncludeIDValues contain unique values for given include fields
+	// IncludeValues contain unique values for given include fields
 	// the key is the - primary key value
-	IncludeIDValues *HashSet
+	// the value is the single object value for given ID
+	IncludedValues *SafeHashMap
 
 	// PrimaryFilters contain filter for the primary field
 	PrimaryFilters []*FilterField
@@ -83,6 +84,8 @@ type Scope struct {
 
 	currentIncludedFieldIndex int
 	isRelationship            bool
+
+	hasFieldNotInFieldset bool
 }
 
 // Returns the collection name for given scope
@@ -132,6 +135,75 @@ func (s *Scope) NewValueMany() {
 // NewValueSingle creates new value for given scope of a type *ModelStruct.Type
 func (s *Scope) NewValueSingle() {
 	s.newValueSingle()
+}
+
+// SetValues iterate over the scope's Value field and add it to the collection root scope.
+// if the collection root scope contains value with given primary field it checks if given scope
+// containsincluded fields that are not within fieldset. If so it adds the included field value to // the value that were inside the collection root scope.
+func (s *Scope) SetCollectionValues() error {
+	if s.collectionScope.IncludedValues == nil {
+		s.collectionScope.IncludedValues = NewSafeHashMap()
+	}
+	s.collectionScope.IncludedValues.Lock()
+	defer s.collectionScope.IncludedValues.Unlock()
+
+	var (
+		primIndex            = s.Struct.primary.getFieldIndex()
+		setValueToCollection = func(value reflect.Value) {
+			primaryValue := value.Elem().Field(primIndex)
+			if !primaryValue.IsValid() {
+				return
+			}
+			primary := primaryValue.Interface()
+			insider, ok := s.collectionScope.IncludedValues.values[primary]
+			if !ok {
+				s.collectionScope.IncludedValues.values[primary] = value.Interface()
+				return
+			}
+
+			if insider == nil {
+				s.collectionScope.IncludedValues.values[primary] = value.Interface()
+			} else if s.hasFieldNotInFieldset {
+				// this scopes value should have more fields
+				insideValue := reflect.ValueOf(insider)
+
+				for _, included := range s.IncludedFields {
+					// only the fields that are not in the fieldset should be added
+					if included.NotInFieldset {
+						index := included.getFieldIndex()
+						if insideField := insideValue.Elem().Field(index); !insideField.IsValid() {
+							thisField := value.Elem().Field(index)
+							if thisField.IsValid() {
+								insideField.Set(thisField)
+							}
+						}
+					}
+				}
+			}
+		}
+	)
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			if elem.Type().Kind() != reflect.Ptr {
+				return IErrUnexpectedType
+			}
+			if !elem.IsNil() {
+				setValueToCollection(elem)
+			}
+		}
+	case reflect.Ptr:
+		if !v.IsNil() {
+			setValueToCollection(v)
+		}
+	default:
+		err := IErrUnexpectedType
+		return err
+	}
+	return nil
 }
 
 // NextIncludedField allows iteration over the IncludedFields.
@@ -195,6 +267,12 @@ func newScope(modelStruct *ModelStruct) *Scope {
 		scope.Fieldset[field.jsonAPIName] = field
 	}
 
+	return scope
+}
+
+func newRootScope(modelStruct *ModelStruct) *Scope {
+	scope := newScope(modelStruct)
+	scope.collectionScope = scope
 	return scope
 }
 
@@ -614,9 +692,10 @@ func (s *Scope) buildInclude(included string) (errs []*ErrorObject) {
 	return
 }
 
-func (s *Scope) copyIncludedFilters() {
+// copies the filters and fieldset for given include and it's nested fields.
+func (s *Scope) copyIncludedBoundaries() {
 	for _, includedField := range s.IncludedFields {
-		includedField.copyFilters()
+		includedField.copyScopeBoundaries()
 	}
 }
 
@@ -627,7 +706,7 @@ func (s *Scope) copyIncludedFilters() {
 func (s *Scope) createModelsRootScope(mStruct *ModelStruct) *Scope {
 	scope := s.createModelsScope(mStruct)
 	scope.rootScope.IncludedScopes[mStruct] = scope
-	scope.IncludeIDValues = NewHashSet()
+	scope.IncludedValues = NewSafeHashMap()
 	return scope
 }
 

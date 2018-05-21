@@ -44,65 +44,90 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 
 	included := []*Node{}
 
-	for _, includedField := range scope.IncludedFields {
-		if err = marshalIncludedField(includedField, &included, controller); err != nil {
-			return
-		}
+	if err = marshalIncludes(scope, &included, controller); err != nil {
+		return
 	}
 
 	if len(included) != 0 {
 		payloader.setIncluded(included)
 	}
-
 	return
 }
 
-func marshalIncludedField(
-	includedField *IncludeField,
+func marshalIncludes(
+	rootScope *Scope,
 	included *[]*Node,
 	controller *Controller,
 ) (err error) {
-	err = marshalIncludedScope(includedField.Scope, included, controller)
-	if err != nil {
-		return
-	}
-
-	for _, nestedInclude := range includedField.Scope.IncludedFields {
-		err = marshalIncludedField(nestedInclude, included, controller)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-func marshalIncludedScope(scope *Scope, included *[]*Node, controller *Controller) error {
-	// get this
-	scopeValue := reflect.ValueOf(scope.Value)
-	switch scopeValue.Kind() {
-	case reflect.Slice:
-		nodes, err := visitScopeManyNodes(scope, controller)
-		if err != nil {
+	for _, includedScope := range rootScope.IncludedScopes {
+		if err = marshalIncludedScope(includedScope, included, controller); err != nil {
 			return err
 		}
-		*included = append(*included, nodes...)
-	case reflect.Ptr:
-		node, err := visitScopeNode(scope.Value, scope, controller)
+	}
+	return nil
+}
+
+func marshalIncludedScope(
+	includedScope *Scope,
+	included *[]*Node,
+	controller *Controller,
+) (err error) {
+	for _, elem := range includedScope.IncludedValues.values {
+		node, err := visitScopeNode(elem, includedScope, controller)
 		if err != nil {
 			return err
 		}
 		*included = append(*included, node)
 	}
-	// iterate over subscopes and marshalsubscopes
-	for _, sub := range scope.IncludedScopes {
-		err := marshalIncludedScope(sub, included, controller)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return
 }
+
+// func marshalIncludedField(
+// 	includedField *IncludeField,
+// 	included *[]*Node,
+// 	controller *Controller,
+// ) (err error) {
+// 	err = marshalIncludedScope(includedField.Scope, included, controller)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	for _, nestedInclude := range includedField.Scope.IncludedFields {
+// 		err = marshalIncludedField(nestedInclude, included, controller)
+// 		if err != nil {
+// 			return
+// 		}
+// 	}
+// 	return
+// }
+
+// func marshalIncludedScope(scope *Scope, included *[]*Node, controller *Controller) error {
+// 	// get this
+// 	scopeValue := reflect.ValueOf(scope.Value)
+// 	switch scopeValue.Kind() {
+// 	case reflect.Slice:
+// 		nodes, err := visitScopeManyNodes(scope, controller)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		*included = append(*included, nodes...)
+// 	case reflect.Ptr:
+// 		node, err := visitScopeNode(scope.Value, scope, controller)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		*included = append(*included, node)
+// 	}
+// 	// iterate over subscopes and marshalsubscopes
+// 	for _, sub := range scope.IncludedScopes {
+// 		err := marshalIncludedScope(sub, included, controller)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
 
 func marshalScopeOne(scope *Scope, controller *Controller) (*OnePayload, error) {
 	node, err := visitScopeNode(scope.Value, scope, controller)

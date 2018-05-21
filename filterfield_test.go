@@ -50,6 +50,7 @@ func TestFilterOperators(t *testing.T) {
 func TestFilterSetValues(t *testing.T) {
 	clearMap()
 	scope := getBlogScope()
+	scope.collectionScope = scope
 	errs := scope.buildIncludeList("posts")
 
 	assertEmpty(t, errs)

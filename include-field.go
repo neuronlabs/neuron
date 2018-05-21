@@ -17,18 +17,20 @@ type IncludeField struct {
 
 	// RelatedScope defines the scope where the IncludedField is stored.
 	RelatedScope *Scope
+
+	NotInFieldset bool
 }
 
 // GetNonUsedPrimaries gets the id values from the RelatedScope, checks which id values were
 // already stored within the colleciton root scope and return new ones.
-func (i *IncludeField) GetNonUsedPrimaries() (notUsedIDS []interface{}, err error) {
+func (i *IncludeField) GetMissingObjects() ([]interface{}, error) {
 
-	// nonUsed makes it possible to get unique ids that are not already used
-	nonUsed := map[interface{}]struct{}{}
+	// uniqueMissing makes it possible to get unique ids that are not already used
+	uniqueMissing := map[interface{}]struct{}{}
 
-	// Lock the HashSet for given collection
-	i.Scope.collectionScope.IncludeIDValues.Lock()
-	defer i.Scope.collectionScope.IncludeIDValues.Unlock()
+	// Lock the SafeHashMap for given collection
+	i.Scope.collectionScope.IncludedValues.Lock()
+	defer i.Scope.collectionScope.IncludedValues.Unlock()
 
 	// Get the value from the RelatedScope
 	v := reflect.ValueOf(i.RelatedScope.Value)
@@ -41,14 +43,13 @@ func (i *IncludeField) GetNonUsedPrimaries() (notUsedIDS []interface{}, err erro
 				continue
 			}
 
-			if err := i.getNonUsedFromSingle(elem, nonUsed); err != nil {
+			if err := i.getMissingFromSingle(elem, uniqueMissing); err != nil {
 				return nil, err
 			}
 
 		}
 	case reflect.Ptr:
-
-		if err := i.getNonUsedFromSingle(v, nonUsed); err != nil {
+		if err := i.getMissingFromSingle(v, uniqueMissing); err != nil {
 			return nil, err
 		}
 	default:
@@ -58,15 +59,17 @@ func (i *IncludeField) GetNonUsedPrimaries() (notUsedIDS []interface{}, err erro
 	}
 
 	// Copy the notUsed map into array
-	notUsedIDS = make([]interface{}, len(nonUsed))
+	missingIDs := make([]interface{}, len(uniqueMissing))
 
 	j := 0
-	for uniqueID := range nonUsed {
-		notUsedIDS[j] = uniqueID
+	for uniqueID := range uniqueMissing {
+		missingIDs[j] = uniqueID
 		j++
 	}
 
-	return notUsedIDS, nil
+	fmt.Println(missingIDs)
+
+	return missingIDs, nil
 }
 
 func newIncludeField(field *StructField, scope *Scope) *IncludeField {
@@ -75,8 +78,13 @@ func newIncludeField(field *StructField, scope *Scope) *IncludeField {
 
 	// Set NewScope for given field
 	includeField.Scope = scope.createModelsScope(field.relatedStruct)
+
 	// Set the root collection scope for given scope
 	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(field.relatedStruct)
+	if _, ok := includeField.Scope.collectionScope.Fieldset[includeField.jsonAPIName]; !ok {
+		includeField.NotInFieldset = true
+		scope.hasFieldNotInFieldset = true
+	}
 
 	// Set relatedScope for given incldudedField
 	includeField.RelatedScope = scope
@@ -86,43 +94,47 @@ func newIncludeField(field *StructField, scope *Scope) *IncludeField {
 	return includeField
 }
 
-func (i *IncludeField) getNonUsedFromSingle(
+func (i *IncludeField) getMissingFromSingle(
 	value reflect.Value,
-	uniques map[interface{}]struct{},
+	uniqueMissing map[interface{}]struct{},
 ) error {
+	var (
+		fieldValue = value.Elem().Field(i.getFieldIndex())
+		primIndex  = i.relatedStruct.primary.getFieldIndex()
 
-	fieldValue := value.Elem().Field(i.getFieldIndex())
-	primIndex := i.relatedStruct.primary.getFieldIndex()
+		setCollectionValues = func(ptr reflect.Value) {
+			primValue := ptr.Elem().Field(primIndex)
 
-	setCollectionIDs := func(ptr reflect.Value) {
-		primValue := ptr.Elem().Field(primIndex)
+			if primValue.IsValid() {
+				primary := primValue.Interface()
 
-		if primValue.IsValid() {
-			v := primValue.Interface()
-			if _, ok := i.Scope.collectionScope.IncludeIDValues.values[v]; !ok {
-				// add to collection IDs
-				i.Scope.collectionScope.IncludeIDValues.values[v] = struct{}{}
-				if _, ok = uniques[v]; !ok {
-					uniques[v] = struct{}{}
+				if _, ok := i.Scope.collectionScope.IncludedValues.values[primary]; !ok {
+					// add to collection IDs
+					i.Scope.collectionScope.IncludedValues.values[primary] = nil
+					if _, ok = uniqueMissing[primary]; !ok {
+						uniqueMissing[primary] = struct{}{}
+						fmt.Printf("Setting id: %v\n", primary)
+					}
 				}
 			}
 		}
-	}
+	)
 
+	// Get the type of the value
 	switch fieldValue.Kind() {
 	case reflect.Slice:
 		for j := 0; j < fieldValue.Len(); j++ {
 			// set primary field within scope for given model struct
 			elem := fieldValue.Index(j)
 			if !elem.IsNil() {
-				setCollectionIDs(elem)
+				setCollectionValues(elem)
 			}
 		}
 	case reflect.Ptr:
 		if !fieldValue.IsNil() {
 			primValue := fieldValue.Elem().Field(primIndex)
 			if primValue.IsValid() {
-				setCollectionIDs(fieldValue)
+				setCollectionValues(fieldValue)
 			}
 		}
 	default:
@@ -131,14 +143,6 @@ func (i *IncludeField) getNonUsedFromSingle(
 	}
 
 	return nil
-}
-
-func (i *IncludeField) prepareScopeValue() {
-	switch i.StructField.refStruct.Type.Kind() {
-	case reflect.Ptr:
-	case reflect.Slice:
-	}
-
 }
 
 func (i *IncludeField) setRelatedValue(relatedValue reflect.Value) {
@@ -157,68 +161,39 @@ func (i *IncludeField) setRelatedValue(relatedValue reflect.Value) {
 	i.Scope.Value = includedScopeValue.Interface()
 }
 
-// func (i *IncludeField) copySingleValue(scopeValue, value reflect.Value) {
-// 	fieldValue := value.Elem().Field(i.getFieldIndex())
-// 	primIndex := i.relatedStruct.primary.getFieldIndex()
-
-// 	switch fieldValue.Kind() {
-// 	case reflect.Slice:
-// 		for j := 0; j < fieldValue.Len(); j++ {
-// 			// set primary field within scope for given model struct
-// 			elem := fieldValue.Index(j)
-// 			if !elem.IsNil() {
-// 				reflect.Append(scopeValue, elem)
-// 			}
-// 		}
-// 	case reflect.Ptr:
-
-// 		if !fieldValue.IsNil() {
-// 			primValue := fieldValue.Elem().Field(primIndex)
-// 			if primValue.IsValid() {
-// 				scopeValue.Set(primVa)
-// 			}
-// 		}
-// 	default:
-// 		err := IErrUnexpectedType
-// 		return err
-// 	}
-// }
-
-// copyFilters copies the filters from the collection root scope
-// used to copy the filters created by the query
-func (i *IncludeField) copyFilters() {
+func (i *IncludeField) copyScopeBoundaries() {
 	// copy primaries
-	i.Scope.PrimaryFilters = i.Scope.collectionScope.PrimaryFilters
+	copy(i.Scope.PrimaryFilters, i.Scope.collectionScope.PrimaryFilters)
 
 	// copy attribute filters
-	i.Scope.AttributeFilters = i.Scope.collectionScope.AttributeFilters
+	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
 
 	// relationships
-	i.Scope.RelationshipFilters = i.Scope.collectionScope.RelationshipFilters
+	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
+
+	// fieldset is taken by reference - copied if there is nested
+	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
 
 	for _, nested := range i.Scope.IncludedFields {
-		nested.copyFilters()
+		// if the nested include is not found within the collection fieldset
+		// the 'i'.Scope should have a new (not reference) Fieldset
+		// with the nested field added to it
+		if nested.NotInFieldset {
+			// make a new fieldset if it is the same reference
+			if len(i.Scope.Fieldset) == len(i.Scope.collectionScope.Fieldset) {
+				// if there is more than one nested this would not happen
+				i.Scope.Fieldset = make(map[string]*StructField)
+				// copy fieldset
+				for key, field := range i.Scope.collectionScope.Fieldset {
+					i.Scope.Fieldset[key] = field
+				}
+			}
+
+			//add nested
+			i.Scope.Fieldset[nested.jsonAPIName] = nested.StructField
+		}
+
+		nested.copyScopeBoundaries()
 	}
+
 }
-
-// getOrCreateNestedInclude - get from includedSubfiedls or if no such field
-// // create new included.
-// func (i *IncludeField) getOrCreateNestedInclude(field *StructField) *IncludeField {
-// 	if i.IncludedSubfields == nil {
-// 		i.IncludedSubfields = make([]*IncludeField, 0)
-// 	}
-// 	for _, subfield := range i.IncludedSubfields {
-// 		if subfield.getFieldIndex() == field.getFieldIndex() {
-// 			return subfield
-// 		}
-// 	}
-
-// 	includeField := newIncludeField(field, i.Scope)
-
-// 	i.IncludedSubfields = append(i.IncludedSubfields, includeField)
-// 	return includeField
-// }
-
-// func (i *IncludeField) includeSubfield(includeField *IncludeField) {
-// 	i.IncludedSubfields = append(i.IncludedSubfields, includeField)
-// }

@@ -72,7 +72,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&Driver{})
 	assertNotNil(t, mStruct)
 
-	driverRootScope := newScope(mStruct)
+	driverRootScope := newRootScope(mStruct)
 	assertNotNil(t, driverRootScope)
 
 	// having some included parameter that is valid for given model
@@ -271,7 +271,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "posts", includedField.jsonAPIName)
 
-	nonUsed, err := includedField.GetNonUsedPrimaries()
+	nonUsed, err := includedField.GetMissingObjects()
 	assertNil(t, err)
 
 	assertEqual(t, 3, len(nonUsed))
@@ -281,7 +281,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "current_post", includedField.jsonAPIName)
 
-	nonUsed, err = includedField.GetNonUsedPrimaries()
+	nonUsed, err = includedField.GetMissingObjects()
 	assertNil(t, err)
 	assertEmpty(t, nonUsed)
 
@@ -296,7 +296,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "latest_comment", nestedIncluded.jsonAPIName)
 
-	nonUsed, err = nestedIncluded.GetNonUsedPrimaries()
+	nonUsed, err = nestedIncluded.GetMissingObjects()
 	assertNil(t, err)
 	assertEqual(t, 1, len(nonUsed))
 
@@ -326,10 +326,50 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	}
 
 	includedField = scope.IncludedFields[0]
-	includedField.copyFilters()
-	nonUsed, err = includedField.GetNonUsedPrimaries()
+	includedField.copyScopeBoundaries()
+	nonUsed, err = includedField.GetMissingObjects()
 	assertNil(t, err)
 	assertEqual(t, 3, len(nonUsed))
+}
+
+func TestScopeSetCollectionValues(t *testing.T) {
+	req := httptest.NewRequest("GET", "/blogs?include=posts.comments,current_post&fieldset[posts]=title", nil)
+	clearMap()
+	getBlogScope()
+	scope, errs, err := c.BuildScopeList(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope)
+
+	scope.Value = []*Blog{
+		{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}, CurrentPost: &Post{ID: 2}},
+		{ID: 2, Posts: []*Post{{ID: 2}, {ID: 3}}, CurrentPost: &Post{ID: 3}},
+	}
+	err = scope.SetCollectionValues()
+
+	for scope.NextIncludedField() {
+		iField, _ := scope.CurrentIncludedField()
+		missing, _ := iField.GetMissingObjects()
+		if iField.jsonAPIName == "posts" {
+			assertNotEmpty(t, missing)
+			assertNotEqual(t, len(iField.Scope.Fieldset), len(iField.Scope.collectionScope.Fieldset))
+			_, ok := iField.Scope.Fieldset["comments"]
+			assertTrue(t, ok)
+			// get from repo
+			iField.Scope.Value = []*Post{
+				{ID: 1, Title: "Title", Comments: []*Comment{{ID: 1}}},
+				{ID: 2, Title: "Another Title", Comments: []*Comment{{ID: 2}}},
+			}
+			err := iField.Scope.SetCollectionValues()
+			assertNil(t, err)
+
+			for iField.Scope.NextIncludedField() {
+
+			}
+		}
+
+	}
+
 }
 
 func BenchmarkEmptyMap(b *testing.B) {
@@ -374,6 +414,7 @@ func getBlogScope() *Scope {
 	}
 	scope := newScope(c.MustGetModelStruct(&Blog{}))
 	scope.maxNestedLevel = c.IncludeNestedLimit
+	scope.collectionScope = scope
 	return scope
 }
 

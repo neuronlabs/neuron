@@ -88,11 +88,12 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 			scope.currentErrorCount += len(errObjects)
 		}
 	)
-	scope = newScope(mStruct)
+	scope = newRootScope(mStruct)
 
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
+	scope.collectionScope = scope
 	scope.IsMany = true
 
 	// Get URLQuery
@@ -237,7 +238,7 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 	}
 
 	// Copy the filters for the included fields
-	scope.copyIncludedFilters()
+	scope.copyIncludedBoundaries()
 
 	return
 }
@@ -264,7 +265,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 
 	q := req.URL.Query()
 
-	scope = newScope(mStruct)
+	scope = newRootScope(mStruct)
 	errs, err = c.setIDFilter(req, scope)
 	if err != nil {
 		return
@@ -387,7 +388,7 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 		}
 	}
 
-	scope.copyIncludedFilters()
+	scope.copyIncludedBoundaries()
 
 	return
 }
@@ -412,6 +413,7 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		currentIncludedFieldIndex: -1,
 		kind: rootKind,
 	}
+	scope.collectionScope = scope
 
 	relationField, ok := mStruct.relationships[related]
 	if !ok {
@@ -433,6 +435,8 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 	// preset related scope
 	includedField := scope.getOrCreateIncludeField(relationField)
 	includedField.Scope.kind = relatedKind
+
+	scope.copyIncludedBoundaries()
 
 	return
 }
@@ -456,6 +460,7 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 		currentIncludedFieldIndex: -1,
 		kind: rootKind,
 	}
+	scope.collectionScope = scope
 
 	// set primary field filter
 	errs = scope.setPrimaryFilterfield(id)
@@ -475,11 +480,14 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 	// preset root scope
 	scope.Fieldset[relationship] = relationField
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.createModelsRootScope(relationField.relatedStruct)
+	scope.IncludedScopes[relationField.relatedStruct].Fieldset = nil
 
 	// preset relationship scope
 	includedField := scope.getOrCreateIncludeField(relationField)
 	includedField.Scope.kind = relationshipKind
-	includedField.Scope.Fieldset = nil
+
+	scope.copyIncludedBoundaries()
 
 	return
 }

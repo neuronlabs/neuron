@@ -68,26 +68,26 @@ func assertNilErrors(t *testing.T, errs ...error) {
 
 func assertTrue(t *testing.T, value bool) {
 	if !value {
-		t.Error("Provided value is not true. \n%s", traceInfo(2))
+		t.Error("Provided value is not true. \n%sv", traceInfo(2))
 	}
 }
 
 func assertFalse(t *testing.T, value bool) {
 	if value {
-		t.Errorf("Provided value is not false. \n%s", traceInfo(2))
+		t.Errorf("Provided value is not false. \n%v", traceInfo(2))
 	}
 }
 
 func assertEmpty(t *testing.T, obj interface{}) {
 	if !isEmpty(obj) {
-		t.Errorf("Object is not empty. \n%s", traceInfo(2))
+		t.Errorf("Object is not empty. \n%v", traceInfo(2))
 	}
 
 }
 
 func assertNotEmpty(t *testing.T, obj interface{}) {
 	if isEmpty(obj) {
-		t.Errorf("Object is empty. \n%s", traceInfo(2))
+		t.Errorf("Object is empty. \n%v", traceInfo(2))
 	}
 }
 
@@ -99,7 +99,7 @@ func assertEqual(t *testing.T, expected, actual interface{}) {
 
 func assertNotEqual(t *testing.T, expected, actual interface{}) {
 	if areEqual(expected, actual) {
-		t.Errorf("Objects: %s and %s are equal. \n%s", expected, actual, traceInfo(2))
+		t.Errorf("Objects: %v and %v are equal. \n%s", expected, actual, traceInfo(2))
 	}
 }
 

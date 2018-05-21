@@ -369,7 +369,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}}
 	postsScope, err := scope.GetPresetRelationshipScope()
 	assertNil(t, err)
-	assertNil(t, postsScope.Fieldset)
+	t.Log(postsScope.Fieldset)
 	assertEqual(t, relationshipKind, postsScope.kind)
 	assertEqual(t, reflect.TypeOf([]*Post{}), reflect.TypeOf(postsScope.Value))
 	posts, ok := postsScope.Value.([]*Post)
