@@ -5,6 +5,27 @@ import (
 	"reflect"
 )
 
+// FieldType is an enum that defines the following field type (i.e. 'primary', 'attribute')
+type FieldType int
+
+const (
+	UnknownType FieldType = iota
+	// Primary is a 'primary' field
+	Primary
+
+	// Attribute is an 'attribute' field
+	Attribute
+
+	// ClientID is id set by client
+	ClientID
+
+	// RelationshipSingle is a 'relationship' with single object
+	RelationshipSingle
+
+	// RelationshipMultiple is a 'relationship' with multiple objects
+	RelationshipMultiple
+)
+
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
@@ -18,7 +39,7 @@ type StructField struct {
 	jsonAPIName string
 
 	// fieldType
-	jsonAPIType JSONAPIType
+	fieldType FieldType
 
 	// Given Field
 	refStruct reflect.StructField
@@ -30,7 +51,7 @@ type StructField struct {
 	// isListRelated
 	isListRelated bool
 
-	omitempty, iso8601, isTime, i18n, isPtrTime, noFilter bool
+	omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -59,9 +80,9 @@ func (s *StructField) GetRelatedModelType() reflect.Type {
 	return s.getRelatedModelType()
 }
 
-// GetJSONAPIType gets the JSONAPIType of the given struct field
-func (s *StructField) GetJSONAPIType() JSONAPIType {
-	return s.jsonAPIType
+// GetFieldType gets the FieldType of the given struct field
+func (s *StructField) GetFieldKind() FieldType {
+	return s.fieldType
 }
 
 // IsRelationship checks if given field is a relationship
@@ -76,11 +97,11 @@ func (s *StructField) I18n() bool {
 }
 
 func (s *StructField) isRelationship() bool {
-	return s.jsonAPIType == RelationshipMultiple || s.jsonAPIType == RelationshipSingle
+	return s.fieldType == RelationshipMultiple || s.fieldType == RelationshipSingle
 }
 
 func (s *StructField) canBeSorted() bool {
-	switch s.jsonAPIType {
+	switch s.fieldType {
 	case RelationshipSingle, RelationshipMultiple, Attribute:
 		return true
 	}
@@ -105,7 +126,7 @@ func (s *StructField) getFieldIndex() int {
 
 func (s *StructField) initCheckFieldType() error {
 	fieldType := s.refStruct.Type
-	switch s.jsonAPIType {
+	switch s.fieldType {
 	case Primary:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
@@ -124,6 +145,12 @@ func (s *StructField) initCheckFieldType() error {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
 			err := fmt.Errorf("Invalid attribute field type: %v for field: %s in model: %s", fieldType, s.fieldName, s.mStruct.modelType.Name())
 			return err
+		}
+		if s.isLanguage {
+			if fieldType.Kind() != reflect.String {
+				err := fmt.Errorf("Incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
+				return err
+			}
 		}
 
 	case RelationshipSingle, RelationshipMultiple:

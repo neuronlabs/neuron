@@ -130,7 +130,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		case annotationPrimary:
 			// Primary is not a part of fields
 			structField.jsonAPIName = "id"
-			structField.jsonAPIType = Primary
+			structField.fieldType = Primary
 			modelStruct.collectionType = resName
 			modelStruct.primary = structField
 			if len(args) > 2 {
@@ -145,13 +145,11 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 		case annotationClientID:
 			// ClientID is not a part of fields also
 			structField.jsonAPIName = "id"
-			structField.jsonAPIType = ClientID
+			structField.fieldType = ClientID
 			modelStruct.clientID = structField
-		case annotationLanguage:
-			modelStruct.language = structField
 		case annotationAttribute:
 			structField.jsonAPIName = resName
-			structField.jsonAPIType = Attribute
+			structField.fieldType = Attribute
 			modelStruct.fields = append(modelStruct.fields, structField)
 
 			// check if no duplicates
@@ -179,7 +177,11 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 							modelStruct.i18n = make([]*StructField, 0)
 						}
 						modelStruct.i18n = append(modelStruct.i18n, structField)
+					case annotationLanguage:
+						structField.isLanguage = true
+						modelStruct.language = structField
 					}
+
 				}
 			}
 			if tField.Type == reflect.TypeOf(time.Time{}) {
@@ -291,7 +293,7 @@ func setRelatedType(sField *StructField) error {
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
 		if modelType.Kind() == reflect.Slice {
-			sField.jsonAPIType = RelationshipMultiple
+			sField.fieldType = RelationshipMultiple
 		}
 		modelType = modelType.Elem()
 	}
@@ -301,8 +303,8 @@ func setRelatedType(sField *StructField) error {
 		return err
 	}
 
-	if sField.jsonAPIType == UnknownType {
-		sField.jsonAPIType = RelationshipSingle
+	if sField.fieldType == UnknownType {
+		sField.fieldType = RelationshipSingle
 	}
 	sField.relatedModelType = modelType
 	return nil

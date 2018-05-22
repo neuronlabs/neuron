@@ -188,7 +188,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
 
-		switch field.jsonAPIType {
+		switch field.fieldType {
 		case Attribute:
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
@@ -245,7 +245,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				node.ClientID = clientID
 			}
 		case RelationshipMultiple, RelationshipSingle:
-			var isSlice bool = field.jsonAPIType == RelationshipMultiple
+			var isSlice bool = field.fieldType == RelationshipMultiple
 			if field.omitempty &&
 				(isSlice && fieldValue.Len() < 1 || !isSlice && fieldValue.IsNil()) {
 				continue

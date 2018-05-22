@@ -8,27 +8,6 @@ import (
 
 var maxNestedRelLevel int = 1
 
-// JSONAPIType is an enum that defines the following field type (i.e. 'primary', 'attribute')
-type JSONAPIType int
-
-const (
-	UnknownType JSONAPIType = iota
-	// Primary is a 'primary' field
-	Primary
-
-	// Attribute is an 'attribute' field
-	Attribute
-
-	// ClientID is id set by client
-	ClientID
-
-	// RelationshipSingle is a 'relationship' with single object
-	RelationshipSingle
-
-	// RelationshipMultiple is a 'relationship' with multiple objects
-	RelationshipMultiple
-)
-
 // ModelStruct is a computed representation of the jsonapi models.
 // Contain information about the model like the collection type,
 // distinction of the field types (primary, attributes, relationships).
@@ -252,6 +231,5 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 			}
 		}
 	}
-
 	return nil
 }

@@ -18,6 +18,15 @@ func assertPanic(t *testing.T, testFunc func()) {
 	testFunc()
 }
 
+func assertNoPanic(t *testing.T, testFunc func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The function: %v should not panic.\n%s", testFunc, traceInfo(3))
+		}
+	}()
+	testFunc()
+}
+
 func assertError(t *testing.T, err error) {
 	if err == nil {
 		t.Errorf("Provided error is nil. \n%s", traceInfo(2))

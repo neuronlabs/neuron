@@ -513,6 +513,16 @@ func (c *Controller) MustGetModelStruct(model interface{}) *ModelStruct {
 	return mStruct
 }
 
+func (c *Controller) NewScope(model interface{}) (*Scope, error) {
+	mStruct, err := c.GetModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+
+	scope := newRootScope(mStruct)
+	return scope, nil
+}
+
 // PrecomputeModels precomputes provided models, making it easy to check
 // models relationships and  attributes.
 func (c *Controller) PrecomputeModels(models ...interface{}) error {

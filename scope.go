@@ -62,6 +62,9 @@ type Scope struct {
 	// AttributeFilters contain fitler for the attribute fields
 	AttributeFilters []*FilterField
 
+	// LanguageFilters contain information about language filters
+	LanguageFilters *FilterField
+
 	// Fields represents fieldset used for this scope - jsonapi 'fields[collection]'
 	Fieldset map[string]*StructField
 
@@ -97,6 +100,91 @@ func (s *Scope) GetCollection() string {
 // Used for included Field scopes for getting their model root scope, that contains all
 func (s *Scope) GetCollectionScope() *Scope {
 	return s.collectionScope
+}
+
+// GetLangtagValue returns the value of the langtag for given scope
+// returns error if:
+//		- the scope's model does not support i18n
+//		- provided nil Value for the scope
+//		- the scope's Value is of invalid type
+func (s *Scope) GetLangtagValue() (langtag string, err error) {
+	var index int
+	if index, err = s.getLangtagIndex(); err != nil {
+		return
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			err = s.errNilValueProvided()
+			return
+		}
+
+		if v.Elem().Type() != s.Struct.modelType {
+			err = s.errValueTypeDoesNotMatch(v.Elem().Type())
+			return
+		}
+
+		langField := v.Elem().Field(index)
+		langtag = langField.String()
+		return
+	case reflect.Invalid:
+		err = s.errInvalidValue()
+	default:
+		err = fmt.Errorf("The GetLangtagValue allows single pointer type value only. Value type:'%v'", v.Type())
+	}
+	return
+}
+
+// SetLangtag sets the langtag to the scope's value.
+// returns an error
+//		- if the Value is of invalid type or if the
+//		- if the model does not support i18n
+//		- if the scope's Value is nil pointer
+func (s *Scope) SetLangtag(langtag string) (err error) {
+	var index int
+	if index, err = s.getLangtagIndex(); err != nil {
+		return
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return s.errNilValueProvided()
+		}
+
+		if v.Elem().Type() != s.Struct.modelType {
+			return s.errValueTypeDoesNotMatch(v.Type())
+		}
+		v.Elem().Field(index).SetString(langtag)
+	case reflect.Slice:
+
+		if v.Type().Elem().Kind() != reflect.Ptr {
+			return IErrUnexpectedType
+		}
+		if t := v.Type().Elem().Elem(); t != s.Struct.modelType {
+			return s.errValueTypeDoesNotMatch(t)
+		}
+
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			if elem.IsNil() {
+				continue
+			}
+			elem.Elem().Field(index).SetString(langtag)
+		}
+
+	case reflect.Invalid:
+		err = s.errInvalidValue()
+		return
+	default:
+		err = errors.New("The SetLangtag allows single pointer or Slice of pointers as value type. Value type")
+		return
+	}
+	return
+
 }
 
 // GetValueAddress gets the address of the value for given scope
@@ -170,11 +258,15 @@ func (s *Scope) SetCollectionValues() error {
 				for _, included := range s.IncludedFields {
 					// only the fields that are not in the fieldset should be added
 					if included.NotInFieldset {
+
+						// get the included field index
 						index := included.getFieldIndex()
-						if insideField := insideValue.Elem().Field(index); !insideField.IsValid() {
+
+						// check if included field in the collection Values has this field
+						if insideField := insideValue.Elem().Field(index); !insideField.IsNil() {
 							thisField := value.Elem().Field(index)
-							if thisField.IsValid() {
-								insideField.Set(thisField)
+							if thisField.IsNil() {
+								thisField.Set(insideField)
 							}
 						}
 					}
@@ -242,16 +334,23 @@ func (s *Scope) SetPrimaryFilters(values ...interface{}) {
 }
 
 // Sets the LanguageFilter for given scope.
-// If the scope's model does not support i18n it does nothing.
+// If the scope's model does not support i18n it does not create language filter, and ends fast.
 func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 	s.setLanguageFilterValues(languages...)
+}
+
+// UseI18n is a bool that defines if given scope uses the i18n field.
+// I.e. it allows to predefine if model should set language filter.
+func (s *Scope) UseI18n() bool {
+	return s.Struct.language != nil
 }
 
 // SetValueFromAddressable - lack of generic makes it hard for preparing addressable value.
 // While getting the addressable value with GetValueAddress, this function makes use of it
 // by setting the Value from addressable.
-func (s *Scope) SetValueFromAddressable() {
-	s.setValueFromAddresable()
+// Returns an error if the addressable is nil.
+func (s *Scope) SetValueFromAddressable() error {
+	return s.setValueFromAddressable()
 }
 
 // initialize new scope with added primary field to fieldset
@@ -338,10 +437,16 @@ func (s *Scope) setIDFilterValues(values ...interface{}) {
 }
 
 func (s *Scope) setLanguageFilterValues(values ...interface{}) {
-	if s.Struct.language == nil {
+	filter := s.getOrCreateLangaugeFilter()
+	if filter == nil {
 		return
 	}
-	s.setPrimaryFilterValues(s.Struct.language, values...)
+	if filter.Values == nil {
+		filter.Values = make([]*FilterValues, 0)
+	}
+	fv := &FilterValues{Operator: OpIn}
+	fv.Values = append(fv.Values, values...)
+	filter.Values = append(filter.Values, fv)
 	return
 }
 
@@ -543,7 +648,13 @@ func (s *Scope) getOrCreateLangaugeFilter() (filter *FilterField) {
 	if s.Struct.language == nil {
 		return nil
 	}
-	return s.getOrCreatePrimaryFilter(s.Struct.language)
+	if s.LanguageFilters != nil {
+		return s.LanguageFilters
+	}
+	filter = &FilterField{StructField: s.Struct.language}
+	s.LanguageFilters = filter
+	return
+
 }
 
 func (s *Scope) getOrCreateAttributeFilter(
@@ -894,8 +1005,13 @@ func (s *Scope) newValueMany() {
 	s.valueAddress = val.Interface()
 }
 
-func (s *Scope) setValueFromAddresable() {
-	s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
+func (s *Scope) setValueFromAddressable() error {
+	if s.valueAddress != nil && reflect.TypeOf(s.valueAddress).Kind() == reflect.Ptr {
+		s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
+		return nil
+	}
+	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.Struct.modelType, s.valueAddress)
+
 }
 
 func getURLVariables(req *http.Request, mStruct *ModelStruct, indexFirst, indexSecond int,
@@ -947,11 +1063,6 @@ func getID(req *http.Request, mStruct *ModelStruct) (id string, err error) {
 	return
 }
 
-func getRelationship(req *http.Request, mStruct *ModelStruct) (relationship string, err error) {
-	relationship, _, err = getURLVariables(req, mStruct, 2, -1)
-	return
-}
-
 func getIDAndRelationship(req *http.Request, mStruct *ModelStruct,
 ) (id, relationship string, err error) {
 	return getURLVariables(req, mStruct, 1, 3)
@@ -961,4 +1072,33 @@ func getIDAndRelationship(req *http.Request, mStruct *ModelStruct,
 func getIDAndRelated(req *http.Request, mStruct *ModelStruct,
 ) (id, related string, err error) {
 	return getURLVariables(req, mStruct, 1, 2)
+}
+
+/**
+Language
+*/
+
+func (s *Scope) getLangtagIndex() (index int, err error) {
+	if s.Struct.language == nil {
+		err = fmt.Errorf("Model: '%v' does not support i18n langtags.", s.Struct.modelType)
+		return
+	}
+	index = s.Struct.language.getFieldIndex()
+	return
+}
+
+/**
+Errors
+*/
+
+func (s *Scope) errNilValueProvided() error {
+	return fmt.Errorf("Provided nil value for the scope of type: '%v'.", s.Struct.modelType)
+}
+
+func (s *Scope) errValueTypeDoesNotMatch(t reflect.Type) error {
+	return fmt.Errorf("The scope's Value type: '%v' does not match it's model structure: '%v'", t, s.Struct.modelType)
+}
+
+func (s *Scope) errInvalidValue() error {
+	return fmt.Errorf("Invalid value provided for the scope: '%v'.", s.Struct.modelType)
 }

@@ -332,6 +332,15 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertEqual(t, 3, len(nonUsed))
 }
 
+func TestScopeBuildFieldset(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+
+	errs := scope.buildFieldset("title", "title", "title", "title", "title")
+	assertNotEmpty(t, errs)
+
+}
+
 func TestScopeSetCollectionValues(t *testing.T) {
 	req := httptest.NewRequest("GET", "/blogs?include=posts.comments,current_post&fieldset[posts]=title", nil)
 	clearMap()
@@ -367,9 +376,181 @@ func TestScopeSetCollectionValues(t *testing.T) {
 
 			}
 		}
-
 	}
 
+	req = httptest.NewRequest("GET", "/blogs/1?include=current_post.comments&fieldset[blogs]=title", nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	scope.Value = &Blog{ID: 1, Title: "This post"}
+	if scope.IncludedValues == nil {
+		scope.IncludedValues = NewSafeHashMap()
+	}
+	scope.IncludedValues.Add(1, &Blog{ID: 1, Title: "This post", CurrentPost: &Post{ID: 1}})
+
+	err = scope.SetCollectionValues()
+	assertNil(t, err)
+
+	blogValue, ok := scope.Value.(*Blog)
+	assertTrue(t, ok)
+	assertEqual(t, uint64(1), blogValue.CurrentPost.ID)
+
+	if scope.NextIncludedField() {
+		currentPost, err := scope.CurrentIncludedField()
+		assertNil(t, err)
+		missing, err := currentPost.GetMissingObjects()
+		assertNil(t, err)
+		assertEqual(t, uint64(1), missing[0])
+
+		currentPost.Scope.Value = &Post{ID: 1, Title: "Post Title"}
+		assertNil(t, currentPost.Scope.SetCollectionValues())
+
+		if currentPost.Scope.NextIncludedField() {
+			comment, err := currentPost.Scope.CurrentIncludedField()
+			assertNil(t, err)
+			assertEqual(t, reflect.TypeOf(Comment{}), comment.relatedStruct.modelType)
+
+		}
+	}
+}
+
+func TestSetLanguageFilter(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+	scope.SetLanguageFilter("en", "pl")
+
+	assertNil(t, scope.LanguageFilters)
+
+	err := c.PrecomputeModels(&Modeli18n{})
+	assertNil(t, err)
+	scope = newRootScope(c.MustGetModelStruct(&Modeli18n{}))
+	scope.SetLanguageFilter("en", "pl")
+
+	assertNotNil(t, scope.LanguageFilters)
+
+	assertEqual(t, 1, len(scope.LanguageFilters.Values))
+	scope.SetLanguageFilter("de")
+	assertEqual(t, 2, len(scope.LanguageFilters.Values))
+}
+
+func TestUseI18n(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+	assertFalse(t, scope.UseI18n())
+
+	err := c.PrecomputeModels(&Modeli18n{})
+	assertNil(t, err)
+	scope = newRootScope(c.MustGetModelStruct(&Modeli18n{}))
+
+	assertTrue(t, scope.UseI18n())
+}
+
+func TestScopeGetLangtag(t *testing.T) {
+	clearMap()
+	err := c.PrecomputeModels(&Modeli18n{})
+	assertNil(t, err)
+
+	scope := newRootScope(c.MustGetModelStruct(&Modeli18n{}))
+	preSetLang := "pl"
+	scope.Value = &Modeli18n{Lang: preSetLang}
+	langtag, err := scope.GetLangtagValue()
+	assertNil(t, err)
+	assertEqual(t, preSetLang, langtag)
+
+	var NilModelVal *Modeli18n
+	scope.Value = NilModelVal
+	_, err = scope.GetLangtagValue()
+	assertError(t, err)
+
+	scope.Value = nil
+	_, err = scope.GetLangtagValue()
+	assertError(t, err)
+
+	scope.Value = &Blog{ID: 1}
+	_, err = scope.GetLangtagValue()
+	assertError(t, err)
+
+	scope.Value = []*Modeli18n{}
+	_, err = scope.GetLangtagValue()
+	assertError(t, err)
+
+	scope = getBlogScope()
+	_, err = scope.GetLangtagValue()
+	assertError(t, err)
+}
+
+func TestScopeGetCollection(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+
+	coll := scope.GetCollection()
+	assertEqual(t, coll, scope.Struct.collectionType)
+}
+
+func TestScopeSetLangtag(t *testing.T) {
+	clearMap()
+
+	err := c.PrecomputeModels(&Modeli18n{})
+	assertNil(t, err)
+
+	scope := newRootScope(c.MustGetModelStruct(&Modeli18n{}))
+
+	plLangtag := "pl"
+
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope.Value = &Modeli18n{ID: 1}
+	err = scope.SetLangtag(plLangtag)
+	assertNil(t, err)
+	assertEqual(t, plLangtag, scope.Value.(*Modeli18n).Lang)
+
+	scope.Value = []*Modeli18n{{ID: 1}, {ID: 2}}
+	err = scope.SetLangtag(plLangtag)
+	assertNil(t, err)
+
+	var nilPtr *Modeli18n
+	scope.Value = nilPtr
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope.Value = &Blog{}
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope.Value = []Modeli18n{}
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope.Value = []*Blog{}
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope.Value = []*Modeli18n{{ID: 1}, nilPtr}
+	err = scope.SetLangtag(plLangtag)
+	assertNil(t, err)
+
+	scope.Value = Modeli18n{}
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+	scope = getBlogScope()
+	err = scope.SetLangtag(plLangtag)
+	assertError(t, err)
+
+}
+
+func TestScopeSetValueFromAddressable(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+
+	err := scope.SetValueFromAddressable()
+	assertError(t, err)
+
+	scope.valueAddress = &Blog{ID: 1}
+	err = scope.SetValueFromAddressable()
+	assertNil(t, err)
 }
 
 func BenchmarkEmptyMap(b *testing.B) {

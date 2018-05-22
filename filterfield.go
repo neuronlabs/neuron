@@ -134,7 +134,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 	fv.Operator = op
 
 	// Add and check all values for given field type
-	switch f.jsonAPIType {
+	switch f.fieldType {
 	case Primary:
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,

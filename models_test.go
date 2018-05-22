@@ -129,7 +129,7 @@ type RelationBasicOnPtr struct {
 type Modeli18n struct {
 	ID   int    `jsonapi:"primary,translateable"`
 	Name string `jsonapi:"attr,name,i18n"`
-	Lang string `jsonapi:"lang"`
+	Lang string `jsonapi:"attr,langcode,langtag"`
 }
 
 // func (b *Blog) JSONAPILinks() *Links {

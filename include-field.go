@@ -67,8 +67,6 @@ func (i *IncludeField) GetMissingObjects() ([]interface{}, error) {
 		j++
 	}
 
-	fmt.Println(missingIDs)
-
 	return missingIDs, nil
 }
 
@@ -113,7 +111,6 @@ func (i *IncludeField) getMissingFromSingle(
 					i.Scope.collectionScope.IncludedValues.values[primary] = nil
 					if _, ok = uniqueMissing[primary]; !ok {
 						uniqueMissing[primary] = struct{}{}
-						fmt.Printf("Setting id: %v\n", primary)
 					}
 				}
 			}

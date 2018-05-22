@@ -279,8 +279,28 @@ func TestBuildScopeSingle(t *testing.T) {
 	_, errs, err = c.BuildScopeSingle(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
-	t.Log(len(errs))
-	t.Log(errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][id]=1&include=current_post", nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	// invalid form
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][", nil)
+	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[postis]", nil)
+	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[comments]", nil)
+	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
 }
 
 func TestPrecomputeModels(t *testing.T) {
@@ -393,6 +413,11 @@ func TestBuildScopeRelationship(t *testing.T) {
 	assertEqual(t, relationshipKind, postScope.kind)
 	assertEqual(t, reflect.TypeOf(&Post{}), reflect.TypeOf(postScope.Value))
 
+	req = httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/invalid_field", nil)
+	_, errs, err = c.BuildScopeRelationship(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
+
 }
 
 func TestBuildScopeRelated(t *testing.T) {
@@ -406,6 +431,11 @@ func TestBuildScopeRelated(t *testing.T) {
 	assertEqual(t, 1, len(scope.Fieldset))
 
 	scope.Value = &Blog{}
+
+	req = httptest.NewRequest("GET", "/api/v1/blogs/1/invalid_field", nil)
+	_, errs, err = c.BuildScopeRelated(req, &Blog{})
+	assertNil(t, err)
+	assertNotEmpty(t, errs)
 }
 
 func TestGetModelStruct(t *testing.T) {
@@ -435,4 +465,22 @@ func TestGetModelStruct(t *testing.T) {
 	if err == nil {
 		t.Error(err)
 	}
+}
+
+func TestNewScope(t *testing.T) {
+	clearMap()
+	getBlogScope()
+
+	scope, err := c.NewScope(&Blog{})
+	assertNil(t, err)
+	assertNotNil(t, scope)
+	assertEqual(t, scope.Struct.modelType, reflect.TypeOf(Blog{}))
+
+	scope, err = c.NewScope(&Book{})
+	assertError(t, err)
+	assertNil(t, scope)
+
+	scope, err = c.NewScope(Book{})
+	assertError(t, err)
+	assertNil(t, scope)
 }

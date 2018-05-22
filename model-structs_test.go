@@ -44,7 +44,7 @@ func TestGettersModelStruct(t *testing.T) {
 
 	primary := mStruct.GetPrimaryField()
 	assertTrue(t, primary.fieldName == "ID")
-	assertTrue(t, primary.jsonAPIType == Primary)
+	assertTrue(t, primary.fieldType == Primary)
 
 	// AttrField
 	nameField := mStruct.GetAttributeField("name")
@@ -123,8 +123,8 @@ func TestInitCheckFieldTypes(t *testing.T) {
 	mStruct = &ModelStruct{
 		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
 		fields: []*StructField{{
-			jsonAPIType: RelationshipSingle,
-			refStruct:   reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
+			fieldType: RelationshipSingle,
+			refStruct: reflect.StructField{Type: reflect.TypeOf(inv.Basic)}}},
 	}
 
 	err = mStruct.initCheckFieldTypes()
@@ -133,8 +133,8 @@ func TestInitCheckFieldTypes(t *testing.T) {
 	mStruct = &ModelStruct{
 		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
 		fields: []*StructField{{
-			jsonAPIType: RelationshipSingle,
-			refStruct:   reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
+			fieldType: RelationshipSingle,
+			refStruct: reflect.StructField{Type: reflect.TypeOf([]*string{})}}},
 	}
 	err = mStruct.initCheckFieldTypes()
 	assertError(t, err)
@@ -143,8 +143,8 @@ func TestInitCheckFieldTypes(t *testing.T) {
 	mStruct = &ModelStruct{
 		primary: &StructField{refStruct: reflect.StructField{Type: reflect.TypeOf(inv.ID)}},
 		fields: []*StructField{{
-			jsonAPIType: RelationshipSingle,
-			refStruct:   reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
+			fieldType: RelationshipSingle,
+			refStruct: reflect.StructField{Type: reflect.TypeOf(&strVal)}}},
 	}
 
 	err = mStruct.initCheckFieldTypes()
@@ -161,11 +161,11 @@ func TestStructSetModelURL(t *testing.T) {
 	assertError(t, err)
 }
 
-func TestGetJSONAPIType(t *testing.T) {
+func TestGetFieldKind(t *testing.T) {
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 
 	mStruct := c.MustGetModelStruct(&Blog{})
-	assertEqual(t, Primary, mStruct.primary.GetJSONAPIType())
+	assertEqual(t, Primary, mStruct.primary.GetFieldKind())
 
 }
