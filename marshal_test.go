@@ -36,7 +36,7 @@ func TestMarshalScope(t *testing.T) {
 	for scope.NextIncludedField() {
 		includedField, err := scope.CurrentIncludedField()
 		assertNil(t, err)
-		_, err = includedField.GetMissingObjects()
+		_, err = includedField.GetMissingPrimaries()
 		assertNil(t, err)
 		err = includedField.Scope.SetCollectionValues()
 		assertNil(t, err)
@@ -45,7 +45,7 @@ func TestMarshalScope(t *testing.T) {
 			includedField.Scope.CurrentIncludedField()
 			nestedIncluded, err := includedField.Scope.CurrentIncludedField()
 			assertNil(t, err)
-			_, err = nestedIncluded.GetMissingObjects()
+			_, err = nestedIncluded.GetMissingPrimaries()
 			assertNil(t, err)
 			t.Log(nestedIncluded.fieldName)
 			err = nestedIncluded.Scope.SetCollectionValues()
@@ -132,7 +132,7 @@ func TestMarshalScopeRelationship(t *testing.T) {
 
 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 3}}}
 
-	postsScope, err := scope.GetPresetRelationshipScope()
+	postsScope, err := scope.GetRelationshipScope()
 	assertNil(t, err)
 
 	payload, err := c.MarshalScope(postsScope)

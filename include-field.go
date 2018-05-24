@@ -21,10 +21,35 @@ type IncludeField struct {
 	NotInFieldset bool
 }
 
-// GetNonUsedPrimaries gets the id values from the RelatedScope, checks which id values were
+// GetMissingPrimaries gets the id values from the RelatedScope, checks which id values were
 // already stored within the colleciton root scope and return new ones.
-func (i *IncludeField) GetMissingObjects() ([]interface{}, error) {
+func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
+	return i.getMissingPrimaries()
+}
 
+func newIncludeField(field *StructField, scope *Scope) *IncludeField {
+	includeField := new(IncludeField)
+	includeField.StructField = field
+
+	// Set NewScope for given field
+	includeField.Scope = scope.createModelsScope(field.relatedStruct)
+
+	// Set the root collection scope for given scope
+	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(field.relatedStruct)
+	if _, ok := includeField.Scope.collectionScope.Fieldset[includeField.jsonAPIName]; !ok {
+		includeField.NotInFieldset = true
+		scope.hasFieldNotInFieldset = true
+	}
+
+	// Set relatedScope for given incldudedField
+	includeField.RelatedScope = scope
+
+	includeField.Scope.rootScope.totalIncludeCount++
+
+	return includeField
+}
+
+func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 	// uniqueMissing makes it possible to get unique ids that are not already used
 	uniqueMissing := map[interface{}]struct{}{}
 
@@ -68,28 +93,6 @@ func (i *IncludeField) GetMissingObjects() ([]interface{}, error) {
 	}
 
 	return missingIDs, nil
-}
-
-func newIncludeField(field *StructField, scope *Scope) *IncludeField {
-	includeField := new(IncludeField)
-	includeField.StructField = field
-
-	// Set NewScope for given field
-	includeField.Scope = scope.createModelsScope(field.relatedStruct)
-
-	// Set the root collection scope for given scope
-	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(field.relatedStruct)
-	if _, ok := includeField.Scope.collectionScope.Fieldset[includeField.jsonAPIName]; !ok {
-		includeField.NotInFieldset = true
-		scope.hasFieldNotInFieldset = true
-	}
-
-	// Set relatedScope for given incldudedField
-	includeField.RelatedScope = scope
-
-	includeField.Scope.rootScope.totalIncludeCount++
-
-	return includeField
 }
 
 func (i *IncludeField) getMissingFromSingle(
@@ -142,7 +145,7 @@ func (i *IncludeField) getMissingFromSingle(
 	return nil
 }
 
-func (i *IncludeField) setRelatedValue(relatedValue reflect.Value) {
+func (i *IncludeField) setRelationshipValue(relatedValue reflect.Value) {
 	var includedScopeValue reflect.Value
 
 	fieldValue := relatedValue.Field(i.getFieldIndex())

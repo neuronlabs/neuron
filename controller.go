@@ -564,11 +564,23 @@ func (c *Controller) SetAPIURL(url string) error {
 	return nil
 }
 
-// SetIDFilter the method that gets the ID value from the request path, for given scope model.
-// then prepares the primary filter field for given id value.
+// GetAndSetIDFilter is the method that gets the ID value from the request path, for given scope's
+// model. Then it sets the id filters for given scope.
+// If the url is constructed incorrectly it returns an internal error.
+func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
+	id, err := getID(req, scope.Struct)
+	if err != nil {
+		return err
+	}
+	scope.setIDFilterValues(id)
+	return nil
+}
+
+// GetCheckSetIDFilter the method that gets the ID value from the request path, for given scope
+// model.then prepares the primary filter field for given id value.
 // if an internal error occurs returns an 'error'.
 // if user error occurs returns array of *ErrorObject's.
-func (c *Controller) SetIDFilter(req *http.Request, scope *Scope,
+func (c *Controller) GetSetCheckIDFilter(req *http.Request, scope *Scope,
 ) (errs []*ErrorObject, err error) {
 	return c.setIDFilter(req, scope)
 }

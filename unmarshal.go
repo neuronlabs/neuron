@@ -46,6 +46,10 @@ var (
 		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
 )
 
+var (
+	onePayloadType = reflect.TypeOf(OnePayload{})
+)
+
 func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, *ErrorObject, error) {
 	return unmarshalScopeOne(in, c)
 }
@@ -57,6 +61,24 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 		if serr, ok := er.(*json.SyntaxError); ok {
 			errObj = ErrInvalidJSONDocument.Copy()
 			errObj.Detail = fmt.Sprintf("Syntax Error: %s. At offset: %d.", er.Error(), serr.Offset)
+		} else if uErr, ok := er.(*json.UnmarshalTypeError); ok {
+			if uErr.Type == onePayloadType {
+				errObj = ErrInvalidJSONDocument.Copy()
+				errObj.Detail = fmt.Sprintln("Invalid JSON document syntax.")
+			} else {
+				errObj = ErrInvalidJSONFieldValue.Copy()
+				var fieldType string
+				switch uErr.Field {
+				case "id", "type", "client-id":
+					fieldType = uErr.Type.String()
+				case "relationships", "attributes", "links", "meta":
+					fieldType = "object"
+				}
+				fmt.Printf("Val: %s\n", uErr.Value)
+				errObj.Detail = fmt.
+					Sprintf("Invalid type for: '%s' field. It must be of '%s' type but is: '%v'",
+						uErr.Field, fieldType, uErr.Value)
+			}
 		} else {
 			err = er
 		}
@@ -88,15 +110,24 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 	scope.newValueSingle()
 	// scope.Value = reflect.New(mStruct.modelType).Interface()
 
+	var er error
 	if payload.Included != nil {
 		includedMap := make(map[string]*Node)
 		for _, included := range payload.Included {
 			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
 			includedMap[key] = included
 		}
-		err = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
+		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
 	} else {
-		err = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
+		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
+	}
+	switch er {
+	case IErrUnknownFieldNumberType, IErrInvalidTime, IErrInvalidISO8601, IErrUnsupportedPtrType,
+		IErrInvalidType, IErrBadJSONAPIID, IErrUnsupportedPtrType:
+		errObj = ErrInvalidJSONFieldValue.Copy()
+		errObj.Detail = er.Error()
+	default:
+		err = er
 	}
 	return
 }

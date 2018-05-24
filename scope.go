@@ -137,12 +137,17 @@ func (s *Scope) GetLangtagValue() (langtag string, err error) {
 	return
 }
 
-// SetLangtag sets the langtag to the scope's value.
+// IsRoot checks if given scope is a root scope of the query
+func (s *Scope) IsRoot() bool {
+	return s.kind == rootKind
+}
+
+// SetLangtagValue sets the langtag to the scope's value.
 // returns an error
 //		- if the Value is of invalid type or if the
 //		- if the model does not support i18n
 //		- if the scope's Value is nil pointer
-func (s *Scope) SetLangtag(langtag string) (err error) {
+func (s *Scope) SetLangtagValue(langtag string) (err error) {
 	var index int
 	if index, err = s.getLangtagIndex(); err != nil {
 		return
@@ -180,7 +185,7 @@ func (s *Scope) SetLangtag(langtag string) (err error) {
 		err = s.errInvalidValue()
 		return
 	default:
-		err = errors.New("The SetLangtag allows single pointer or Slice of pointers as value type. Value type")
+		err = errors.New("The SetLangtagValue allows single pointer or Slice of pointers as value type. Value type")
 		return
 	}
 	return
@@ -199,11 +204,61 @@ func (s *Scope) GetTotalIncludeFieldCount() int {
 	return s.totalIncludeCount
 }
 
-// GetPresetRelationshipScope - for given root Scope 's' gets the value of the relationship
+// GetRelatedScope gets the related scope with preset filter values.
+// The filter values are being taken form the root 's' Scope relationship id's.
+// Returns error if the scope was not build by controller BuildRelatedScope.
+func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
+	if len(s.IncludedFields) < 1 {
+		return nil, fmt.Errorf("The root scope of type: '%v' was not built using controller.BuildRelatedScope() method.", s.Struct.GetType())
+	}
+	relatedField := s.IncludedFields[0]
+
+	if s.Value == nil {
+		err = s.errNilValueProvided()
+		return
+	}
+
+	scopeValue := reflect.ValueOf(s.Value)
+	if scopeValue.Type().Kind() != reflect.Ptr {
+		err = s.errInvalidValue()
+		return
+	}
+
+	fieldValue := scopeValue.Elem().Field(relatedField.getFieldIndex())
+	var primaries reflect.Value
+	primaries, err = relatedField.getRelationshipPrimariyValues(fieldValue)
+	if err != nil {
+		return
+	}
+
+	primaryFilter := &FilterField{
+		StructField: relatedField.StructField,
+		Values:      make([]*FilterValues, 1),
+	}
+	filterValue := &FilterValues{}
+	if relatedField.fieldType == RelationshipSingle {
+		filterValue.Operator = OpEqual
+		filterValue.Values = append(filterValue.Values, primaries.Interface())
+	} else {
+		filterValue.Operator = OpIn
+		var values []interface{}
+		for i := 0; i < primaries.Len(); i++ {
+			values = append(values, primaries.Index(i).Interface())
+		}
+		filterValue.Values = values
+	}
+	primaryFilter.Values[0] = filterValue
+
+	relScope = relatedField.Scope
+	relScope.PrimaryFilters = append(relScope.PrimaryFilters, primaryFilter)
+	return
+}
+
+// GetRelationshipScope - for given root Scope 's' gets the value of the relationship
 // used for given request and set it's value into relationshipScope.
 // returns an error if the value is not set or there is no relationship includedField
 // for given scope.
-func (s *Scope) GetPresetRelationshipScope() (relScope *Scope, err error) {
+func (s *Scope) GetRelationshipScope() (relScope *Scope, err error) {
 	if len(s.IncludedFields) != 1 {
 		return nil, errors.New("Provided invalid IncludedFields for given scope.")
 	}
@@ -889,7 +944,7 @@ func (s *Scope) setIncludedFieldValue(includeField *IncludeField) error {
 	v := reflect.ValueOf(s.Value)
 	switch v.Kind() {
 	case reflect.Ptr:
-		includeField.setRelatedValue(v.Elem())
+		includeField.setRelationshipValue(v.Elem())
 	default:
 		return fmt.Errorf("Scope has invalid value type: %s", v.Type())
 	}

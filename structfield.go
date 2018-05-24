@@ -26,6 +26,21 @@ const (
 	RelationshipMultiple
 )
 
+func (f FieldType) String() string {
+	switch f {
+	case Primary:
+		return "Primary"
+	case Attribute:
+		return "Attribute"
+	case ClientID:
+		return "ClientID"
+	case RelationshipSingle, RelationshipMultiple:
+		return "Relationship"
+	}
+
+	return "Unknown"
+}
+
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
@@ -118,6 +133,16 @@ func (s *StructField) getDereferencedType() reflect.Type {
 		t = t.Elem()
 	}
 	return t
+}
+
+func (s *StructField) getRelationshipPrimariyValues(fieldValue reflect.Value,
+) (primaries reflect.Value, err error) {
+	if s.fieldType == RelationshipSingle || s.fieldType == RelationshipMultiple {
+		return s.relatedStruct.getPrimaryValues(fieldValue)
+	}
+	// error
+	err = fmt.Errorf("Provided field: '%v' is not a relationship: '%s'", s.fieldName, s.fieldType.String())
+	return
 }
 
 func (s *StructField) getFieldIndex() int {

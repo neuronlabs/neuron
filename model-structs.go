@@ -185,6 +185,40 @@ func (m *ModelStruct) getSortScopeCount() int {
 	return m.sortScopeCount
 }
 
+func (m *ModelStruct) getPrimaryValues(value reflect.Value) (primaries reflect.Value, err error) {
+	primaryIndex := m.primary.getFieldIndex()
+	switch value.Type().Kind() {
+	case reflect.Slice:
+		if value.Type().Elem().Kind() != reflect.Ptr {
+			err = IErrUnexpectedType
+			return
+		}
+		// create slice of values
+		primaries = reflect.MakeSlice(reflect.SliceOf(m.primary.GetFieldType()), 0, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			single := value.Index(i)
+			if single.IsNil() {
+				continue
+			}
+			single = single.Elem()
+			primaryValue := single.Field(primaryIndex)
+			if primaryValue.IsValid() {
+				primaries = reflect.Append(primaries, primaryValue)
+			}
+		}
+	case reflect.Ptr:
+		primaryValue := value.Elem().Field(primaryIndex)
+		if primaryValue.IsValid() {
+			primaries = primaryValue
+		} else {
+			err = fmt.Errorf("Provided invalid Value for model: %v", m.GetType())
+		}
+	default:
+		err = IErrUnexpectedType
+	}
+	return
+}
+
 func (m *ModelStruct) getWorkingFieldCount() int {
 	return len(m.attributes) + len(m.relationships)
 }

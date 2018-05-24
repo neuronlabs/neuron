@@ -167,6 +167,19 @@ var (
 		Status: "405",
 	}
 
+	// STATUS 406, CODE: "NALXXX"
+	ErrLanguageNotAcceptable = ErrorObject{
+		Code:   "NAL001",
+		Title:  "The language provided within the json document is not supported.",
+		Status: "406",
+	}
+
+	ErrLanguageHeaderNotAcceptable = ErrorObject{
+		Code:   "NAL002",
+		Title:  "The language provided in the request header is not supported.",
+		Status: "406",
+	}
+
 	// STATUS 409, CODE: "CON001"
 	ErrAccountAlreadyExists = ErrorObject{
 		Code:   "CON001",

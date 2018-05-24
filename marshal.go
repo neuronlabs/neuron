@@ -43,7 +43,6 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 	}
 
 	included := []*Node{}
-
 	if err = marshalIncludes(scope, &included, controller); err != nil {
 		return
 	}
@@ -73,6 +72,9 @@ func marshalIncludedScope(
 	controller *Controller,
 ) (err error) {
 	for _, elem := range includedScope.IncludedValues.values {
+		if elem == nil {
+			continue
+		}
 		node, err := visitScopeNode(elem, includedScope, controller)
 		if err != nil {
 			return err

@@ -387,7 +387,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	assertEqual(t, 1, len(scope.Fieldset))
 
 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}}
-	postsScope, err := scope.GetPresetRelationshipScope()
+	postsScope, err := scope.GetRelationshipScope()
 	assertNil(t, err)
 	t.Log(postsScope.Fieldset)
 	assertEqual(t, relationshipKind, postsScope.kind)
@@ -406,7 +406,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	assertNotNil(t, scope)
 
 	scope.Value = &Blog{ID: 2, CurrentPost: &Post{ID: 1}}
-	postScope, err := scope.GetPresetRelationshipScope()
+	postScope, err := scope.GetRelationshipScope()
 	assertNil(t, err)
 	assertNil(t, postScope.Fieldset)
 
@@ -423,6 +423,9 @@ func TestBuildScopeRelationship(t *testing.T) {
 func TestBuildScopeRelated(t *testing.T) {
 	clearMap()
 	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+
+	// Case 1:
+	// Valid field name
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
 	scope, errs, err := c.BuildScopeRelated(req, &Blog{})
 	assertNil(t, err)
@@ -432,10 +435,42 @@ func TestBuildScopeRelated(t *testing.T) {
 
 	scope.Value = &Blog{}
 
+	// Case 2:
+	// invalid field name
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/invalid_field", nil)
 	_, errs, err = c.BuildScopeRelated(req, &Blog{})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
+
+	// Case 3:
+	// Valid field with hasOne relationship
+	req = httptest.NewRequest("GET", "/api/v1/blogs/1/current_post", nil)
+	scope, errs, err = c.BuildScopeRelated(req, &Blog{})
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	scope.Value = &Blog{ID: 1, CurrentPost: &Post{ID: 5}}
+	relatedScope, err := scope.GetRelatedScope()
+	assertNoError(t, err)
+	assertEqual(t, 1, len(relatedScope.PrimaryFilters))
+
+	assertEqual(t, uint64(5), relatedScope.PrimaryFilters[0].Values[0].Values[0])
+
+	// Case 4:
+	// Valid ield with hasMany relationship
+	req = httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
+	scope, errs, err = c.BuildScopeRelated(req, &Blog{})
+	assertNoError(t, err)
+	assertEmpty(t, errs)
+
+	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 5}}}
+	relatedScope, err = scope.GetRelatedScope()
+	assertNoError(t, err)
+
+	assertEqual(t, 1, len(relatedScope.PrimaryFilters))
+	assertEqual(t, uint64(1), relatedScope.PrimaryFilters[0].Values[0].Values[0])
+	assertEqual(t, uint64(5), relatedScope.PrimaryFilters[0].Values[0].Values[1])
+
 }
 
 func TestGetModelStruct(t *testing.T) {

@@ -271,7 +271,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "posts", includedField.jsonAPIName)
 
-	nonUsed, err := includedField.GetMissingObjects()
+	nonUsed, err := includedField.GetMissingPrimaries()
 	assertNil(t, err)
 
 	assertEqual(t, 3, len(nonUsed))
@@ -281,7 +281,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "current_post", includedField.jsonAPIName)
 
-	nonUsed, err = includedField.GetMissingObjects()
+	nonUsed, err = includedField.GetMissingPrimaries()
 	assertNil(t, err)
 	assertEmpty(t, nonUsed)
 
@@ -296,7 +296,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNil(t, err)
 	assertEqual(t, "latest_comment", nestedIncluded.jsonAPIName)
 
-	nonUsed, err = nestedIncluded.GetMissingObjects()
+	nonUsed, err = nestedIncluded.GetMissingPrimaries()
 	assertNil(t, err)
 	assertEqual(t, 1, len(nonUsed))
 
@@ -327,7 +327,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 
 	includedField = scope.IncludedFields[0]
 	includedField.copyScopeBoundaries()
-	nonUsed, err = includedField.GetMissingObjects()
+	nonUsed, err = includedField.GetMissingPrimaries()
 	assertNil(t, err)
 	assertEqual(t, 3, len(nonUsed))
 }
@@ -358,7 +358,7 @@ func TestScopeSetCollectionValues(t *testing.T) {
 
 	for scope.NextIncludedField() {
 		iField, _ := scope.CurrentIncludedField()
-		missing, _ := iField.GetMissingObjects()
+		missing, _ := iField.GetMissingPrimaries()
 		if iField.jsonAPIName == "posts" {
 			assertNotEmpty(t, missing)
 			assertNotEqual(t, len(iField.Scope.Fieldset), len(iField.Scope.collectionScope.Fieldset))
@@ -399,7 +399,7 @@ func TestScopeSetCollectionValues(t *testing.T) {
 	if scope.NextIncludedField() {
 		currentPost, err := scope.CurrentIncludedField()
 		assertNil(t, err)
-		missing, err := currentPost.GetMissingObjects()
+		missing, err := currentPost.GetMissingPrimaries()
 		assertNil(t, err)
 		assertEqual(t, uint64(1), missing[0])
 
@@ -498,45 +498,45 @@ func TestScopeSetLangtag(t *testing.T) {
 
 	plLangtag := "pl"
 
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope.Value = &Modeli18n{ID: 1}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertNil(t, err)
 	assertEqual(t, plLangtag, scope.Value.(*Modeli18n).Lang)
 
 	scope.Value = []*Modeli18n{{ID: 1}, {ID: 2}}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertNil(t, err)
 
 	var nilPtr *Modeli18n
 	scope.Value = nilPtr
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope.Value = &Blog{}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope.Value = []Modeli18n{}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope.Value = []*Blog{}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope.Value = []*Modeli18n{{ID: 1}, nilPtr}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertNil(t, err)
 
 	scope.Value = Modeli18n{}
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 	scope = getBlogScope()
-	err = scope.SetLangtag(plLangtag)
+	err = scope.SetLangtagValue(plLangtag)
 	assertError(t, err)
 
 }
