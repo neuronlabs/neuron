@@ -457,7 +457,7 @@ func TestBuildScopeRelated(t *testing.T) {
 	assertEqual(t, uint64(5), relatedScope.PrimaryFilters[0].Values[0].Values[0])
 
 	// Case 4:
-	// Valid ield with hasMany relationship
+	// Valid field with hasMany relationship
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
 	scope, errs, err = c.BuildScopeRelated(req, &Blog{})
 	assertNoError(t, err)

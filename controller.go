@@ -472,7 +472,7 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 	if !ok {
 		// invalid query parameter
 		errObj := ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Provided invalid relationships field name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
+		errObj.Detail = fmt.Sprintf("Provided invalid relationship name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
 		errs = append(errs, errObj)
 		return
 	}

@@ -29,6 +29,18 @@ func MarshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 }
 
 func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
+	if scope.Value == nil && scope.kind >= relationshipKind {
+		/** TO DO:  Build paths */
+
+		if scope.IsMany {
+
+			payloader = &ManyPayload{Data: []*Node{}}
+		} else {
+			payloader = &OnePayload{Data: nil}
+		}
+		return
+	}
+
 	scopeValue := reflect.ValueOf(scope.Value)
 	switch scopeValue.Kind() {
 	case reflect.Slice:
@@ -169,6 +181,7 @@ func visitScopeManyNodes(scope *Scope, controller *Controller,
 
 func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 ) (*Node, error) {
+
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
 		return nil, IErrUnexpectedType
 	}

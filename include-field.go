@@ -147,18 +147,26 @@ func (i *IncludeField) getMissingFromSingle(
 
 func (i *IncludeField) setRelationshipValue(relatedValue reflect.Value) {
 	var includedScopeValue reflect.Value
-
 	fieldValue := relatedValue.Field(i.getFieldIndex())
 	switch i.refStruct.Type.Kind() {
 	case reflect.Slice:
+		if fieldValue.Len() == 0 {
+			i.Scope.Value = reflect.New(i.refStruct.Type).Elem().Interface()
+			return
+		}
 		includedScopeValue = reflect.New(i.refStruct.Type).Elem()
 		includedScopeValue.Set(fieldValue)
 	case reflect.Ptr:
+		if fieldValue.IsNil() {
+			i.Scope.Value = nil
+			return
+		}
 		includedScopeValue = reflect.New(i.refStruct.Type.Elem())
 		includedScopeValue.Elem().Set(fieldValue.Elem())
 	}
 
 	i.Scope.Value = includedScopeValue.Interface()
+	return
 }
 
 func (i *IncludeField) copyScopeBoundaries() {

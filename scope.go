@@ -212,7 +212,7 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 		return nil, fmt.Errorf("The root scope of type: '%v' was not built using controller.BuildRelatedScope() method.", s.Struct.GetType())
 	}
 	relatedField := s.IncludedFields[0]
-
+	relScope = relatedField.Scope
 	if s.Value == nil {
 		err = s.errNilValueProvided()
 		return
@@ -226,9 +226,24 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 
 	fieldValue := scopeValue.Elem().Field(relatedField.getFieldIndex())
 	var primaries reflect.Value
-	primaries, err = relatedField.getRelationshipPrimariyValues(fieldValue)
-	if err != nil {
+
+	// if no values are present within given field
+	// return nil scope.Value
+	if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
 		return
+	} else if fieldValue.Kind() == reflect.Slice && fieldValue.Len() == 0 {
+		relScope.IsMany = true
+		return
+	} else {
+		primaries, err = relatedField.getRelationshipPrimariyValues(fieldValue)
+		if err != nil {
+			return
+		}
+		if primaries.Kind() == reflect.Slice {
+			if primaries.Len() == 0 {
+				return
+			}
+		}
 	}
 
 	primaryFilter := &FilterField{
@@ -236,9 +251,11 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 		Values:      make([]*FilterValues, 1),
 	}
 	filterValue := &FilterValues{}
+
 	if relatedField.fieldType == RelationshipSingle {
 		filterValue.Operator = OpEqual
 		filterValue.Values = append(filterValue.Values, primaries.Interface())
+		relScope.newValueSingle()
 	} else {
 		filterValue.Operator = OpIn
 		var values []interface{}
@@ -246,10 +263,11 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 			values = append(values, primaries.Index(i).Interface())
 		}
 		filterValue.Values = values
+		relScope.IsMany = true
+		relScope.newValueMany()
 	}
 	primaryFilter.Values[0] = filterValue
 
-	relScope = relatedField.Scope
 	relScope.PrimaryFilters = append(relScope.PrimaryFilters, primaryFilter)
 	return
 }
@@ -941,9 +959,16 @@ func (s *Scope) createIncludedField(
 // setIncludedFieldValue - used while getting the Relationship Scope,
 // and the 's' has the 'includedField' value in it's value.
 func (s *Scope) setIncludedFieldValue(includeField *IncludeField) error {
+	if s.Value == nil {
+		return s.errNilValueProvided()
+	}
 	v := reflect.ValueOf(s.Value)
+
 	switch v.Kind() {
 	case reflect.Ptr:
+		if t := v.Elem().Type(); t != s.Struct.modelType {
+			return s.errValueTypeDoesNotMatch(t)
+		}
 		includeField.setRelationshipValue(v.Elem())
 	default:
 		return fmt.Errorf("Scope has invalid value type: %s", v.Type())
