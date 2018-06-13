@@ -209,32 +209,32 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				node.Attributes = make(map[string]interface{})
 			}
 
-			if field.isTime {
+			if field.isTime() {
 				t := fieldValue.Interface().(time.Time)
 
 				if t.IsZero() {
 					continue
 				}
 
-				if field.iso8601 {
+				if field.isIso8601() {
 					node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
 				} else {
 					node.Attributes[field.jsonAPIName] = t.Unix()
 				}
-			} else if field.isPtrTime {
+			} else if field.isPtrTime() {
 				if fieldValue.IsNil() {
-					if field.omitempty {
+					if field.isOmitEmpty() {
 						continue
 					}
 					node.Attributes[field.jsonAPIName] = nil
 				} else {
 					t := fieldValue.Interface().(*time.Time)
 
-					if t.IsZero() && field.omitempty {
+					if t.IsZero() && field.isOmitEmpty() {
 						continue
 					}
 
-					if field.iso8601 {
+					if field.isIso8601() {
 						node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
 					} else {
 						node.Attributes[field.jsonAPIName] = t.Unix()
@@ -242,7 +242,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				}
 			} else {
 				emptyValue := reflect.Zero(fieldValue.Type())
-				if field.omitempty && reflect.
+				if field.isOmitEmpty() && reflect.
 					DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
 					continue
 				}
@@ -261,7 +261,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 			}
 		case RelationshipMultiple, RelationshipSingle:
 			var isSlice bool = field.fieldType == RelationshipMultiple
-			if field.omitempty &&
+			if field.isOmitEmpty() &&
 				(isSlice && fieldValue.Len() < 1 || !isSlice && fieldValue.IsNil()) {
 				continue
 			}

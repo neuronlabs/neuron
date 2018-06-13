@@ -41,6 +41,20 @@ func (f FieldType) String() string {
 	return "Unknown"
 }
 
+type fieldFlag int
+
+const (
+	fDefault   fieldFlag = 1 << 0
+	fOmitempty fieldFlag = 1 << iota
+	fIso8601
+	fI18n
+	fTime
+	fPtrTime
+	fNoFilter
+	fLanguage
+	fHidden
+)
+
 // StructField represents a field structure with its json api parameters
 // and model relationships.
 type StructField struct {
@@ -66,7 +80,9 @@ type StructField struct {
 	// isListRelated
 	isListRelated bool
 
-	omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
+	fieldFlags fieldFlag
+
+	// omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -108,7 +124,7 @@ func (s *StructField) IsRelationship() bool {
 // I18n defines if the field is tagged as internationalization ready.
 // This means that the value should be translated
 func (s *StructField) I18n() bool {
-	return s.i18n
+	return s.isI18n()
 }
 
 func (s *StructField) isRelationship() bool {
@@ -171,7 +187,7 @@ func (s *StructField) initCheckFieldType() error {
 			err := fmt.Errorf("Invalid attribute field type: %v for field: %s in model: %s", fieldType, s.fieldName, s.mStruct.modelType.Name())
 			return err
 		}
-		if s.isLanguage {
+		if s.isLanguage() {
 			if fieldType.Kind() != reflect.String {
 				err := fmt.Errorf("Incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
 				return err
@@ -200,4 +216,36 @@ func (s *StructField) initCheckFieldType() error {
 		}
 	}
 	return nil
+}
+
+func (s *StructField) isOmitEmpty() bool {
+	return s.fieldFlags&fOmitempty != 0
+}
+
+func (s *StructField) isIso8601() bool {
+	return s.fieldFlags&fIso8601 != 0
+}
+
+func (s *StructField) isTime() bool {
+	return s.fieldFlags&fTime != 0
+}
+
+func (s *StructField) isPtrTime() bool {
+	return s.fieldFlags&fPtrTime != 0
+}
+
+func (s *StructField) isI18n() bool {
+	return s.fieldFlags&fI18n != 0
+}
+
+func (s *StructField) isNoFilter() bool {
+	return s.fieldFlags&fNoFilter != 0
+}
+
+func (s *StructField) isLanguage() bool {
+	return s.fieldFlags&fLanguage != 0
+}
+
+func (s *StructField) isHidden() bool {
+	return s.fieldFlags&fHidden != 0
 }

@@ -137,7 +137,9 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 				for _, arg := range args[2:] {
 					switch arg {
 					case annotationNoFilter:
-						structField.noFilter = true
+						structField.fieldFlags = structField.fieldFlags | fNoFilter
+					case annotationHidden:
+						structField.fieldFlags = structField.fieldFlags | fHidden
 					}
 				}
 			}
@@ -166,28 +168,30 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 				for _, arg := range args[2:] {
 					switch arg {
 					case annotationISO8601:
-						structField.iso8601 = true
+						structField.fieldFlags = structField.fieldFlags | fIso8601
 					case annotationOmitEmpty:
-						structField.omitempty = true
+						structField.fieldFlags = structField.fieldFlags | fOmitempty
 					case annotationNoFilter:
-						structField.noFilter = true
+						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationI18n:
-						structField.i18n = true
+						structField.fieldFlags = structField.fieldFlags | fI18n
 						if modelStruct.i18n == nil {
 							modelStruct.i18n = make([]*StructField, 0)
 						}
 						modelStruct.i18n = append(modelStruct.i18n, structField)
 					case annotationLanguage:
-						structField.isLanguage = true
+						structField.fieldFlags = structField.fieldFlags | fLanguage
 						modelStruct.language = structField
+					case annotationHidden:
+						structField.fieldFlags = structField.fieldFlags | fHidden
 					}
 
 				}
 			}
 			if tField.Type == reflect.TypeOf(time.Time{}) {
-				structField.isTime = true
+				structField.fieldFlags = structField.fieldFlags | fTime
 			} else if tField.Type == reflect.TypeOf(new(time.Time)) {
-				structField.isPtrTime = true
+				structField.fieldFlags = structField.fieldFlags | fPtrTime
 			}
 
 		case annotationRelation:
@@ -207,9 +211,11 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 				for _, arg := range args[2:] {
 					switch arg {
 					case annotationNoFilter:
-						structField.noFilter = true
+						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationOmitEmpty:
-						structField.omitempty = true
+						structField.fieldFlags = structField.fieldFlags | fOmitempty
+					case annotationHidden:
+						structField.fieldFlags = structField.fieldFlags | fHidden
 					}
 				}
 			}
