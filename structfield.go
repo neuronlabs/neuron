@@ -44,8 +44,8 @@ func (f FieldType) String() string {
 type fieldFlag int
 
 const (
-	fDefault   fieldFlag = 1 << 0
-	fOmitempty fieldFlag = 1 << iota
+	fDefault   fieldFlag = iota
+	fOmitempty fieldFlag = 1 << (iota - 1)
 	fIso8601
 	fI18n
 	fTime
