@@ -85,11 +85,15 @@ PRESETS
 //	- page[limit][collection] - limit the value of ids within given collection
 //	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
 // 		@query - url like query that should define how the preset scope should look like. The query
-//		allows to set the relation path, filter collections, limit given collection, sort given
-//		collection.
-//	 	model - is a model that defines target of the preset scope. The last preset relation field //		should be of the same collection as provided model.
-func (c *Controller) BuildPresetScope(query string, model interface{},
-) (presetScope *Scope) {
+//				allows to set the relation path, filter collections, limit given collection, sort
+//				given collection.
+//		@fieldFilter - jsonapi field name for provided model the field type must be of the same as
+//				the last element of the preset. By default the filter operator is of 'in' type.
+//				It must be of form: filter[collection][field]([operator]|([subfield][operator])).
+//				The operator or subfield are not required.
+func (c *Controller) BuildPresetScope(
+	query, fieldFilter string,
+) (presetScope *Scope, filter *FilterField) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -97,23 +101,14 @@ func (c *Controller) BuildPresetScope(query string, model interface{},
 		}
 	}()
 
-	modelType := reflect.TypeOf(model)
-	if modelType.Kind() == reflect.Ptr {
-		modelType = modelType.Elem()
-	}
-
-	if modelType.Kind() != reflect.Struct {
-		err = fmt.Errorf("Provided invalid model: %s", modelType.Kind())
+	filter, err = c.NewFilterField(fieldFilter)
+	if err != nil {
 		return
 	}
 
-	mStruct := c.Models.Get(modelType)
-	if mStruct == nil {
+	mStruct := filter.mStruct
 
-		err = fmt.Errorf("Invalid model provided. The model of type: '%s' is not precomputed within controller. %v", modelType.Name(), c.Models.models)
-		return
-	}
-
+	// Parse the query
 	var queryParsed url.Values
 	queryParsed, err = url.ParseQuery(query)
 	if err != nil {
@@ -122,7 +117,7 @@ func (c *Controller) BuildPresetScope(query string, model interface{},
 
 	preset := queryParsed.Get(QueryParamPreset)
 	if preset == "" {
-		err = fmt.Errorf("Invalid query: '%s' for model: '%s'. No preset parameter", query, modelType.Name())
+		err = fmt.Errorf("Invalid query: '%s' . No preset parameter", query)
 		return
 	}
 
@@ -153,7 +148,7 @@ func (c *Controller) BuildPresetScope(query string, model interface{},
 	}
 
 	if presetScope.IncludedScopes[mStruct] == nil {
-		err = fmt.Errorf("The model: '%s' collection is not preset within the scope.", modelType.Name())
+		err = fmt.Errorf("The model: '%s' collection is not preset within the scope.", mStruct.GetType().Name())
 		return
 	}
 
@@ -277,6 +272,14 @@ func (c *Controller) BuildPresetScope(query string, model interface{},
 		}
 	}
 	presetScope.copyPresetParameters()
+
+	/**
+
+	TO DO:
+
+	- 	check the field types of last included field and filter field
+	*/
+
 	return
 
 }
@@ -732,6 +735,138 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 
 	scope := newRootScope(mStruct)
 	return scope, nil
+}
+
+// NewFilterField creates new filter field based on the fieldFilter argument and provided values
+//	Arguments:
+//		@fieldFilter - jsonapi field name for provided model the field type must be of the same as
+//				the last element of the preset. By default the filter operator is of 'in' type.
+//				It must be of form: filter[collection][field]([operator]|([subfield][operator])).
+//				The operator or subfield are not required.
+//		@values - the values of type matching the filter field
+func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
+) (filter *FilterField, err error) {
+
+	if valid := strings.HasPrefix(fieldFilter, QueryParamFilter); !valid {
+		err = fmt.Errorf("Invalid field filter argument provided: '%s'. The argument should be composed as: 'filter[collection][field]([subfield][operator])|([operator]).", fieldFilter)
+		return
+	}
+
+	var splitted []string
+	splitted, err = splitBracketParameter(fieldFilter[len(QueryParamFilter):])
+	if err != nil {
+		return
+	}
+
+	mStruct := c.Models.GetByCollection(splitted[0])
+	if mStruct == nil {
+		err = fmt.Errorf("Invalid model provided. The model for collection: '%s' is not precomputed within controller.", splitted[0])
+		return
+	}
+
+	var (
+		structField *StructField
+		operator    FilterOperator
+	)
+	handle3and4 := func() {
+		structField = mStruct.relationships[splitted[1]]
+		if structField == nil {
+			err = fmt.Errorf("Invalid field name provided in fieldFilter: '%s'.", fieldFilter)
+			return
+		}
+		filter = &FilterField{StructField: structField}
+
+		if splitted[2] == "id" {
+			structField = filter.relatedStruct.primary
+		} else {
+			if structField = filter.relatedStruct.attributes[splitted[2]]; structField == nil {
+				err = fmt.Errorf("Invalid subfield name provided: '%s' for the query: '%s'.", splitted[2], fieldFilter)
+				return
+			}
+		}
+		subfieldFilter := &FilterField{StructField: structField}
+
+		if len(splitted) == 4 {
+			var ok bool
+			operator, ok = operatorsValue[splitted[3]]
+			if !ok {
+				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[3], fieldFilter)
+				return
+			}
+		} else {
+			operator = OpIn
+		}
+
+		fv := &FilterValues{Operator: operator, Values: make([]interface{}, len(values))}
+		for i, value := range values {
+			t := reflect.TypeOf(value)
+			if t == subfieldFilter.refStruct.Type {
+				fv.Values[i] = value
+			} else {
+				err = fmt.Errorf("Invalid value type provided for filter: '%s', '%v' and should be: '%s'", fieldFilter, t, subfieldFilter.refStruct.Type)
+				return
+			}
+		}
+
+		subfieldFilter.Values = append(subfieldFilter.Values, fv)
+
+		// Add subfield
+		filter.Relationships = append(filter.Relationships, subfieldFilter)
+	}
+
+	handle2and3 := func() {
+		if splitted[1] == "id" {
+			structField = mStruct.primary
+		} else {
+			structField = mStruct.attributes[splitted[1]]
+			if structField == nil {
+				if structField = mStruct.relationships[splitted[1]]; structField != nil {
+					if len(splitted) == 3 {
+						handle3and4()
+					} else {
+						err = fmt.Errorf("The relationship field: '%s' in the filter argument must specify the subfield. Filter: '%s'", splitted[1], fieldFilter)
+					}
+				} else {
+					err = fmt.Errorf("Invalid field name: '%s' for the collection: '%s'.", splitted[1], splitted[0])
+				}
+				return
+			}
+		}
+		filter = &FilterField{StructField: structField}
+		var ok bool
+		if len(splitted) == 3 {
+			operator, ok = operatorsValue[splitted[2]]
+			if !ok {
+				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[2], fieldFilter)
+				return
+			}
+		} else {
+			operator = OpIn
+		}
+		fv := &FilterValues{Operator: operator, Values: make([]interface{}, len(values))}
+
+		for i, value := range values {
+			t := reflect.TypeOf(value)
+			if t == filter.refStruct.Type {
+				fv.Values[i] = value
+			} else {
+				err = fmt.Errorf("Invalid value type provided for filter: '%s', '%v' and should be: '%s'", fieldFilter, t, filter.refStruct.Type)
+				return
+			}
+		}
+		filter.Values = append(filter.Values, fv)
+	}
+
+	switch len(splitted) {
+	case 2, 3:
+		handle2and3()
+	case 4:
+		handle3and4()
+	default:
+		err = fmt.Errorf("The filter argument: '%s' is of invalid form.", fieldFilter)
+		return
+	}
+	return
 }
 
 // PrecomputeModels precomputes provided models, making it easy to check

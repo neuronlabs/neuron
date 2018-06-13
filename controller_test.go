@@ -530,15 +530,24 @@ func TestPresetScope(t *testing.T) {
 	// Select all possible comments for blog with id 1 where only last 10 post are taken into
 	// account
 	query := "preset=blogs.posts.comments&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id"
-	var presetScope *Scope
+	filter := "filter[comments][id][eq]"
+	var (
+		presetScope *Scope
+		filterField *FilterField
+	)
 
 	assertNoPanic(t, func() {
-		presetScope = c.BuildPresetScope(query, Comment{})
+		presetScope, filterField = c.BuildPresetScope(query, filter)
 	}, failNow)
+
+	// The filter field should be the primary field of comments...
+	assertEqual(t, c.MustGetModelStruct(&Comment{}).primary, filterField.StructField, failNow)
+
+	// ...with filter operator - eq
+	assertEqual(t, OpEqual, filterField.Values[0].Operator)
 
 	// The presetScope should be of type Blogs
 	assertEqual(t, presetScope.Struct.modelType, reflect.TypeOf(Blog{}))
-
 	// It should contain filterField for ID equal to 1
 	assertNotNil(t, presetScope.PrimaryFilters, failNow)
 
@@ -581,31 +590,64 @@ func TestPresetScope(t *testing.T) {
 
 	// Case 2:
 	// Bad collection name in query
+
 	query = "preset=blog.posts.comments"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 3:
 	// invalid field name
 	query = "preset=blogs.posts.comms"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 4:
 	// No model collection within Includes
 	query = "preset=blogs.posts"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 5:
 	// Invalid filter field
 	query = "preset=blogs.posts.comments&filter[posts][nofield]=3"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 6:
 	// Invalid sort field
 	query = "preset=blogs.current_post.comments&sort[blogs]=-nofield&page[limit][blogs]=10"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 7:
 	// Too short preset
 	query = "preset=comments"
-	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+}
+
+func TestControllerNewFilterField(t *testing.T) {
+	filter := "filter[blogs][posts][id][notin]"
+	values := []interface{}{uint64(1), uint64(2), uint64(3), uint64(4)}
+
+	clearMap()
+	getBlogScope()
+
+	filterField, err := c.NewFilterField(filter, values...)
+	assertNoError(t, err, failNow)
+
+	mStruct := c.MustGetModelStruct(&Blog{})
+	assertEqual(t, mStruct, filterField.mStruct)
+	assertEqual(t, mStruct.relationships["posts"], filterField.StructField)
+	assertEqual(t, c.MustGetModelStruct(&Post{}), filterField.relatedStruct, failNow)
+
+	assertNotEmpty(t, filterField.Relationships, failNow)
+	assertEqual(t, c.MustGetModelStruct(&Post{}).primary, filterField.Relationships[0].StructField)
+
+	filter = "filter[posts][blog_id][eq]"
+	values = []interface{}{1, 2}
+
+	filterField, err = c.NewFilterField(filter, values...)
+	assertNoError(t, err, failNow)
+
+	assertEqual(t, c.MustGetModelStruct(&Post{}), filterField.mStruct)
+	assertEqual(t, c.MustGetModelStruct(&Post{}).attributes["blog_id"], filterField.StructField)
+
+	assertEqual(t, OpEqual, filterField.Values[0].Operator)
+	assertEqual(t, len(values), len(filterField.Values[0].Values))
+	t.Log(filterField.Values[0].Values)
 }
