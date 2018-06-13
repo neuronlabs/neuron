@@ -11,12 +11,12 @@ func TestControllerCreation(t *testing.T) {
 	cNew := New()
 
 	assertNotEmpty(t, cNew.Models)
-	assertEqual(t, "/", cNew.APIURLBase)
+
 	assertEqual(t, 1, cNew.IncludeNestedLimit)
 
 	cDefault := Default()
 	assertNotEmpty(t, cDefault.Models)
-	assertTrue(t, cDefault.APIURLBase == "/")
+
 	assertNotEqual(t, cNew.ErrorLimitMany, cDefault.ErrorLimitMany)
 	assertNotEqual(t, cNew.ErrorLimitSingle, cDefault.ErrorLimitSingle)
 }

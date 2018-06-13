@@ -53,6 +53,7 @@ const (
 	fNoFilter
 	fLanguage
 	fHidden
+	fSortable
 )
 
 // StructField represents a field structure with its json api parameters
@@ -248,4 +249,8 @@ func (s *StructField) isLanguage() bool {
 
 func (s *StructField) isHidden() bool {
 	return s.fieldFlags&fHidden != 0
+}
+
+func (s *StructField) isSortable() bool {
+	return s.fieldFlags&fSortable != 0
 }

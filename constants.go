@@ -27,6 +27,8 @@ const (
 	// disable for filtering purpose
 	annotationNoFilter = "nofilter"
 
+	annotationSortable = "sortable"
+
 	// logical filters
 	annotationEqual        = "eq"
 	annotationIn           = "in"

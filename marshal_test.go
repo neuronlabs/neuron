@@ -146,3 +146,28 @@ func TestMarshalScopeRelationship(t *testing.T) {
 	t.Log(buffer)
 
 }
+
+func TestMarshalHiddenScope(t *testing.T) {
+	type HiddenModel struct {
+		ID          int    `jsonapi:"primary,hiddens,hidden"`
+		Visibile    string `jsonapi:"attr,visible"`
+		HiddenField string `jsonapi:"attr,hiddenField,hidden"`
+	}
+
+	clearMap()
+	assertNoError(t, c.PrecomputeModels(&HiddenModel{}), failNow)
+
+	scope, err := c.NewScope(&HiddenModel{})
+	assertNoError(t, err, failNow)
+
+	scope.Value = &HiddenModel{ID: 1, Visibile: "Visible", HiddenField: "Invisible"}
+
+	payload, err := c.MarshalScope(scope)
+	assertNoError(t, err, failNow)
+
+	buffer := bytes.NewBufferString("")
+	err = MarshalPayload(buffer, payload)
+	assertNoError(t, err, failNow)
+
+	t.Log(buffer)
+}

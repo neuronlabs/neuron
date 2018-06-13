@@ -140,6 +140,8 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationHidden:
 						structField.fieldFlags = structField.fieldFlags | fHidden
+					case annotationSortable:
+						structField.fieldFlags = structField.fieldFlags | fSortable
 					}
 				}
 			}
@@ -184,6 +186,8 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 						modelStruct.language = structField
 					case annotationHidden:
 						structField.fieldFlags = structField.fieldFlags | fHidden
+					case annotationSortable:
+						structField.fieldFlags = structField.fieldFlags | fSortable
 					}
 
 				}
@@ -216,6 +220,8 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 						structField.fieldFlags = structField.fieldFlags | fOmitempty
 					case annotationHidden:
 						structField.fieldFlags = structField.fieldFlags | fHidden
+					case annotationSortable:
+						structField.fieldFlags = structField.fieldFlags | fSortable
 					}
 				}
 			}

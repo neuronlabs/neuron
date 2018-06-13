@@ -191,17 +191,23 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	// set primary
 
 	primStruct := scope.Struct.primary
+
 	primIndex := primStruct.getFieldIndex()
 	primaryVal := modelVal.Field(primIndex)
-
-	err := setNodePrimary(primaryVal, node)
-	if err != nil {
-		return nil, err
+	var err error
+	if !primStruct.isHidden() {
+		err = setNodePrimary(primaryVal, node)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, field := range scope.getModelsRootScope(scope.Struct).Fieldset {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
+		if field.isHidden() {
+			continue
+		}
 
 		switch field.fieldType {
 		case Attribute:

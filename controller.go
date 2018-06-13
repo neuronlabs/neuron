@@ -45,7 +45,6 @@ type Controller struct {
 // New Creates raw *jsonapi.Controller with no limits and links.
 func New() *Controller {
 	return &Controller{
-		APIURLBase:         "/",
 		Models:             newModelMap(),
 		ErrorLimitMany:     1,
 		ErrorLimitSingle:   1,
@@ -61,7 +60,7 @@ func New() *Controller {
 // Controller has also set the UseLinks flag to true.
 func Default() *Controller {
 	return &Controller{
-		APIURLBase:         "/",
+		// APIURLBase:         "/",
 		Models:             newModelMap(),
 		ErrorLimitMany:     5,
 		ErrorLimitSingle:   2,
