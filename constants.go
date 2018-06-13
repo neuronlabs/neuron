@@ -18,6 +18,9 @@ const (
 	annotationOpenedBracket     = '['
 	annotationClosedBracket     = ']'
 
+	// Hidden field
+	annotationHidden = "hidden"
+
 	annotationsManyToMany = "many2many"
 
 	// FILTERS
@@ -72,6 +75,9 @@ const (
 	// pagination pages
 	KeyTotalPages = "total-pages"
 
+	// QueryParamPage is a JSON API query parameter used as for pagination.
+	QueryParamPage = "page"
+
 	// QueryParamPageNumber is a JSON API query parameter used in a page based
 	// pagination strategy in conjunction with QueryParamPageSize
 	QueryParamPageNumber = "page[number]"
@@ -106,4 +112,7 @@ const (
 
 	// QueryParamFields
 	QueryParamFields = "fields"
+
+	// Preset query annotation
+	QueryParamPreset = "preset"
 )

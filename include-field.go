@@ -15,7 +15,7 @@ type IncludeField struct {
 	// include field
 	Scope *Scope
 
-	// RelatedScope defines the scope where the IncludedField is stored.
+	// RelatedScope is a pointer to the scope where the IncludedField is stored.
 	RelatedScope *Scope
 
 	NotInFieldset bool
@@ -171,12 +171,15 @@ func (i *IncludeField) setRelationshipValue(relatedValue reflect.Value) {
 
 func (i *IncludeField) copyScopeBoundaries() {
 	// copy primaries
+	i.Scope.PrimaryFilters = make([]*FilterField, len(i.Scope.collectionScope.PrimaryFilters))
 	copy(i.Scope.PrimaryFilters, i.Scope.collectionScope.PrimaryFilters)
 
 	// copy attribute filters
+	i.Scope.AttributeFilters = make([]*FilterField, len(i.Scope.collectionScope.AttributeFilters))
 	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
 
 	// relationships
+	i.Scope.RelationshipFilters = make([]*FilterField, len(i.Scope.collectionScope.RelationshipFilters))
 	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
 
 	// fieldset is taken by reference - copied if there is nested
@@ -204,4 +207,49 @@ func (i *IncludeField) copyScopeBoundaries() {
 		nested.copyScopeBoundaries()
 	}
 
+}
+
+func (i *IncludeField) copyPresetFullParameters() {
+	// copy primaries
+	i.Scope.PrimaryFilters = make([]*FilterField, len(i.Scope.collectionScope.PrimaryFilters))
+	copy(i.Scope.PrimaryFilters, i.Scope.collectionScope.PrimaryFilters)
+
+	// copy attribute filters
+	i.Scope.AttributeFilters = make([]*FilterField, len(i.Scope.collectionScope.AttributeFilters))
+	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
+
+	// relationships
+	i.Scope.RelationshipFilters = make([]*FilterField, len(i.Scope.collectionScope.RelationshipFilters))
+	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
+
+	// fieldset is taken by reference - copied if there is nested
+	i.Scope.Fieldset = make(map[string]*StructField)
+	i.Scope.Fieldset["id"] = i.Scope.Struct.primary
+
+	i.Scope.Sorts = make([]*SortField, len(i.Scope.collectionScope.Sorts))
+	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)
+
+	i.Scope.Pagination = i.Scope.collectionScope.Pagination
+
+	for _, nested := range i.Scope.IncludedFields {
+		// if the nested include is not found within the collection fieldset
+		// the 'i'.Scope should have a new (not reference) Fieldset
+		// with the nested field added to it
+		if nested.NotInFieldset {
+			// make a new fieldset if it is the same reference
+			if len(i.Scope.Fieldset) == len(i.Scope.collectionScope.Fieldset) {
+				// if there is more than one nested this would not happen
+				i.Scope.Fieldset = make(map[string]*StructField)
+				// copy fieldset
+				for key, field := range i.Scope.collectionScope.Fieldset {
+					i.Scope.Fieldset[key] = field
+				}
+			}
+
+			//add nested
+			i.Scope.Fieldset[nested.jsonAPIName] = nested.StructField
+		}
+
+		nested.copyPresetFullParameters()
+	}
 }

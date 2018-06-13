@@ -9,33 +9,54 @@ import (
 	"testing"
 )
 
-func assertPanic(t *testing.T, testFunc func()) {
+type assertOptions int
+
+const (
+	_ assertOptions = iota
+	failNow
+	printPanic
+)
+
+func assertPanic(t *testing.T, testFunc func(), options ...assertOptions) {
 	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("The function: %v should panic. \n%s", testFunc, traceInfo(3))
+		r := recover()
+		if r == nil {
+			t.Errorf("The function: %v should panic. \n%s", reflect.TypeOf(testFunc).Name(), traceInfo(3))
+			treatOptions(t, options...)
+		} else {
+			for _, option := range options {
+				if option == printPanic {
+					t.Log(r)
+				}
+			}
 		}
+
 	}()
 	testFunc()
 }
 
-func assertNoPanic(t *testing.T, testFunc func()) {
+func assertNoPanic(t *testing.T, testFunc func(), options ...assertOptions) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("The function: %v should not panic.\n%s", testFunc, traceInfo(3))
+			t.Errorf("The function should not panic.'%s'. \n%s", r, traceInfo(3))
+
+			treatOptions(t, options...)
 		}
 	}()
 	testFunc()
 }
 
-func assertError(t *testing.T, err error) {
+func assertError(t *testing.T, err error, options ...assertOptions) {
 	if err == nil {
 		t.Errorf("Provided error is nil. \n%s", traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertNoError(t *testing.T, err error) {
+func assertNoError(t *testing.T, err error, options ...assertOptions) {
 	if err != nil {
 		t.Errorf("Given error is not nil: %s. \n%s", err, traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
@@ -55,15 +76,17 @@ func assertErrorObjects(t *testing.T, errs ...*ErrorObject) {
 	}
 }
 
-func assertNotNil(t *testing.T, obj interface{}) {
+func assertNotNil(t *testing.T, obj interface{}, options ...assertOptions) {
 	if isNil(obj) {
 		t.Errorf("Provided obj: '%v' should not be nil.\n%s", obj, traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertNil(t *testing.T, obj interface{}) {
+func assertNil(t *testing.T, obj interface{}, options ...assertOptions) {
 	if !isNil(obj) {
 		t.Errorf("Provided obj: %v is not nil.\n%s", obj, traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
@@ -75,40 +98,46 @@ func assertNilErrors(t *testing.T, errs ...error) {
 	}
 }
 
-func assertTrue(t *testing.T, value bool) {
+func assertTrue(t *testing.T, value bool, options ...assertOptions) {
 	if !value {
-		t.Error("Provided value is not true. \n%sv", traceInfo(2))
+		t.Errorf("Provided value is not true. \n%sv", traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertFalse(t *testing.T, value bool) {
+func assertFalse(t *testing.T, value bool, options ...assertOptions) {
 	if value {
 		t.Errorf("Provided value is not false. \n%v", traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertEmpty(t *testing.T, obj interface{}) {
+func assertEmpty(t *testing.T, obj interface{}, options ...assertOptions) {
 	if !isEmpty(obj) {
 		t.Errorf("Object is not empty. \n%v", traceInfo(2))
+		treatOptions(t, options...)
 	}
 
 }
 
-func assertNotEmpty(t *testing.T, obj interface{}) {
+func assertNotEmpty(t *testing.T, obj interface{}, options ...assertOptions) {
 	if isEmpty(obj) {
 		t.Errorf("Object is empty. \n%v", traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertEqual(t *testing.T, expected, actual interface{}) {
+func assertEqual(t *testing.T, expected, actual interface{}, options ...assertOptions) {
 	if !areEqual(expected, actual) {
 		t.Errorf("Objects: %v and %v  are not equal. \n%s", expected, actual, traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
-func assertNotEqual(t *testing.T, expected, actual interface{}) {
+func assertNotEqual(t *testing.T, expected, actual interface{}, options ...assertOptions) {
 	if areEqual(expected, actual) {
 		t.Errorf("Objects: %v and %v are equal. \n%s", expected, actual, traceInfo(2))
+		treatOptions(t, options...)
 	}
 }
 
@@ -168,4 +197,14 @@ func traceInfo(depth int) string {
 	}
 	return ""
 
+}
+
+func treatOptions(t *testing.T, options ...assertOptions) {
+	if len(options) == 0 {
+		return
+	}
+
+	if options[0] == failNow {
+		t.FailNow()
+	}
 }

@@ -125,7 +125,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 
 	if op > OpEndsWith {
 		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprint("The filter operator: '%s' is not supported by the server.", op)
+		errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported by the server.", op)
 	}
 
 	t := f.getDereferencedType()

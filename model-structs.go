@@ -107,6 +107,15 @@ func (m *ModelStruct) GetLanguageField() *StructField {
 // 	return sField, nil
 // }
 
+func (m *ModelStruct) GetFieldByJSONAPIName(jsonapiName string) (*StructField, error) {
+	for _, field := range m.fields {
+		if field.jsonAPIName == jsonapiName {
+			return field, nil
+		}
+	}
+	return nil, fmt.Errorf("The model: '%s' does not contain jsonapi field: '%s'.", m.modelType.Name(), jsonapiName)
+}
+
 func (m *ModelStruct) SetModelURL(url string) error {
 	return m.setModelURL(url)
 }

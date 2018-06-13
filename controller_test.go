@@ -16,7 +16,7 @@ func TestControllerCreation(t *testing.T) {
 
 	cDefault := Default()
 	assertNotEmpty(t, cDefault.Models)
-	assertTrue(t, cDefault.APIURLBase == "/api")
+	assertTrue(t, cDefault.APIURLBase == "/")
 	assertNotEqual(t, cNew.ErrorLimitMany, cDefault.ErrorLimitMany)
 	assertNotEqual(t, cNew.ErrorLimitSingle, cDefault.ErrorLimitSingle)
 }
@@ -518,4 +518,94 @@ func TestNewScope(t *testing.T) {
 	scope, err = c.NewScope(Book{})
 	assertError(t, err)
 	assertNil(t, scope)
+}
+
+func TestPresetScope(t *testing.T) {
+	clearMap()
+	assertNoError(t, c.PrecomputeModels(&Blog{}, &Post{}, &Comment{}), failNow)
+
+	// Case 1:
+	// Valid query
+
+	// Select all possible comments for blog with id 1 where only last 10 post are taken into
+	// account
+	query := "preset=blogs.posts.comments&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id"
+	var presetScope *Scope
+
+	assertNoPanic(t, func() {
+		presetScope = c.BuildPresetScope(query, Comment{})
+	}, failNow)
+
+	// The presetScope should be of type Blogs
+	assertEqual(t, presetScope.Struct.modelType, reflect.TypeOf(Blog{}))
+
+	// It should contain filterField for ID equal to 1
+	assertNotNil(t, presetScope.PrimaryFilters, failNow)
+
+	assertNotEmpty(t, presetScope.PrimaryFilters, failNow)
+
+	assertEqual(t, Primary, presetScope.PrimaryFilters[0].fieldType)
+	assertEqual(t, 1, presetScope.PrimaryFilters[0].Values[0].Values[0].(int))
+
+	// The preset scope should include posts and comments
+	assertNotNil(t, presetScope.IncludedScopes, failNow)
+
+	assertNotNil(t, presetScope.IncludedScopes[c.MustGetModelStruct(&Post{})], failNow)
+	assertNotNil(t, presetScope.IncludedScopes[c.MustGetModelStruct(&Comment{})], failNow)
+
+	// The preset scope should contain Posts include field
+	assertNotEmpty(t, presetScope.IncludedFields, failNow)
+
+	assertEqual(t, presetScope.IncludedFields[0].jsonAPIName, "posts")
+
+	postsScope := presetScope.IncludedFields[0].Scope
+	assertNotNil(t, postsScope, failNow)
+
+	assertEqual(t, reflect.TypeOf(Post{}), postsScope.Struct.modelType)
+
+	assertNotEmpty(t, postsScope.Sorts, failNow)
+	assertEqual(t, Primary, postsScope.Sorts[0].fieldType)
+	assertEqual(t, DescendingOrder, postsScope.Sorts[0].Order)
+
+	assertNotNil(t, postsScope.Pagination, failNow)
+	assertEqual(t, OffsetPaginate, postsScope.Pagination.Type)
+
+	// The PostIncludeFieldScope should contain Comment Include Field
+	assertNotEmpty(t, postsScope.IncludedFields, failNow)
+	assertEqual(t, "comments", postsScope.IncludedFields[0].jsonAPIName)
+	commentsScope := postsScope.IncludedFields[0].Scope
+	assertNotNil(t, commentsScope, failNow)
+
+	// The comment scope should be of Comment type
+	assertEqual(t, reflect.TypeOf(Comment{}), commentsScope.Struct.modelType)
+
+	// Case 2:
+	// Bad collection name in query
+	query = "preset=blog.posts.comments"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+
+	// Case 3:
+	// invalid field name
+	query = "preset=blogs.posts.comms"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+
+	// Case 4:
+	// No model collection within Includes
+	query = "preset=blogs.posts"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+
+	// Case 5:
+	// Invalid filter field
+	query = "preset=blogs.posts.comments&filter[posts][nofield]=3"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+
+	// Case 6:
+	// Invalid sort field
+	query = "preset=blogs.current_post.comments&sort[blogs]=-nofield&page[limit][blogs]=10"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
+
+	// Case 7:
+	// Too short preset
+	query = "preset=comments"
+	assertPanic(t, func() { c.BuildPresetScope(query, Comment{}) }, printPanic)
 }

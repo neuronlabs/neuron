@@ -44,7 +44,7 @@ type Scope struct {
 	// if filters, fieldsets are set for non-included scope error should occur
 	IncludedScopes map[*ModelStruct]*Scope
 
-	// Included contain fields to include. If the included field is a relationship type, then
+	// IncludedFields contain fields to include. If the included field is a relationship type, then
 	// specific includefield contains information about it
 	IncludedFields []*IncludeField
 
@@ -81,9 +81,11 @@ type Scope struct {
 	totalIncludeCount int
 	kind              scopeKind
 
-	// CollectionScope is a pointer to the scope containing
+	// CollectionScope is a pointer to the scope containing the collection root
 	collectionScope *Scope
-	rootScope       *Scope
+
+	// rootScope is the root of all scopes where the query begins
+	rootScope *Scope
 
 	currentIncludedFieldIndex int
 	isRelationship            bool
@@ -1166,6 +1168,36 @@ func (s *Scope) getLangtagIndex() (index int, err error) {
 	index = s.Struct.language.getFieldIndex()
 	return
 }
+
+/**
+
+Preset
+
+*/
+
+func (s *Scope) copyPresetParameters() {
+	for _, includedField := range s.IncludedFields {
+		includedField.copyPresetFullParameters()
+	}
+}
+
+// func (s *Scope) buildPresetFields(model *ModelStruct, presetFields ...string) error {
+// 	l := len(presetFields)
+// 	switch {
+// 	case l < 1:
+// 		return fmt.Errorf("No preset field provided. For model: %s.", model.modelType.Name(), presetFields)
+// 	case l == 1:
+// 		if presetCollection := presetFields[0]; presetCollection != model.collectionType {
+// 			return fmt.Errorf("Invalid preset collection: '%s'. The collection does not match with provided model: '%s'.", presetCollection, model.modelType.Name())
+// 		}
+// 		return nil
+
+// 	case l > 2:
+// 		collection := presetFields[0]
+
+// 	}
+// 	return nil
+// }
 
 /**
 Errors

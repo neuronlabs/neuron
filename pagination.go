@@ -13,6 +13,15 @@ const (
 	CursorPaginate
 )
 
+type PaginationParameter int
+
+const (
+	limitPaginateParam PaginationParameter = iota
+	offsetPaginateParam
+	numberPaginateParam
+	sizePaginateParam
+)
+
 type Pagination struct {
 	Limit      int
 	Offset     int

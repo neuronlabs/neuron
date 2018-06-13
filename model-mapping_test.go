@@ -48,7 +48,7 @@ func TestGetSliceElemType(t *testing.T) {
 	}
 
 	if elemType != refType.Elem().Elem().Elem() {
-		t.Error("Invalid elem type: %v", elemType)
+		t.Errorf("Invalid elem type: %v", elemType)
 	}
 
 	refType = reflect.TypeOf(Car{})
