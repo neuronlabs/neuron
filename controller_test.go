@@ -532,13 +532,15 @@ func TestPresetScope(t *testing.T) {
 	query := "preset=blogs.posts.comments&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id"
 	filter := "filter[comments][id][eq]"
 	var (
-		presetScope *Scope
-		filterField *FilterField
+		presetPair *PresetPair
 	)
 
 	assertNoPanic(t, func() {
-		presetScope, filterField = c.BuildPresetScope(query, filter)
+		presetPair = c.BuildPresetScope(query, filter)
 	}, failNow)
+
+	presetScope := presetPair.Scope
+	filterField := presetPair.Filter
 
 	// The filter field should be the primary field of comments...
 	assertEqual(t, c.MustGetModelStruct(&Comment{}).primary, filterField.StructField, failNow)

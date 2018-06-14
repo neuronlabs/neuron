@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+// PresetPair is a struct used by presetting / prechecking given model.
+type PresetPair struct {
+	Scope  *Scope
+	Filter *FilterField
+}
+
 // Controller
 type Controller struct {
 	// APIURLBase is a url prefix for the resources. (I.e. having APIURLBase = "/api/v1" and
@@ -93,6 +99,36 @@ PRESETS
 //				The operator or subfield are not required.
 func (c *Controller) BuildPresetScope(
 	query, fieldFilter string,
+) *PresetPair {
+	presetScope, filter := c.buildPreparedScope(query, fieldFilter, false)
+	return &PresetPair{Scope: presetScope, Filter: filter}
+}
+
+// BuildPresetScope builds the preset scope which should enable the table 'JOIN' feature.
+// The query parameter should be URL parseble query ("x1=1&x2=2" etc.)
+// The query parameter that are allowed are:
+//	- preset=collection.relationfield.relationfield .... - this creates a relation path
+//		the last relation field should be of type of model provided as an argument.
+//	- filter[collection][field][operator]=value
+//	- page[limit][collection] - limit the value of ids within given collection
+//	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
+// 		@query - url like query that should define how the preset scope should look like. The query
+//				allows to set the relation path, filter collections, limit given collection, sort
+//				given collection.
+//		@fieldFilter - jsonapi field name for provided model the field type must be of the same as
+//				the last element of the preset. By default the filter operator is of 'in' type.
+//				It must be of form: filter[collection][field]([operator]|([subfield][operator])).
+//				The operator or subfield are not required.
+func (c *Controller) BuildPrecheckScope(
+	query, fieldFilter string,
+) *PresetPair {
+	precheckScope, filter := c.buildPreparedScope(query, fieldFilter, true)
+	return &PresetPair{Scope: precheckScope, Filter: filter}
+}
+
+func (c *Controller) buildPreparedScope(
+	query, fieldFilter string,
+	check bool,
 ) (presetScope *Scope, filter *FilterField) {
 	var err error
 	defer func() {
@@ -273,15 +309,18 @@ func (c *Controller) BuildPresetScope(
 	}
 	presetScope.copyPresetParameters()
 
-	/**
+	// If the prepared scope is not checked (preset)
+	// Then check if the value range is consistent
+	if !check {
+		/**
 
-	TO DO:
+		TO DO:
 
-	- 	check the field types of last included field and filter field
-	*/
+		*/
+
+	}
 
 	return
-
 }
 
 func (c *Controller) BuildScopeList(req *http.Request, model interface{},
