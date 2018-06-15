@@ -153,6 +153,12 @@ var (
 		Status: "403",
 	}
 
+	ErrEndpointForbidden = ErrorObject{
+		Code:   "FORB01",
+		Title:  "Provided endpoint is forbidden.",
+		Status: "403",
+	}
+
 	// STATUS 404, CODE: 'NTFXXX'
 	ErrResourceNotFound = ErrorObject{
 		Code:   "NTF001",
