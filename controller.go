@@ -86,11 +86,11 @@ PRESETS
 // The query parameter should be URL parseble query ("x1=1&x2=2" etc.)
 // The query parameter that are allowed are:
 //	- preset=collection.relationfield.relationfield .... - this creates a relation path
-//		the last relation field should be of type of model provided as an argument.
-//	- filter[collection][field][operator]=value
+//		the last relation field should be of type of model provided as an argument. *REQUIRED
 //	- fields[collection]=field1,field2 - describe the fieldset for queries. - used to set
 //		the field to get of last preset field. By default the preset field is included into the
-//		fieldset.
+//		fieldset. *REQUIRED
+//	- filter[collection][field][operator]=value
 //	- page[limit][collection] - limit the value of ids within given collection
 //	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
 // 		@query - url like query that should define how the preset scope should look like. The query
@@ -111,7 +111,10 @@ func (c *Controller) BuildPresetScope(
 // The query parameter should be URL parseble query ("x1=1&x2=2" etc.)
 // The query parameter that are allowed are:
 //	- preset=collection.relationfield.relationfield .... - this creates a relation path
-//		the last relation field should be of type of model provided as an argument.
+//		the last relation field should be of type of model provided as an argument. *REQUIRED
+//	- fields[collection]=field1,field2 - describe the fieldset for queries. - used to set
+//		the field to get of last preset field. By default the preset field is included into the
+//		fieldset. *REQUIRED
 //	- filter[collection][field][operator]=value
 //	- page[limit][collection] - limit the value of ids within given collection
 //	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
@@ -185,6 +188,55 @@ func (c *Controller) buildPreparedScope(
 		err = fmt.Errorf("Invalid preset values. %s", errs)
 		return
 	}
+
+	// Preset Fieldset
+
+	// var fieldsetFound bool
+	for key, value := range queryParsed {
+		if strings.HasPrefix(key, QueryParamFields) {
+			var splitted []string
+			splitted, err = splitBracketParameter(key[len(QueryParamFields):])
+			if err != nil {
+				errObj := ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", err)
+				err = errObj
+				return
+			}
+
+			if len(splitted) != 1 {
+				errObj := ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
+				err = errObj
+				return
+			}
+
+			collection := splitted[0]
+			fieldModel := c.Models.GetByCollection(collection)
+			if fieldModel == nil {
+				err = fmt.Errorf("Collection: '%s' not found within controller.", collection)
+				return
+			}
+
+			fieldScope := presetScope.getModelsRootScope(fieldModel)
+			if fieldScope == nil {
+				err = fmt.Errorf("Collection: '%s' not included into preset. For query: '%s'.", collection, query)
+				return
+			}
+
+			splitFields := strings.Split(value[0], annotationSeperator)
+			errs := fieldScope.buildFieldset(splitFields...)
+			if len(errs) != 0 {
+				err = fmt.Errorf("Invalid fieldset provided. %v", errs)
+				return
+			}
+			// fieldsetFound = true
+		}
+	}
+
+	// if !fieldsetFound && check {
+	// 	err = fmt.Errorf("The fieldset not found within the query: '%s'.", query)
+	// 	return
+	// }
 
 	for key, value := range queryParsed {
 		switch {
@@ -304,42 +356,7 @@ func (c *Controller) buildPreparedScope(
 				return
 			}
 		case strings.HasPrefix(key, QueryParamFields):
-			var splitted []string
-			splitted, err = splitBracketParameter(key[len(QueryParamFields):])
-			if err != nil {
-				errObj := ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", err)
-				err = errObj
-				return
-			}
-
-			if len(splitted) != 1 {
-				errObj := ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-				err = errObj
-				return
-			}
-
-			collection := splitted[0]
-			fieldModel := c.Models.GetByCollection(collection)
-			if fieldModel == nil {
-				err = fmt.Errorf("Collection: '%s' not found within controller.", collection)
-				return
-			}
-
-			fieldScope := presetScope.getModelsRootScope(fieldModel)
-			if fieldScope == nil {
-				err = fmt.Errorf("Collection: '%s' not included into preset. For query: '%s'.", collection, query)
-				return
-			}
-
-			splitFields := strings.Split(value[0], annotationSeperator)
-			errs := fieldScope.buildFieldset(splitFields...)
-			if len(errs) != 0 {
-				err = fmt.Errorf("Invalid fieldset provided. %v", errs)
-				return
-			}
-
+			continue
 		}
 	}
 	presetScope.copyPresetParameters()

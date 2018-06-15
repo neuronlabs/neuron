@@ -603,18 +603,18 @@ func TestPresetScope(t *testing.T) {
 	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 4:
-	// No model collection within Includes
+	// No fieldset found within the query
 	// query = "preset=blogs.posts"
 	// assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 5:
 	// Invalid filter field
-	query = "preset=blogs.posts.comments&filter[posts][nofield]=3"
+	query = "preset=blogs.posts&fieldset[posts]=comments&filter[posts][nofield]=3"
 	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 6:
 	// Invalid sort field
-	query = "preset=blogs.current_post.comments&sort[blogs]=-nofield&page[limit][blogs]=10"
+	query = "preset=blogs.current_post&fieldset[posts]=comments&sort[blogs]=-nofield&page[limit][blogs]=10"
 	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 7:

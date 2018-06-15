@@ -79,6 +79,10 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 					Sprintf("Invalid type for: '%s' field. It must be of '%s' type but is: '%v'",
 						uErr.Field, fieldType, uErr.Value)
 			}
+		} else if er == io.EOF {
+			errObj = ErrInvalidJSONDocument.Copy()
+			errObj.Detail = fmt.Sprint("Provided document is empty.")
+
 		} else {
 			err = er
 		}
