@@ -529,7 +529,7 @@ func TestPresetScope(t *testing.T) {
 
 	// Select all possible comments for blog with id 1 where only last 10 post are taken into
 	// account
-	query := "preset=blogs.posts.comments&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id"
+	query := "preset=blogs.posts&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id&fields[posts]=comments"
 	filter := "filter[comments][id][eq]"
 	var (
 		presetPair *PresetPair
@@ -562,7 +562,6 @@ func TestPresetScope(t *testing.T) {
 	assertNotNil(t, presetScope.IncludedScopes, failNow)
 
 	assertNotNil(t, presetScope.IncludedScopes[c.MustGetModelStruct(&Post{})], failNow)
-	assertNotNil(t, presetScope.IncludedScopes[c.MustGetModelStruct(&Comment{})], failNow)
 
 	// The preset scope should contain Posts include field
 	assertNotEmpty(t, presetScope.IncludedFields, failNow)
@@ -581,14 +580,16 @@ func TestPresetScope(t *testing.T) {
 	assertNotNil(t, postsScope.Pagination, failNow)
 	assertEqual(t, OffsetPaginate, postsScope.Pagination.Type)
 
-	// The PostIncludeFieldScope should contain Comment Include Field
-	assertNotEmpty(t, postsScope.IncludedFields, failNow)
-	assertEqual(t, "comments", postsScope.IncludedFields[0].jsonAPIName)
-	commentsScope := postsScope.IncludedFields[0].Scope
-	assertNotNil(t, commentsScope, failNow)
+	_, ok := postsScope.Fieldset["comments"]
+	assertTrue(t, ok)
+	// // The PostIncludeFieldScope should contain Comment Include Field
+	// assertNotEmpty(t, postsScope.IncludedFields, failNow)
+	// assertEqual(t, "comments", postsScope.IncludedFields[0].jsonAPIName)
+	// commentsScope := postsScope.IncludedFields[0].Scope
+	// assertNotNil(t, commentsScope, failNow)
 
-	// The comment scope should be of Comment type
-	assertEqual(t, reflect.TypeOf(Comment{}), commentsScope.Struct.modelType)
+	// // The comment scope should be of Comment type
+	// assertEqual(t, reflect.TypeOf(Comment{}), commentsScope.Struct.modelType)
 
 	// Case 2:
 	// Bad collection name in query
@@ -603,8 +604,8 @@ func TestPresetScope(t *testing.T) {
 
 	// Case 4:
 	// No model collection within Includes
-	query = "preset=blogs.posts"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	// query = "preset=blogs.posts"
+	// assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 
 	// Case 5:
 	// Invalid filter field

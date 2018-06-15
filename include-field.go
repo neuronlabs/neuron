@@ -223,8 +223,8 @@ func (i *IncludeField) copyPresetFullParameters() {
 	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
 
 	// fieldset is taken by reference - copied if there is nested
-	i.Scope.Fieldset = make(map[string]*StructField)
-	i.Scope.Fieldset["id"] = i.Scope.Struct.primary
+	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
+	// i.Scope.Fieldset["id"] = i.Scope.Struct.primary
 
 	i.Scope.Sorts = make([]*SortField, len(i.Scope.collectionScope.Sorts))
 	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)
