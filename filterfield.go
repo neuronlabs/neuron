@@ -187,20 +187,75 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 }
 
 func (f *FilterField) addSubfieldFilter(appendFilter *FilterField) {
-	var found bool
 	for _, rel := range f.Relationships {
 		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
-			found = true
-
-			if l := len(appendFilter.Values); l > 0 {
-				rel.Values = append(rel.Values, appendFilter.Values[l-1])
-			}
+			rel.Values = append(rel.Values, appendFilter.Values...)
+			return
 		}
 	}
-	if !found {
-		f.Relationships = append(f.Relationships, appendFilter)
-	}
+
+	// If there is no relationships already add whole filter
+	f.Relationships = append(f.Relationships, appendFilter)
+
 	return
+}
+
+// Values are the values for given subfield
+// Splitted should contain = [relationship's subfield name][operator]
+func (f *FilterField) buildSubfieldFilter(values []string, splitted ...string) *ErrorObject {
+	var (
+		subfield *StructField
+		op       FilterOperator
+		ok       bool
+	)
+
+	getSubfield := func() *ErrorObject {
+		if splitted[0] == "id" {
+			subfield = f.relatedStruct.primary
+		} else {
+			subfield, ok = f.relatedStruct.attributes[splitted[0]]
+			if !ok {
+				errObj := ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The subfield name: '%s' is invalid. Collection: '%s', Field: '%s'", splitted[0], f.jsonAPIName, f.mStruct.collectionType)
+				return errObj
+			}
+		}
+		return nil
+	}
+
+	switch len(splitted) {
+	case 1:
+		// Only the relationships fieldname
+		if err := getSubfield(); err != nil {
+			return err
+		}
+		if len(values) > 1 {
+			op = OpIn
+		} else {
+			op = OpEqual
+		}
+	case 2:
+		// relationships field name and operator
+		if err := getSubfield(); err != nil {
+			return err
+		}
+		operator := splitted[1]
+		op, ok = operatorsValue[operator]
+		if !ok {
+			errObj := ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' on collection:'%s'.", operator, f.mStruct.collectionType)
+			return errObj
+		}
+	}
+
+	filter := &FilterField{StructField: subfield}
+	errs := filter.setValues(filter.mStruct.collectionType, values, op)
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	f.addSubfieldFilter(filter)
+	return nil
+
 }
 
 func splitBracketParameter(bracketed string) (values []string, err error) {

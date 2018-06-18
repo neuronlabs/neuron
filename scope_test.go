@@ -174,7 +174,7 @@ func TestNewFilterScope(t *testing.T) {
 	for i := range correctParams {
 		_, errs = blogScope.buildFilterfield("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
 		assertEmpty(t, errs)
-
+		t.Log(errs)
 	}
 	// for k, v := range blogScope.Filters {
 	// 	t.Logf("Key: %v, FieldName: %v", k, v.fieldName)

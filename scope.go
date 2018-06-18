@@ -625,17 +625,11 @@ func (s *Scope) buildFilterfield(
 				// if field were already used
 				fField = s.getOrCreateRelationshipFilter(sField)
 
-				// relFilter is a FilterField for specific field in relationship
-				var relFilter *FilterField
+				errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
+				if errObj != nil {
+					errs = append(errs, errObj)
+				}
 
-				relFilter, errObjects = s.buildFilterfield(
-					fieldName,
-					values,
-					sField.relatedStruct,
-					splitted[1:]...,
-				)
-				errs = append(errs, errObjects...)
-				fField.addSubfieldFilter(relFilter)
 				return
 			}
 			fField = s.getOrCreateAttributeFilter(sField)
@@ -665,17 +659,10 @@ func (s *Scope) buildFilterfield(
 		}
 		fField = s.getOrCreateRelationshipFilter(sField)
 
-		var relFilter *FilterField
-
-		// get relationship's filter for specific field (filterfield)
-		relFilter, errObjects = s.buildFilterfield(
-			fieldName,
-			values,
-			sField.relatedStruct,
-			splitted[1:]...,
-		)
-		errs = append(errs, errObjects...)
-		fField.addSubfieldFilter(relFilter)
+		errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
+		if errObj != nil {
+			errs = append(errs, errObj)
+		}
 
 	default:
 		errObj = ErrInvalidQueryParameter.Copy()
@@ -752,13 +739,16 @@ func (s *Scope) getOrCreateAttributeFilter(
 }
 
 func (s *Scope) getOrCreateRelationshipFilter(sField *StructField) (filter *FilterField) {
+	// Create if empty
 	if s.RelationshipFilters == nil {
 		s.RelationshipFilters = []*FilterField{}
 	}
 
+	// Check if no relationship filter already exists
 	for _, relFilter := range s.RelationshipFilters {
 		if relFilter.getFieldIndex() == sField.getFieldIndex() {
 			filter = relFilter
+
 			return
 		}
 	}
