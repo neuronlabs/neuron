@@ -177,7 +177,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.jsonAPIName, collection, er)
 				errs = append(errs, errObj)
 			}
-			fv.Values = append(fv.Values, fieldValue)
+			fv.Values = append(fv.Values, fieldValue.Interface())
 		}
 
 		f.Values = append(f.Values, fv)
