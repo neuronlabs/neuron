@@ -96,6 +96,10 @@ func (s *StructField) GetFieldName() string {
 	return s.fieldName
 }
 
+func (s *StructField) GetJSONAPIName() string {
+	return s.jsonAPIName
+}
+
 // GetReflectStructField - gets the reflect.StructField for given field.
 func (s *StructField) GetReflectStructField() reflect.StructField {
 	return s.refStruct
@@ -120,6 +124,11 @@ func (s *StructField) GetFieldKind() FieldType {
 // IsRelationship checks if given field is a relationship
 func (s *StructField) IsRelationship() bool {
 	return s.isRelationship()
+}
+
+// GetRelatedModelStruct gets the ModelStruct of the field Type.
+func (s *StructField) GetRelatedModelStruct() *ModelStruct {
+	return s.relatedStruct
 }
 
 // I18n defines if the field is tagged as internationalization ready.
