@@ -15,6 +15,46 @@ func init() {
 	c = Default()
 }
 
+func TestScopeGetPrimaryFieldValues(t *testing.T) {
+	clearMap()
+	scope := getBlogScope()
+
+	var (
+		values []interface{}
+		err    error
+	)
+	// Case 1:
+	// Correct single pointer value
+	scope.Value = &Blog{ID: 1}
+
+	values, err = scope.GetPrimaryFieldValues()
+	assertNoError(t, err, failNow)
+
+	var found bool
+	for _, v := range values {
+		if v == 1 {
+			found = true
+		}
+	}
+	assertTrue(t, found)
+
+	scope.Value = []*Blog{{ID: 2}, {ID: 3}}
+	values, err = scope.GetPrimaryFieldValues()
+	assertNoError(t, err, failNow)
+	var found2, found3 bool
+	for _, v := range values {
+		if v == 2 {
+			found2 = true
+		}
+		if v == 3 {
+			found3 = true
+		}
+	}
+
+	assertTrue(t, found2 && found3)
+
+}
+
 func TestScopeSetSortScopes(t *testing.T) {
 	// having some scope on the model struct
 	clearMap()

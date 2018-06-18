@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrNoParamsInContext = errors.New("No parameters in the request Context.")
+	IErrNoValue          = errors.New("No value provided within the scope.")
 )
 
 var (
@@ -274,6 +275,50 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 	return
 }
 
+// GetPrimaryFieldValues - gets the primary field values from the scope.
+// Returns the values within the []interface{} form
+//			returns	- IErrNoValue if no value provided.
+//					- IErrInvalidType if the scope's value is of invalid type
+// 					- *reflect.ValueError if internal occurs.
+func (s *Scope) GetPrimaryFieldValues() (values []interface{}, err error) {
+	if s.Value == nil {
+		err = IErrNoValue
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			switch vt := r.(type) {
+			case *reflect.ValueError:
+				err = vt
+			default:
+				err = fmt.Errorf("Internal error")
+			}
+		}
+	}()
+
+	primaryIndex := s.Struct.primary.getFieldIndex()
+
+	addPrimaryValue := func(single reflect.Value) {
+		primaryValue := single.Elem().Field(primaryIndex)
+		values = append(values, primaryValue.Interface())
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			addPrimaryValue(v.Index(i))
+		}
+	case reflect.Ptr:
+		addPrimaryValue(v)
+	default:
+		err = IErrInvalidType
+		return
+	}
+	return
+}
+
 // GetRelationshipScope - for given root Scope 's' gets the value of the relationship
 // used for given request and set it's value into relationshipScope.
 // returns an error if the value is not set or there is no relationship includedField
@@ -300,7 +345,7 @@ func (s *Scope) NewValueSingle() {
 	s.newValueSingle()
 }
 
-// SetValues iterate over the scope's Value field and add it to the collection root scope.
+// SetCollectionValues iterate over the scope's Value field and add it to the collection root scope.
 // if the collection root scope contains value with given primary field it checks if given scope
 // containsincluded fields that are not within fieldset. If so it adds the included field value to // the value that were inside the collection root scope.
 func (s *Scope) SetCollectionValues() error {

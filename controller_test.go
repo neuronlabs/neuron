@@ -433,7 +433,18 @@ func TestBuildScopeRelated(t *testing.T) {
 
 	assertEqual(t, 1, len(scope.Fieldset))
 
+	t.Log(scope.PrimaryFilters)
+	t.Log(scope.AttributeFilters)
+
 	scope.Value = &Blog{}
+
+	assertTrue(t, scope.NextIncludedField(), failNow)
+	inc, err := scope.CurrentIncludedField()
+	assertNoError(t, err, failNow)
+
+	assertNotNil(t, inc, failNow)
+
+	t.Log(inc.Scope.PrimaryFilters)
 
 	// Case 2:
 	// invalid field name
