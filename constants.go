@@ -1,5 +1,10 @@
 package jsonapi
 
+// PresetValue In Context
+type presetValue struct{}
+
+var PresetValue = presetValue{}
+
 const (
 	// StructTag annotation strings
 	annotationJSONAPI           = "jsonapi"
