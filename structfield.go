@@ -137,6 +137,10 @@ func (s *StructField) I18n() bool {
 	return s.isI18n()
 }
 
+func (s *StructField) IsPrimary() bool {
+	return s.GetFieldKind() == Primary
+}
+
 func (s *StructField) isRelationship() bool {
 	return s.fieldType == RelationshipMultiple || s.fieldType == RelationshipSingle
 }
