@@ -1,10 +1,5 @@
 package jsonapi
 
-// PresetValue In Context
-type presetValue struct{}
-
-var PresetValue = presetValue{}
-
 const (
 	// StructTag annotation strings
 	annotationJSONAPI           = "jsonapi"
@@ -81,6 +76,8 @@ const (
 	// KeyTotalPages is the key to the meta object whose value contains the total
 	// pagination pages
 	KeyTotalPages = "total-pages"
+
+	PresetValue = "jsonapi_preset_value"
 
 	// QueryParamPage is a JSON API query parameter used as for pagination.
 	QueryParamPage = "page"
