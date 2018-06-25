@@ -95,6 +95,13 @@ type FilterValues struct {
 	Operator FilterOperator
 }
 
+func (f *FilterValues) copy() *FilterValues {
+	fv := &FilterValues{Operator: f.Operator}
+	fv.Values = make([]interface{}, len(f.Values))
+	copy(fv.Values, f.Values)
+	return fv
+}
+
 // FilterField is a field that contains information about filters
 type FilterField struct {
 	*StructField
@@ -106,6 +113,25 @@ type FilterField struct {
 	// subfields (for given relation type).
 	// Relationships are the filter values for given relationship FilterField
 	Relationships []*FilterField
+}
+
+func (f *FilterField) copy() *FilterField {
+	dst := &FilterField{StructField: f.StructField}
+
+	if len(f.Values) != 0 {
+		dst.Values = make([]*FilterValues, len(f.Values))
+		for i, value := range f.Values {
+			dst.Values[i] = value.copy()
+		}
+	}
+
+	if len(f.Relationships) != 0 {
+		dst.Relationships = make([]*FilterField, len(f.Relationships))
+		for i, value := range f.Relationships {
+			dst.Relationships[i] = value.copy()
+		}
+	}
+	return dst
 }
 
 // setValues set the string type values to the related field values

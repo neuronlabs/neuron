@@ -77,8 +77,6 @@ const (
 	// pagination pages
 	KeyTotalPages = "total-pages"
 
-	PresetValue = "jsonapi_preset_value"
-
 	// QueryParamPage is a JSON API query parameter used as for pagination.
 	QueryParamPage = "page"
 

@@ -60,7 +60,7 @@ type Scope struct {
 	// RelationshipFilters contain relationship field filters
 	RelationshipFilters []*FilterField
 
-	// AttributeFilters contain fitler for the attribute fields
+	// AttributeFilters contain filter for the attribute fields
 	AttributeFilters []*FilterField
 
 	// LanguageFilters contain information about language filters
@@ -75,7 +75,15 @@ type Scope struct {
 	// Pagination
 	Pagination *Pagination
 
-	IsMany            bool
+	IsMany bool
+
+	// GetModifiedResult is a flag for the scope if the modified value should be returned.
+	GetModifiedResult bool
+
+	// CountList is a flag that defines if the List scope should include count values.
+	CountList bool
+	Count     int
+
 	errorLimit        int
 	maxNestedLevel    int
 	currentErrorCount int
@@ -92,6 +100,25 @@ type Scope struct {
 	isRelationship            bool
 
 	hasFieldNotInFieldset bool
+}
+
+func (s *Scope) AddFilterField(filter *FilterField) error {
+	if filter.mStruct != s.Struct {
+		err := fmt.Errorf("Filter Struct does not match with the scope. Model: %v, filterField: %v", s.Struct.GetType().Name(), filter.StructField.GetFieldName())
+		return err
+	}
+	switch filter.GetFieldKind() {
+	case Primary:
+		s.PrimaryFilters = append(s.PrimaryFilters, filter)
+	case Attribute:
+		s.AttributeFilters = append(s.AttributeFilters, filter)
+	case RelationshipMultiple, RelationshipSingle:
+		s.RelationshipFilters = append(s.RelationshipFilters, filter)
+	default:
+		err := fmt.Errorf("Provided filter field of invalid kind. Model: %v. FilterField: %v", s.Struct.GetType().Name(), filter.StructField.GetFieldName())
+		return err
+	}
+	return nil
 }
 
 // Returns the collection name for given scope
@@ -345,9 +372,9 @@ func (s *Scope) NewValueSingle() {
 	s.newValueSingle()
 }
 
-// SetCollectionValues iterate over the scope's Value field and add it to the collection root scope.
-// if the collection root scope contains value with given primary field it checks if given scope
-// containsincluded fields that are not within fieldset. If so it adds the included field value to // the value that were inside the collection root scope.
+// SetCollectionValues iterate over the scope's Value field and add it to the collection root
+// scope.if the collection root scope contains value with given primary field it checks if given // scope containsincluded fields that are not within fieldset. If so it adds the included field
+// value to the value that were inside the collection root scope.
 func (s *Scope) SetCollectionValues() error {
 	if s.collectionScope.IncludedValues == nil {
 		s.collectionScope.IncludedValues = NewSafeHashMap()
@@ -463,6 +490,25 @@ func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 // I.e. it allows to predefine if model should set language filter.
 func (s *Scope) UseI18n() bool {
 	return s.Struct.language != nil
+}
+
+func (s *Scope) GetScopeValueString() string {
+	var value string
+	v := reflect.ValueOf(s.Value)
+	if v.IsNil() {
+		return "No Value"
+	}
+	switch v.Kind() {
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i).Elem()
+			value += fmt.Sprintf("%+v;", elem.Interface())
+		}
+	case reflect.Ptr:
+		elem := v.Elem()
+		value = fmt.Sprintf("%+v;", elem.Interface())
+	}
+	return value
 }
 
 // SetValueFromAddressable - lack of generic makes it hard for preparing addressable value.
@@ -1214,6 +1260,79 @@ func (s *Scope) copyPresetParameters() {
 	for _, includedField := range s.IncludedFields {
 		includedField.copyPresetFullParameters()
 	}
+}
+
+func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
+	scope := *s
+
+	if isRoot {
+		scope.rootScope = nil
+		scope.collectionScope = &scope
+		root = &scope
+	} else {
+		if s.rootScope == nil {
+			scope.rootScope = nil
+		}
+		scope.collectionScope = root.getOrCreateModelsRootScope(s.Struct)
+	}
+
+	if s.Fieldset != nil {
+		scope.Fieldset = make(map[string]*StructField)
+		for k, v := range s.Fieldset {
+			scope.Fieldset[k] = v
+		}
+	}
+
+	if s.PrimaryFilters != nil {
+		scope.PrimaryFilters = make([]*FilterField, len(s.PrimaryFilters))
+		for i, v := range s.PrimaryFilters {
+			scope.PrimaryFilters[i] = v.copy()
+		}
+	}
+
+	if s.AttributeFilters != nil {
+		scope.AttributeFilters = make([]*FilterField, len(s.AttributeFilters))
+		for i, v := range s.AttributeFilters {
+			scope.AttributeFilters[i] = v.copy()
+		}
+	}
+
+	if s.RelationshipFilters != nil {
+		for i, v := range s.RelationshipFilters {
+			scope.RelationshipFilters[i] = v.copy()
+		}
+	}
+
+	if s.Sorts != nil {
+		scope.Sorts = make([]*SortField, len(s.Sorts))
+		for i, v := range s.Sorts {
+			scope.Sorts[i] = v.copy()
+		}
+
+	}
+
+	if s.IncludedScopes != nil {
+		scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+		for k, v := range s.IncludedScopes {
+			scope.IncludedScopes[k] = v.copy(false, root)
+		}
+	}
+
+	if s.IncludedFields != nil {
+		scope.IncludedFields = make([]*IncludeField, len(s.IncludedFields))
+		for i, v := range s.IncludedFields {
+			scope.IncludedFields[i] = v.copy(&scope, root)
+		}
+	}
+
+	if s.IncludedValues != nil {
+		scope.IncludedValues = NewSafeHashMap()
+		for k, v := range s.IncludedValues.values {
+			scope.IncludedValues.values[k] = v
+		}
+	}
+
+	return &scope
 }
 
 // func (s *Scope) buildPresetFields(model *ModelStruct, presetFields ...string) error {

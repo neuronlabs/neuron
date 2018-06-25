@@ -21,6 +21,13 @@ type IncludeField struct {
 	NotInFieldset bool
 }
 
+func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
+	included := &IncludeField{StructField: i.StructField, NotInFieldset: i.NotInFieldset}
+	included.Scope = i.Scope.copy(false, root)
+	included.RelatedScope = relatedScope
+	return included
+}
+
 // GetMissingPrimaries gets the id values from the RelatedScope, checks which id values were
 // already stored within the colleciton root scope and return new ones.
 func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
@@ -114,6 +121,8 @@ func (i *IncludeField) getMissingFromSingle(
 					i.Scope.collectionScope.IncludedValues.values[primary] = nil
 					if _, ok = uniqueMissing[primary]; !ok {
 						uniqueMissing[primary] = struct{}{}
+					} else {
+						fmt.Println("Already exists")
 					}
 				}
 			}
@@ -132,6 +141,7 @@ func (i *IncludeField) getMissingFromSingle(
 		}
 	case reflect.Ptr:
 		if !fieldValue.IsNil() {
+
 			primValue := fieldValue.Elem().Field(primIndex)
 			if primValue.IsValid() {
 				setCollectionValues(fieldValue)
@@ -223,8 +233,7 @@ func (i *IncludeField) copyPresetFullParameters() {
 	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
 
 	// fieldset is taken by reference - copied if there is nested
-	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
-	// i.Scope.Fieldset["id"] = i.Scope.Struct.primary
+	// i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
 
 	i.Scope.Sorts = make([]*SortField, len(i.Scope.collectionScope.Sorts))
 	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)

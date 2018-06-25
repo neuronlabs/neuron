@@ -23,6 +23,18 @@ type SortField struct {
 	SubFields []*SortField
 }
 
+func (s *SortField) copy() *SortField {
+	sort := &SortField{StructField: s.StructField, Order: s.Order}
+	if len(s.SubFields) != 0 {
+		sort.SubFields = make([]*SortField, len(s.SubFields))
+		for i, v := range s.SubFields {
+			sort.SubFields[i] = v.copy()
+		}
+	}
+	return sort
+
+}
+
 func newSortField(sort string, order Order, scope *Scope) (invalidField bool) {
 	var (
 		sField    *StructField

@@ -9,12 +9,6 @@ import (
 	"strings"
 )
 
-// PresetPair is a struct used by presetting / prechecking given model.
-type PresetPair struct {
-	Scope  *Scope
-	Filter *FilterField
-}
-
 // Controller
 type Controller struct {
 	// APIURLBase is a url prefix for the resources. (I.e. having APIURLBase = "/api/v1" and
@@ -82,57 +76,7 @@ PRESETS
 
 */
 
-// BuildPresetScope builds the preset scope which should enable the table 'JOIN' feature.
-// The query parameter should be URL parseble query ("x1=1&x2=2" etc.)
-// The query parameter that are allowed are:
-//	- preset=collection.relationfield.relationfield .... - this creates a relation path
-//		the last relation field should be of type of model provided as an argument. *REQUIRED
-//	- fields[collection]=field1,field2 - describe the fieldset for queries. - used to set
-//		the field to get of last preset field. By default the preset field is included into the
-//		fieldset. *REQUIRED
-//	- filter[collection][field][operator]=value
-//	- page[limit][collection] - limit the value of ids within given collection
-//	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
-// 		@query - url like query that should define how the preset scope should look like. The query
-//				allows to set the relation path, filter collections, limit given collection, sort
-//				given collection.
-//		@fieldFilter - jsonapi field name for provided model the field type must be of the same as
-//				the last element of the preset. By default the filter operator is of 'in' type.
-//				It must be of form: filter[collection][field]([operator]|([subfield][operator])).
-//				The operator or subfield are not required.
-func (c *Controller) BuildPresetScope(
-	query, fieldFilter string,
-) *PresetPair {
-	presetScope, filter := c.buildPreparedScope(query, fieldFilter, false)
-	return &PresetPair{Scope: presetScope, Filter: filter}
-}
-
-// BuildPresetScope builds the preset scope which should enable the table 'JOIN' feature.
-// The query parameter should be URL parseble query ("x1=1&x2=2" etc.)
-// The query parameter that are allowed are:
-//	- preset=collection.relationfield.relationfield .... - this creates a relation path
-//		the last relation field should be of type of model provided as an argument. *REQUIRED
-//	- fields[collection]=field1,field2 - describe the fieldset for queries. - used to set
-//		the field to get of last preset field. By default the preset field is included into the
-//		fieldset. *REQUIRED
-//	- filter[collection][field][operator]=value
-//	- page[limit][collection] - limit the value of ids within given collection
-//	- sort[collection]=field - sorts the collection by provided field. Does not allow nesteds.
-// 		@query - url like query that should define how the preset scope should look like. The query
-//				allows to set the relation path, filter collections, limit given collection, sort
-//				given collection.
-//		@fieldFilter - jsonapi field name for provided model the field type must be of the same as
-//				the last element of the preset. By default the filter operator is of 'in' type.
-//				It must be of form: filter[collection][field]([operator]|([subfield][operator])).
-//				The operator or subfield are not required.
-func (c *Controller) BuildPrecheckScope(
-	query, fieldFilter string,
-) *PresetPair {
-	precheckScope, filter := c.buildPreparedScope(query, fieldFilter, true)
-	return &PresetPair{Scope: precheckScope, Filter: filter}
-}
-
-func (c *Controller) buildPreparedScope(
+func (c *Controller) buildPreparedPair(
 	query, fieldFilter string,
 	check bool,
 ) (presetScope *Scope, filter *FilterField) {
@@ -145,6 +89,7 @@ func (c *Controller) buildPreparedScope(
 
 	filter, err = c.NewFilterField(fieldFilter)
 	if err != nil {
+		err = fmt.Errorf("Invalid field filter provided for presetPair: '%s'. %v", fieldFilter, err)
 		return
 	}
 
@@ -170,10 +115,10 @@ func (c *Controller) buildPreparedScope(
 	}
 
 	presetValues := strings.Split(presets[0], annotationNestedSeperator)
-	if len(presetValues) <= 1 {
-		err = fmt.Errorf("Preset scope should contain at least two parameter values within its preset. Query: '%s'", query)
-		return
-	}
+	// if len(presetValues) <= 1 {
+	// 	err = fmt.Errorf("Preset scope should contain at least two parameter values within its preset. Query: '%s'", query)
+	// 	return
+	// }
 
 	rootModel := c.Models.GetByCollection(presetValues[0])
 	if rootModel == nil {
@@ -183,13 +128,36 @@ func (c *Controller) buildPreparedScope(
 
 	presetScope = newRootScope(rootModel)
 	presetScope.maxNestedLevel = 10000
+	presetScope.Fieldset = nil
 
-	if errs := presetScope.buildIncludeList(strings.Join(presetValues[1:], annotationNestedSeperator)); len(errs) > 0 {
-		err = fmt.Errorf("Invalid preset values. %s", errs)
-		return
+	if len(presetValues) > 1 {
+		if errs := presetScope.buildIncludeList(strings.Join(presetValues[1:], annotationNestedSeperator)); len(errs) > 0 {
+			err = fmt.Errorf("Invalid preset values. %s", errs)
+			return
+		}
 	}
 
-	// Preset Fieldset
+	var selectIncludedFieldset func(scope *Scope) error
+
+	selectIncludedFieldset = func(scope *Scope) error {
+		scope.Fieldset = make(map[string]*StructField)
+		for scope.NextIncludedField() {
+			included, err := scope.CurrentIncludedField()
+			if err != nil {
+				return err
+			}
+			scope.Fieldset[included.jsonAPIName] = included.StructField
+			if err = selectIncludedFieldset(included.Scope); err != nil {
+				return err
+			}
+		}
+		scope.ResetIncludedField()
+		return nil
+	}
+
+	if err = selectIncludedFieldset(presetScope); err != nil {
+		return
+	}
 
 	// var fieldsetFound bool
 	for key, value := range queryParsed {
@@ -851,7 +819,7 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 
 	mStruct := c.Models.GetByCollection(splitted[0])
 	if mStruct == nil {
-		err = fmt.Errorf("Invalid model provided. The model for collection: '%s' is not precomputed within controller.", splitted[0])
+		err = fmt.Errorf("The model for collection: '%s' is not precomputed within controller. Cannot clreate new filter field.", splitted[0])
 		return
 	}
 
