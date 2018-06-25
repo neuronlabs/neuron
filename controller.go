@@ -899,6 +899,8 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[2], fieldFilter)
 				return
 			}
+			fmt.Println("--------!!!!!! OPERATOR !!!!!--------")
+			fmt.Printf("%v\n", operator)
 		} else {
 			operator = OpIn
 		}

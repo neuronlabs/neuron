@@ -266,11 +266,13 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				node.ClientID = clientID
 			}
 		case RelationshipMultiple, RelationshipSingle:
+
 			var isSlice bool = field.fieldType == RelationshipMultiple
 			if field.isOmitEmpty() &&
-				(isSlice && fieldValue.Len() < 1 || !isSlice && fieldValue.IsNil()) {
+				(isSlice && fieldValue.Len() == 0 || !isSlice && fieldValue.IsNil()) {
 				continue
 			}
+
 			if node.Relationships == nil {
 				node.Relationships = make(map[string]interface{})
 			}
@@ -306,7 +308,8 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 			} else {
 				// is to-one relationship
 				if fieldValue.IsNil() {
-					node.Relationships[field.jsonAPIName] = &RelationshipOneNode{Data: nil}
+
+					node.Relationships[field.jsonAPIName] = &RelationshipOneNode{Links: relLinks, Meta: relMeta}
 					continue
 				}
 				relatedNode, err := visitRelationshipNode(fieldValue, primaryVal, field, controller)
