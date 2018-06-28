@@ -80,6 +80,15 @@ func (m *ModelStruct) GetRelationshipField(relationship string) *StructField {
 	return m.relationships[relationship]
 }
 
+// ListRelationshipFields - lists all relationship fields for given struct
+func (m *ModelStruct) ListRelationshipFields() []*StructField {
+	var fields []*StructField
+	for _, field := range m.relationships {
+		fields = append(fields, field)
+	}
+	return fields
+}
+
 // ListRelationshipNames - returns an array of the relationship names for given model
 func (m *ModelStruct) ListRelationshipNames() (relationships []string) {
 	for rel, fStruct := range m.relationships {
