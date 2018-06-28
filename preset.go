@@ -1,10 +1,21 @@
 package jsonapi
 
+import (
+	"fmt"
+)
+
 // PresetPair is a struct used by presetting / prechecking given model.
 type PresetPair struct {
 	Scope  *Scope
 	Filter *FilterField
 	Key    interface{}
+
+	rawPreset string
+	rawFilter string
+}
+
+func (p *PresetPair) String() string {
+	return fmt.Sprintf("Preset: %s, Filter: %s", p.rawPreset, p.rawFilter)
 }
 
 func (p *PresetPair) GetPair() (*Scope, *FilterField) {
@@ -53,7 +64,7 @@ func (c *Controller) BuildPresetPair(
 	query, fieldFilter string,
 ) *PresetPair {
 	presetScope, filter := c.buildPreparedPair(query, fieldFilter, false)
-	return &PresetPair{Scope: presetScope, Filter: filter}
+	return &PresetPair{Scope: presetScope, Filter: filter, rawPreset: query, rawFilter: fieldFilter}
 }
 
 // BuildPresetScope builds the preset scope which should enable the table 'JOIN' feature.
@@ -78,7 +89,7 @@ func (c *Controller) BuildPrecheckPair(
 	query, fieldFilter string,
 ) *PresetPair {
 	precheckScope, filter := c.buildPreparedPair(query, fieldFilter, true)
-	return &PresetPair{Scope: precheckScope, Filter: filter}
+	return &PresetPair{Scope: precheckScope, Filter: filter, rawPreset: query, rawFilter: fieldFilter}
 }
 
 // PresetFilter is used to point and filter the target scope with preset values.

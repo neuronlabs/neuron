@@ -293,7 +293,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	getBlogScope()
 
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1?include=posts,current_post.latest_comment", nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -419,7 +419,7 @@ func TestScopeSetCollectionValues(t *testing.T) {
 	}
 
 	req = httptest.NewRequest("GET", "/blogs/1?include=current_post.comments&fieldset[blogs]=title", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 

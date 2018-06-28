@@ -491,6 +491,11 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 			splitValues := strings.Split(value[0], annotationSeperator)
 			errorObjects = fieldsScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
+		case key == QueryParamLanguage:
+			langtag := value[0]
+			scope.SetLanguageFilter(langtag)
+		case key == QueryParamPageTotal:
+			scope.PageTotal = true
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -518,7 +523,10 @@ func (c *Controller) BuildScopeList(req *http.Request, model interface{},
 
 // BuildScopeSingle builds the scope for given request and model.
 // It gets and sets the ID from the 'http' request.
-func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
+func (c *Controller) BuildScopeSingle(
+	req *http.Request,
+	model interface{},
+	id interface{},
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// get model type
 	// Get ModelStruct
@@ -539,12 +547,17 @@ func (c *Controller) BuildScopeSingle(req *http.Request, model interface{},
 	q := req.URL.Query()
 
 	scope = newRootScope(mStruct)
-	errs, err = c.setIDFilter(req, scope)
-	if err != nil {
-		return
-	}
-	if len(errs) > 0 {
-		return
+
+	if id == nil {
+		errs, err = c.setIDFilter(req, scope)
+		if err != nil {
+			return
+		}
+		if len(errs) > 0 {
+			return
+		}
+	} else {
+		scope.SetPrimaryFilters(id)
 	}
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
@@ -899,8 +912,6 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[2], fieldFilter)
 				return
 			}
-			fmt.Println("--------!!!!!! OPERATOR !!!!!--------")
-			fmt.Printf("%v\n", operator)
 		} else {
 			operator = OpIn
 		}

@@ -80,8 +80,8 @@ type Scope struct {
 	// GetModifiedResult is a flag for the scope if the modified value should be returned.
 	GetModifiedResult bool
 
-	// CountList is a flag that defines if the List scope should include count values.
-	CountList bool
+	// PageTotal is a flag that defines if the List scope should include count values.
+	PageTotal bool
 	Count     int
 
 	errorLimit        int

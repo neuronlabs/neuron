@@ -15,7 +15,7 @@ func TestMarshalScope(t *testing.T) {
 	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 
 	req := httptest.NewRequest("GET", `/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments`, nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*Post{{ID: 1}}, CurrentPost: &Post{ID: 2}}

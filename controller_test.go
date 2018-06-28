@@ -206,7 +206,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	assertNil(t, err)
 
 	req := httptest.NewRequest("GET", "/api/v1/blogs/55", nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -214,7 +214,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	assertEqual(t, 55, scope.PrimaryFilters[0].Values[0].Values[0])
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[posts]=title", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -228,79 +228,90 @@ func TestBuildScopeSingle(t *testing.T) {
 
 	// errored
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertError(t, err)
 
 	req = httptest.NewRequest("GET", "/api/v1/posts/1", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertError(t, err)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/bad-id", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=invalid", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs][posts]=title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[postis]=title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?title=some-title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?fields[postis]=title&fields[posts]=idss&fields[posts]=titles&title=sometitle&fields[blogs]=titles,current_posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][id]=1&include=current_post", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{})
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
 	// invalid form
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[postis]", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[comments]", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{})
+	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
+
+	// CASE X:
+	// Preset id
+	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, 123)
+	assertNil(t, err)
+	assertEmpty(t, errs)
+
+	assertNotEmpty(t, scope.PrimaryFilters, failNow)
+	assertNotEmpty(t, scope.PrimaryFilters[0].Values, failNow)
+	assertEqual(t, scope.PrimaryFilters[0].Values[0].Values[0], 123)
 }
 
 func TestPrecomputeModels(t *testing.T) {
@@ -547,7 +558,7 @@ func TestPresetScope(t *testing.T) {
 	)
 
 	assertNoPanic(t, func() {
-		presetPair = c.BuildPresetScope(query, filter)
+		presetPair = c.BuildPresetPair(query, filter)
 	}, failNow)
 
 	presetScope := presetPair.Scope
@@ -591,8 +602,6 @@ func TestPresetScope(t *testing.T) {
 	assertNotNil(t, postsScope.Pagination, failNow)
 	assertEqual(t, OffsetPaginate, postsScope.Pagination.Type)
 
-	_, ok := postsScope.Fieldset["comments"]
-	assertTrue(t, ok)
 	// // The PostIncludeFieldScope should contain Comment Include Field
 	// assertNotEmpty(t, postsScope.IncludedFields, failNow)
 	// assertEqual(t, "comments", postsScope.IncludedFields[0].jsonAPIName)
@@ -606,32 +615,28 @@ func TestPresetScope(t *testing.T) {
 	// Bad collection name in query
 
 	query = "preset=blog.posts.comments"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetPair(query, filter) })
 
 	// Case 3:
 	// invalid field name
 	query = "preset=blogs.posts.comms"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetPair(query, filter) })
 
 	// Case 4:
 	// No fieldset found within the query
 	// query = "preset=blogs.posts"
-	// assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	// assertPanic(t, func() { c.BuildPresetPair(query, filter) }, printPanic)
 
 	// Case 5:
 	// Invalid filter field
 	query = "preset=blogs.posts&fieldset[posts]=comments&filter[posts][nofield]=3"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetPair(query, filter) })
 
 	// Case 6:
 	// Invalid sort field
 	query = "preset=blogs.current_post&fieldset[posts]=comments&sort[blogs]=-nofield&page[limit][blogs]=10"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
+	assertPanic(t, func() { c.BuildPresetPair(query, filter) }, printPanic)
 
-	// Case 7:
-	// Too short preset
-	query = "preset=comments"
-	assertPanic(t, func() { c.BuildPresetScope(query, filter) }, printPanic)
 }
 
 func TestControllerNewFilterField(t *testing.T) {

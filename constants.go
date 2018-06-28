@@ -117,4 +117,8 @@ const (
 
 	// Preset query annotation
 	QueryParamPreset = "preset"
+
+	// QueryParamLanguage is a JSONAPI query parameter used in selecting a language tag for the
+	// model.
+	QueryParamLanguage = "language"
 )
