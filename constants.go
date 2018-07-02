@@ -44,6 +44,9 @@ const (
 	// annotationOr  = "or"
 	// annotationAnd = "and"
 
+	headerAcceptLanguage  = "Accept-Language"
+	headerContentLanguage = "Content-Language"
+
 	// string only filters
 	annotationContains   = "contains"
 	annotationStartsWith = "startswith"

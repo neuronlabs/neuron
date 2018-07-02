@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ErrWarning = ErrorObject{
+	ErrWarningNotification = ErrorObject{
 		Code:   "WAR001",
 		Title:  "The warning notification occured.",
 		Status: "200",

@@ -12,7 +12,7 @@ import (
 var c *Controller
 
 func init() {
-	c = Default()
+	c = DefaultController()
 }
 
 func TestScopeGetPrimaryFieldValues(t *testing.T) {

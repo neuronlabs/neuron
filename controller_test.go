@@ -8,13 +8,13 @@ import (
 )
 
 func TestControllerCreation(t *testing.T) {
-	cNew := New()
+	cNew := NewController()
 
 	assertNotEmpty(t, cNew.Models)
 
 	assertEqual(t, 1, cNew.IncludeNestedLimit)
 
-	cDefault := Default()
+	cDefault := DefaultController()
 	assertNotEmpty(t, cDefault.Models)
 
 	assertNotEqual(t, cNew.ErrorLimitMany, cDefault.ErrorLimitMany)
@@ -30,7 +30,7 @@ func TestBuildScopeList(t *testing.T) {
 		c     *Controller
 	)
 
-	c = Default()
+	c = DefaultController()
 	err = c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 
@@ -201,7 +201,7 @@ func TestBuildScopeList(t *testing.T) {
 }
 
 func TestBuildScopeSingle(t *testing.T) {
-	c := Default()
+	c := DefaultController()
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 

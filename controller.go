@@ -43,7 +43,7 @@ type Controller struct {
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
-func New() *Controller {
+func NewController() *Controller {
 	return &Controller{
 		Models:             newModelMap(),
 		ErrorLimitMany:     1,
@@ -58,7 +58,7 @@ func New() *Controller {
 // 	ErrorLimitSingle:	2
 //	IncludeNestedLimit:	1
 // Controller has also set the UseLinks flag to true.
-func Default() *Controller {
+func DefaultController() *Controller {
 	return &Controller{
 		// APIURLBase:         "/",
 		Models:             newModelMap(),
