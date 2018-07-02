@@ -77,6 +77,7 @@ func saveAssociationCheck(scope *gorm.Scope, field *gorm.Field) (autoUpdate bool
 }
 
 func saveAfterAssociationsCallback(scope *gorm.Scope) {
+	scope.Log("After Association Callback")
 	for _, field := range scope.Fields() {
 		autoUpdate, autoCreate, saveReference, relationship := saveAssociationCheck(scope, field)
 
@@ -107,10 +108,13 @@ func saveAfterAssociationsCallback(scope *gorm.Scope) {
 
 					if newScope.PrimaryKeyZero() {
 						if autoCreate {
+							scope.Log("AutoCreate")
 							scope.Err(newDB.Save(elem).Error)
 						}
 					} else if autoUpdate {
 						// scope.Err(newDB.Where(newScope.PrimaryField().DBName, newScope.PrimaryField().Field.Interface()).Updates(elem))
+
+						scope.Log("AutoUpdate")
 						scope.Err(newDB.Model(elem).Updates(elem).Error)
 					}
 
@@ -141,12 +145,56 @@ func saveAfterAssociationsCallback(scope *gorm.Scope) {
 
 				if newScope.PrimaryKeyZero() {
 					if autoCreate {
+						scope.Log("AutoCreate")
 						scope.Err(scope.NewDB().Save(elem).Error)
 					}
 				} else if autoUpdate {
+					scope.Log("AutoUpdate")
 					scope.Err(scope.NewDB().Model(elem).Updates(elem).Error)
 				}
 			}
+
+		}
+	}
+}
+
+func saveBeforeAssociationsCallback(scope *gorm.Scope) {
+	for _, field := range scope.Fields() {
+		relationship := field.Relationship
+
+		if relationship != nil && relationship.Kind == "belongs_to" {
+			if field.Field.IsNil() {
+				continue
+			}
+			fieldValue := field.Field.Addr().Interface()
+			newScope := scope.New(fieldValue)
+
+			if newScope.PrimaryKeyZero() {
+				scope.Err(IErrInvalidRelationshipValue)
+				return
+			}
+			// } else {
+			// 	var count int
+			// 	if err := newScope.DB().Model(fieldValue).Count(&count).Error; err != nil {
+			// 		scope.Err(err)
+			// 	}
+			// 	if count == 0 {
+			// 		scope.Err(unidb.ErrForeignKeyViolation.NewWithMessage("Provided relationship value does not exists."))
+
+			// 	}
+
+			// }
+
+			if len(relationship.ForeignFieldNames) != 0 {
+				// set value's foreign key
+				for idx, fieldName := range relationship.ForeignFieldNames {
+					associationForeignName := relationship.AssociationForeignDBNames[idx]
+					if foreignField, ok := scope.New(fieldValue).FieldByName(associationForeignName); ok {
+						scope.Err(scope.SetColumn(fieldName, foreignField.Field.Interface()))
+					}
+				}
+			}
+
 		}
 	}
 }

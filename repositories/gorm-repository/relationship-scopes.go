@@ -14,6 +14,7 @@ var (
 	IErrNoForeignKeyField           = errors.New("The foreign key field is does not exists.")
 	IErrNoAssociatedForeignKeyField = errors.New("The associated foreign key field does not exists")
 	IErrInvalidRelatinoshipType     = errors.New("Invalid relationship type")
+	IErrInvalidRelationshipValue    = errors.New("Provided relationship with invalid value")
 )
 
 type relationshipType int

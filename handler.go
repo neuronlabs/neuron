@@ -127,7 +127,7 @@ func (h *JSONAPIHandler) AddPrecheckPairFilters(
 	req *http.Request,
 	rw http.ResponseWriter,
 	pairs ...*PresetPair,
-) (ok bool) {
+) (fine bool) {
 	for _, presetPair := range pairs {
 		presetScope, presetField := presetPair.GetPair()
 		if presetPair.Key != nil {
@@ -143,7 +143,19 @@ func (h *JSONAPIHandler) AddPrecheckPairFilters(
 						h.MarshalScope(scope, rw, req)
 						return
 					}
-					errObj := ErrInsufficientAccPerm.Copy()
+					if presetErr := presetPair.Error; presetErr != nil {
+						// if preset err is ErrorObject marshal and return it
+						if errObj, ok := presetErr.(*ErrorObject); ok {
+							h.MarshalErrors(rw, errObj)
+							return
+						}
+						// otherwise log
+						h.log.Errorf("Preset error while prechecking model: %v on path: %v. %v", model.ModelType.Name(), req.URL.Path, presetErr)
+						h.MarshalInternalError(rw)
+						return
+
+					}
+					errObj := ErrInvalidInput.Copy()
 					h.MarshalErrors(rw, errObj)
 					return
 				}
@@ -185,6 +197,7 @@ func (h *JSONAPIHandler) CheckPrecheckValues(
 
 	checkSingle := func(single reflect.Value) bool {
 		field := single.Field(filter.GetFieldIndex())
+		h.log.Debugf("Checking field: %v", single.Type().Field(filter.GetFieldIndex()).Name)
 		if len(filter.Relationships) > 0 {
 			relatedIndex := filter.Relationships[0].GetFieldIndex()
 
@@ -230,6 +243,7 @@ func (h *JSONAPIHandler) CheckPrecheckValues(
 	if v.Kind() == reflect.Slice {
 		for i := 0; i < v.Len(); i++ {
 			single := v.Index(i)
+			single = single.Elem()
 			if ok := checkSingle(single); !ok {
 				return IErrValueNotValid
 			}
@@ -604,12 +618,33 @@ func (h *JSONAPIHandler) HandleValidateError(
 	return
 }
 
+// func (h *JSONAPIHandler) checkManyValues(
+// 	filterValue *FilterValues,
+// 	fieldValues ...reflect.Value,
+// ) (ok bool) {
+
+// 	for _, fieldValue := range fieldValues {
+// 		switch filterValue.Operator {
+// 		case OpIn:
+// 			ok = h.checkIn(fieldValue, filterValue.Values...)
+// 		case OpNotIn:
+
+// 		case OpEqual:
+// 		case OpNotEqual:
+
+// 		}
+
+// 	}
+
+// }
+
 func (h *JSONAPIHandler) checkValues(filterValue *FilterValues, fieldValue reflect.Value) (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			h.log.Error("Paniced while checking values. '%s'", r)
+			ok = false
 		}
-		ok = false
+
 	}()
 	switch filterValue.Operator {
 	case OpIn:
@@ -632,7 +667,15 @@ func (h *JSONAPIHandler) checkValues(filterValue *FilterValues, fieldValue refle
 }
 
 func (h *JSONAPIHandler) checkIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
+	h.log.Debug("CheckIn")
+	if len(values) == 0 {
+		return false
+	}
+
 	var isTime bool
+	if fieldValue.Kind() == reflect.Ptr {
+		fieldValue = fieldValue.Elem()
+	}
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 		isTime = true
 		fieldValue = fieldValue.MethodByName("UnixNano")
@@ -641,21 +684,40 @@ func (h *JSONAPIHandler) checkIn(fieldValue reflect.Value, values ...interface{}
 	for _, value := range values {
 		v := reflect.ValueOf(value)
 		if isTime {
-			v = v.MethodByName("UnixNano")
+			if v.Kind() == reflect.Ptr {
+				v = v.Elem()
+			}
+			if v.Type() == reflect.TypeOf(time.Time{}) {
+				v = v.MethodByName("UnixNano")
+			}
 		}
 
-		h.log.Debugf("Comapring Values: %v, %v", value, fieldValue)
-		ok = reflect.DeepEqual(v, fieldValue)
-		if ok {
+		if v.Type() != fieldValue.Type() {
+			h.log.Debugf("Invalid type: %v, %v", v.Type(), fieldValue.Type())
+			return false
+		}
+
+		h.log.Debugf("Comparing: %v, %v", v, fieldValue)
+		if ok = fieldValue.Interface() == v.Interface(); ok {
 			h.log.Debug("Equal")
 			return
 		}
+
 		h.log.Debug("Not equal")
+		// h.log.Debugf("Comapring Values: %v, %v", v, fieldValue)
+		// h.log.Debugf("First: %v, Second: %v", v.Type(), fieldValue.Type())
+		// ok = reflect.DeepEqual(v, fieldValue)
+		// if ok {
+		// h.log.Debug("Equal")
+		// return
+		// }
+		// h.log.Debug("Not equal")
 	}
 	return
 }
 
 func (h *JSONAPIHandler) checkNotIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
+
 	return !h.checkIn(fieldValue, values...)
 }
 

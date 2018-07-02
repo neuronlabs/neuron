@@ -353,7 +353,8 @@ func setPrimaryField(value string, fieldValue reflect.Value) (err error) {
 		for internals
 
 		*/
-		err = fmt.Errorf("Internal error. Invalid model primary field format: %v", t)
+		err = IErrInvalidType
+		// err = fmt.Errorf("Internal error. Invalid model primary field format: %v", t)
 	}
 	return
 }

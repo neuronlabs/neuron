@@ -42,6 +42,9 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 	}
 	g.db = db
 
+	g.db.Callback().Create().Replace("gorm:save_before_associations", saveBeforeAssociationsCallback)
+	g.db.Callback().Update().Replace("gorm:save_before_associations", saveBeforeAssociationsCallback)
+
 	g.db.Callback().Create().Replace("gorm:save_after_associations", saveAfterAssociationsCallback)
 	g.db.Callback().Update().Replace("gorm:save_after_associations", saveAfterAssociationsCallback)
 

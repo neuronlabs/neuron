@@ -994,6 +994,29 @@ func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
 	return nil
 }
 
+func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) error {
+	id, err := getID(req, scope.Struct)
+	if err != nil {
+		return err
+	}
+
+	if scope.Value == nil {
+		return IErrNoValue
+	}
+
+	v := reflect.ValueOf(scope.Value)
+	if v.Kind() != reflect.Ptr {
+		return IErrInvalidType
+	}
+
+	v = v.Elem()
+	primary := v.Field(scope.Struct.primary.GetFieldIndex())
+	if err := setPrimaryField(id, primary); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetCheckSetIDFilter the method that gets the ID value from the request path, for given scope
 // model.then prepares the primary filter field for given id value.
 // if an internal error occurs returns an 'error'.

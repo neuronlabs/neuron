@@ -12,6 +12,7 @@ type PresetPair struct {
 
 	rawPreset string
 	rawFilter string
+	Error     error
 }
 
 func (p *PresetPair) String() string {
@@ -28,6 +29,11 @@ func (p *PresetPair) GetPair() (*Scope, *FilterField) {
 // Used to get value from contexts that matches given pair.
 func (p *PresetPair) WithKey(key interface{}) *PresetPair {
 	p.Key = key
+	return p
+}
+
+func (p *PresetPair) ErrOnFail(err error) *PresetPair {
+	p.Error = err
 	return p
 }
 

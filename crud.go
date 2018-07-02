@@ -129,8 +129,9 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 
 				var errObj *ErrorObject
 				if tag == "required" {
+					// if field is required but and the field tag is empty
 					if verr.Field() == "" {
-						errObj = ErrInsufficientAccPerm.Copy()
+						errObj = ErrInternalError.Copy()
 						h.MarshalErrors(rw, errObj)
 						return
 					}
@@ -140,7 +141,7 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 					continue
 				} else if tag == "isdefault" {
 					if verr.Field() == "" {
-						errObj = ErrInsufficientAccPerm.Copy()
+						errObj = ErrInternalError.Copy()
 						h.MarshalErrors(rw, errObj)
 						return
 					}
@@ -150,7 +151,7 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 					continue
 				} else if strings.HasPrefix(tag, "len") {
 					if verr.Field() == "" {
-						errObj = ErrInsufficientAccPerm.Copy()
+						errObj = ErrInternalError.Copy()
 						h.MarshalErrors(rw, errObj)
 						return
 					}
@@ -177,51 +178,51 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 
 		*/
 
-		// for _, pair := range endpoint.PrecheckPairs {
-		// 	presetScope, presetField := pair.GetPair()
-		// 	if pair.Key != nil {
-		// 		if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
-		// 			continue
-		// 		}
-		// 	}
+		for _, pair := range endpoint.PrecheckPairs {
+			presetScope, presetField := pair.GetPair()
+			if pair.Key != nil {
+				if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
+					continue
+				}
+			}
 
-		// 	values, err := h.GetPresetValues(presetScope, rw)
-		// 	if err != nil {
-		// 		if hErr := err.(*HandlerError); hErr != nil {
-		// 			if hErr.Code == HErrNoValues {
-		// 				errObj := ErrInsufficientAccPerm.Copy()
-		// 				h.MarshalErrors(rw, errObj)
-		// 				return
-		// 			}
-		// 			if !h.handleHandlerError(hErr, rw) {
-		// 				return
-		// 			}
-		// 		} else {
-		// 			h.log.Error(err)
-		// 			h.MarshalInternalError(rw)
-		// 			return
-		// 		}
-		// 		continue
-		// 	}
+			values, err := h.GetPresetValues(presetScope, rw)
+			if err != nil {
+				if hErr := err.(*HandlerError); hErr != nil {
+					if hErr.Code == HErrNoValues {
+						errObj := ErrInsufficientAccPerm.Copy()
+						h.MarshalErrors(rw, errObj)
+						return
+					}
+					if !h.handleHandlerError(hErr, rw) {
+						return
+					}
+				} else {
+					h.log.Error(err)
+					h.MarshalInternalError(rw)
+					return
+				}
+				continue
+			}
 
-		// 	if err := h.SetPresetFilterValues(presetField, values...); err != nil {
-		// 		h.log.Error("Cannot preset values to the filter value. %s", err)
-		// 		h.MarshalInternalError(rw)
-		// 		return
-		// 	}
+			if err := h.SetPresetFilterValues(presetField, values...); err != nil {
+				h.log.Error("Cannot preset values to the filter value. %s", err)
+				h.MarshalInternalError(rw)
+				return
+			}
 
-		// 	if err := h.CheckPrecheckValues(scope, presetField); err != nil {
-		// 		h.log.Debugf("Precheck value error: '%s'", err)
-		// 		if err == IErrValueNotValid {
-		// 			errObj := ErrInvalidJSONFieldValue.Copy()
-		// 			errObj.Detail = "One of the field values are not valid."
-		// 			h.MarshalErrors(rw, errObj)
-		// 		} else {
-		// 			h.MarshalInternalError(rw)
-		// 		}
-		// 		return
-		// 	}
-		// }
+			if err := h.CheckPrecheckValues(scope, presetField); err != nil {
+				h.log.Debugf("Precheck value error: '%s'", err)
+				if err == IErrValueNotValid {
+					errObj := ErrInvalidJSONFieldValue.Copy()
+					errObj.Detail = "One of the field values are not valid."
+					h.MarshalErrors(rw, errObj)
+				} else {
+					h.MarshalInternalError(rw)
+				}
+				return
+			}
+		}
 
 		/**
 
@@ -959,16 +960,28 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 
 		/**
 
-		  PATCH: GET ID FILTER
+		  PATCH: GET and SET ID
 
 		  Set the ID for given model's scope
 		*/
 
-		err := h.Controller.GetAndSetIDFilter(req, scope)
+		err := h.Controller.GetAndSetID(req, scope)
 		if err != nil {
-			h.errSetIDFilter(scope, err, rw, req)
+			if err != IErrInvalidType {
+				h.MarshalInternalError(rw)
+				return
+			}
+			errObj := ErrInvalidQueryParameter.Copy()
+			errObj.Detail = "Provided invalid id parameter."
+			h.MarshalErrors(rw, errObj)
 			return
 		}
+
+		// err := h.Controller.GetAndSetIDFilter(req, scope)
+		// if err != nil {
+		// 	h.errSetIDFilter(scope, err, rw, req)
+		// 	return
+		// }
 
 		/**
 
@@ -1036,9 +1049,61 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 		  PATCH: PRECHECK PAIRS
 
 		*/
-		if !h.AddPrecheckPairFilters(scope, model, endpoint, req, rw, endpoint.PrecheckPairs...) {
-			return
+
+		/**
+
+		CREATE: PRECHECK PAIRS
+
+		*/
+
+		for _, pair := range endpoint.PrecheckPairs {
+			presetScope, presetField := pair.GetPair()
+			if pair.Key != nil {
+				if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
+					continue
+				}
+			}
+
+			values, err := h.GetPresetValues(presetScope, rw)
+			if err != nil {
+				if hErr := err.(*HandlerError); hErr != nil {
+					if hErr.Code == HErrNoValues {
+						errObj := ErrInsufficientAccPerm.Copy()
+						h.MarshalErrors(rw, errObj)
+						return
+					}
+					if !h.handleHandlerError(hErr, rw) {
+						return
+					}
+				} else {
+					h.log.Error(err)
+					h.MarshalInternalError(rw)
+					return
+				}
+				continue
+			}
+
+			if err := h.SetPresetFilterValues(presetField, values...); err != nil {
+				h.log.Error("Cannot preset values to the filter value. %s", err)
+				h.MarshalInternalError(rw)
+				return
+			}
+
+			if err := h.CheckPrecheckValues(scope, presetField); err != nil {
+				h.log.Debugf("Precheck value error: '%s'", err)
+				if err == IErrValueNotValid {
+					errObj := ErrInvalidJSONFieldValue.Copy()
+					errObj.Detail = "One of the field values are not valid."
+					h.MarshalErrors(rw, errObj)
+				} else {
+					h.MarshalInternalError(rw)
+				}
+				return
+			}
 		}
+		// if !h.AddPrecheckPairFilters(scope, model, endpoint, req, rw, endpoint.PrecheckPairs...) {
+		// 	return
+		// }
 
 		/**
 
