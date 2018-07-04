@@ -46,7 +46,7 @@ func (h *JSONAPIHandler) HookBeforeReader(scope *Scope) *ErrorObject {
 	beforeReader := reflect.TypeOf((*HookBeforeReader)(nil)).Elem()
 	t := reflect.New(scope.Struct.GetType()).Type()
 	if !t.Implements(beforeReader) {
-		h.log.Debugf("The %v does not implement: %v.", t, beforeReader)
+		// h.log.Debugf("The %v does not implement: %v.", t, beforeReader)
 		return nil
 	}
 
@@ -101,7 +101,7 @@ func (h *JSONAPIHandler) HookAfterReader(scope *Scope) *ErrorObject {
 
 	afterReader := reflect.TypeOf((*HookAfterReader)(nil)).Elem()
 	if !reflect.New(scope.Struct.GetType()).Type().Implements(afterReader) {
-		h.log.Debugf("'%v' does not implement After Reader: %v", reflect.New(scope.Struct.GetType()).Type(), afterReader)
+		// h.log.Debugf("'%v' does not implement After Reader: %v", reflect.New(scope.Struct.GetType()).Type(), afterReader)
 		return nil
 	}
 

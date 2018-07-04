@@ -379,6 +379,16 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 
 		/**
 
+		GET: HOOK BEFORE
+
+		*/
+		if errObj := h.HookBeforeReader(scope); errObj != nil {
+			h.MarshalErrors(rw, errObj)
+			return
+		}
+
+		/**
+
 		GET: RELATIONSHIP FILTERS
 
 		*/
@@ -398,16 +408,6 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 		repo := h.GetRepositoryByType(model.ModelType)
 		// Set NewSingleValue for the scope
 		scope.NewValueSingle()
-
-		/**
-
-		GET: HOOK BEFORE
-
-		*/
-		if errObj := h.HookBeforeReader(scope); errObj != nil {
-			h.MarshalErrors(rw, errObj)
-			return
-		}
 
 		/**
 
@@ -513,7 +513,18 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 
 		/**
 
-		GET RELATED: GET RELATIONSHIP FILTERS
+		  GET RELATED: HOOK BEFORE READ
+
+		*/
+
+		if errObj := h.HookBeforeReader(scope); errObj != nil {
+			h.MarshalErrors(rw, errObj)
+			return
+		}
+
+		/**
+
+		GET RELATED:  RELATIONSHIP FILTERS
 
 		*/
 
@@ -534,17 +545,6 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 		rootRepository := h.GetRepositoryByType(root.ModelType)
 		// Get the root for given id
 		// Select the related field inside
-
-		/**
-
-		  GET RELATED: HOOK BEFORE READ
-
-		*/
-
-		if errObj := h.HookBeforeReader(scope); errObj != nil {
-			h.MarshalErrors(rw, errObj)
-			return
-		}
 
 		/**
 
@@ -692,6 +692,17 @@ func (h *JSONAPIHandler) GetRelationship(root *ModelHandler, endpoint *Endpoint)
 
 		/**
 
+		  GET RELATIONSHIP: ROOT HOOK BEFORE READ
+
+		*/
+
+		if errObj := h.HookBeforeReader(scope); errObj != nil {
+			h.MarshalErrors(rw, errObj)
+			return
+		}
+
+		/**
+
 		GET RELATIONSHIP: GET RELATIONSHIP FILTERS
 
 		*/
@@ -707,17 +718,6 @@ func (h *JSONAPIHandler) GetRelationship(root *ModelHandler, endpoint *Endpoint)
 				h.MarshalInternalError(rw)
 				return
 			}
-		}
-
-		/**
-
-		  GET RELATIONSHIP: ROOT HOOK BEFORE READ
-
-		*/
-
-		if errObj := h.HookBeforeReader(scope); errObj != nil {
-			h.MarshalErrors(rw, errObj)
-			return
 		}
 
 		/**
@@ -829,6 +829,18 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 		if !h.AddPrecheckFilters(scope, req, rw, endpoint.PrecheckFilters...) {
 			return
 		}
+
+		/**
+
+		  LIST: HOOK BEFORE READER
+
+		*/
+
+		if errObj := h.HookBeforeReader(scope); errObj != nil {
+			h.MarshalErrors(rw, errObj)
+			return
+		}
+
 		/**
 
 		  LIST: GET RELATIONSHIP FILTERS
@@ -869,6 +881,7 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 		  LIST: DEFAULT PAGINATION
 
 		*/
+
 		if endpoint.PresetPaginate != nil && scope.Pagination == nil {
 			scope.Pagination = endpoint.PresetPaginate
 		}
@@ -880,17 +893,6 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 		*/
 		if len(endpoint.PresetSort) != 0 {
 			scope.Sorts = append(endpoint.PresetSort, scope.Sorts...)
-		}
-
-		/**
-
-		  LIST: HOOK BEFORE READER
-
-		*/
-
-		if errObj := h.HookBeforeReader(scope); errObj != nil {
-			h.MarshalErrors(rw, errObj)
-			return
 		}
 
 		/**

@@ -55,6 +55,12 @@ func (e *ErrorObject) Error() string {
 	return fmt.Sprintf("Error: %s %s\n", e.Title, e.Detail)
 }
 
+// WithDetail sets the detail for given error and then returns the error.
+func (e *ErrorObject) WithDetail(detail string) *ErrorObject {
+	e.Detail = detail
+	return e
+}
+
 // AddMeta adds the meta data for given error. Checks if an object has inited meta field.
 func (e *ErrorObject) AddMeta(key string, value interface{}) {
 	if e.Meta == nil {

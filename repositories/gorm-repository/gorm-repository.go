@@ -293,8 +293,7 @@ func (g *GORMRepository) getRelationship(
 func buildPaginate(db *gorm.DB, jsonScope *jsonapi.Scope) {
 	if jsonScope.Pagination != nil {
 		limit, offset := jsonScope.Pagination.GetLimitOffset()
-		db = db.Limit(limit).Offset(offset)
-		*db = *db
+		*db = *db.Limit(limit).Offset(offset)
 	}
 	return
 }
