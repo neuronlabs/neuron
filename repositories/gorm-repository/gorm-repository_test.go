@@ -1,6 +1,7 @@
 package gormrepo
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kucjac/jsonapi"
@@ -146,7 +147,7 @@ func TestGORMRepositoryList(t *testing.T) {
 }
 
 func prepareJSONAPI(models ...interface{}) (*jsonapi.Controller, error) {
-	c := jsonapi.NewController()
+	c := jsonapi.DefaultController()
 	err := c.PrecomputeModels(models...)
 	if err != nil {
 		return nil, err
@@ -226,14 +227,15 @@ func settleUsers(db *gorm.DB) error {
 
 func settleBlogs(db *gorm.DB) error {
 	var blogs = []*Blog{
-		{ID: 1, Title: "First", CurrentPost: &Post{Lang: "pl", Title: "First Post"}, Author: &User{Name: "Ziutek", Houses: []*House{{ID: 1}}}},
-		{ID: 2, Title: "Second", CurrentPost: &Post{Lang: "en", Title: "Second Post", Comments: []*Comment{{Body: "Crappy post"}}}, Author: &User{Name: "Mietek", Houses: []*House{{ID: 2}}}},
-		{ID: 3, Title: "Third", CurrentPost: &Post{Lang: "pl", Title: "Third Post"}, Author: &User{Name: "Jurek"}},
+		{ID: 1, Title: "First", CurrentPost: &Post{ID: 1, Lang: "pl", Title: "First Post"}, Author: &User{ID: 1, Name: "Ziutek", Houses: []*House{{ID: 1}}}},
+		{ID: 2, Title: "Second", CurrentPost: &Post{ID: 2, Lang: "en", Title: "Second Post", Comments: []*Comment{{ID: 1, Body: "Crappy post"}}}, Author: &User{ID: 2, Name: "Mietek", Houses: []*House{{ID: 2}}}},
+		{ID: 3, Title: "Third", CurrentPost: &Post{ID: 3, Lang: "pl", Title: "Third Post"}, Author: &User{ID: 3, Name: "Jurek"}},
 		{ID: 4, Title: "Fourth", AuthorID: 3},
 	}
 
 	for _, blog := range blogs {
 		if err := db.Create(blog).Error; err != nil {
+			fmt.Println(blog)
 			return err
 		}
 

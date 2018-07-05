@@ -34,14 +34,14 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 		CREATE: LANGUAGE
 
 		*/
-		// if the model is i18n-ready control it's language field value
-		if scope.UseI18n() {
-			lang, ok := h.CheckValueLanguage(scope, rw)
-			if !ok {
-				return
-			}
-			h.HeaderContentLanguage(rw, lang)
-		}
+		// // if the model is i18n-ready control it's language field value
+		// if scope.UseI18n() {
+		// 	lang, ok := h.CheckValueLanguage(scope, rw)
+		// 	if !ok {
+		// 		return
+		// 	}
+		// 	h.HeaderContentLanguage(rw, lang)
+		// }
 
 		/**
 
@@ -343,20 +343,7 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 			h.MarshalErrors(rw, errs...)
 			return
 		}
-
-		/**
-
-		GET: LANGUAGE
-
-		*/
-		tag, ok := h.GetLanguage(req, rw)
-		if !ok {
-			return
-		}
-
-		if scope.UseI18n() {
-			scope.SetLanguageFilter(tag.String())
-		}
+		scope.NewValueSingle()
 
 		/**
 
@@ -382,6 +369,7 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 		GET: HOOK BEFORE
 
 		*/
+
 		if errObj := h.HookBeforeReader(scope); errObj != nil {
 			h.MarshalErrors(rw, errObj)
 			return
@@ -407,7 +395,6 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 
 		repo := h.GetRepositoryByType(model.ModelType)
 		// Set NewSingleValue for the scope
-		scope.NewValueSingle()
 
 		/**
 
@@ -435,12 +422,10 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 		GET: GET INCLUDED FIELDS
 
 		*/
-		if correct := h.GetIncluded(scope, rw, req, tag); !correct {
+		if correct := h.GetIncluded(scope, rw, req); !correct {
 			return
 		}
 
-		// get included
-		h.HeaderContentLanguage(rw, tag)
 		h.MarshalScope(scope, rw, req)
 		return
 	}
@@ -467,7 +452,7 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 		*/
 		scope, errs, err := h.Controller.BuildScopeRelated(req, reflect.New(root.ModelType).Interface())
 		if err != nil {
-			h.log.Errorf("An internal error occurred while building related scope for model: '%v'. %v", reflect.TypeOf(root), err)
+			h.log.Errorf("An internal error occurred while building related scope for model: '%v'. %v", root.ModelType, err)
 			h.MarshalInternalError(rw)
 			return
 		}
@@ -477,21 +462,6 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 		}
 
 		scope.NewValueSingle()
-
-		/**
-
-		GET RELATED: LANGUAGE
-
-		*/
-
-		tag, ok := h.GetLanguage(req, rw)
-		if !ok {
-			return
-		}
-
-		if scope.UseI18n() {
-			scope.SetLanguageFilter(tag.String())
-		}
 
 		/**
 
@@ -584,9 +554,6 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 		if relatedScope.Value != nil && len(relatedScope.PrimaryFilters) != 0 {
 
 			relatedRepository := h.GetRepositoryByType(relatedScope.Struct.GetType())
-			if relatedScope.UseI18n() {
-				relatedScope.SetLanguageFilter(tag.String())
-			}
 
 			/**
 
@@ -623,7 +590,6 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 				return
 			}
 		}
-		h.HeaderContentLanguage(rw, tag)
 		h.MarshalScope(relatedScope, rw, req)
 		return
 
@@ -655,21 +621,6 @@ func (h *JSONAPIHandler) GetRelationship(root *ModelHandler, endpoint *Endpoint)
 			return
 		}
 		scope.NewValueSingle()
-
-		/**
-
-		  GET RELATIONSHIP: LANGUAGE
-
-		*/
-		tag, ok := h.GetLanguage(req, rw)
-		if !ok {
-			return
-		}
-
-		if scope.UseI18n() {
-			scope.SetLanguageFilter(tag.String())
-		}
-		h.HeaderContentLanguage(rw, tag)
 
 		/**
 
@@ -798,21 +749,6 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 
 		/**
 
-		  LIST: LANGUAGE
-
-		*/
-		tag, ok := h.GetLanguage(req, rw)
-		if !ok {
-			return
-		}
-		if scope.UseI18n() {
-			scope.SetLanguageFilter(tag.String())
-		}
-
-		h.HeaderContentLanguage(rw, tag)
-
-		/**
-
 		  LIST: PRECHECK PAIRS
 
 		*/
@@ -921,7 +857,7 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 		  LIST: GET INCLUDED
 
 		*/
-		if correct := h.GetIncluded(scope, rw, req, tag); !correct {
+		if correct := h.GetIncluded(scope, rw, req); !correct {
 			return
 		}
 
@@ -977,25 +913,6 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 			errObj.Detail = "Provided invalid id parameter."
 			h.MarshalErrors(rw, errObj)
 			return
-		}
-
-		// err := h.Controller.GetAndSetIDFilter(req, scope)
-		// if err != nil {
-		// 	h.errSetIDFilter(scope, err, rw, req)
-		// 	return
-		// }
-
-		/**
-
-		  PATCH: LANGAUGE
-
-		*/
-		if scope.UseI18n() {
-			tag, ok := h.CheckValueLanguage(scope, rw)
-			if !ok {
-				return
-			}
-			h.HeaderContentLanguage(rw, tag)
 		}
 
 		/**
@@ -1250,19 +1167,6 @@ func (h *JSONAPIHandler) Delete(model *ModelHandler, endpoint *Endpoint) http.Ha
 		if len(errs) > 0 {
 			h.MarshalErrors(rw, errs...)
 			return
-		}
-
-		/**
-
-		  DELETE: LANGUAGE
-
-		*/
-		tag, ok := h.GetLanguage(req, rw)
-		if !ok {
-			return
-		}
-		if scope.UseI18n() {
-			scope.SetLanguageFilter(tag.String())
 		}
 
 		/**

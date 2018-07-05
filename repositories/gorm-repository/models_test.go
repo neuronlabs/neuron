@@ -26,10 +26,9 @@ type Post struct {
 	Lang      string     `gorm:"primary_index" jsonapi:"attr,language,langtag"`
 	Title     string     `jsonapi:"attr,title"`
 	Comments  []*Comment `jsonapi:"relation,comments"`
-	BlogID    int
-	CreatedAt time.Time `jsonapi:"attr,created_at"`
-	UpdatedAt time.Time `jsonapi:"attr,updated_at"`
-	DeletedAt time.Time `jsonapi:"attr,deleted_at"`
+	CreatedAt time.Time  `jsonapi:"attr,created_at"`
+	UpdatedAt time.Time  `jsonapi:"attr,updated_at"`
+	DeletedAt time.Time  `jsonapi:"attr,deleted_at"`
 }
 
 type Comment struct {

@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/text/language"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -98,6 +99,9 @@ type Scope struct {
 
 	currentIncludedFieldIndex int
 	isRelationship            bool
+
+	// used within the root scope as a language tag for whole query.
+	queryLanguage language.Tag
 
 	hasFieldNotInFieldset bool
 }
@@ -695,7 +699,11 @@ func (s *Scope) buildFilterfield(
 				invalidName(fieldName, m.collectionType)
 				return
 			}
-			fField = s.getOrCreateAttributeFilter(sField)
+			if sField.isLanguage() {
+				fField = s.getOrCreateLangaugeFilter()
+			} else {
+				fField = s.getOrCreateAttributeFilter(sField)
+			}
 		}
 		errObjects = fField.setValues(m.collectionType, values, OpEqual)
 		errs = append(errs, errObjects...)
@@ -723,7 +731,13 @@ func (s *Scope) buildFilterfield(
 
 				return
 			}
-			fField = s.getOrCreateAttributeFilter(sField)
+
+			if sField.isLanguage() {
+				fField = s.getOrCreateLangaugeFilter()
+			} else {
+				fField = s.getOrCreateAttributeFilter(sField)
+			}
+
 		}
 		// it is an attribute filter
 		op, ok = operatorsValue[splitted[1]]
@@ -813,6 +827,7 @@ func (s *Scope) getOrCreateLangaugeFilter() (filter *FilterField) {
 func (s *Scope) getOrCreateAttributeFilter(
 	sField *StructField,
 ) (filter *FilterField) {
+
 	if s.AttributeFilters == nil {
 		s.AttributeFilters = []*FilterField{}
 	}
@@ -823,9 +838,9 @@ func (s *Scope) getOrCreateAttributeFilter(
 			return
 		}
 	}
-
 	filter = &FilterField{StructField: sField}
 	s.AttributeFilters = append(s.AttributeFilters, filter)
+
 	return filter
 }
 

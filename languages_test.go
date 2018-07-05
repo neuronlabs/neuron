@@ -36,7 +36,7 @@ func TestGetLanguage(t *testing.T) {
 }
 
 func TestHandlerCheckLanguage(t *testing.T) {
-	c := NewController()
+	c := NewController([]interface{}{[]language.Tag{language.Polish, language.English}}...)
 	err := c.PrecomputeModels(&ModelI18nSDK{})
 	assert.NoError(t, err)
 
@@ -48,7 +48,8 @@ func TestHandlerCheckLanguage(t *testing.T) {
 	logger := unilogger.MustGetLoggerWrapper(unilog)
 
 	h := NewHandler(c, logger, NewDBErrorMgr())
-	h.SetLanguages(language.Polish, language.English)
+
+	h.SetLanguages()
 
 	// Case 1:
 	// Scope with nil value

@@ -8,6 +8,36 @@ import (
 	"strings"
 )
 
+func buildLanguageTags(languages string) ([]language.Tag, []*ErrorObject) {
+	var (
+		tags []language.Tag
+		errs []*ErrorObject
+	)
+
+	splitted := strings.SplitN(languages, annotationSeperator, 5)
+	for _, lang := range splitted {
+		tag, err := language.Parse(lang)
+		if err != nil {
+			switch v := err.(type) {
+			case language.ValueError:
+				errObj := ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided language: '%s' contains unknown value: '%s'.", lang, v.Subtag())
+				errs = append(errs, errObj)
+			default:
+				// syntax error
+				errObj := ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided language: '%s' is not syntetically correct.", lang)
+				errs = append(errs, errObj)
+			}
+			continue
+		}
+		if len(errs) == 0 {
+			tags = append(tags, tag)
+		}
+	}
+	return tags, errs
+}
+
 func (h *JSONAPIHandler) GetLanguage(
 	req *http.Request,
 	rw http.ResponseWriter,
@@ -48,7 +78,7 @@ func (h *JSONAPIHandler) CheckValueLanguage(
 
 	if lang == "" {
 		errObj := ErrInvalidInput.Copy()
-		errObj.Detail = fmt.Sprintf("Provided object with no language code required. Supported languages: %v.", strings.Join(h.DisplaySupportedLanguages(), ","))
+		errObj.Detail = fmt.Sprintf("Provided object with no language tag required. Supported languages: %v.", strings.Join(h.DisplaySupportedLanguages(), ","))
 		h.MarshalErrors(rw, errObj)
 		return
 	} else {
@@ -67,20 +97,20 @@ func (h *JSONAPIHandler) CheckValueLanguage(
 			}
 		}
 		var confidence language.Confidence
-		langtag, _, confidence = h.LanguageMatcher.Match(parseTag)
+		langtag, _, confidence = h.Controller.Matcher.Match(parseTag)
 		// If the confidence is low or none send unsupported.
 		if confidence <= language.Low {
 			// language not supported
 			errObj := ErrLanguageNotAcceptable.Copy()
 			errObj.Detail = fmt.Sprintf("The language: '%s' is not supported. This document supports following languages: %v",
 				lang,
-				strings.Join(h.DisplaySupportedLanguages(), ","))
+				strings.Join(h.Controller.displaySupportedLanguages(), ","))
 			h.MarshalErrors(rw, errObj)
 			return
 		}
 	}
-
-	err = scope.SetLangtagValue(langtag.String())
+	b, _ := langtag.Base()
+	err = scope.SetLangtagValue(b.String())
 	if err != nil {
 		h.log.Error(err)
 		h.MarshalInternalError(rw)

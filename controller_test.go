@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"golang.org/x/text/language"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -13,6 +14,7 @@ func TestControllerCreation(t *testing.T) {
 	assertNotEmpty(t, cNew.Models)
 
 	assertEqual(t, 1, cNew.IncludeNestedLimit)
+	assertEqual(t, 1, cNew.FilterValueLimit)
 
 	cDefault := DefaultController()
 	assertNotEmpty(t, cDefault.Models)
@@ -669,4 +671,62 @@ func TestControllerNewFilterField(t *testing.T) {
 	assertEqual(t, OpEqual, filterField.Values[0].Operator)
 	assertEqual(t, len(values), len(filterField.Values[0].Values))
 	t.Log(filterField.Values[0].Values)
+}
+
+func TestControllerLanguageQuery(t *testing.T) {
+	languages := []interface{}{[]language.Tag{language.Polish, language.English}}
+	c := DefaultController(languages...)
+	assertNoError(t, c.PrecomputeModels(&Modeli18n{}))
+
+	// Case 1:
+	// Check lang
+	_, req := getHttpPair("GET", "/translateable?language=pl", nil)
+
+	scope, errs, err := c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err, failNow)
+	assertEmpty(t, errs)
+	assertNotNil(t, scope.LanguageFilters)
+	// t.Logf("%+v", scope.LanguageFilters.Values[0].Values[0])
+
+	// Case 2:
+	// individual filter
+	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode]=en", nil)
+	scope, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err, failNow)
+	assertEmpty(t, errs)
+
+	assertNotNil(t, scope.LanguageFilters)
+
+	// Case 3:
+	// invidividual filter with operator
+	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][in]=pl,en", nil)
+	scope, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err)
+	assertEmpty(t, errs)
+
+	assertNotNil(t, scope.LanguageFilters)
+
+	// Case 4:
+	// provide not supported language
+	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][eq]="+language.Turkish.String(), nil)
+	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err)
+	assertNotEmpty(t, errs)
+
+	// Case 5:
+	// provided unsupported languages and syntetically invalid
+	_, req = getHttpPair("GET",
+		"/translateable?filter[translateable][langcode][in]=pl-EN,123",
+		nil,
+	)
+	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err)
+	assertNotEmpty(t, errs)
+
+	// Case 6:
+	// unsupported langueage in global query
+	_, req = getHttpPair("GET", "/translateable?language=tr,de-GB", nil)
+	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	assertNoError(t, err)
+	assertNotEmpty(t, errs)
 }

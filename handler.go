@@ -274,7 +274,6 @@ func (h *JSONAPIHandler) GetIncluded(
 	scope *Scope,
 	rw http.ResponseWriter,
 	req *http.Request,
-	tag language.Tag,
 ) (correct bool) {
 	// if the scope is the root and there is no included scopes return fast.
 	if scope.IsRoot() && len(scope.IncludedScopes) == 0 {
@@ -313,10 +312,6 @@ func (h *JSONAPIHandler) GetIncluded(
 			includedField.Scope.SetIDFilters(missing...)
 			// h.log.Debugf("Created ID Filters: '%v'", includedField.Scope.PrimaryFilters)
 
-			if includedField.Scope.UseI18n() {
-				includedField.Scope.SetLanguageFilter(tag.String())
-			}
-
 			includedRepo := h.GetRepositoryByType(includedField.Scope.Struct.GetType())
 
 			// Get NewMultipleValue
@@ -338,7 +333,7 @@ func (h *JSONAPIHandler) GetIncluded(
 				return
 			}
 
-			if correct = h.GetIncluded(includedField.Scope, rw, req, tag); !correct {
+			if correct = h.GetIncluded(includedField.Scope, rw, req); !correct {
 				return
 			}
 		}
