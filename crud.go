@@ -178,51 +178,51 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 
 		*/
 
-		for _, pair := range endpoint.PrecheckPairs {
-			presetScope, presetField := pair.GetPair()
-			if pair.Key != nil {
-				if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
-					continue
-				}
-			}
+		// for _, pair := range endpoint.PrecheckPairs {
+		// 	presetScope, presetField := pair.GetPair()
+		// 	if pair.Key != nil {
+		// 		if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
+		// 			continue
+		// 		}
+		// 	}
 
-			values, err := h.GetPresetValues(presetScope, rw)
-			if err != nil {
-				if hErr := err.(*HandlerError); hErr != nil {
-					if hErr.Code == HErrNoValues {
-						errObj := ErrInsufficientAccPerm.Copy()
-						h.MarshalErrors(rw, errObj)
-						return
-					}
-					if !h.handleHandlerError(hErr, rw) {
-						return
-					}
-				} else {
-					h.log.Error(err)
-					h.MarshalInternalError(rw)
-					return
-				}
-				continue
-			}
+		// 	values, err := h.GetPresetValues(presetScope, rw)
+		// 	if err != nil {
+		// 		if hErr := err.(*HandlerError); hErr != nil {
+		// 			if hErr.Code == HErrNoValues {
+		// 				errObj := ErrInsufficientAccPerm.Copy()
+		// 				h.MarshalErrors(rw, errObj)
+		// 				return
+		// 			}
+		// 			if !h.handleHandlerError(hErr, rw) {
+		// 				return
+		// 			}
+		// 		} else {
+		// 			h.log.Error(err)
+		// 			h.MarshalInternalError(rw)
+		// 			return
+		// 		}
+		// 		continue
+		// 	}
 
-			if err := h.SetPresetFilterValues(presetField, values...); err != nil {
-				h.log.Error("Cannot preset values to the filter value. %s", err)
-				h.MarshalInternalError(rw)
-				return
-			}
+		// 	if err := h.SetPresetFilterValues(presetField, values...); err != nil {
+		// 		h.log.Error("Cannot preset values to the filter value. %s", err)
+		// 		h.MarshalInternalError(rw)
+		// 		return
+		// 	}
 
-			if err := h.CheckPrecheckValues(scope, presetField); err != nil {
-				h.log.Debugf("Precheck value error: '%s'", err)
-				if err == IErrValueNotValid {
-					errObj := ErrInvalidJSONFieldValue.Copy()
-					errObj.Detail = "One of the field values are not valid."
-					h.MarshalErrors(rw, errObj)
-				} else {
-					h.MarshalInternalError(rw)
-				}
-				return
-			}
-		}
+		// 	if err := h.CheckPrecheckValues(scope, presetField); err != nil {
+		// 		h.log.Debugf("Precheck value error: '%s'", err)
+		// 		if err == IErrValueNotValid {
+		// 			errObj := ErrInvalidJSONFieldValue.Copy()
+		// 			errObj.Detail = "One of the field values are not valid."
+		// 			h.MarshalErrors(rw, errObj)
+		// 		} else {
+		// 			h.MarshalInternalError(rw)
+		// 		}
+		// 		return
+		// 	}
+		// }
 
 		/**
 
@@ -975,51 +975,51 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 
 		*/
 
-		for _, pair := range endpoint.PrecheckPairs {
-			presetScope, presetField := pair.GetPair()
-			if pair.Key != nil {
-				if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
-					continue
-				}
-			}
+		// for _, pair := range endpoint.PrecheckPairs {
+		// 	presetScope, presetField := pair.GetPair()
+		// 	if pair.Key != nil {
+		// 		if !h.getPrecheckFilter(pair.Key, presetScope, req, model) {
+		// 			continue
+		// 		}
+		// 	}
 
-			values, err := h.GetPresetValues(presetScope, rw)
-			if err != nil {
-				if hErr := err.(*HandlerError); hErr != nil {
-					if hErr.Code == HErrNoValues {
-						errObj := ErrInsufficientAccPerm.Copy()
-						h.MarshalErrors(rw, errObj)
-						return
-					}
-					if !h.handleHandlerError(hErr, rw) {
-						return
-					}
-				} else {
-					h.log.Error(err)
-					h.MarshalInternalError(rw)
-					return
-				}
-				continue
-			}
+		// 	values, err := h.GetPresetValues(presetScope, rw)
+		// 	if err != nil {
+		// 		if hErr := err.(*HandlerError); hErr != nil {
+		// 			if hErr.Code == HErrNoValues {
+		// 				errObj := ErrInsufficientAccPerm.Copy()
+		// 				h.MarshalErrors(rw, errObj)
+		// 				return
+		// 			}
+		// 			if !h.handleHandlerError(hErr, rw) {
+		// 				return
+		// 			}
+		// 		} else {
+		// 			h.log.Error(err)
+		// 			h.MarshalInternalError(rw)
+		// 			return
+		// 		}
+		// 		continue
+		// 	}
 
-			if err := h.SetPresetFilterValues(presetField, values...); err != nil {
-				h.log.Error("Cannot preset values to the filter value. %s", err)
-				h.MarshalInternalError(rw)
-				return
-			}
+		// 	if err := h.SetPresetFilterValues(presetField, values...); err != nil {
+		// 		h.log.Error("Cannot preset values to the filter value. %s", err)
+		// 		h.MarshalInternalError(rw)
+		// 		return
+		// 	}
 
-			if err := h.CheckPrecheckValues(scope, presetField); err != nil {
-				h.log.Debugf("Precheck value error: '%s'", err)
-				if err == IErrValueNotValid {
-					errObj := ErrInvalidJSONFieldValue.Copy()
-					errObj.Detail = "One of the field values are not valid."
-					h.MarshalErrors(rw, errObj)
-				} else {
-					h.MarshalInternalError(rw)
-				}
-				return
-			}
-		}
+		// 	if err := h.CheckPrecheckValues(scope, presetField); err != nil {
+		// 		h.log.Debugf("Precheck value error: '%s'", err)
+		// 		if err == IErrValueNotValid {
+		// 			errObj := ErrInvalidJSONFieldValue.Copy()
+		// 			errObj.Detail = "One of the field values are not valid."
+		// 			h.MarshalErrors(rw, errObj)
+		// 		} else {
+		// 			h.MarshalInternalError(rw)
+		// 		}
+		// 		return
+		// 	}
+		// }
 		// if !h.AddPrecheckPairFilters(scope, model, endpoint, req, rw, endpoint.PrecheckPairs...) {
 		// 	return
 		// }
@@ -1030,9 +1030,9 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 
 		*/
 
-		if !h.AddPrecheckFilters(scope, req, rw, endpoint.PrecheckFilters...) {
-			return
-		}
+		// if !h.AddPrecheckFilters(scope, req, rw, endpoint.PrecheckFilters...) {
+		// 	return
+		// }
 
 		err = h.GetRelationshipFilters(scope, req, rw)
 		if err != nil {
