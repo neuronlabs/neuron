@@ -29,6 +29,8 @@ func (h *JSONAPIHandler) Create(model *ModelHandler, endpoint *Endpoint) http.Ha
 			return
 		}
 
+		h.log.Debugf("Create scope value: %+v", scope.Value)
+
 		/**
 
 		CREATE: LANGUAGE

@@ -94,6 +94,8 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 		return
 	}
 
+	fmt.Printf("Value of unmarshaled scope: %+v\n", payload.Data)
+
 	collection := payload.Data.Type
 	mStruct := c.Models.GetByCollection(collection)
 	if mStruct == nil {
@@ -125,13 +127,19 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 	} else {
 		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
 	}
+
 	switch er {
 	case IErrUnknownFieldNumberType, IErrInvalidTime, IErrInvalidISO8601, IErrUnsupportedPtrType,
 		IErrInvalidType, IErrBadJSONAPIID, IErrUnsupportedPtrType:
 		errObj = ErrInvalidJSONFieldValue.Copy()
 		errObj.Detail = er.Error()
 	default:
-		err = er
+		if uErr, ok := er.(*json.UnmarshalFieldError); ok {
+			errObj = ErrInvalidJSONFieldValue.Copy()
+			errObj.Detail = fmt.Sprintf("Provided invalid type for field: %v. This field is of type: %s.", uErr.Key, uErr.Type.String())
+		} else {
+			err = er
+		}
 	}
 	return
 }
@@ -601,7 +609,14 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			// As a final catch-all, ensure types line up to avoid a runtime panic.
 			if fieldValue.Kind() != v.Kind() {
-				return IErrInvalidType
+
+				unmErr := new(json.UnmarshalFieldError)
+				unmErr.Field = fieldType
+				unmErr.Type = fieldValue.Type()
+				unmErr.Key = args[1]
+
+				fmt.Printf("Error in unmarshal field: %v\n", unmErr)
+				return unmErr
 			}
 			fieldValue.Set(reflect.ValueOf(val))
 
@@ -643,13 +658,20 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			} else {
 				// to-one relationships
 				relationship := new(RelationshipOneNode)
-
+				fmt.Printf("Trying the field: %s\n", fieldType.Name)
 				buf := bytes.NewBuffer(nil)
 
-				json.NewEncoder(buf).Encode(
+				e := json.NewEncoder(buf).Encode(
 					data.Relationships[args[1]],
 				)
-				json.NewDecoder(buf).Decode(relationship)
+				fmt.Printf("Relationships value: %v", args[1])
+
+				fmt.Printf("Relationships value2: %v", data.Relationships[args[1]])
+
+				fmt.Printf("Error while encoding: %v\n", e)
+
+				e = json.NewDecoder(buf).Decode(relationship)
+				fmt.Printf("Error while decoding: %v\n", e)
 
 				/*
 					http://jsonapi.org/format/#document-resource-object-relationships
@@ -658,6 +680,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					so unmarshal and set fieldValue only if data obj is not null
 				*/
 				if relationship.Data == nil {
+					fmt.Printf("Nil relationship: %v\n", relationship)
 					continue
 				}
 
@@ -670,6 +693,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					er = err
 					break
 				}
+
+				fmt.Printf("Value of relationship single: %+v", m.Interface())
 
 				fieldValue.Set(m)
 
