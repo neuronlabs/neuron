@@ -213,6 +213,7 @@ func (i *IncludeField) copyScopeBoundaries() {
 			//add nested
 			i.Scope.Fieldset[nested.jsonAPIName] = nested.StructField
 		}
+		i.Scope.Links = i.Scope.collectionScope.Links
 
 		nested.copyScopeBoundaries()
 	}
@@ -239,6 +240,7 @@ func (i *IncludeField) copyPresetFullParameters() {
 	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)
 
 	i.Scope.Pagination = i.Scope.collectionScope.Pagination
+	i.Scope.Links = i.Scope.collectionScope.Links
 
 	for _, nested := range i.Scope.IncludedFields {
 		// if the nested include is not found within the collection fieldset

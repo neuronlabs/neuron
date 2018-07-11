@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -119,6 +120,7 @@ func (c *Controller) BuildScopeList(
 	scope.maxNestedLevel = c.IncludeNestedLimit
 	scope.collectionScope = scope
 	scope.IsMany = true
+	scope.Links = c.UseLinks
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -256,6 +258,11 @@ func (c *Controller) BuildScopeList(
 			addErrors(errorObjects...)
 		case key == QueryParamPageTotal:
 			scope.PageTotal = true
+		case key == QueryParamLinks:
+			scope.Links, err = strconv.ParseBool(value[0])
+			if err != nil {
+				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
+			}
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -321,6 +328,7 @@ func (c *Controller) BuildScopeSingle(
 	}
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
+	scope.Links = c.UseLinks
 
 	// Check first included in order to create subscopes
 	included, ok := q[QueryParamInclude]
@@ -436,6 +444,11 @@ func (c *Controller) BuildScopeSingle(
 
 			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
 			addErrors(errorObjects...)
+		case key == QueryParamLinks:
+			scope.Links, err = strconv.ParseBool(values[0])
+			if err != nil {
+				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
+			}
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -473,6 +486,7 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		kind: rootKind,
 	}
 	scope.collectionScope = scope
+	scope.Links = c.UseLinks
 
 	relationField, ok := mStruct.relationships[related]
 	if !ok {
@@ -504,6 +518,15 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		}
 	}
 
+	links, ok := q[QueryParamLinks]
+	if ok {
+		scope.Links, err = strconv.ParseBool(links[0])
+		if err != nil {
+			errs = append(errs, ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
+			return
+		}
+	}
+
 	scope.copyIncludedBoundaries()
 
 	return
@@ -529,6 +552,7 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 		kind: rootKind,
 	}
 	scope.collectionScope = scope
+	scope.Links = c.UseLinks
 
 	// set primary field filter
 	errs = scope.setPrimaryFilterfield(id)
@@ -632,6 +656,7 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 	}
 
 	scope := newRootScope(mStruct)
+	scope.Links = c.UseLinks
 	return scope, nil
 }
 

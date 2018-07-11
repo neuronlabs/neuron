@@ -160,6 +160,18 @@ func (m *ModelHandler) ReplaceEndpoint(endpoint *Endpoint) error {
 	return m.changeEndpoint(endpoint, true)
 }
 
+func (m *ModelHandler) SetAllEndpoints() {
+	m.Create = &Endpoint{Type: Create}
+	m.Get = &Endpoint{Type: Get}
+	m.GetRelated = &Endpoint{Type: GetRelated}
+	m.GetRelationship = &Endpoint{Type: GetRelationship}
+	m.List = &Endpoint{Type: List}
+	m.Patch = &Endpoint{Type: Patch}
+	// m.PatchRelated = &Endpoint{Type: PatchRelated}
+	// m.PatchRelationship = &Endpoint{Type: PatchRelationship}
+	m.Delete = &Endpoint{Type: Delete}
+}
+
 func (m *ModelHandler) addPresetPair(
 	presetPair *PresetPair,
 	endpoint EndpointType,

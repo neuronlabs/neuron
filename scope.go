@@ -85,6 +85,9 @@ type Scope struct {
 	PageTotal bool
 	Count     int
 
+	// Links
+	Links bool
+
 	errorLimit        int
 	maxNestedLevel    int
 	currentErrorCount int
@@ -567,7 +570,9 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 	s.Fieldset = make(map[string]*StructField)
 
 	for _, field := range fields {
-
+		if field == "" {
+			continue
+		}
 		sField, err := s.Struct.checkField(field)
 		if err != nil {
 			if field == "id" {
@@ -989,6 +994,7 @@ func (s *Scope) createModelsRootScope(mStruct *ModelStruct) *Scope {
 	scope := s.createModelsScope(mStruct)
 	scope.rootScope.IncludedScopes[mStruct] = scope
 	scope.IncludedValues = NewSafeHashMap()
+	scope.Links = scope.rootScope.Links
 	return scope
 }
 

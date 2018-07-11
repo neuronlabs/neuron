@@ -124,4 +124,7 @@ const (
 	// QueryParamLanguage is a JSONAPI query parameter used in selecting a language tag for the
 	// model.
 	QueryParamLanguage = "language"
+
+	// QueryParamLinks is a JSONAPI query parameter used in displaying the links of the relationships
+	QueryParamLinks = "links"
 )
