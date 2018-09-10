@@ -259,8 +259,9 @@ func (c *Controller) BuildScopeList(
 		case key == QueryParamPageTotal:
 			scope.PageTotal = true
 		case key == QueryParamLinks:
-			scope.Links, err = strconv.ParseBool(value[0])
-			if err != nil {
+			var er error
+			scope.Links, er = strconv.ParseBool(value[0])
+			if er != nil {
 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			}
 		default:
