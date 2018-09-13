@@ -78,8 +78,8 @@ type Scope struct {
 
 	IsMany bool
 
-	// GetModifiedResult is a flag for the scope if the modified value should be returned.
-	GetModifiedResult bool
+	// FlagReturnPatchContent is a flag for the scope if the modified value should be returned.
+	FlagReturnPatchContent bool
 
 	// PageTotal is a flag that defines if the List scope should include count values.
 	PageTotal bool

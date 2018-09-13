@@ -810,7 +810,7 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 
 		  Include count into meta data
 		*/
-		if endpoint.CountList {
+		if endpoint.FlagMetaCountList {
 			scope.PageTotal = true
 		}
 
@@ -1055,10 +1055,13 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 		/**
 
 		  PATCH: GET MODIFIED RESULT
-
+			The default hierarchy is that at first it checks wether the
+			endpoint contains the
 		*/
-		if endpoint.GetModifiedResult {
-			scope.GetModifiedResult = true
+		if endpoint.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = *endpoint.FlagReturnPatchContent
+		} else if h.Controller.FlagReturnPatchContent {
+			scope.FlagReturnPatchContent = true
 		}
 
 		/**
@@ -1117,7 +1120,7 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 		  PATCH: MARSHAL RESULT
 
 		*/
-		if scope.GetModifiedResult {
+		if scope.FlagReturnPatchContent {
 			h.MarshalScope(scope, rw, req)
 		} else {
 			rw.WriteHeader(http.StatusNoContent)
@@ -1153,7 +1156,7 @@ func (h *JSONAPIHandler) UpdateToOneRelationships(
 	endpoint *Endpoint,
 ) http.HandlerFunc {
 
-	return h.EndpointForbidden(model, endpoint)
+	return h.EndpointForbidden(model, endpoint.Type)
 }
 
 // UpdateToManyRelationships is a handler function that
@@ -1166,7 +1169,7 @@ func (h *JSONAPIHandler) UpdateToManyRelationships(
 	model *ModelHandler,
 	endpoint *Endpoint,
 ) http.HandlerFunc {
-	return h.EndpointForbidden(model, endpoint)
+	return h.EndpointForbidden(model, endpoint.Type)
 }
 
 // PatchToManyRelationships is a handler function used to update to-many
@@ -1183,7 +1186,7 @@ func (h *JSONAPIHandler) PatchToManyRelationships(
 	model *ModelHandler,
 	endpoint *Endpoint,
 ) http.HandlerFunc {
-	return h.EndpointForbidden(model, endpoint)
+	return h.EndpointForbidden(model, endpoint.Type)
 }
 
 // CreateToManyRelationships is a handler function that is used to handle
@@ -1198,7 +1201,7 @@ func (h *JSONAPIHandler) CreateToManyRelationships(
 	model *ModelHandler,
 	endpoint *Endpoint,
 ) http.HandlerFunc {
-	return h.EndpointForbidden(model, endpoint)
+	return h.EndpointForbidden(model, endpoint.Type)
 }
 
 // DeleteToManyRelationships is a handler function that is used as
@@ -1212,7 +1215,7 @@ func (h *JSONAPIHandler) DeleteToManyRelationships(
 	model *ModelHandler,
 	endpoint *Endpoint,
 ) http.HandlerFunc {
-	return h.EndpointForbidden(model, endpoint)
+	return h.EndpointForbidden(model, endpoint.Type)
 }
 
 func (h *JSONAPIHandler) Delete(model *ModelHandler, endpoint *Endpoint) http.HandlerFunc {

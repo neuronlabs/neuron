@@ -48,6 +48,9 @@ type Controller struct {
 
 	// UseLinks is a flag that defines if the response should contain links objects
 	UseLinks bool
+
+	// FlagReturnPatchContent
+	FlagReturnPatchContent bool
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
@@ -832,6 +835,14 @@ func (c *Controller) SetAPIURL(url string) error {
 	// manage the url
 	c.APIURLBase = url
 	return nil
+}
+
+// SetReturnPatchContent is a function that sets the default behaviour for
+// returning successful patch content
+// If set to true, and if given endpoint doesn't specify the behaviour
+// differently, the api would return the content of the patched model
+func (c *Controller) SetReturnPatchContent(b bool) {
+	c.FlagReturnPatchContent = b
 }
 
 func (c *Controller) buildFilterField(
