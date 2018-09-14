@@ -293,7 +293,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	getBlogScope()
 
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1?include=posts,current_post.latest_comment", nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err := c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -355,7 +355,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertTrue(t, includedField.Scope.NextIncludedField())
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs?include=posts&filter[posts][id][gt]=0&filter[posts][title][startswith]=this&filter[posts][latest_comment][id][gt]=3", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -385,7 +385,7 @@ func TestScopeSetCollectionValues(t *testing.T) {
 	req := httptest.NewRequest("GET", "/blogs?include=posts.comments,current_post&fieldset[posts]=title", nil)
 	clearMap()
 	getBlogScope()
-	scope, errs, err := c.BuildScopeList(req, &Blog{})
+	scope, errs, err := c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -419,7 +419,7 @@ func TestScopeSetCollectionValues(t *testing.T) {
 	}
 
 	req = httptest.NewRequest("GET", "/blogs/1?include=current_post.comments&fieldset[blogs]=title", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 

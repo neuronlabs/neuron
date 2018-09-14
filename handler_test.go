@@ -64,7 +64,7 @@ func TestGetRelationshipsFilter(t *testing.T) {
 	h := prepareHandler([]language.Tag{language.Polish}, &HumanSDK{}, &PetSDK{})
 
 	rw, req := getHttpPair("GET", "/pets?filter[pets][humans][id][lt]=2", nil)
-	scope, errs, err := h.Controller.BuildScopeList(req, &PetSDK{})
+	scope, errs, err := h.Controller.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(PetSDK{})})
 	assert.NoError(t, err)
 	assert.Empty(t, errs)
 
@@ -75,7 +75,7 @@ func TestGetRelationshipsFilter(t *testing.T) {
 	assert.NoError(t, err)
 
 	rw, req = getHttpPair("GET", "/humans?filter[humans][pets][legs][gt]=3&filter[humans][pets][id][in]=3,4,5", nil)
-	scope, errs, err = h.Controller.BuildScopeList(req, &HumanSDK{})
+	scope, errs, err = h.Controller.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(HumanSDK{})})
 	assert.NoError(t, err)
 	assert.Empty(t, errs)
 

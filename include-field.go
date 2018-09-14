@@ -213,7 +213,13 @@ func (i *IncludeField) copyScopeBoundaries() {
 			//add nested
 			i.Scope.Fieldset[nested.jsonAPIName] = nested.StructField
 		}
-		i.Scope.Links = i.Scope.collectionScope.Links
+		if i.Scope.collectionScope.FlagUseLinks != nil {
+			i.Scope.FlagUseLinks = &(*i.Scope.collectionScope.FlagUseLinks)
+		}
+
+		if i.Scope.collectionScope.FlagReturnPatchContent != nil {
+			i.Scope.FlagReturnPatchContent = &(*i.Scope.collectionScope.FlagReturnPatchContent)
+		}
 
 		nested.copyScopeBoundaries()
 	}
@@ -240,7 +246,13 @@ func (i *IncludeField) copyPresetFullParameters() {
 	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)
 
 	i.Scope.Pagination = i.Scope.collectionScope.Pagination
-	i.Scope.Links = i.Scope.collectionScope.Links
+	if i.Scope.collectionScope.FlagUseLinks != nil {
+		i.Scope.FlagUseLinks = &(*i.Scope.collectionScope.FlagUseLinks)
+	}
+
+	if i.Scope.collectionScope.FlagReturnPatchContent != nil {
+		i.Scope.FlagReturnPatchContent = &(*i.Scope.collectionScope.FlagReturnPatchContent)
+	}
 
 	for _, nested := range i.Scope.IncludedFields {
 		// if the nested include is not found within the collection fieldset

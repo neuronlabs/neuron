@@ -79,14 +79,15 @@ type Scope struct {
 	IsMany bool
 
 	// FlagReturnPatchContent is a flag for the scope if the modified value should be returned.
-	FlagReturnPatchContent bool
+	FlagReturnPatchContent *bool
 
-	// PageTotal is a flag that defines if the List scope should include count values.
-	PageTotal bool
-	Count     int
+	// FlagCountList
+	FlagMetaCountList *bool
 
-	// Links
-	Links bool
+	// FlagUseLinks
+	FlagUseLinks *bool
+
+	Count int
 
 	errorLimit        int
 	maxNestedLevel    int
@@ -994,7 +995,14 @@ func (s *Scope) createModelsRootScope(mStruct *ModelStruct) *Scope {
 	scope := s.createModelsScope(mStruct)
 	scope.rootScope.IncludedScopes[mStruct] = scope
 	scope.IncludedValues = NewSafeHashMap()
-	scope.Links = scope.rootScope.Links
+	if scope.rootScope.FlagUseLinks != nil {
+		scope.FlagUseLinks = &(*scope.rootScope.FlagUseLinks)
+	}
+
+	if scope.rootScope.FlagReturnPatchContent != nil {
+		scope.FlagReturnPatchContent = &(*scope.rootScope.FlagReturnPatchContent)
+	}
+
 	return scope
 }
 

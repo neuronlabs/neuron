@@ -95,11 +95,14 @@ type Endpoint struct {
 
 	Middlewares []MiddlewareFunc
 
+	// FlagUseLinks is a flag that defines if the endpoint should use links
+	FlagUseLinks *bool
+
 	// GetModified defines if the result for Patch Should be returned.
 	FlagReturnPatchContent *bool
 
 	// FlagMetaCountList is a flag that defines if the List result should include objects count
-	FlagMetaCountList bool
+	FlagMetaCountList *bool
 
 	// CustomHandlerFunc is a http.HandlerFunc defined for this endpoint
 	CustomHandlerFunc http.HandlerFunc

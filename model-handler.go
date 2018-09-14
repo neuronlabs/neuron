@@ -29,6 +29,15 @@ type ModelHandler struct {
 
 	Delete *Endpoint
 
+	// FlagUseLinks is a flag that defines if the endpoint should use links
+	FlagUseLinks *bool
+
+	// GetModified defines if the result for Patch Should be returned.
+	FlagReturnPatchContent *bool
+
+	// FlagMetaCountList is a flag that defines if the List result should include objects count
+	FlagMetaCountList *bool
+
 	// Repository defines the repository for the provided model
 	Repository Repository
 }

@@ -282,7 +282,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 			if linkableModel, ok := scope.Value.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.jsonAPIName)
-			} else if scope.Links {
+			} else if scope.FlagUseLinks != nil && *scope.FlagUseLinks {
 				link := make(map[string]interface{})
 				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
 				link["related"] = fmt.Sprintf("%s/%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
@@ -327,7 +327,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 	if linkable, ok := scope.Value.(Linkable); ok {
 		node.Links = linkable.JSONAPILinks()
-	} else if scope.Links {
+	} else if scope.FlagUseLinks != nil && *scope.FlagUseLinks {
 		links := make(map[string]interface{})
 		var self string
 		switch scope.kind {

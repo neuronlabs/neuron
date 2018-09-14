@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ func TestMarshalScope(t *testing.T) {
 	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 
 	req := httptest.NewRequest("GET", `/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments`, nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err := c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	scope.Value = &Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*Post{{ID: 1}}, CurrentPost: &Post{ID: 2}}
@@ -125,7 +126,7 @@ func TestMarshalScopeRelationship(t *testing.T) {
 	clearMap()
 	getBlogScope()
 	req := httptest.NewRequest("GET", "/blogs/1/relationships/posts", nil)
-	scope, errs, err := c.BuildScopeRelationship(req, &Blog{})
+	scope, errs, err := c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 
 	assertNil(t, err)
 	assertEmpty(t, errs)

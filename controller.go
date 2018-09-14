@@ -46,11 +46,18 @@ type Controller struct {
 	// FilterValueLimit is a maximum length of the filter values
 	FilterValueLimit int
 
-	// UseLinks is a flag that defines if the response should contain links objects
-	UseLinks bool
+	// FlagUseLinks is a flag that defines if the response should contain links objects
+	FlagUseLinks *bool
 
-	// FlagReturnPatchContent
-	FlagReturnPatchContent bool
+	// FlagReturnPatchContent is a flag that sets the default behaviour for
+	// returning successful patch content
+	// If set to true, and if given endpoint doesn't specify the behaviour
+	// differently, the api would return the content of the patched model
+	FlagReturnPatchContent *bool
+
+	// FlagMetaCountList is a flag that defines if the LIST resposne should
+	// include meta->count
+	FlagMetaCountList *bool
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
@@ -73,17 +80,23 @@ func NewController(coverage ...interface{}) *Controller {
 // 	ErrorLimitMany:		5
 // 	ErrorLimitSingle:	2
 //	IncludeNestedLimit:	1
-// Controller has also set the UseLinks flag to true.
+// Controller has also set the FlagUseLinks flag to true.
 func DefaultController(coverage ...interface{}) *Controller {
+	defFlagUseLinks := true
+	defFlagCountList := false
+	defFlagPatchContent := true
+
 	c := &Controller{
 		// APIURLBase:         "/",
-		Models:             newModelMap(),
-		ErrorLimitMany:     5,
-		ErrorLimitSingle:   2,
-		ErrorLimitRelated:  2,
-		IncludeNestedLimit: 1,
-		FilterValueLimit:   30,
-		UseLinks:           true,
+		Models:                 newModelMap(),
+		ErrorLimitMany:         5,
+		ErrorLimitSingle:       2,
+		ErrorLimitRelated:      2,
+		IncludeNestedLimit:     1,
+		FilterValueLimit:       30,
+		FlagUseLinks:           &defFlagUseLinks,
+		FlagMetaCountList:      &defFlagCountList,
+		FlagReturnPatchContent: &defFlagPatchContent,
 	}
 	c.Locale = language.NewCoverage(coverage...)
 	c.Matcher = language.NewMatcher(c.Locale.Tags())
@@ -97,13 +110,13 @@ PRESETS
 */
 
 func (c *Controller) BuildScopeList(
-	req *http.Request,
-	model interface{},
+	req *http.Request, endpoint *Endpoint, model *ModelHandler,
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// Get ModelStruct
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(model)
-	if err != nil {
+
+	mStruct := c.Models.Get(model.ModelType)
+	if mStruct == nil {
+		err = IErrModelNotMapped
 		return
 	}
 
@@ -123,7 +136,8 @@ func (c *Controller) BuildScopeList(
 	scope.maxNestedLevel = c.IncludeNestedLimit
 	scope.collectionScope = scope
 	scope.IsMany = true
-	scope.Links = c.UseLinks
+
+	c.setScopeFlags(scope, endpoint, model)
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -260,13 +274,16 @@ func (c *Controller) BuildScopeList(
 			errorObjects = fieldsScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
 		case key == QueryParamPageTotal:
-			scope.PageTotal = true
+			pageTotal := true
+			scope.FlagMetaCountList = &pageTotal
 		case key == QueryParamLinks:
 			var er error
-			scope.Links, er = strconv.ParseBool(value[0])
+			var links bool
+			links, er = strconv.ParseBool(value[0])
 			if er != nil {
 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			}
+			scope.FlagUseLinks = &links
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -292,20 +309,25 @@ func (c *Controller) BuildScopeList(
 	return
 }
 
+func (c *Controller) BuildScopeSingle(
+	req *http.Request, endpoint *Endpoint, model *ModelHandler,
+) (scope *Scope, errs []*ErrorObject, err error) {
+	return c.buildScopeSingle(req, endpoint, model, nil)
+}
+
 // BuildScopeSingle builds the scope for given request and model.
 // It gets and sets the ID from the 'http' request.
-func (c *Controller) BuildScopeSingle(
-	req *http.Request,
-	model interface{},
-	id interface{},
+func (c *Controller) buildScopeSingle(
+	req *http.Request, endpoint *Endpoint, model *ModelHandler, id interface{},
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	// get model type
 	// Get ModelStruct
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(model)
-	if err != nil {
+	mStruct := c.Models.Get(model.ModelType)
+	if mStruct == nil {
+		err = IErrModelNotMapped
 		return
 	}
+
 	var (
 		addErrors = func(errObjects ...*ErrorObject) {
 			errs = append(errs, errObjects...)
@@ -331,8 +353,8 @@ func (c *Controller) BuildScopeSingle(
 		scope.SetPrimaryFilters(id)
 	}
 
+	c.setScopeFlags(scope, endpoint, model)
 	scope.maxNestedLevel = c.IncludeNestedLimit
-	scope.Links = c.UseLinks
 
 	// Check first included in order to create subscopes
 	included, ok := q[QueryParamInclude]
@@ -449,10 +471,13 @@ func (c *Controller) BuildScopeSingle(
 			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
 			addErrors(errorObjects...)
 		case key == QueryParamLinks:
-			scope.Links, err = strconv.ParseBool(values[0])
-			if err != nil {
+			var er error
+			var links bool
+			links, er = strconv.ParseBool(values[0])
+			if er != nil {
 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			}
+			scope.FlagUseLinks = &links
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -470,11 +495,12 @@ func (c *Controller) BuildScopeSingle(
 }
 
 // BuildScopeRelated builds the scope for the related
-func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
+func (c *Controller) BuildScopeRelated(
+	req *http.Request, endpoint *Endpoint, model *ModelHandler,
 ) (scope *Scope, errs []*ErrorObject, err error) {
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(root)
-	if err != nil {
+	mStruct := c.Models.Get(model.ModelType)
+	if mStruct == nil {
+		err = IErrModelNotMapped
 		return
 	}
 
@@ -490,7 +516,6 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		kind: rootKind,
 	}
 	scope.collectionScope = scope
-	scope.Links = c.UseLinks
 
 	relationField, ok := mStruct.relationships[related]
 	if !ok {
@@ -522,13 +547,16 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 		}
 	}
 
-	links, ok := q[QueryParamLinks]
+	qLinks, ok := q[QueryParamLinks]
 	if ok {
-		scope.Links, err = strconv.ParseBool(links[0])
-		if err != nil {
+		var er error
+		var links bool
+		links, er = strconv.ParseBool(qLinks[0])
+		if er != nil {
 			errs = append(errs, ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			return
 		}
+		scope.FlagUseLinks = &links
 	}
 
 	scope.copyIncludedBoundaries()
@@ -536,11 +564,13 @@ func (c *Controller) BuildScopeRelated(req *http.Request, root interface{},
 	return
 }
 
-func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
+func (c *Controller) BuildScopeRelationship(
+	req *http.Request, endpoint *Endpoint, model *ModelHandler,
+
 ) (scope *Scope, errs []*ErrorObject, err error) {
-	var mStruct *ModelStruct
-	mStruct, err = c.getModelStruct(root)
-	if err != nil {
+	mStruct := c.Models.Get(model.ModelType)
+	if mStruct == nil {
+		err = IErrModelNotMapped
 		return
 	}
 
@@ -556,7 +586,6 @@ func (c *Controller) BuildScopeRelationship(req *http.Request, root interface{},
 		kind: rootKind,
 	}
 	scope.collectionScope = scope
-	scope.Links = c.UseLinks
 
 	// set primary field filter
 	errs = scope.setPrimaryFilterfield(id)
@@ -660,7 +689,6 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 	}
 
 	scope := newRootScope(mStruct)
-	scope.Links = c.UseLinks
 	return scope, nil
 }
 
@@ -835,14 +863,6 @@ func (c *Controller) SetAPIURL(url string) error {
 	// manage the url
 	c.APIURLBase = url
 	return nil
-}
-
-// SetReturnPatchContent is a function that sets the default behaviour for
-// returning successful patch content
-// If set to true, and if given endpoint doesn't specify the behaviour
-// differently, the api would return the content of the patched model
-func (c *Controller) SetReturnPatchContent(b bool) {
-	c.FlagReturnPatchContent = b
 }
 
 func (c *Controller) buildFilterField(
@@ -1546,6 +1566,42 @@ func (c *Controller) setIncludedLangaugeFilters(
 		return errObjects, err
 	}
 	return errObjects, nil
+}
+
+func (c *Controller) setScopeFlags(scope *Scope, endpoint *Endpoint, model *ModelHandler) {
+
+	// FlagMetaCountList
+	if scope.FlagMetaCountList == nil {
+		if endpoint.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*endpoint.FlagMetaCountList)
+		} else if model.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*model.FlagMetaCountList)
+		} else if c.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*c.FlagMetaCountList)
+		}
+	}
+
+	// FlagReturnPatchContent
+	if scope.FlagReturnPatchContent == nil {
+		if endpoint.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*endpoint.FlagReturnPatchContent)
+		} else if model.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*model.FlagReturnPatchContent)
+		} else if c.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*c.FlagReturnPatchContent)
+		}
+	}
+
+	// FlagUseLinks
+	if scope.FlagUseLinks == nil {
+		if endpoint.FlagReturnPatchContent != nil {
+			scope.FlagUseLinks = &(*endpoint.FlagUseLinks)
+		} else if model.FlagUseLinks != nil {
+			scope.FlagUseLinks = &(*model.FlagUseLinks)
+		} else if c.FlagUseLinks != nil {
+			scope.FlagUseLinks = &(*c.FlagUseLinks)
+		}
+	}
 }
 
 func (c *Controller) supportI18n() bool {

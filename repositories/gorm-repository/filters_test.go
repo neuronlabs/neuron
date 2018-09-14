@@ -1,6 +1,8 @@
 package gormrepo
 
 import (
+	"github.com/kucjac/jsonapi"
+	"reflect"
 	// "github.com/kucjac/jsonapi"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -23,7 +25,7 @@ func TestBuildRelationshipFilter(t *testing.T) {
 	// Case 1:
 	// BelongsTo relationship.
 	_, req := getHttpPair("GET", "/blogs?filter[blogs][current_post][id][lt]=3", nil)
-	scope, errs, err := c.BuildScopeList(req, &Blog{})
+	scope, errs, err := c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assert.NoError(t, err)
 	assert.Empty(t, errs)
 
@@ -35,7 +37,7 @@ func TestBuildRelationshipFilter(t *testing.T) {
 	// Case 2;
 	// HasMany relationship.
 	_, req = getHttpPair("GET", "/users?filter[users][blogs][id][in]=1,3", nil)
-	scope, errs, err = c.BuildScopeList(req, &User{})
+	scope, errs, err = c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(User{})})
 	assert.NoError(t, err)
 	assert.Empty(t, errs)
 
@@ -46,7 +48,7 @@ func TestBuildRelationshipFilter(t *testing.T) {
 	// Case 3:
 	// Many2Many relationship
 	_, req = getHttpPair("GET", "/users?filter[users][houses][id][in]=1,2", nil)
-	scope, errs, err = c.BuildScopeList(req, &User{})
+	scope, errs, err = c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(User{})})
 	assert.NoError(t, err)
 	assert.Empty(t, errs)
 

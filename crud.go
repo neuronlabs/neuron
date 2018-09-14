@@ -334,7 +334,7 @@ func (h *JSONAPIHandler) Get(model *ModelHandler, endpoint *Endpoint) http.Handl
 		GET: BUILD SCOPE
 
 		*/
-		scope, errs, err := h.Controller.BuildScopeSingle(req, reflect.New(model.ModelType).Interface(), nil)
+		scope, errs, err := h.Controller.BuildScopeSingle(req, endpoint, model)
 		if err != nil {
 			h.log.Error(err)
 			h.MarshalInternalError(rw)
@@ -452,7 +452,7 @@ func (h *JSONAPIHandler) GetRelated(root *ModelHandler, endpoint *Endpoint) http
 		GET RELATED: BUILD SCOPE
 
 		*/
-		scope, errs, err := h.Controller.BuildScopeRelated(req, reflect.New(root.ModelType).Interface())
+		scope, errs, err := h.Controller.BuildScopeRelated(req, endpoint, root)
 		if err != nil {
 			h.log.Errorf("An internal error occurred while building related scope for model: '%v'. %v", root.ModelType, err)
 			h.MarshalInternalError(rw)
@@ -612,7 +612,7 @@ func (h *JSONAPIHandler) GetRelationship(root *ModelHandler, endpoint *Endpoint)
 		GET RELATIONSHIP: BUILD SCOPE
 
 		*/
-		scope, errs, err := h.Controller.BuildScopeRelationship(req, reflect.New(root.ModelType).Interface())
+		scope, errs, err := h.Controller.BuildScopeRelationship(req, endpoint, root)
 		if err != nil {
 			h.log.Error(err)
 			h.MarshalInternalError(rw)
@@ -623,6 +623,8 @@ func (h *JSONAPIHandler) GetRelationship(root *ModelHandler, endpoint *Endpoint)
 			return
 		}
 		scope.NewValueSingle()
+
+		h.setScopeFlags(scope, endpoint, root)
 
 		/**
 
@@ -737,7 +739,7 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 		  LIST: BUILD SCOPE
 
 		*/
-		scope, errs, err := h.Controller.BuildScopeList(req, reflect.New(model.ModelType).Interface())
+		scope, errs, err := h.Controller.BuildScopeList(req, endpoint, model)
 		if err != nil {
 			h.log.Error(err)
 			h.MarshalInternalError(rw)
@@ -748,6 +750,8 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 			return
 		}
 		scope.NewValueMany()
+
+		h.setScopeFlags(scope, endpoint, model)
 
 		/**
 
@@ -810,9 +814,9 @@ func (h *JSONAPIHandler) List(model *ModelHandler, endpoint *Endpoint) http.Hand
 
 		  Include count into meta data
 		*/
-		if endpoint.FlagMetaCountList {
-			scope.PageTotal = true
-		}
+		// if endpoint.FlagMetaCountList {
+		// scope.PageTotal = true
+		// }
 
 		/**
 
@@ -897,6 +901,8 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 		if scope == nil {
 			return
 		}
+
+		h.setScopeFlags(scope, endpoint, model)
 
 		/**
 
@@ -1054,18 +1060,6 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 
 		/**
 
-		  PATCH: GET MODIFIED RESULT
-			The default hierarchy is that at first it checks wether the
-			endpoint contains the
-		*/
-		if endpoint.FlagReturnPatchContent != nil {
-			scope.FlagReturnPatchContent = *endpoint.FlagReturnPatchContent
-		} else if h.Controller.FlagReturnPatchContent {
-			scope.FlagReturnPatchContent = true
-		}
-
-		/**
-
 		  PATCH: HOOK BEFORE PATCH
 
 		*/
@@ -1120,8 +1114,12 @@ func (h *JSONAPIHandler) Patch(model *ModelHandler, endpoint *Endpoint) http.Han
 		  PATCH: MARSHAL RESULT
 
 		*/
-		if scope.FlagReturnPatchContent {
-			h.MarshalScope(scope, rw, req)
+		if scope.FlagReturnPatchContent != nil {
+			if *scope.FlagReturnPatchContent {
+				h.MarshalScope(scope, rw, req)
+			} else {
+				rw.WriteHeader(http.StatusNoContent)
+			}
 		} else {
 			rw.WriteHeader(http.StatusNoContent)
 		}
@@ -1237,6 +1235,8 @@ func (h *JSONAPIHandler) Delete(model *ModelHandler, endpoint *Endpoint) http.Ha
 			h.MarshalInternalError(rw)
 			return
 		}
+
+		h.setScopeFlags(scope, endpoint, model)
 
 		/**
 

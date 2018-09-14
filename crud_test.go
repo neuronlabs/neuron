@@ -557,7 +557,7 @@ func TestHandlerPatch(t *testing.T) {
 
 	mockRepo.On("Patch", mock.Anything).Once().Return(nil)
 	h.Patch(blogHandler, blogHandler.Patch).ServeHTTP(rw, req)
-	assert.Equal(t, 204, rw.Result().StatusCode)
+	assert.Equal(t, 200, rw.Result().StatusCode)
 
 	// Case 2:
 	// Patch with preset value
@@ -599,7 +599,8 @@ func TestHandlerPatch(t *testing.T) {
 	rw, req = getHttpPair("PATCH", "/comments/1", h.getModelJSON(&CommentSDK{Body: "Some body."}))
 	h.Patch(commentModel, commentModel.Patch).ServeHTTP(rw, req)
 
-	assert.Equal(t, http.StatusNoContent, rw.Result().StatusCode)
+	assert.Equal(t, http.StatusOK, rw.Result().StatusCode)
+
 	commentModel.Patch.PrecheckPairs = nil
 
 	// Case 3:

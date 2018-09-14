@@ -50,7 +50,112 @@ var (
 	onePayloadType = reflect.TypeOf(OnePayload{})
 )
 
+// func (c *Controller) UnmarshalPayload(
+// 	req *http.Request, endpoint *Endpoint, model *ModelHandler,
+// ) (scope *Scope, errObj *ErrorObject, err error) {
+// 	var body []byte
+// 	body, err = ioutil.ReadAll(req.Body)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	return
+// }
+
+// func (c *Controller) unmarshalScopeOne(body []byte,
+// ) (scope *Scope, errObj *ErrorObject, err error) {
+// 	payload := new(OnePayload)
+
+// 	if er := json.NewDecoder(in).Decode(payload); er != nil {
+// 		if serr, ok := er.(*json.SyntaxError); ok {
+// 			errObj = ErrInvalidJSONDocument.Copy()
+// 			errObj.Detail = fmt.Sprintf("Syntax Error: %s. At offset: %d.", er.Error(), serr.Offset)
+// 		} else if uErr, ok := er.(*json.UnmarshalTypeError); ok {
+// 			if uErr.Type == onePayloadType {
+// 				errObj = ErrInvalidJSONDocument.Copy()
+// 				errObj.Detail = fmt.Sprintln("Invalid JSON document syntax.")
+// 			} else {
+// 				errObj = ErrInvalidJSONFieldValue.Copy()
+// 				var fieldType string
+// 				switch uErr.Field {
+// 				case "id", "type", "client-id":
+// 					fieldType = uErr.Type.String()
+// 				case "relationships", "attributes", "links", "meta":
+// 					fieldType = "object"
+// 				}
+// 				fmt.Printf("Val: %s\n", uErr.Value)
+// 				errObj.Detail = fmt.
+// 					Sprintf("Invalid type for: '%s' field. It must be of '%s' type but is: '%v'",
+// 						uErr.Field, fieldType, uErr.Value)
+// 			}
+// 		} else if er == io.EOF {
+// 			errObj = ErrInvalidJSONDocument.Copy()
+// 			errObj.Detail = fmt.Sprint("Provided document is empty.")
+
+// 		} else {
+// 			err = er
+// 		}
+// 		return
+// 	}
+// 	if payload.Data == nil {
+// 		errObj = ErrInvalidJSONDocument.Copy()
+// 		errObj.Detail = "Specified request contains no data."
+// 		return
+// 	}
+
+// 	fmt.Printf("Value of unmarshaled scope: %+v\n", payload.Data)
+
+// 	collection := payload.Data.Type
+// 	mStruct := c.Models.GetByCollection(collection)
+// 	if mStruct == nil {
+// 		errObj = ErrInvalidResourceName.Copy()
+// 		errObj.Detail = fmt.Sprintf("The specified collection: '%s' is not recognized by the server.", collection)
+
+// 		if similar := c.Models.getSimilarCollections(collection); len(similar) != 0 {
+// 			errObj.Detail += "Suggested collections: "
+// 			for _, sim := range similar[:len(similar)-1] {
+// 				errObj.Detail += fmt.Sprintf("%s, ", sim)
+// 			}
+// 			errObj.Detail += fmt.Sprintf("%s.", similar[len(similar)-1])
+// 		}
+// 		return
+// 	}
+
+// 	scope = newScope(mStruct)
+// 	scope.newValueSingle()
+// 	// scope.Value = reflect.New(mStruct.modelType).Interface()
+
+// 	var er error
+// 	if payload.Included != nil {
+// 		includedMap := make(map[string]*Node)
+// 		for _, included := range payload.Included {
+// 			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
+// 			includedMap[key] = included
+// 		}
+// 		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
+// 	} else {
+// 		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
+// 	}
+
+// 	switch er {
+// 	case IErrUnknownFieldNumberType, IErrInvalidTime, IErrInvalidISO8601, IErrUnsupportedPtrType,
+// 		IErrInvalidType, IErrBadJSONAPIID, IErrUnsupportedPtrType:
+// 		errObj = ErrInvalidJSONFieldValue.Copy()
+// 		errObj.Detail = er.Error()
+// 	default:
+// 		if uErr, ok := er.(*json.UnmarshalFieldError); ok {
+// 			errObj = ErrInvalidJSONFieldValue.Copy()
+// 			errObj.Detail = fmt.Sprintf("Provided invalid type for field: %v. This field is of type: %s.", uErr.Key, uErr.Type.String())
+// 		} else {
+// 			err = er
+// 		}
+// 	}
+// 	return
+// }
+
 func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, *ErrorObject, error) {
+	// var body []byte
+	// body, err = ioutil.ReadAll(in)
 	return unmarshalScopeOne(in, c)
 }
 

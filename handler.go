@@ -866,6 +866,43 @@ func (h *JSONAPIHandler) errMarshalPayload(
 	h.MarshalInternalError(rw)
 }
 
+func (h *JSONAPIHandler) setScopeFlags(scope *Scope, endpoint *Endpoint, model *ModelHandler) {
+
+	// FlagMetaCountList
+	if scope.FlagMetaCountList == nil {
+		if endpoint.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*endpoint.FlagMetaCountList)
+		} else if model.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*model.FlagMetaCountList)
+		} else if h.Controller.FlagMetaCountList != nil {
+			scope.FlagMetaCountList = &(*h.Controller.FlagMetaCountList)
+		}
+	}
+
+	// FlagReturnPatchContent
+	if scope.FlagReturnPatchContent == nil {
+		if endpoint.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*endpoint.FlagReturnPatchContent)
+		} else if model.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*model.FlagReturnPatchContent)
+		} else if h.Controller.FlagReturnPatchContent != nil {
+			scope.FlagReturnPatchContent = &(*h.Controller.FlagReturnPatchContent)
+		}
+	}
+
+	// FlagUseLinks
+	if scope.FlagUseLinks == nil {
+		if endpoint.FlagReturnPatchContent != nil {
+			scope.FlagUseLinks = &(*endpoint.FlagUseLinks)
+		} else if model.FlagUseLinks != nil {
+			scope.FlagUseLinks = &(*model.FlagUseLinks)
+		} else if h.Controller.FlagUseLinks != nil {
+			scope.FlagUseLinks = &(*h.Controller.FlagUseLinks)
+		}
+	}
+
+}
+
 func (h *JSONAPIHandler) errMarshalScope(
 	rw http.ResponseWriter,
 	req *http.Request,

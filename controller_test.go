@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/language"
 	"net/http"
 	"net/http/httptest"
@@ -38,9 +39,9 @@ func TestBuildScopeList(t *testing.T) {
 
 	// raw scope without query
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertEmpty(t, errs)
-	assertNil(t, err)
+	assert.Nil(t, err)
 	assertNotNil(t, scope)
 
 	assertNotEmpty(t, scope.Fieldset)
@@ -50,7 +51,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// with include
 	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current_post", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertEmpty(t, errs)
 	assertNil(t, err)
 	assertNotNil(t, scope)
@@ -62,7 +63,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// with sorts
 	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=id,-title,posts.id", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -79,7 +80,7 @@ func TestBuildScopeList(t *testing.T) {
 	assertEqual(t, "id", scope.Sorts[2].SubFields[0].jsonAPIName)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.id,posts.title", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -90,7 +91,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// paginations
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[size]=4&page[number]=5", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -101,7 +102,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// pagination limit, offset
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=10&page[offset]=5", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -112,18 +113,18 @@ func TestBuildScopeList(t *testing.T) {
 
 	// pagination errors
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=have&page[offset]=a&page[size]=nice&page[number]=day", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 	// t.Log(errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=2&page[number]=1", nil)
-	_, errs, _ = c.BuildScopeList(req, &Blog{})
+	_, errs, _ = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNotEmpty(t, errs)
 
 	// filter
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][eq]=12,55", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 
 	assertEmpty(t, errs)
@@ -140,12 +141,12 @@ func TestBuildScopeList(t *testing.T) {
 	//	- invalid value
 	//	- not included collection - 'posts'
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[[blogs][id][eq]=12,55&filter[blogs][id][invalid]=125&filter[blogs][id]=stringval&filter[posts][id]=12&fields[blogs]=id", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs]=somethingnotid&filter[blogs][id]=againbad&filter[blogs][posts][id]=badid", nil)
-	_, errs, err = c.BuildScopeList(req, &Blog{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
@@ -153,7 +154,7 @@ func TestBuildScopeList(t *testing.T) {
 
 	// fields
 	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,posts", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -166,39 +167,39 @@ func TestBuildScopeList(t *testing.T) {
 	//	- nested error
 	//	- invalid collection name
 	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&fields[blogs]=title&fields[blogs]=posts", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// field error too many
 	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[blogs]=title,id,posts,comments,this-comment,some-invalid,current_post", nil)
-	_, errs, err = c.BuildScopeList(req, &Blog{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// sorterror
 	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.comments.id,current_post.itle,postes.comm", nil)
-	_, errs, err = c.BuildScopeList(req, &Blog{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// unsupported parameter
 	req = httptest.NewRequest("GET", "/api/v1/blogs?title=name", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// too many errors
 	// after 5 errors the function stops
 	req = httptest.NewRequest("GET", "/api/v1/blogs?fields[[blogs]=title&fields[blogs][title]=now&fields[blog]=title&sort=-itle&filter[blog][id]=1&filter[blogs][unknown]=123&filter[blogs][current_post][something]=123", nil)
-	scope, errs, err = c.BuildScopeList(req, &Blog{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	//internal
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
 	c.Models.Set(reflect.TypeOf(Blog{}), nil)
-	_, _, err = c.BuildScopeList(req, &Blog{})
+	_, _, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertError(t, err)
 }
 
@@ -208,7 +209,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	assertNil(t, err)
 
 	req := httptest.NewRequest("GET", "/api/v1/blogs/55", nil)
-	scope, errs, err := c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err := c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -216,7 +217,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	assertEqual(t, 55, scope.PrimaryFilters[0].Values[0].Values[0])
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[posts]=title", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -230,84 +231,84 @@ func TestBuildScopeSingle(t *testing.T) {
 
 	// errored
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertError(t, err)
 
 	req = httptest.NewRequest("GET", "/api/v1/posts/1", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertError(t, err)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/bad-id", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=invalid", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs][posts]=title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[blogs]=title,posts&fields[blogs]=posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/44?include=posts&fields[postis]=title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?title=some-title", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?fields[postis]=title&fields[posts]=idss&fields[posts]=titles&title=sometitle&fields[blogs]=titles,current_posts", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][id]=1&include=current_post", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	scope, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
 	// invalid form
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[postis]", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[comments]", nil)
-	_, errs, err = c.BuildScopeSingle(req, &Blog{}, nil)
+	_, errs, err = c.buildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})}, 123)
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// CASE X:
 	// Preset id
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
-	scope, errs, err = c.BuildScopeSingle(req, &Blog{}, 123)
+	scope, errs, err = c.buildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})}, 123)
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -392,7 +393,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	clearMap()
 	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/posts", nil)
-	scope, errs, err := c.BuildScopeRelationship(req, &Blog{})
+	scope, errs, err := c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -413,7 +414,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	}
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/current_post", nil)
-	scope, errs, err = c.BuildScopeRelationship(req, &Blog{})
+	scope, errs, err = c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope)
@@ -427,7 +428,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	assertEqual(t, reflect.TypeOf(&Post{}), reflect.TypeOf(postScope.Value))
 
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/relationships/invalid_field", nil)
-	_, errs, err = c.BuildScopeRelationship(req, &Blog{})
+	_, errs, err = c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
@@ -440,7 +441,7 @@ func TestBuildScopeRelated(t *testing.T) {
 	// Case 1:
 	// Valid field name
 	req := httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
-	scope, errs, err := c.BuildScopeRelated(req, &Blog{})
+	scope, errs, err := c.BuildScopeRelated(req, &Endpoint{Type: GetRelated}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -462,14 +463,14 @@ func TestBuildScopeRelated(t *testing.T) {
 	// Case 2:
 	// invalid field name
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/invalid_field", nil)
-	_, errs, err = c.BuildScopeRelated(req, &Blog{})
+	_, errs, err = c.BuildScopeRelated(req, &Endpoint{Type: GetRelated}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
 
 	// Case 3:
 	// Valid field with hasOne relationship
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/current_post", nil)
-	scope, errs, err = c.BuildScopeRelated(req, &Blog{})
+	scope, errs, err = c.BuildScopeRelated(req, &Endpoint{Type: GetRelated}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
@@ -483,7 +484,7 @@ func TestBuildScopeRelated(t *testing.T) {
 	// Case 4:
 	// Valid field with hasMany relationship
 	req = httptest.NewRequest("GET", "/api/v1/blogs/1/posts", nil)
-	scope, errs, err = c.BuildScopeRelated(req, &Blog{})
+	scope, errs, err = c.BuildScopeRelated(req, &Endpoint{Type: GetRelated}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNoError(t, err)
 	assertEmpty(t, errs)
 
@@ -682,7 +683,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 	// Check lang
 	_, req := getHttpPair("GET", "/translateable?language=pl", nil)
 
-	scope, errs, err := c.BuildScopeList(req, &Modeli18n{})
+	scope, errs, err := c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err, failNow)
 	assertEmpty(t, errs)
 	assertNotNil(t, scope.LanguageFilters)
@@ -691,7 +692,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 	// Case 2:
 	// individual filter
 	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode]=en", nil)
-	scope, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err, failNow)
 	assertEmpty(t, errs)
 
@@ -700,7 +701,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 	// Case 3:
 	// invidividual filter with operator
 	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][in]=pl,en", nil)
-	scope, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertEmpty(t, errs)
 
@@ -709,7 +710,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 	// Case 4:
 	// provide not supported language
 	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][eq]="+language.Turkish.String(), nil)
-	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertNotEmpty(t, errs)
 
@@ -719,14 +720,14 @@ func TestControllerLanguageQuery(t *testing.T) {
 		"/translateable?filter[translateable][langcode][in]=pl-EN,123",
 		nil,
 	)
-	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertNotEmpty(t, errs)
 
 	// Case 6:
 	// unsupported langueage in global query
 	_, req = getHttpPair("GET", "/translateable?language=tr,de-GB", nil)
-	_, errs, err = c.BuildScopeList(req, &Modeli18n{})
+	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertNotEmpty(t, errs)
 }

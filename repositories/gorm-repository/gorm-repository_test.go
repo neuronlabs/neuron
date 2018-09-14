@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -52,7 +53,7 @@ func TestGORMRepositoryGet(t *testing.T) {
 	req := httptest.NewRequest("GET", "/users/3?fields[users]=name,pets", nil)
 
 	assert.NotNil(t, c.Models)
-	scope, errs, err := c.BuildScopeSingle(req, &UserGORM{}, nil)
+	scope, errs, err := c.BuildScopeSingle(req, &jsonapi.Endpoint{Type: jsonapi.Get}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(UserGORM{})})
 	assert.Nil(t, err)
 	assert.Empty(t, errs)
 	scope.NewValueSingle()
@@ -61,7 +62,7 @@ func TestGORMRepositoryGet(t *testing.T) {
 
 	req = httptest.NewRequest("GET", "/users/3?include=pets&fields[pets]=name", nil)
 
-	scope, errs, _ = c.BuildScopeSingle(req, &UserGORM{}, nil)
+	scope, errs, _ = c.BuildScopeSingle(req, &jsonapi.Endpoint{Type: jsonapi.Get}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(UserGORM{})})
 	assert.Empty(t, errs)
 
 	dbErr = repo.Get(scope)
@@ -100,7 +101,7 @@ func TestGORMRepositoryList(t *testing.T) {
 	assert.Nil(t, settleUsers(repo.db))
 
 	req := httptest.NewRequest("GET", "/users?fields[users]=name,surname,pets", nil)
-	scope, errs, err := c.BuildScopeList(req, &UserGORM{})
+	scope, errs, err := c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(UserGORM{})})
 	assert.Nil(t, err)
 	assert.Empty(t, errs)
 
@@ -108,14 +109,14 @@ func TestGORMRepositoryList(t *testing.T) {
 	assert.Nil(t, dbErr)
 
 	req = httptest.NewRequest("GET", "/pets?fields[pets]=name,owner", nil)
-	scope, errs, _ = c.BuildScopeList(req, &PetGORM{})
+	scope, errs, _ = c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(PetGORM{})})
 	assert.Empty(t, errs)
 
 	dbErr = repo.List(scope)
 	assert.Nil(t, dbErr)
 
 	req = httptest.NewRequest("GET", "/pets?include=owner", nil)
-	scope, _, _ = c.BuildScopeList(req, &PetGORM{})
+	scope, _, _ = c.BuildScopeList(req, &jsonapi.Endpoint{Type: jsonapi.List}, &jsonapi.ModelHandler{ModelType: reflect.TypeOf(PetGORM{})})
 
 	dbErr = repo.List(scope)
 	assert.Nil(t, dbErr)
