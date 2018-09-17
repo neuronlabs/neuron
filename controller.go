@@ -328,15 +328,6 @@ func (c *Controller) buildScopeSingle(
 		return
 	}
 
-	var (
-		addErrors = func(errObjects ...*ErrorObject) {
-			errs = append(errs, errObjects...)
-			scope.currentErrorCount += len(errObjects)
-		}
-		errObj       *ErrorObject
-		errorObjects []*ErrorObject
-	)
-
 	q := req.URL.Query()
 
 	scope = newRootScope(mStruct)
@@ -356,140 +347,7 @@ func (c *Controller) buildScopeSingle(
 	c.setScopeFlags(scope, endpoint, model)
 	scope.maxNestedLevel = c.IncludeNestedLimit
 
-	// Check first included in order to create subscopes
-	included, ok := q[QueryParamInclude]
-	if ok {
-		// build included scopes
-		if len(included) != 1 {
-			errObj := ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintln("Duplicated 'included' query parameter.")
-			addErrors(errObj)
-			return
-		}
-		includedFields := strings.Split(included[0], annotationSeperator)
-		errorObjects = scope.buildIncludeList(includedFields...)
-		addErrors(errorObjects...)
-		if len(errs) > 0 {
-			return
-		}
-	}
-
-	languages, ok := q[QueryParamLanguage]
-	if ok {
-		errorObjects, err = c.setIncludedLangaugeFilters(scope, languages[0])
-		if err != nil {
-			return
-		}
-		if len(errorObjects) > 0 {
-			addErrors(errorObjects...)
-			return
-		}
-	}
-
-	for key, values := range q {
-		if len(values) > 1 {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
-			addErrors(errObj)
-			continue
-		}
-
-		switch {
-		case key == QueryParamInclude, key == QueryParamLanguage:
-			continue
-		case strings.HasPrefix(key, QueryParamFields):
-			// fields[collection]
-			var splitted []string
-			var er error
-			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
-			if er != nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
-				addErrors(errObj)
-				continue
-			}
-			if len(splitted) != 1 {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-				addErrors(errObj)
-				continue
-			}
-			collection := splitted[0]
-
-			fieldsetModel := c.Models.GetByCollection(collection)
-			if fieldsetModel == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
-				addErrors(errObj)
-				continue
-			}
-
-			fieldsetScope := scope.getModelsRootScope(fieldsetModel)
-			if fieldsetScope == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
-				addErrors(errObj)
-				continue
-			}
-			splitValues := strings.Split(values[0], annotationSeperator)
-
-			errorObjects = fieldsetScope.buildFieldset(splitValues...)
-			addErrors(errorObjects...)
-		case strings.HasPrefix(key, QueryParamFilter):
-			// filter[field]
-			var splitted []string
-			// get other operators
-			var er error
-			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
-			if er != nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
-				addErrors(errObj)
-				continue
-			}
-
-			collection := splitted[0]
-
-			colModel := c.Models.GetByCollection(collection)
-			if colModel == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
-				addErrors(errObj)
-				continue
-			}
-
-			filterScope := scope.getModelsRootScope(colModel)
-			if filterScope == nil {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
-				addErrors(errObj)
-				continue
-			}
-
-			splitValues := strings.Split(values[0], annotationSeperator)
-
-			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
-			addErrors(errorObjects...)
-		case key == QueryParamLinks:
-			var er error
-			var links bool
-			links, er = strconv.ParseBool(values[0])
-			if er != nil {
-				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
-			}
-			scope.FlagUseLinks = &links
-		default:
-			errObj = ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
-			addErrors(errObj)
-		}
-
-		if scope.currentErrorCount >= c.ErrorLimitSingle {
-			return
-		}
-	}
-
-	scope.copyIncludedBoundaries()
+	errs, err = c.buildQueryParametersSingle(scope, q)
 
 	return
 }
@@ -1017,6 +875,154 @@ func (c *Controller) buildFilterField(
 			}
 		}
 	}
+	return
+}
+
+func (c *Controller) buildQueryParametersSingle(
+	scope *Scope, q url.Values,
+) (errs []*ErrorObject, err error) {
+
+	var (
+		addErrors = func(errObjects ...*ErrorObject) {
+			errs = append(errs, errObjects...)
+			scope.currentErrorCount += len(errObjects)
+		}
+		errObj       *ErrorObject
+		errorObjects []*ErrorObject
+	)
+	// Check first included in order to create subscopes
+	included, ok := q[QueryParamInclude]
+	if ok {
+		// build included scopes
+		if len(included) != 1 {
+			errObj := ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintln("Duplicated 'included' query parameter.")
+			addErrors(errObj)
+			return
+		}
+		includedFields := strings.Split(included[0], annotationSeperator)
+		errorObjects = scope.buildIncludeList(includedFields...)
+		addErrors(errorObjects...)
+		if len(errs) > 0 {
+			return
+		}
+	}
+
+	languages, ok := q[QueryParamLanguage]
+	if ok {
+		errorObjects, err = c.setIncludedLangaugeFilters(scope, languages[0])
+		if err != nil {
+			return
+		}
+		if len(errorObjects) > 0 {
+			addErrors(errorObjects...)
+			return
+		}
+	}
+
+	for key, values := range q {
+		if len(values) > 1 {
+			errObj = ErrInvalidQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
+			addErrors(errObj)
+			continue
+		}
+
+		switch {
+		case key == QueryParamInclude, key == QueryParamLanguage:
+			continue
+		case strings.HasPrefix(key, QueryParamFields):
+			// fields[collection]
+			var splitted []string
+			var er error
+			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
+			if er != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
+				addErrors(errObj)
+				continue
+			}
+			if len(splitted) != 1 {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
+				addErrors(errObj)
+				continue
+			}
+			collection := splitted[0]
+
+			fieldsetModel := c.Models.GetByCollection(collection)
+			if fieldsetModel == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			fieldsetScope := scope.getModelsRootScope(fieldsetModel)
+			if fieldsetScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
+				addErrors(errObj)
+				continue
+			}
+			splitValues := strings.Split(values[0], annotationSeperator)
+
+			errorObjects = fieldsetScope.buildFieldset(splitValues...)
+			addErrors(errorObjects...)
+		case strings.HasPrefix(key, QueryParamFilter):
+			// filter[field]
+			var splitted []string
+			// get other operators
+			var er error
+			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
+			if er != nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
+				addErrors(errObj)
+				continue
+			}
+
+			collection := splitted[0]
+
+			colModel := c.Models.GetByCollection(collection)
+			if colModel == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			filterScope := scope.getModelsRootScope(colModel)
+			if filterScope == nil {
+				errObj = ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
+				addErrors(errObj)
+				continue
+			}
+
+			splitValues := strings.Split(values[0], annotationSeperator)
+
+			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
+			addErrors(errorObjects...)
+		case key == QueryParamLinks:
+			var er error
+			var links bool
+			links, er = strconv.ParseBool(values[0])
+			if er != nil {
+				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
+			}
+			scope.FlagUseLinks = &links
+		default:
+			errObj = ErrUnsupportedQueryParameter.Copy()
+			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
+			addErrors(errObj)
+		}
+
+		if scope.currentErrorCount >= c.ErrorLimitSingle {
+			return
+		}
+	}
+	scope.copyIncludedBoundaries()
 	return
 }
 
