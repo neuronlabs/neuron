@@ -528,7 +528,16 @@ func (h *JSONAPIHandler) UnmarshalScope(
 	rw http.ResponseWriter,
 	req *http.Request,
 ) *Scope {
-	scope, errObj, err := UnmarshalScopeOne(req.Body, h.Controller)
+	var (
+		scope  *Scope
+		errObj *ErrorObject
+		err    error
+	)
+	if req.Method == "PATCH" {
+		scope, errObj, err = h.Controller.unmarshalUpdate(req.Body)
+	} else {
+		scope, errObj, err = UnmarshalScopeOne(req.Body, h.Controller)
+	}
 	if err != nil {
 		h.log.Errorf("Error while unmarshaling: '%v' for path: '%s' and method: %s. Error: %s.", model, req.URL.Path, req.Method, err)
 		h.MarshalInternalError(rw)
@@ -537,6 +546,9 @@ func (h *JSONAPIHandler) UnmarshalScope(
 
 	if errObj != nil {
 		h.MarshalErrors(rw, errObj)
+		if errObj.Err != nil {
+			h.log.Debugf("Unmarshal failed. %v", errObj.Err)
+		}
 		return nil
 	}
 

@@ -3,8 +3,11 @@ package jsonapi
 import (
 	"errors"
 	"fmt"
+	"github.com/kucjac/uni-logger"
 	"golang.org/x/text/language"
+	"log"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -40,6 +43,9 @@ type Scope struct {
 	// Value is the values or / value of the queried object / objects
 	Value        interface{}
 	valueAddress interface{}
+
+	// UpdatedFields are the fields that were updated
+	UpdatedFields []*StructField
 
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
@@ -108,6 +114,9 @@ type Scope struct {
 	queryLanguage language.Tag
 
 	hasFieldNotInFieldset bool
+
+	// unilogger.Logger
+	logger unilogger.LeveledLogger
 }
 
 func (s *Scope) AddFilterField(filter *FilterField) error {
@@ -173,6 +182,13 @@ func (s *Scope) GetLangtagValue() (langtag string, err error) {
 		err = fmt.Errorf("The GetLangtagValue allows single pointer type value only. Value type:'%v'", v.Type())
 	}
 	return
+}
+
+func (s *Scope) Log() unilogger.LeveledLogger {
+	if s.logger == nil {
+		s.logger = unilogger.NewBasicLogger(os.Stdout, "SCP - ", log.LstdFlags)
+	}
+	return s.logger
 }
 
 // IsRoot checks if given scope is a root scope of the query

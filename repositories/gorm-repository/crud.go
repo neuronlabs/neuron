@@ -190,6 +190,7 @@ func (g *GORMRepository) Patch(scope *jsonapi.Scope) *unidb.Error {
 	  PATCH: PREPARE GORM SCOPE
 
 	*/
+
 	gormScope := g.db.NewScope(scope.Value)
 	if err := buildFilters(gormScope.DB(), gormScope.GetModelStruct(), scope); err != nil {
 		return g.converter.Convert(err)
@@ -211,9 +212,16 @@ func (g *GORMRepository) Patch(scope *jsonapi.Scope) *unidb.Error {
 	  PATCH: UPDATE RECORD WITIHN DATABASE
 
 	*/
-	db := gormScope.DB().Update(scope.GetValueAddress())
-	if err := db.Error; err != nil {
-		return g.converter.Convert(err)
+
+	fields := getUpdatedGormFieldNames(gormScope.GetModelStruct(), scope)
+
+	scope.Log().Debugf("Prepared: %v fields to update.", fields)
+	if len(fields) > 0 {
+
+		db := gormScope.DB().Select(fields).Update(scope.GetValueAddress())
+		if err := db.Error; err != nil {
+			return g.converter.Convert(err)
+		}
 	}
 
 	if db.RowsAffected == 0 {

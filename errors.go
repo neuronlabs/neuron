@@ -42,6 +42,9 @@ type ErrorObject struct {
 
 	// Meta is an object containing non-standard meta-information about the error.
 	Meta *map[string]interface{} `json:"meta,omitempty"`
+
+	// Err is a non published message container for loggin purpose
+	Err error `json:"-"`
 }
 
 // Copy returns the new object that is a copy of given error object.

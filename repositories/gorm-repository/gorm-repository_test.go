@@ -32,7 +32,7 @@ type PetGORM struct {
 	ID        uint      `jsonapi:"primary,pets"`
 	Name      string    `jsonapi:"attr,name"`
 	CreatedAt time.Time `jsonapi:"attr,created-at"`
-	Owner     *UserGORM `jsonapi:"relation,owner"`
+	Owner     *UserGORM `jsonapi:"relation,owner" gorm:"foreignkey:OwnerID"`
 	OwnerID   uint      `jsonapi:"-"`
 }
 
@@ -158,7 +158,7 @@ func prepareJSONAPI(models ...interface{}) (*jsonapi.Controller, error) {
 
 func prepareGORMRepo(models ...interface{}) (*GORMRepository, error) {
 	var err error
-	db, err = gorm.Open("sqlite3", "test.db")
+	db, err = gorm.Open("sqlite3", ":memory:")
 	if err != nil {
 		return nil, err
 	}
@@ -212,14 +212,27 @@ func prepareHandler(languages []language.Tag, models ...interface{}) *jsonapi.JS
 
 func settleUsers(db *gorm.DB) error {
 	var users []*UserGORM = []*UserGORM{
-		{ID: 1, Name: "Zygmunt", Surname: "Waza", Pets: []*PetGORM{{ID: 1, Name: "Maniek"}}},
+		{ID: 1, Name: "Zygmunt", Surname: "Waza"},
 		{ID: 2, Name: "Mathew", Surname: "Kovalsky"},
-		{ID: 3, Name: "Jules", Surname: "Ceasar", Pets: []*PetGORM{{ID: 2, Name: "Cerberus"}}},
-		{ID: 4, Name: "Napoleon", Surname: "Bonaparte", Pets: []*PetGORM{{Name: "Boatswain"}}},
+		{ID: 3, Name: "Jules", Surname: "Ceasar"},
+		{ID: 4, Name: "Napoleon", Surname: "Bonaparte"},
 	}
 	for _, u := range users {
 		err := db.Create(&u).Error
 		if err != nil {
+			return err
+		}
+	}
+
+	var pets []*PetGORM = []*PetGORM{
+		{Name: "Maniek", OwnerID: 1},
+		{Name: "Cerberus", OwnerID: 3},
+		{Name: "Boatswain", OwnerID: 4},
+	}
+
+	var err error
+	for _, p := range pets {
+		if err = db.Create(p).Error; err != nil {
 			return err
 		}
 	}

@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
@@ -168,4 +169,30 @@ func TestGetFieldKind(t *testing.T) {
 	mStruct := c.MustGetModelStruct(&Blog{})
 	assertEqual(t, Primary, mStruct.primary.GetFieldKind())
 
+}
+
+func TestAttrArray(t *testing.T) {
+
+	type AttrArrStruct struct {
+		ID  int       `jsonapi:"primary,attr-arr-structs"`
+		Arr []*string `jsonapi:"attr,arr"`
+	}
+	clearMap()
+
+	err := c.PrecomputeModels(&AttrArrStruct{})
+	assertNil(t, err)
+
+	scope, err := c.NewScope(&AttrArrStruct{})
+	assertNil(t, err)
+
+	scope.Value = &AttrArrStruct{ID: 1, Arr: make([]*string, 7)}
+	p, err := MarshalScope(scope, c)
+	assertNil(t, err)
+
+	b := bytes.NewBuffer(nil)
+
+	err = MarshalPayload(b, p)
+	assertNil(t, err)
+
+	t.Log(b.String())
 }

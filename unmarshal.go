@@ -3,8 +3,8 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"reflect"
 	"strconv"
@@ -159,6 +159,130 @@ func UnmarshalScopeOne(in io.Reader, c *Controller) (*Scope, *ErrorObject, error
 	return unmarshalScopeOne(in, c)
 }
 
+func (c *Controller) unmarshalUpdate(
+	in io.Reader,
+) (scope *Scope, errObj *ErrorObject, err error) {
+	payload := new(OnePayload)
+
+	var er error
+	if er = json.NewDecoder(in).Decode(payload); er != nil {
+		if serr, ok := er.(*json.SyntaxError); ok {
+			errObj = ErrInvalidJSONDocument.Copy()
+			errObj.Detail = fmt.Sprintf("Syntax Error: %s. At offset: %d.", er.Error(), serr.Offset)
+			errObj.Err = serr
+		} else if uErr, ok := er.(*json.UnmarshalTypeError); ok {
+			if uErr.Type == onePayloadType {
+				errObj = ErrInvalidJSONDocument.Copy()
+				errObj.Detail = fmt.Sprintln("Invalid JSON document syntax.")
+			} else {
+				errObj = ErrInvalidJSONFieldValue.Copy()
+				var fieldType string
+				switch uErr.Field {
+				case "id", "type", "client-id":
+					fieldType = uErr.Type.String()
+				case "relationships", "attributes", "links", "meta":
+					fieldType = "object"
+				}
+				fmt.Printf("Val: %s\n", uErr.Value)
+				errObj.Detail = fmt.
+					Sprintf("Invalid type for: '%s' field. It must be of '%s' type but is: '%v'",
+						uErr.Field, fieldType, uErr.Value)
+			}
+			errObj.Err = uErr
+		} else if er == io.EOF {
+			errObj = ErrInvalidJSONDocument.Copy()
+			errObj.Detail = fmt.Sprint("Provided document is empty.")
+			errObj.Err = er
+		} else {
+			err = er
+		}
+		return
+	}
+	if payload.Data == nil {
+		errObj = ErrInvalidJSONDocument.Copy()
+		errObj.Detail = "Specified request contains no data."
+		errObj.Err = errors.New("Payload.Data is nil")
+		return
+	}
+
+	collection := payload.Data.Type
+	mStruct := c.Models.GetByCollection(collection)
+	if mStruct == nil {
+		errObj = ErrInvalidResourceName.Copy()
+		errObj.Detail = fmt.Sprintf("The specified collection: '%s' is not recognized by the server.", collection)
+
+		if similar := c.Models.getSimilarCollections(collection); len(similar) != 0 {
+			errObj.Detail += "Suggested collections: "
+			for _, sim := range similar[:len(similar)-1] {
+				errObj.Detail += fmt.Sprintf("%s, ", sim)
+			}
+			errObj.Detail += fmt.Sprintf("%s.", similar[len(similar)-1])
+		}
+
+		return
+	}
+
+	var fields []string
+
+	for attr := range payload.Data.Attributes {
+		fields = append(fields, attr)
+	}
+
+	for relation := range payload.Data.Relationships {
+		fields = append(fields, relation)
+	}
+
+	scope = newScope(mStruct)
+	scope.newValueSingle()
+	// scope.Value = reflect.New(mStruct.modelType).Interface()
+
+	if payload.Included != nil {
+		c.log().Debug("Payload contains Included values.")
+		includedMap := make(map[string]*Node)
+		for _, included := range payload.Included {
+			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
+			includedMap[key] = included
+		}
+		er = c.unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
+	} else {
+		er = c.unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
+	}
+
+	if er != nil {
+		switch er {
+		case IErrUnknownFieldNumberType, IErrInvalidTime, IErrInvalidISO8601, IErrUnsupportedPtrType,
+			IErrInvalidType, IErrBadJSONAPIID, IErrUnsupportedPtrType:
+			errObj = ErrInvalidJSONFieldValue.Copy()
+			errObj.Detail = er.Error()
+			errObj.Err = er
+		default:
+			if uErr, ok := er.(*json.UnmarshalFieldError); ok {
+				errObj = ErrInvalidJSONFieldValue.Copy()
+				errObj.Detail = fmt.Sprintf("Provided invalid type for field: %v. This field is of type: %s.", uErr.Key, uErr.Type.String())
+				errObj.Err = er
+			} else {
+				err = er
+			}
+		}
+		return
+	}
+	for _, fieldName := range fields {
+		sField, ok := mStruct.attributes[fieldName]
+		if !ok {
+			sField, ok = mStruct.relationships[fieldName]
+			if !ok {
+				errObj = ErrUnsupportedJSONField.Copy()
+				errObj.Detail = fmt.Sprintf("Provided field: '%s' is unsupported for collection: '%s'", fieldName, mStruct.collectionType)
+				errObj.Err = errors.Errorf("Update Unmarshal fieldname: '%s' unrecognised for collection: '%s'.", fieldName, mStruct.collectionType)
+				return
+			}
+		}
+		scope.UpdatedFields = append(scope.UpdatedFields, sField)
+	}
+	c.log().Debugf("Unmarshaled with %d update fields.", len(scope.UpdatedFields))
+	return
+}
+
 func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *ErrorObject, err error) {
 	payload := new(OnePayload)
 
@@ -179,7 +303,6 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 				case "relationships", "attributes", "links", "meta":
 					fieldType = "object"
 				}
-				fmt.Printf("Val: %s\n", uErr.Value)
 				errObj.Detail = fmt.
 					Sprintf("Invalid type for: '%s' field. It must be of '%s' type but is: '%v'",
 						uErr.Field, fieldType, uErr.Value)
@@ -198,8 +321,6 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 		errObj.Detail = "Specified request contains no data."
 		return
 	}
-
-	fmt.Printf("Value of unmarshaled scope: %+v\n", payload.Data)
 
 	collection := payload.Data.Type
 	mStruct := c.Models.GetByCollection(collection)
@@ -228,9 +349,9 @@ func unmarshalScopeOne(in io.Reader, c *Controller) (scope *Scope, errObj *Error
 			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
 			includedMap[key] = included
 		}
-		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
+		er = c.unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), &includedMap)
 	} else {
-		er = unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
+		er = c.unmarshalNode(payload.Data, reflect.ValueOf(scope.Value), nil)
 	}
 
 	switch er {
@@ -348,9 +469,9 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 			includedMap[key] = included
 		}
 
-		return unmarshalNode(payload.Data, reflect.ValueOf(model), &includedMap)
+		return unmarshalNode(payload.Data, reflect.ValueOf(model), nil, &includedMap)
 	}
-	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
+	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil, nil)
 }
 
 // UnmarshalManyPayload converts an io into a set of struct instances using
@@ -374,7 +495,7 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 
 	for _, data := range payload.Data {
 		model := reflect.New(t.Elem())
-		err := unmarshalNode(data, model, &includedMap)
+		err := unmarshalNode(data, model, nil, &includedMap)
 		if err != nil {
 			return nil, err
 		}
@@ -384,7 +505,20 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	return models, nil
 }
 
-func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
+func (c *Controller) unmarshalNode(
+	data *Node,
+	model reflect.Value,
+	included *map[string]*Node,
+) (err error) {
+	return unmarshalNode(data, model, c, included)
+}
+
+func unmarshalNode(
+	data *Node,
+	model reflect.Value,
+	c *Controller,
+	included *map[string]*Node,
+) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
@@ -719,8 +853,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				unmErr.Field = fieldType
 				unmErr.Type = fieldValue.Type()
 				unmErr.Key = args[1]
+				if c != nil {
+					c.log().Debugf("Error in unmarshal field: %v\n", unmErr)
+				}
 
-				fmt.Printf("Error in unmarshal field: %v\n", unmErr)
 				return unmErr
 			}
 			fieldValue.Set(reflect.ValueOf(val))
@@ -747,7 +883,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				for _, n := range data {
 					m := reflect.New(fieldValue.Type().Elem().Elem())
 
-					if err := unmarshalNode(
+					if err := c.unmarshalNode(
 						fullNode(n, included),
 						m,
 						included,
@@ -763,20 +899,19 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			} else {
 				// to-one relationships
 				relationship := new(RelationshipOneNode)
-				fmt.Printf("Trying the field: %s\n", fieldType.Name)
 				buf := bytes.NewBuffer(nil)
 
 				e := json.NewEncoder(buf).Encode(
 					data.Relationships[args[1]],
 				)
-				fmt.Printf("Relationships value: %v", args[1])
-
-				fmt.Printf("Relationships value2: %v", data.Relationships[args[1]])
-
-				fmt.Printf("Error while encoding: %v\n", e)
+				// fmt.Printf("Relationships value: %v", args[1])
+				// fmt.Printf("Relationships value2: %v", data.Relationships[args[1]])
+				// fmt.Printf("Error while encoding: %v\n", e)
 
 				e = json.NewDecoder(buf).Decode(relationship)
-				fmt.Printf("Error while decoding: %v\n", e)
+				if c != nil {
+					c.log().Debugf("UnmarshalScope. Error while decoding relationship: %v", e)
+				}
 
 				/*
 					http://jsonapi.org/format/#document-resource-object-relationships
@@ -785,12 +920,14 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					so unmarshal and set fieldValue only if data obj is not null
 				*/
 				if relationship.Data == nil {
-					fmt.Printf("Nil relationship: %v\n", relationship)
+					if c != nil {
+						c.log().Debugf("Unmarshal.Relationship.Data is nil: %v", relationship)
+					}
 					continue
 				}
 
 				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
+				if err := c.unmarshalNode(
 					fullNode(relationship.Data, included),
 					m,
 					included,
@@ -798,8 +935,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					er = err
 					break
 				}
-
-				fmt.Printf("Value of relationship single: %+v", m.Interface())
 
 				fieldValue.Set(m)
 

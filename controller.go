@@ -3,10 +3,13 @@ package jsonapi
 import (
 	"errors"
 	"fmt"
+	"github.com/kucjac/uni-logger"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -58,6 +61,15 @@ type Controller struct {
 	// FlagMetaCountList is a flag that defines if the LIST resposne should
 	// include meta->count
 	FlagMetaCountList *bool
+
+	logger unilogger.LeveledLogger
+}
+
+func (c *Controller) log() unilogger.LeveledLogger {
+	if c.logger == nil {
+		c.logger = unilogger.NewBasicLogger(os.Stdout, "", log.LstdFlags)
+	}
+	return c.logger
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
@@ -130,6 +142,7 @@ func (c *Controller) BuildScopeList(
 		}
 	)
 	scope = newRootScope(mStruct)
+	scope.logger = c.log()
 
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
 
@@ -331,6 +344,7 @@ func (c *Controller) buildScopeSingle(
 	q := req.URL.Query()
 
 	scope = newRootScope(mStruct)
+	scope.logger = c.log()
 
 	if id == nil {
 		errs, err = c.setIDFilter(req, scope)
@@ -371,8 +385,10 @@ func (c *Controller) BuildScopeRelated(
 		Struct:                    mStruct,
 		Fieldset:                  make(map[string]*StructField),
 		currentIncludedFieldIndex: -1,
-		kind: rootKind,
+		kind:   rootKind,
+		logger: c.log(),
 	}
+
 	scope.collectionScope = scope
 
 	relationField, ok := mStruct.relationships[related]
@@ -441,7 +457,8 @@ func (c *Controller) BuildScopeRelationship(
 		Struct:                    mStruct,
 		Fieldset:                  make(map[string]*StructField),
 		currentIncludedFieldIndex: -1,
-		kind: rootKind,
+		kind:   rootKind,
+		logger: c.log(),
 	}
 	scope.collectionScope = scope
 
@@ -547,6 +564,8 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 	}
 
 	scope := newRootScope(mStruct)
+	scope.logger = c.log()
+
 	return scope, nil
 }
 
@@ -1608,6 +1627,7 @@ func (c *Controller) setScopeFlags(scope *Scope, endpoint *Endpoint, model *Mode
 			scope.FlagUseLinks = &(*c.FlagUseLinks)
 		}
 	}
+
 }
 
 func (c *Controller) supportI18n() bool {

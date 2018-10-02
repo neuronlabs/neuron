@@ -1,6 +1,8 @@
 package jsonapi
 
 import (
+	"bytes"
+	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 )
@@ -108,4 +110,149 @@ func TestUnmarshalScope(t *testing.T) {
 	assertNoError(t, err)
 	assertNotNil(t, errObj)
 
+}
+
+func TestUnmarshalUpdate(t *testing.T) {
+	clearMap()
+	assertNil(t, c.PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
+
+	buf := bytes.NewBuffer(nil)
+
+	t.Run("attribute", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`{"data":{"type":"blogs","id":"1", 	"attributes":{"title":"New title"}}}`)
+		scope, errObj, err := c.unmarshalUpdate(buf)
+		assert.NoError(t, err)
+		assert.Nil(t, errObj)
+		if assert.NotNil(t, scope) {
+			assert.Contains(t, scope.UpdatedFields, scope.Struct.attributes["title"])
+			assert.Len(t, scope.UpdatedFields, 1)
+		}
+
+	})
+
+	t.Run("multiple-attributes", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`{"data":{"type":"blogs","id":"1", "attributes":{"title":"New title","view_count":16}}}`)
+
+		scope, errObj, err := c.unmarshalUpdate(buf)
+		assert.NoError(t, err)
+		assert.Nil(t, errObj)
+		if assert.NotNil(t, scope) {
+			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
+				mStruct := scope.Struct
+				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["title"])
+				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["view_count"])
+			}
+		}
+	})
+
+	t.Run("relationship-to-one", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`
+{
+	"data":	{
+		"type":"blogs",
+		"id":"1",
+		"relationships":{
+			"current_post":{
+				"data": {
+					"type":"posts",
+					"id": 3
+				}
+			}
+		}
+	}
+}`)
+
+		scope, errObj, err := c.unmarshalUpdate(buf)
+		assert.NoError(t, err)
+		assert.Nil(t, errObj)
+		if assert.NotNil(t, scope) {
+			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
+				mStruct := scope.Struct
+				assert.Len(t, scope.UpdatedFields, 1)
+				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["current_post"])
+			}
+		}
+	})
+
+	t.Run("relationship-to-many", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`
+{
+	"data":	{
+		"type":"blogs",
+		"id":"1",
+		"relationships":{
+			"posts":{
+				"data": [
+					{
+						"type":"posts",
+						"id": 3
+					},
+					{
+						"type":"posts",
+						"id": 4
+					}
+				]
+			}
+		}
+	}
+}`)
+
+		scope, errObj, err := c.unmarshalUpdate(buf)
+		assert.NoError(t, err)
+		assert.Nil(t, errObj)
+		if assert.NotNil(t, scope) {
+			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
+				mStruct := scope.Struct
+				assert.Len(t, scope.UpdatedFields, 1)
+				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["posts"])
+			}
+		}
+	})
+
+	t.Run("mixed", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`
+{
+	"data":	{
+		"type":"blogs",
+		"id":"1",
+		"attributes":{
+			"title":"mixed"			
+		},
+		"relationships":{		
+			"current_post":{
+				"data": {
+					"type":"posts",
+					"id": 3
+				}
+			},
+			"posts":{
+				"data": [
+					{
+						"type":"posts",
+						"id": 3
+					}
+				]
+			}
+		}
+	}
+}`)
+
+		scope, errObj, err := c.unmarshalUpdate(buf)
+		assert.NoError(t, err)
+		assert.Nil(t, errObj)
+		if assert.NotNil(t, scope) {
+			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
+				mStruct := scope.Struct
+				assert.Len(t, scope.UpdatedFields, 3)
+				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["title"])
+				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["current_post"])
+				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["posts"])
+			}
+		}
+	})
 }
