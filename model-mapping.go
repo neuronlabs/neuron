@@ -290,6 +290,26 @@ func getSliceElemType(modelType reflect.Type) (reflect.Type, error) {
 	return modelType, nil
 }
 
+func (c *Controller) getRelationship(sField *StructField) (*Relationship, error) {
+	t := sField.refStruct
+
+	switch t.Type.Kind() {
+	case reflect.Ptr:
+		t = t.Type.Elem()
+		if t.Type.Elem() == reflect.Struct {
+			fallthrough
+		} else {
+			c.log().Debugf("The relationship is of nonstruct pointer type.")
+			return nil, IErrInvalidType
+		}
+	case reflect.Struct:
+	case reflect.Slice:
+	default:
+		// error
+	}
+
+}
+
 func setRelatedType(sField *StructField) error {
 
 	modelType := sField.refStruct.Type
@@ -321,4 +341,8 @@ func setRelatedType(sField *StructField) error {
 	}
 	sField.relatedModelType = modelType
 	return nil
+}
+
+func getTagValue(tagname string, sField *StructField) string {
+	sfield
 }

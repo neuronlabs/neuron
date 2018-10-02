@@ -9,6 +9,7 @@ const (
 	annotationLanguage          = "langtag"
 	annotationAttribute         = "attr"
 	annotationRelation          = "relation"
+	annotationForeignKey        = "fkey"
 	annotationOmitEmpty         = "omitempty"
 	annotationI18n              = "i18n"
 	annotationISO8601           = "iso8601"

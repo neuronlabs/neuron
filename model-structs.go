@@ -34,7 +34,7 @@ type ModelStruct struct {
 	// used to check and get if relationship exists in the model.
 	// Can be heplful for validating url queries
 	// Mapped StructField contain detailed information about given relationship
-	relationships map[string]*StructField
+	relationships map[string]*Relationship
 
 	// Fields is a container of all public fields in the given model.
 	// The field's index is the same as in the original model - for private or
