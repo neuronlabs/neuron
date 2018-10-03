@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 	clearMap()
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
-	assertNil(t, err)
+	require.Nil(t, err)
 
 	// Case 1:
 	// Correct with  attributes
@@ -184,6 +185,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		// title attribute is missspelled as 'Atitle'
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"Atitle":1.02}}}`)
 		c.StrictUnmarshalMode = true
+		defer func() {
+			c.StrictUnmarshalMode = false
+		}()
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
@@ -191,6 +195,62 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONDocument.ID, errObj.ID)
 			}
+		}
+	})
+}
+
+func TestUnmarshalScopeMany(t *testing.T) {
+	clearMap()
+
+	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	require.Nil(t, err)
+
+	// Case 1:
+	// Correct with  attributes
+	t.Run("valid_attributes", func(t *testing.T) {
+		in := strings.NewReader("{\"data\": [{\"type\": \"blogs\", \"id\": \"1\", \"attributes\": {\"title\": \"Some title.\"}}]}")
+		scope, err := c.UnmarshalScopeMany(in, &Blog{})
+		assert.NoError(t, err)
+		if assert.NotNil(t, scope) {
+			assert.NotEmpty(t, scope.Value)
+		}
+
+	})
+
+	// Case 2
+	// Walid with relationships and attributes
+
+	t.Run("valid_rel_attrs", func(t *testing.T) {
+		in := strings.NewReader(`{
+		"data":[
+			{
+				"type":"blogs",
+				"id":"2",
+				"attributes": {
+					"title":"Correct Unmarshal"
+				},
+				"relationships":{
+					"current_post":{
+						"data":{
+							"type":"posts",
+							"id":"2"
+						}					
+					}
+				}
+			}
+		]
+	}`)
+
+		scope, err := c.UnmarshalScopeMany(in, &Blog{})
+		assert.NoError(t, err)
+		if assert.NotNil(t, scope) {
+			assert.NotEmpty(t, scope.Value)
+			v := scope.Value.([]*Blog)
+			for _, blog := range v {
+				t.Logf("Scope value: %#v", blog)
+				t.Logf("CurrentPost: %v", blog.CurrentPost)
+			}
+
 		}
 	})
 
