@@ -57,6 +57,7 @@ func (c *Controller) UnmarshalScopeMany(in io.Reader, model interface{}) (*Scope
 			t = t.Elem()
 		}
 	}
+
 	mStruct := c.Models.Get(t)
 	if mStruct == nil {
 		return nil, IErrModelNotMapped
@@ -201,7 +202,12 @@ func (c *Controller) unmarshal(
 		}
 		return fields, err
 	case reflect.Slice:
-		mStruct := c.Models.Get(t.Elem().Elem())
+		t = t.Elem().Elem()
+		if t.Kind() != reflect.Ptr {
+			return nil, IErrUnexpectedType
+		}
+		t = t.Elem()
+		mStruct := c.Models.Get(t)
 		if mStruct == nil {
 			return nil, IErrModelNotMapped
 		}
