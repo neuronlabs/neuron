@@ -5,50 +5,82 @@ import (
 )
 
 type ModelI18nSDK struct {
-	ID   int    `jsonapi:"primary,i18n"`
-	Lang string `jsonapi:"attr,language,langtag"`
+	ID   int    `jsonapi:"type=primary"`
+	Lang string `jsonapi:"type=attr;name=language;flags=langtag"`
+}
+
+func (m *ModelI18nSDK) CollectionName() string {
+	return "i18n"
 }
 
 type ModelSDK struct {
-	ID   int    `jsonapi:"primary,models"`
-	Name string `jsonapi:"attr,name"`
+	ID   int    `jsonapi:"type=primary"`
+	Name string `jsonapi:"type=attr"`
+}
+
+func (c ModelSDK) CollectionName() string {
+	return "models"
 }
 
 type AuthorSDK struct {
-	ID    int        `jsonapi:"primary,authors"`
-	Name  string     `jsonapi:"attr,name"`
-	Blogs []*BlogSDK `jsonapi:"relation,blogs"`
+	ID    int        `jsonapi:"type=primary"`
+	Name  string     `jsonapi:"type=attr"`
+	Blogs []*BlogSDK `jsonapi:"type=relation"`
+}
+
+func (c AuthorSDK) CollectionName() string {
+	return "authors"
 }
 
 type BlogSDK struct {
-	ID          int      `jsonapi:"primary,blogs"`
-	Lang        string   `jsonapi:"attr,language,langtag"`
-	CurrentPost *PostSDK `jsonapi:"relation,current_post"`
+	ID          int      `jsonapi:"type=primary"`
+	Lang        string   `jsonapi:"type=attr;flags=langtag"`
+	CurrentPost *PostSDK `jsonapi:"type=relation"`
+}
+
+func (c BlogSDK) CollectionName() string {
+	return "blogs"
 }
 
 type PostSDK struct {
-	ID        int           `jsonapi:"primary,posts"`
-	Title     string        `jsonapi:"attr,title"`
-	BlogID    int           `jsonapi:"attr,blog_id,hidden"`
-	CreatedAt time.Time     `jsonapi:"attr,created_at"`
-	Comments  []*CommentSDK `jsonapi:"relation,comments"`
+	ID        int           `jsonapi:"type=primary"`
+	Title     string        `jsonapi:"type=attr"`
+	BlogID    int           `jsonapi:"type=attr;flags=hidden"`
+	CreatedAt time.Time     `jsonapi:"type=attr"`
+	Comments  []*CommentSDK `jsonapi:"type=relation"`
+}
+
+func (c PostSDK) CollectionName() string {
+	return "posts"
 }
 
 type CommentSDK struct {
-	ID   int      `jsonapi:"primary,comments"`
-	Body string   `jsonapi:"attr,body"`
-	Post *PostSDK `jsonapi:"relation,post,hidden"`
+	ID   int      `jsonapi:"type=primary"`
+	Body string   `jsonapi:"type=attr"`
+	Post *PostSDK `jsonapi:"type=relation;flags=hidden"`
+}
+
+func (c CommentSDK) CollectionName() string {
+	return "comments"
 }
 
 type PetSDK struct {
-	ID     int         `jsonapi:"primary,pets"`
-	Name   string      `jsonapi:"attr,name"`
-	Humans []*HumanSDK `jsonapi:"relation,humans"`
-	Legs   int         `jsonapi:"attr,legs"`
+	ID     int         `jsonapi:"type=primary"`
+	Name   string      `jsonapi:"type=attr"`
+	Humans []*HumanSDK `jsonapi:"type=relation"`
+	Legs   int         `jsonapi:"type=attr"`
+}
+
+func (c PetSDK) CollectionName() string {
+	return "pets"
 }
 
 type HumanSDK struct {
-	ID   int       `jsonapi:"primary,humans"`
-	Name string    `jsonapi:"attr,name"`
-	Pets []*PetSDK `jsonapi:"relation,pets"`
+	ID   int       `jsonapi:"type=primary"`
+	Name string    `jsonapi:"type=attr"`
+	Pets []*PetSDK `jsonapi:"type=relation"`
+}
+
+func (c HumanSDK) CollectionName() string {
+	return "humans"
 }

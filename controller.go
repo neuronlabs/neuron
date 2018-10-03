@@ -63,6 +63,13 @@ type Controller struct {
 	FlagMetaCountList *bool
 
 	logger unilogger.LeveledLogger
+
+	// NamingStrategy defines the strategy how the model's and it's fields are being named
+	NamingStrategy NamingConvention
+
+	// StrictUnmarshalMode if set to true, the incoming data cannot contain
+	// any unknown fields
+	StrictUnmarshalMode bool
 }
 
 func (c *Controller) log() unilogger.LeveledLogger {
@@ -710,7 +717,7 @@ func (c *Controller) PrecomputeModels(models ...interface{}) error {
 	}
 
 	for _, model := range models {
-		err = buildModelStruct(model, c.Models)
+		err = c.buildModelStruct(model, c.Models)
 		if err != nil {
 			return err
 		}

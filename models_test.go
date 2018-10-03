@@ -5,7 +5,7 @@ import (
 )
 
 type BadModel struct {
-	ID int `jsonapi:"primary"`
+	ID int `jsonapi:"typeprimary"`
 }
 
 type ModelNonTagged struct {
@@ -13,123 +13,135 @@ type ModelNonTagged struct {
 }
 
 type ModelBadTypes struct {
-	ID           string     `jsonapi:"primary,badtypes"`
-	StringField  string     `jsonapi:"attr,string_field"`
-	FloatField   float64    `jsonapi:"attr,float_field"`
-	TimeField    time.Time  `jsonapi:"attr,time_field"`
-	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
+	ID           string     `jsonapi:"type=primary"`
+	StringField  string     `jsonapi:"type=attr;name=string_field"`
+	FloatField   float64    `jsonapi:"type=attr;name=float_field"`
+	TimeField    time.Time  `jsonapi:"type=attr;name=time_field"`
+	TimePtrField *time.Time `jsonapi:"type=attr;name=time_ptr_field"`
 }
 
 type WithPointer struct {
-	ID       *uint64  `jsonapi:"primary,with-pointers"`
-	Name     *string  `jsonapi:"attr,name"`
-	IsActive *bool    `jsonapi:"attr,is-active"`
-	IntVal   *int     `jsonapi:"attr,int-val"`
-	FloatVal *float32 `jsonapi:"attr,float-val"`
+	ID       *uint64  `jsonapi:"type=primary"`
+	Name     *string  `jsonapi:"type=attr;name=name"`
+	IsActive *bool    `jsonapi:"type=attr;name=is-active"`
+	IntVal   *int     `jsonapi:"type=attr;name=int-val"`
+	FloatVal *float32 `jsonapi:"type=attr;name=float-val"`
 }
 
 type Timestamp struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
-	Next *time.Time `jsonapi:"attr,next,iso8601"`
+	ID   int        `jsonapi:"type=primary"`
+	Time time.Time  `jsonapi:"type=attr;name=timestamp;flags=iso8601"`
+	Next *time.Time `jsonapi:"type=attr;name=next;flags=iso8601"`
 }
 
 type NonRelatedModel struct {
-	ID   int    `jsonapi:"primary,nonrelted"`
-	Name string `jsonapi:"attr,name"`
+	ID   int    `jsonapi:"type=primary"`
+	Name string `jsonapi:"type=attr;name=name"`
 }
 
 type NoPrimaryModel struct {
 	ID   int
-	Name string `jsonapi:"attr,name"`
+	Name string `jsonapi:"type=attr;name=name"`
 }
 
 type User struct {
 	privateField int
-	ID           int    `jsonapi:"primary,users"`
-	Lang         string `jsonapi:lang"`
-	Name         string `jsonapi:"attr,name"`
-	Pets         []*Pet `jsonapi:"relation,pets"`
+	ID           int    `jsonapi:"type=primary"`
+	Lang         string `jsonapi:"type=attr;name=lang`
+	Name         string `jsonapi:"type=attr;name=name"`
+	Pets         []*Pet `jsonapi:"type=relation;name=pets"`
 }
 
 type Pet struct {
-	ID     int     `jsonapi:"primary,pets"`
-	Name   string  `jsonapi:"attr,name"`
-	Owners []*User `jsonapi:"relation,owners"`
+	ID     int     `jsonapi:"type=primary"`
+	Name   string  `jsonapi:"type=attr;name=name"`
+	Owners []*User `jsonapi:"type=relation;name=owners"`
 }
 
 /* HasMany Example */
 
 type Driver struct {
-	ID          int    `jsonapi:"primary,drivers"`
-	Name        string `jsonapi:"attr,name,omitempty"`
-	Age         int    `jsonapi:"attr,age,omitempty"`
-	Cars        []*Car `jsonapi:"relation,cars"`
-	FavoriteCar Car    `jsonapi:"relation,favorite-car"`
+	ID          int    `jsonapi:"type=primary"`
+	Name        string `jsonapi:"type=attr;flags=omitempty"`
+	Age         int    `jsonapi:"type=attr;flags=omitempty"`
+	Cars        []*Car `jsonapi:"type=relation"`
+	FavoriteCar Car    `jsonapi:"type=relation;name=favorite-car"`
 }
 
 type Car struct {
-	ID               *string `jsonapi:"primary,cars"`
-	Make             *string `jsonapi:"attr,make,omitempty"`
-	Model            *string `jsonapi:"attr,model,omitempty"`
-	Year             *uint   `jsonapi:"attr,year,omitempty"`
-	DriverID         int     `jsonapi:"attr,driver_id,omitempty"`
+	ID               *string `jsonapi:"type=primary"`
+	Make             *string `jsonapi:"type=attr;name=make;flags=omitempty"`
+	Model            *string `jsonapi:"type=attr;name=model;flags=omitempty"`
+	Year             *uint   `jsonapi:"type=attr;name=year;flags=omitempty"`
+	DriverID         int     `jsonapi:"type=attr;name=driver_id;flags=omitempty"`
 	somePrivateField *uint
 }
 
 type Blog struct {
-	ID            int       `jsonapi:"primary,blogs"`
-	ClientID      string    `jsonapi:"client-id"`
-	Title         string    `jsonapi:"attr,title"`
-	Posts         []*Post   `jsonapi:"relation,posts"`
-	CurrentPost   *Post     `jsonapi:"relation,current_post"`
-	CurrentPostID int       `jsonapi:"attr,current_post_id"`
-	CreatedAt     time.Time `jsonapi:"attr,created_at,iso8601"`
-	ViewCount     int       `jsonapi:"attr,view_count"`
+	ID            int       `jsonapi:"type=primary"`
+	ClientID      string    `jsonapi:"type=client-id"`
+	Title         string    `jsonapi:"type=attr;name=title"`
+	Posts         []*Post   `jsonapi:"type=relation;name=posts"`
+	CurrentPost   *Post     `jsonapi:"type=relation;name=current_post"`
+	CurrentPostID int       `jsonapi:"type=attr;name=current_post_id"`
+	CreatedAt     time.Time `jsonapi:"type=attr;name=created_at;flags=iso8601"`
+	ViewCount     int       `jsonapi:"type=attr;name=view_count"`
 }
 
 type Post struct {
-	ID            uint64     `jsonapi:"primary,posts"`
-	BlogID        int        `jsonapi:"attr,blog_id"`
-	ClientID      string     `jsonapi:"client-id"`
-	Title         string     `jsonapi:"attr,title"`
-	Body          string     `jsonapi:"attr,body"`
-	Comments      []*Comment `jsonapi:"relation,comments"`
-	LatestComment *Comment   `jsonapi:"relation,latest_comment"`
+	ID            uint64     `jsonapi:"type=primary"`
+	BlogID        int        `jsonapi:"type=attr;name=blog_id"`
+	ClientID      string     `jsonapi:"type=client-id"`
+	Title         string     `jsonapi:"type=attr;name=title"`
+	Body          string     `jsonapi:"type=attr;name=body"`
+	Comments      []*Comment `jsonapi:"type=relation;name=comments"`
+	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment"`
 }
 
 type Comment struct {
-	ID       int    `jsonapi:"primary,comments"`
-	ClientID string `jsonapi:"client-id"`
-	PostID   int    `jsonapi:"attr,post_id"`
-	Body     string `jsonapi:"attr,body"`
+	ID       int    `jsonapi:"type=primary"`
+	ClientID string `jsonapi:"type=client-id"`
+	PostID   int    `jsonapi:"type=attr;name=post_id"`
+	Body     string `jsonapi:"type=attr;name=body"`
 }
 
 type Book struct {
-	ID          uint64  `jsonapi:"primary,books"`
-	Author      string  `jsonapi:"attr,author"`
-	ISBN        string  `jsonapi:"attr,isbn"`
-	Title       string  `jsonapi:"attr,title,omitempty"`
-	Description *string `jsonapi:"attr,description"`
-	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
+	ID          uint64  `jsonapi:"type=primary"`
+	Author      string  `jsonapi:"type=attr;name=author"`
+	ISBN        string  `jsonapi:"type=attr;name=isbn"`
+	Title       string  `jsonapi:"type=attr;name=title;flags=omitempty"`
+	Description *string `jsonapi:"type=attr;name=description"`
+	Pages       *uint   `jsonapi:"type=attr;name=pages;flags=omitempty"`
 	PublishedAt time.Time
-	Tags        []string `jsonapi:"attr,tags"`
+	Tags        []string `jsonapi:"type=attr;name=tags"`
 }
 
 type RelationOnBasic struct {
-	ID            int    `jsonapi:"primary,relationonbasics"`
-	BasicRelation string `jsonapi:"relation,basicrelation"`
+	ID            int    `jsonapi:"type=primary"`
+	BasicRelation string `jsonapi:"type=relation;name=basicrelation"`
+}
+
+func (c *RelationOnBasic) CollectionName() string {
+	return "relationonbasics"
 }
 
 type RelationBasicOnPtr struct {
-	ID               int     `jsonapi:"primary,relationonbasicptr"`
-	BasicPtrRelation *string `jsonapi:"relation,basicptrrelation"`
+	ID               int     `jsonapi:"type=primary"`
+	BasicPtrRelation *string `jsonapi:"type=relation;name=basicptrrelation"`
+}
+
+func (c *RelationBasicOnPtr) CollectionName() string {
+	return "relationonbasicptr"
 }
 
 type Modeli18n struct {
-	ID   int    `jsonapi:"primary,translateable"`
-	Name string `jsonapi:"attr,name,i18n"`
-	Lang string `jsonapi:"attr,langcode,langtag"`
+	ID   int    `jsonapi:"type=primary"`
+	Name string `jsonapi:"type=attr;name=name;flags=i18n"`
+	Lang string `jsonapi:"type=attr;name=langcode;flags=langtag"`
+}
+
+func (m *Modeli18n) CollectionName() string {
+	return "translateable"
 }
 
 // func (b *Blog) JSONAPILinks() *Links {

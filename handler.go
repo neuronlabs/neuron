@@ -529,43 +529,28 @@ func (h *JSONAPIHandler) UnmarshalScope(
 	req *http.Request,
 ) *Scope {
 	var (
-		scope  *Scope
-		errObj *ErrorObject
-		err    error
+		scope *Scope
+		err   error
 	)
 	if req.Method == "PATCH" {
-		scope, errObj, err = h.Controller.unmarshalUpdate(req.Body)
+		scope, err = h.Controller.unmarshalScopeOne(req.Body, model, true)
 	} else {
-		scope, errObj, err = UnmarshalScopeOne(req.Body, h.Controller)
+		scope, err = h.Controller.unmarshalScopeOne(req.Body, model, false)
 	}
 	if err != nil {
-		h.log.Errorf("Error while unmarshaling: '%v' for path: '%s' and method: %s. Error: %s.", model, req.URL.Path, req.Method, err)
+		errObj, ok := err.(*ErrorObject)
+		if ok {
+			h.MarshalErrors(rw, errObj)
+			if errObj.Err != nil {
+				h.log.Debugf("Client-Side error. Unmarshal failed. %v", errObj.Err)
+			}
+			return nil
+		}
+		h.log.Errorf("Error while unmarshaling: '%v' for path: '%s' and method: %s. Error: %s", model, req.URL.Path, req.Method, err)
 		h.MarshalInternalError(rw)
 		return nil
 	}
 
-	if errObj != nil {
-		h.MarshalErrors(rw, errObj)
-		if errObj.Err != nil {
-			h.log.Debugf("Unmarshal failed. %v", errObj.Err)
-		}
-		return nil
-	}
-
-	if scope.Struct.GetType() != model {
-		// h.log.Errorf("Model and the path collection does not match for path: '%s' and method: '%s' for model: %v", req.URL.Path, req.Method, t)
-		// h.MarshalInternalError(rw)
-		mStruct := h.Controller.Models.Get(model)
-		if mStruct == nil {
-			h.log.Errorf("No model found for: '%v' within the controller.", model)
-			h.MarshalInternalError(rw)
-			return nil
-		}
-		errObj = ErrInvalidResourceName.Copy()
-		errObj.Detail = fmt.Sprintf("Provided resource: '%s' is not proper for this endpoint. This endpoint support '%s' collection.", scope.Struct.GetCollectionType(), mStruct.GetCollectionType())
-		h.MarshalErrors(rw, errObj)
-		return nil
-	}
 	return scope
 }
 

@@ -1,12 +1,12 @@
 package jsonapi
 
 import (
-	"errors"
 	"fmt"
+	"github.com/jinzhu/inflection"
+	"github.com/pkg/errors"
+	"net/url"
 	"reflect"
-	"strings"
 	"sync"
-	"time"
 )
 
 var (
@@ -66,7 +66,7 @@ func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) 
 	return []string{}
 }
 
-func buildModelStruct(model interface{}, modelMap *ModelMap) error {
+func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	var err error
 
 	var modelType reflect.Type
@@ -90,6 +90,13 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 	modelStruct := new(ModelStruct)
 	modelStruct.modelType = modelType
 
+	collectioner, ok := model.(Collectioner)
+	if ok {
+		modelStruct.collectionType = collectioner.CollectionName()
+	} else {
+		modelStruct.collectionType = getNameByConvention(inflection.Plural(modelType.Name()), c.NamingStrategy)
+	}
+
 	modelStruct.attributes = make(map[string]*StructField)
 	modelStruct.relationships = make(map[string]*StructField)
 	modelStruct.collectionURLIndex = -1
@@ -101,81 +108,92 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 			continue
 		}
 
-		tag := modelType.Field(i).Tag.Get(annotationJSONAPI)
-		if tag == "" {
+		tag, ok := modelType.Field(i).Tag.Lookup(annotationJSONAPI)
+		if !ok {
 			continue
 		}
-
-		args := strings.Split(tag, annotationSeperator)
-		if len(args) == 1 {
-			if args[0] != annotationClientID && args[0] != "-" && args[0] != annotationLanguage {
-				err = fmt.Errorf("Bad JSONAPI struct tag format: %s for model: %v", tag, modelType)
-				break
-			}
-		}
-
-		var resName string
-		if len(args) > 1 {
-			resName = args[1]
-		}
-
+		var tagValues url.Values
 		tField := modelType.Field(i)
 
 		structField := new(StructField)
+		tagValues, err = structField.getTagValues(tag)
+		if err != nil {
+			return errors.Wrapf(err, "Getting tag values failed. Model: %s, SField: %s", modelStruct.modelType.Name(), tField.Name)
+		}
+
 		structField.refStruct = tField
 		structField.fieldName = tField.Name
 		structField.mStruct = modelStruct
 		assignedFields++
 
-		switch kind := args[0]; kind {
-		case annotationPrimary:
-			// Primary is not a part of fields
-			structField.jsonAPIName = "id"
-			structField.fieldType = Primary
-			modelStruct.collectionType = resName
-			modelStruct.primary = structField
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					switch arg {
+		// Check if field contains the name
+		name := tagValues.Get(annotationName)
+		if name != "" {
+			structField.jsonAPIName = name
+		} else {
+			structField.setFieldName(c.NamingStrategy)
+		}
+
+		// Set field type
+		values := tagValues[annotationFieldType]
+		if len(values) == 0 {
+			return errors.Errorf("StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelStruct.modelType.Name(), tField.Name)
+		} else {
+			// Set field type
+			value := values[0]
+			switch value {
+			case annotationPrimary:
+				structField.fieldType = Primary
+				modelStruct.primary = structField
+			case annotationRelation:
+				modelStruct.fields = append(modelStruct.fields, structField)
+				err = setRelatedType(structField)
+				_, ok := modelStruct.relationships[structField.jsonAPIName]
+				if ok {
+					err = errors.Errorf("Duplicated jsonapi relationship field name: '%s' for model: '%v'.",
+						structField.jsonAPIName, modelStruct.modelType.Name())
+					return err
+				}
+				modelStruct.relationships[structField.jsonAPIName] = structField
+			case annotationAttribute:
+				structField.fieldType = Attribute
+				modelStruct.fields = append(modelStruct.fields, structField)
+				// check if no duplicates
+				_, ok := modelStruct.attributes[structField.jsonAPIName]
+				if ok {
+					err = errors.Errorf("Duplicated jsonapi attribute name: '%s' for model: '%v'.",
+						structField.jsonAPIName, modelStruct.modelType.Name())
+					return err
+				}
+				modelStruct.attributes[structField.jsonAPIName] = structField
+			case annotationClientID:
+				structField.jsonAPIName = "client-id"
+				structField.fieldType = ClientID
+				modelStruct.clientID = structField
+			default:
+				return errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.modelType.Name(), tField.Name)
+			}
+		}
+
+		// iterate over structfield tags
+		for key, values := range tagValues {
+			switch key {
+			case annotationFieldType, annotationName:
+				continue
+			case annotationFlags:
+				for _, value := range values {
+
+					switch value {
 					case annotationNoFilter:
 						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationHidden:
 						structField.fieldFlags = structField.fieldFlags | fHidden
 					case annotationSortable:
 						structField.fieldFlags = structField.fieldFlags | fSortable
-					}
-				}
-			}
-
-		case annotationClientID:
-			// ClientID is not a part of fields also
-			structField.jsonAPIName = "id"
-			structField.fieldType = ClientID
-			modelStruct.clientID = structField
-		case annotationAttribute:
-			structField.jsonAPIName = resName
-			structField.fieldType = Attribute
-			modelStruct.fields = append(modelStruct.fields, structField)
-
-			// check if no duplicates
-			_, ok := modelStruct.attributes[resName]
-			if ok {
-				err = fmt.Errorf("Duplicated json:api field name: '%s' for model: '%v'.",
-					resName, modelStruct.modelType.Name())
-				return err
-			}
-			modelStruct.attributes[resName] = structField
-
-			// additional options for given tag
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					switch arg {
 					case annotationISO8601:
 						structField.fieldFlags = structField.fieldFlags | fIso8601
 					case annotationOmitEmpty:
 						structField.fieldFlags = structField.fieldFlags | fOmitempty
-					case annotationNoFilter:
-						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationI18n:
 						structField.fieldFlags = structField.fieldFlags | fI18n
 						if modelStruct.i18n == nil {
@@ -185,44 +203,7 @@ func buildModelStruct(model interface{}, modelMap *ModelMap) error {
 					case annotationLanguage:
 						structField.fieldFlags = structField.fieldFlags | fLanguage
 						modelStruct.language = structField
-					case annotationHidden:
-						structField.fieldFlags = structField.fieldFlags | fHidden
-					case annotationSortable:
-						structField.fieldFlags = structField.fieldFlags | fSortable
-					}
 
-				}
-			}
-			if tField.Type == reflect.TypeOf(time.Time{}) {
-				structField.fieldFlags = structField.fieldFlags | fTime
-			} else if tField.Type == reflect.TypeOf(new(time.Time)) {
-				structField.fieldFlags = structField.fieldFlags | fPtrTime
-			}
-
-		case annotationRelation:
-			structField.jsonAPIName = resName
-			modelStruct.fields = append(modelStruct.fields, structField)
-			err = setRelatedType(structField)
-
-			_, ok := modelStruct.relationships[resName]
-			if ok {
-				err = fmt.Errorf("Duplicated json:api field name: '%s' for model '%v'.",
-					resName, modelStruct.modelType.Name())
-				return err
-			}
-			modelStruct.relationships[resName] = structField
-
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					switch arg {
-					case annotationNoFilter:
-						structField.fieldFlags = structField.fieldFlags | fNoFilter
-					case annotationOmitEmpty:
-						structField.fieldFlags = structField.fieldFlags | fOmitempty
-					case annotationHidden:
-						structField.fieldFlags = structField.fieldFlags | fHidden
-					case annotationSortable:
-						structField.fieldFlags = structField.fieldFlags | fSortable
 					}
 				}
 			}

@@ -2,6 +2,8 @@ package jsonapi
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
@@ -80,10 +82,10 @@ func TestComputeNestedIncludeCount(t *testing.T) {
 
 func TestInitCheckFieldTypes(t *testing.T) {
 	type invalidPrimary struct {
-		ID float64 `jsonapi:"primary,invalids"`
+		ID float64 `jsonapi:"type=primary"`
 	}
 	clearMap()
-	err := buildModelStruct(&invalidPrimary{}, c.Models)
+	err := c.buildModelStruct(&invalidPrimary{}, c.Models)
 	assertNil(t, err)
 
 	mStruct := c.MustGetModelStruct(&invalidPrimary{})
@@ -92,10 +94,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 
 	// attribute of type chan
 	type invalidAttribute struct {
-		ID       int           `jsonapi:"primary,invalidAttr"`
-		ChanAttr chan (string) `jsonapi:"attr,channel"`
+		ID       int           `jsonapi:"type=primary"`
+		ChanAttr chan (string) `jsonapi:"type=attr"`
 	}
-	err = buildModelStruct(&invalidAttribute{}, c.Models)
+	err = c.buildModelStruct(&invalidAttribute{}, c.Models)
 	assertNil(t, err)
 
 	mStruct = c.MustGetModelStruct(&invalidAttribute{})
@@ -105,10 +107,10 @@ func TestInitCheckFieldTypes(t *testing.T) {
 
 	//attribute of type func
 	type invAttrFunc struct {
-		ID       int          `jsonapi:"primary,invAttrFunc"`
-		FuncAttr func(string) `jsonapi:"attr,func-attr"`
+		ID       int          `jsonapi:"type=primary"`
+		FuncAttr func(string) `jsonapi:"type=attr"`
 	}
-	err = buildModelStruct(&invAttrFunc{}, c.Models)
+	err = c.buildModelStruct(&invAttrFunc{}, c.Models)
 	assertNil(t, err)
 
 	mStruct = c.MustGetModelStruct(&invAttrFunc{})
@@ -117,8 +119,8 @@ func TestInitCheckFieldTypes(t *testing.T) {
 
 	// relationship of type not a struct/ ptr struct / slice
 	type invalidRelBasic struct {
-		ID    int    `jsonapi:"primary,invRelBasic"`
-		Basic string `jsonapi:"relation,basic"`
+		ID    int    `jsonapi:"type=primary"`
+		Basic string `jsonapi:"type=relation"`
 	}
 	inv := invalidRelBasic{}
 	mStruct = &ModelStruct{
@@ -174,20 +176,20 @@ func TestGetFieldKind(t *testing.T) {
 func TestAttrArray(t *testing.T) {
 
 	type AttrArrStruct struct {
-		ID  int       `jsonapi:"primary,attr-arr-structs"`
-		Arr []*string `jsonapi:"attr,arr"`
+		ID  int       `jsonapi:"type=primary"`
+		Arr []*string `jsonapi:"type=attr"`
 	}
 	clearMap()
 
 	err := c.PrecomputeModels(&AttrArrStruct{})
-	assertNil(t, err)
+	require.NoError(t, err)
 
 	scope, err := c.NewScope(&AttrArrStruct{})
-	assertNil(t, err)
+	require.NoError(t, err)
 
 	scope.Value = &AttrArrStruct{ID: 1, Arr: make([]*string, 7)}
 	p, err := MarshalScope(scope, c)
-	assertNil(t, err)
+	assert.NoError(t, err)
 
 	b := bytes.NewBuffer(nil)
 

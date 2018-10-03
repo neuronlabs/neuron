@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -71,12 +72,12 @@ func TestFilterSetValues(t *testing.T) {
 	clearMap()
 
 	type modelWithStringID struct {
-		ID string `jsonapi:"primary,stringers"`
+		ID string `jsonapi:"type=primary"`
 	}
-	assertNil(t, c.PrecomputeModels(&modelWithStringID{}))
+	assert.NoError(t, c.PrecomputeModels(&modelWithStringID{}))
 	mStruct := c.MustGetModelStruct(&modelWithStringID{})
 	scope = newScope(mStruct)
-	_, errs = scope.buildFilterfield("stringers", []string{"kkk"}, mStruct, "id", "startswith")
+	_, errs = scope.buildFilterfield("model_with_string_id", []string{"kkk"}, mStruct, "id", "startswith")
 	assertNotEmpty(t, errs)
 
 }

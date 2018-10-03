@@ -10,14 +10,21 @@ const (
 	annotationAttribute         = "attr"
 	annotationRelation          = "relation"
 	annotationForeignKey        = "fkey"
+	annotationRelationship      = "relationship"
 	annotationOmitEmpty         = "omitempty"
 	annotationI18n              = "i18n"
+	annotationFieldType         = "type"
+	annotationFlags             = "flags"
+	annotationName              = "name"
 	annotationISO8601           = "iso8601"
 	annotationSeperator         = ","
 	annotationRelationSeperator = ":"
-	annotationNestedSeperator   = "."
-	annotationOpenedBracket     = '['
-	annotationClosedBracket     = ']'
+	annotationTagSeperator      = ";"
+	annotationTagEqual          = '='
+
+	annotationNestedSeperator = "."
+	annotationOpenedBracket   = '['
+	annotationClosedBracket   = ']'
 
 	// Hidden field
 	annotationHidden = "hidden"
