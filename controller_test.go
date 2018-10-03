@@ -40,26 +40,28 @@ func TestBuildScopeList(t *testing.T) {
 	// raw scope without query
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
-	assertEmpty(t, errs)
+	assert.Empty(t, errs)
 	assert.Nil(t, err)
-	assertNotNil(t, scope)
+	if assert.NotNil(t, scope) {
 
-	assertNotEmpty(t, scope.Fieldset)
-	assertEmpty(t, scope.Sorts)
-	assertNil(t, scope.Pagination)
-	assertEqual(t, scope.Struct, c.MustGetModelStruct(&Blog{}))
+		assertNotEmpty(t, scope.Fieldset)
+		assertEmpty(t, scope.Sorts)
+		assertNil(t, scope.Pagination)
+		assertEqual(t, scope.Struct, c.MustGetModelStruct(&Blog{}))
+	}
 
 	// with include
 	req = httptest.NewRequest("GET", "/api/v1/blogs?include=current_post", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertEmpty(t, errs)
 	assertNil(t, err)
-	assertNotNil(t, scope)
+	if assert.NotNil(t, scope) {
 
-	assertNotEmpty(t, scope.IncludedScopes)
-	assertNotNil(t, scope.IncludedScopes[c.MustGetModelStruct(&Post{})])
+		assertNotEmpty(t, scope.IncludedScopes)
+		assertNotNil(t, scope.IncludedScopes[c.MustGetModelStruct(&Post{})])
+	}
 
-	c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
+	assert.NoError(t, c.PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
 
 	// with sorts
 	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=id,-title,posts.id", nil)
@@ -67,50 +69,51 @@ func TestBuildScopeList(t *testing.T) {
 	assertNil(t, err)
 	assertEmpty(t, errs)
 
-	assertNotNil(t, scope)
+	if assert.NotNil(t, scope) {
 
-	assertEqual(t, 3, len(scope.Sorts))
-	assertEqual(t, AscendingOrder, scope.Sorts[0].Order)
-	assertEqual(t, "id", scope.Sorts[0].jsonAPIName)
-	assertEqual(t, DescendingOrder, scope.Sorts[1].Order)
-	assertEqual(t, "title", scope.Sorts[1].jsonAPIName)
-	assertEqual(t, "posts", scope.Sorts[2].jsonAPIName)
-	assertEqual(t, 1, len(scope.Sorts[2].SubFields))
-	assertEqual(t, AscendingOrder, scope.Sorts[2].SubFields[0].Order)
-	assertEqual(t, "id", scope.Sorts[2].SubFields[0].jsonAPIName)
-
+		assertEqual(t, 3, len(scope.Sorts))
+		assertEqual(t, AscendingOrder, scope.Sorts[0].Order)
+		assertEqual(t, "id", scope.Sorts[0].jsonAPIName)
+		assertEqual(t, DescendingOrder, scope.Sorts[1].Order)
+		assertEqual(t, "title", scope.Sorts[1].jsonAPIName)
+		assertEqual(t, "posts", scope.Sorts[2].jsonAPIName)
+		assertEqual(t, 1, len(scope.Sorts[2].SubFields))
+		assertEqual(t, AscendingOrder, scope.Sorts[2].SubFields[0].Order)
+		assertEqual(t, "id", scope.Sorts[2].SubFields[0].jsonAPIName)
+	}
 	req = httptest.NewRequest("GET", "/api/v1/blogs?sort=posts.id,posts.title", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
+	if assert.NotNil(t, scope) {
 
-	assertEqual(t, 1, len(scope.Sorts))
-	assertEqual(t, 2, len(scope.Sorts[0].SubFields))
-	assertEqual(t, "id", scope.Sorts[0].SubFields[0].jsonAPIName)
-	assertEqual(t, "title", scope.Sorts[0].SubFields[1].jsonAPIName)
-
+		assertEqual(t, 1, len(scope.Sorts))
+		assertEqual(t, 2, len(scope.Sorts[0].SubFields))
+		assertEqual(t, "id", scope.Sorts[0].SubFields[0].jsonAPIName)
+		assertEqual(t, "title", scope.Sorts[0].SubFields[1].jsonAPIName)
+	}
 	// paginations
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[size]=4&page[number]=5", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
-	assertNotNil(t, scope)
+	if assert.NotNil(t, scope) {
 
-	assertNotNil(t, scope.Pagination)
-	assertEqual(t, 4, scope.Pagination.PageSize)
-	assertEqual(t, 5, scope.Pagination.PageNumber)
-
+		assertNotNil(t, scope.Pagination)
+		assertEqual(t, 4, scope.Pagination.PageSize)
+		assertEqual(t, 5, scope.Pagination.PageNumber)
+	}
 	// pagination limit, offset
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=10&page[offset]=5", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertEmpty(t, errs)
-	assertNotNil(t, scope)
+	if assert.NotNil(t, scope) {
 
-	assertNotNil(t, scope.Pagination)
-	assertEqual(t, 10, scope.Pagination.Limit)
-	assertEqual(t, 5, scope.Pagination.Offset)
-
+		assertNotNil(t, scope.Pagination)
+		assertEqual(t, 10, scope.Pagination.Limit)
+		assertEqual(t, 5, scope.Pagination.Offset)
+	}
 	// pagination errors
 	req = httptest.NewRequest("GET", "/api/v1/blogs?page[limit]=have&page[offset]=a&page[size]=nice&page[number]=day", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})

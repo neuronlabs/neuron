@@ -3,28 +3,32 @@ package jsonapi
 import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestUnmarshalScope(t *testing.T) {
+func TestUnmarshalScopeOne(t *testing.T) {
 
 	clearMap()
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	assertNil(t, err)
 
 	// Case 1:
-	// Correct input
-	in := strings.NewReader("{\"data\": {\"type\": \"blogs\", \"id\": \"1\", \"attributes\": {\"title\": \"Some title.\"}}}")
-	scope, errObj, err := unmarshalScopeOne(in, c)
-	assertNil(t, err)
-	assertNil(t, errObj)
+	// Correct with  attributes
+	t.Run("valid_attributes", func(t *testing.T) {
+		in := strings.NewReader("{\"data\": {\"type\": \"blogs\", \"id\": \"1\", \"attributes\": {\"title\": \"Some title.\"}}}")
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.NoError(t, err)
+		assert.NotNil(t, scope)
+	})
 
-	assertNotNil(t, scope)
+	// Case 2
+	// Walid with relationships and attributes
 
-	// Case 1:
-	// Correct with relationship and attributes
-	in = strings.NewReader(`{
+	t.Run("valid_rel_attrs", func(t *testing.T) {
+		in := strings.NewReader(`{
 		"data":{
 			"type":"blogs",
 			"id":"2",
@@ -41,78 +45,158 @@ func TestUnmarshalScope(t *testing.T) {
 			}
 		}
 	}`)
-	scope, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNil(t, errObj)
-	assertNotNil(t, scope)
 
-	// Case 2:
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assertNoError(t, err)
+		assertNotNil(t, scope)
+	})
+
+	// Case 3:
 	// Invalid document - no opening bracket.
-	in = strings.NewReader(`"data":{"type":"blogs","id":"1"}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNil(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_document", func(t *testing.T) {
+		in := strings.NewReader(`"data":{"type":"blogs","id":"1"}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, strconv.Itoa(http.StatusBadRequest), errObj.Status)
+				assert.Equal(t, ErrInvalidJSONDocument.Title, errObj.Title)
+			}
+		}
+
+	})
 
 	// Case 3 :
-	// Invalid input - unrecognized collection
-	in = strings.NewReader(`{"data":{"type":"unrecognized","id":"1"}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNil(t, err)
-	assertNotNil(t, errObj)
+	// Invalid collection - unrecognized collection
+	t.Run("invalid_collection", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"unrecognized","id":"1"}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidResourceName.ID, errObj.ID)
+			}
+		}
+
+	})
 
 	// Case 4:
 	// Invalid syntax - syntax error
-	in = strings.NewReader(`{"data":{"type":"blogs","id":"1",}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNil(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_syntax", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1",}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONDocument.ID, errObj.ID)
+			}
+		}
+
+	})
 
 	// Case 5:
 	// Invalid Field - unrecognized field
+	t.Run("invalid_field_value", func(t *testing.T) {
+		// number instead of string
+		in := strings.NewReader(`{"data":{"type":"blogs","id":1.03}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
+		}
 
-	// number instead of string
-	in = strings.NewReader(`{"data":{"type":"blogs","id":1.03}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
+	})
 
-	// string instead of object
-	in = strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":"invalid"}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_relationship_type", func(t *testing.T) {
+		// string instead of object
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":"invalid"}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
 
-	t.Log(errObj)
+		}
+	})
 
 	// array
-	in = strings.NewReader(`{"data":{"type":"blogs","id":{"1":"2"}}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
-	t.Log(errObj)
+	t.Run("invalid_id_value_array", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"blogs","id":{"1":"2"}}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
+		}
+	})
 
 	// array
-	in = strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":["invalid"]}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_relationship_value_array", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":["invalid"]}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
+		}
+	})
 
 	// bool
-	in = strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":true}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_relationship_value_bool", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":true}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
+		}
+	})
 
 	// Case 6:
 	// invalid field value within i.e. for attribute
-	in = strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"title":1.02}}}`)
-	_, errObj, err = unmarshalScopeOne(in, c)
-	assertNoError(t, err)
-	assertNotNil(t, errObj)
+	t.Run("invalid_attribute_value", func(t *testing.T) {
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"title":1.02}}}`)
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
+			}
+		}
+	})
+
+	t.Run("invalid_field_strict_mode", func(t *testing.T) {
+		// title attribute is missspelled as 'Atitle'
+		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"Atitle":1.02}}}`)
+		c.StrictUnmarshalMode = true
+		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
+		assert.Nil(t, scope)
+		if assert.NotNil(t, err) {
+			errObj, ok := err.(*ErrorObject)
+			if assert.True(t, ok) {
+				assert.Equal(t, ErrInvalidJSONDocument.ID, errObj.ID)
+			}
+		}
+	})
 
 }
 
-func TestUnmarshalUpdate(t *testing.T) {
+func TestUnmarshalUpdateFields(t *testing.T) {
 	clearMap()
 	assertNil(t, c.PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
 
@@ -121,9 +205,8 @@ func TestUnmarshalUpdate(t *testing.T) {
 	t.Run("attribute", func(t *testing.T) {
 		buf.Reset()
 		buf.WriteString(`{"data":{"type":"blogs","id":"1", 	"attributes":{"title":"New title"}}}`)
-		scope, errObj, err := c.unmarshalUpdate(buf)
+		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
-		assert.Nil(t, errObj)
 		if assert.NotNil(t, scope) {
 			assert.Contains(t, scope.UpdatedFields, scope.Struct.attributes["title"])
 			assert.Len(t, scope.UpdatedFields, 1)
@@ -135,9 +218,8 @@ func TestUnmarshalUpdate(t *testing.T) {
 		buf.Reset()
 		buf.WriteString(`{"data":{"type":"blogs","id":"1", "attributes":{"title":"New title","view_count":16}}}`)
 
-		scope, errObj, err := c.unmarshalUpdate(buf)
+		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
-		assert.Nil(t, errObj)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
@@ -158,16 +240,15 @@ func TestUnmarshalUpdate(t *testing.T) {
 			"current_post":{
 				"data": {
 					"type":"posts",
-					"id": 3
+					"id": "3"
 				}
 			}
 		}
 	}
 }`)
 
-		scope, errObj, err := c.unmarshalUpdate(buf)
+		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
-		assert.Nil(t, errObj)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
@@ -189,11 +270,11 @@ func TestUnmarshalUpdate(t *testing.T) {
 				"data": [
 					{
 						"type":"posts",
-						"id": 3
+						"id": "3"
 					},
 					{
 						"type":"posts",
-						"id": 4
+						"id": "4"
 					}
 				]
 			}
@@ -201,9 +282,8 @@ func TestUnmarshalUpdate(t *testing.T) {
 	}
 }`)
 
-		scope, errObj, err := c.unmarshalUpdate(buf)
+		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
-		assert.Nil(t, errObj)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
@@ -227,14 +307,14 @@ func TestUnmarshalUpdate(t *testing.T) {
 			"current_post":{
 				"data": {
 					"type":"posts",
-					"id": 3
+					"id": "3"
 				}
 			},
 			"posts":{
 				"data": [
 					{
 						"type":"posts",
-						"id": 3
+						"id": "3"
 					}
 				]
 			}
@@ -242,9 +322,8 @@ func TestUnmarshalUpdate(t *testing.T) {
 	}
 }`)
 
-		scope, errObj, err := c.unmarshalUpdate(buf)
+		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
-		assert.Nil(t, errObj)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct

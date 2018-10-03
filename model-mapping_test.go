@@ -123,11 +123,11 @@ func TestSetRelatedType(t *testing.T) {
 
 func TestI18nModels(t *testing.T) {
 	model := &Modeli18n{}
-	modelMap := newModelMap()
-	err := buildModelStruct(model, modelMap)
+	clearMap()
+	err := c.buildModelStruct(model, c.Models)
 	assertNil(t, err)
 
-	mStruct := modelMap.Get(reflect.TypeOf(Modeli18n{}))
+	mStruct := c.Models.Get(reflect.TypeOf(Modeli18n{}))
 	assertNotNil(t, mStruct)
 	assertNotNil(t, mStruct.language)
 

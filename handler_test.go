@@ -22,8 +22,12 @@ func TestHandlerMarshalScope(t *testing.T) {
 }
 
 func TestHandlerUnmarshalScope(t *testing.T) {
+	blogModels := []interface{}{&BlogSDK{}, &PostSDK{}, &CommentSDK{}, &AuthorSDK{}}
 	h := prepareHandler(defaultLanguages, blogModels...)
+	for _, model := range h.Controller.Models.models {
 
+		t.Logf("Model found: %v", model.modelType)
+	}
 	rw, req := getHttpPair("GET", "/blogs", nil)
 	h.UnmarshalScope(reflect.TypeOf(&BlogSDK{}), rw, req)
 	assert.Equal(t, 400, rw.Result().StatusCode)

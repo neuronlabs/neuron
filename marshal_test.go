@@ -148,12 +148,17 @@ func TestMarshalScopeRelationship(t *testing.T) {
 
 }
 
+type HiddenModel struct {
+	ID          int    `jsonapi:"type=primary;flags=hidden"`
+	Visibile    string `jsonapi:"type=attr"`
+	HiddenField string `jsonapi:"type=attr;flags=hidden"`
+}
+
+func (h *HiddenModel) CollectionName() string {
+	return "hiddens"
+}
+
 func TestMarshalHiddenScope(t *testing.T) {
-	type HiddenModel struct {
-		ID          int    `jsonapi:"primary,hiddens,hidden"`
-		Visibile    string `jsonapi:"attr,visible"`
-		HiddenField string `jsonapi:"attr,hiddenField,hidden"`
-	}
 
 	clearMap()
 	assertNoError(t, c.PrecomputeModels(&HiddenModel{}), failNow)

@@ -2,7 +2,10 @@ package jsonapi
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	"net/url"
 	"reflect"
+	"strings"
 )
 
 // FieldType is an enum that defines the following field type (i.e. 'primary', 'attribute')
@@ -177,6 +180,31 @@ func (s *StructField) getRelationshipPrimariyValues(fieldValue reflect.Value,
 
 func (s *StructField) getFieldIndex() int {
 	return s.refStruct.Index[0]
+}
+
+func (s *StructField) setFieldName(c NamingConvention) {
+	if s.jsonAPIName != "" {
+		return
+	}
+	s.jsonAPIName = getNameByConvention(s.refStruct.Name, c)
+}
+
+func (s *StructField) getTagValues(tag string) (url.Values, error) {
+	mp := url.Values{}
+	seperated := strings.Split(tag, annotationTagSeperator)
+	for _, option := range seperated {
+		i := strings.IndexRune(option, annotationTagEqual)
+		if i == -1 {
+			return nil, errors.Errorf("No annotation tag equal found for tag value: %v", option)
+		}
+		key := option[:i]
+		var values []string
+		if i != len(option)-1 {
+			values = strings.Split(option[i+1:], annotationSeperator)
+		}
+		mp[key] = values
+	}
+	return mp, nil
 }
 
 func (s *StructField) initCheckFieldType() error {
