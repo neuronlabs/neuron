@@ -34,7 +34,7 @@ type ModelStruct struct {
 	// used to check and get if relationship exists in the model.
 	// Can be heplful for validating url queries
 	// Mapped StructField contain detailed information about given relationship
-	relationships map[string]*Relationship
+	relationships map[string]*StructField
 
 	// Fields is a container of all public fields in the given model.
 	// The field's index is the same as in the original model - for private or
@@ -43,6 +43,8 @@ type ModelStruct struct {
 
 	// field that are ready for translations
 	i18n []*StructField
+
+	foreignKeys map[string]*StructField
 
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int

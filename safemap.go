@@ -14,39 +14,6 @@ func NewSafeHashMap() *SafeHashMap {
 	return &SafeHashMap{values: make(map[interface{}]interface{})}
 }
 
-// func (s *SafeHashMap) Add(value interface{}) bool {
-// 	s.Lock()
-// 	defer s.Unlock()
-// 	if _, ok := s.values[value]; !ok {
-// 		s.values[value] = struct{}{}
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (s *SafeHashMap) AddMany(values ...interface{}) []interface{} {
-// 	s.Lock()
-// 	defer s.Unlock()
-
-// 	temp := map[interface{}]struct{}{}
-// 	for _, value := range values {
-// 		if _, ok := s.values[value]; !ok {
-// 			s.values[value] = struct{}{}
-// 			temp[value] = struct{}{}
-// 		}
-// 	}
-
-// 	uniqueNotIn := make([]interface{}, len(temp))
-
-// 	i := 0
-// 	for uniqueValue := range temp {
-// 		uniqueNotIn[i] = uniqueValue
-// 		i++
-// 	}
-
-// 	return uniqueNotIn
-// }
-
 func (s *SafeHashMap) Add(key, value interface{}) {
 	s.Lock()
 	defer s.Unlock()

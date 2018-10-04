@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 	"net/http"
 	"net/http/httptest"
@@ -34,8 +35,7 @@ func TestBuildScopeList(t *testing.T) {
 	)
 
 	c = DefaultController()
-	err = c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
-	assertNil(t, err)
+	require.NoError(t, c.PrecomputeModels(&Blog{}, &Post{}, &Comment{}))
 
 	// raw scope without query
 	req = httptest.NewRequest("GET", "/api/v1/blogs", nil)
@@ -663,14 +663,14 @@ func TestControllerNewFilterField(t *testing.T) {
 	assertNotEmpty(t, filterField.Relationships, failNow)
 	assertEqual(t, c.MustGetModelStruct(&Post{}).primary, filterField.Relationships[0].StructField)
 
-	filter = "filter[posts][blog_id][eq]"
-	values = []interface{}{1, 2}
+	filter = "filter[posts][title][eq]"
+	values = []interface{}{"myTitle", "yourTitle"}
 
 	filterField, err = c.NewFilterField(filter, values...)
 	assertNoError(t, err, failNow)
 
 	assertEqual(t, c.MustGetModelStruct(&Post{}), filterField.mStruct)
-	assertEqual(t, c.MustGetModelStruct(&Post{}).attributes["blog_id"], filterField.StructField)
+	assertEqual(t, c.MustGetModelStruct(&Post{}).attributes["title"], filterField.StructField)
 
 	assertEqual(t, OpEqual, filterField.Values[0].Operator)
 	assertEqual(t, len(values), len(filterField.Values[0].Values))

@@ -47,33 +47,38 @@ type NoPrimaryModel struct {
 type User struct {
 	privateField int
 	ID           int    `jsonapi:"type=primary"`
-	Lang         string `jsonapi:"type=attr;name=lang`
+	Lang         string `jsonapi:"type=attr;name=lang;flags=langtag"`
 	Name         string `jsonapi:"type=attr;name=name"`
-	Pets         []*Pet `jsonapi:"type=relation;name=pets"`
+	Pets         []*Pet `jsonapi:"type=relation;name=pets;relation=many2many,sync,Owners"`
 }
 
 type Pet struct {
 	ID     int     `jsonapi:"type=primary"`
 	Name   string  `jsonapi:"type=attr;name=name"`
-	Owners []*User `jsonapi:"type=relation;name=owners"`
+	Owners []*User `jsonapi:"type=relation;name=owners;relation=many2many,sync,Pets"`
 }
 
 /* HasMany Example */
 
 type Driver struct {
-	ID          int    `jsonapi:"type=primary"`
-	Name        string `jsonapi:"type=attr;flags=omitempty"`
-	Age         int    `jsonapi:"type=attr;flags=omitempty"`
-	Cars        []*Car `jsonapi:"type=relation"`
-	FavoriteCar Car    `jsonapi:"type=relation;name=favorite-car"`
+	ID            int     `jsonapi:"type=primary"`
+	Name          string  `jsonapi:"type=attr;flags=omitempty"`
+	Age           int     `jsonapi:"type=attr;flags=omitempty"`
+	Cars          []*Car  `jsonapi:"type=relation"`
+	FavoriteCar   Car     `jsonapi:"type=relation;name=favorite-car;foreign=FavoriteCarID"`
+	FavoriteCarID *string `jsonapi:"type=foreign;name=favorite_car_id"`
 }
+
+// at first check if FieldWithID does exists
+
+// the relation would be
 
 type Car struct {
 	ID               *string `jsonapi:"type=primary"`
 	Make             *string `jsonapi:"type=attr;name=make;flags=omitempty"`
 	Model            *string `jsonapi:"type=attr;name=model;flags=omitempty"`
 	Year             *uint   `jsonapi:"type=attr;name=year;flags=omitempty"`
-	DriverID         int     `jsonapi:"type=attr;name=driver_id;flags=omitempty"`
+	DriverID         int     `jsonapi:"type=foreign;name=driver_id"`
 	somePrivateField *uint
 }
 
@@ -83,25 +88,25 @@ type Blog struct {
 	Title         string    `jsonapi:"type=attr;name=title"`
 	Posts         []*Post   `jsonapi:"type=relation;name=posts"`
 	CurrentPost   *Post     `jsonapi:"type=relation;name=current_post"`
-	CurrentPostID int       `jsonapi:"type=attr;name=current_post_id"`
+	CurrentPostID int       `jsonapi:"type=foreign;name=current_post_id"`
 	CreatedAt     time.Time `jsonapi:"type=attr;name=created_at;flags=iso8601"`
 	ViewCount     int       `jsonapi:"type=attr;name=view_count"`
 }
 
 type Post struct {
 	ID            uint64     `jsonapi:"type=primary"`
-	BlogID        int        `jsonapi:"type=attr;name=blog_id"`
+	BlogID        int        `jsonapi:"type=foreign;name=blog_id"`
 	ClientID      string     `jsonapi:"type=client-id"`
 	Title         string     `jsonapi:"type=attr;name=title"`
 	Body          string     `jsonapi:"type=attr;name=body"`
-	Comments      []*Comment `jsonapi:"type=relation;name=comments"`
-	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment"`
+	Comments      []*Comment `jsonapi:"type=relation;name=comments;foreign=post_id"`
+	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment;foreign=post_id"`
 }
 
 type Comment struct {
 	ID       int    `jsonapi:"type=primary"`
 	ClientID string `jsonapi:"type=client-id"`
-	PostID   int    `jsonapi:"type=attr;name=post_id"`
+	PostID   int    `jsonapi:"type=foreign;name=post_id"`
 	Body     string `jsonapi:"type=attr;name=body"`
 }
 

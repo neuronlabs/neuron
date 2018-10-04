@@ -9,8 +9,9 @@ const (
 	annotationLanguage          = "langtag"
 	annotationAttribute         = "attr"
 	annotationRelation          = "relation"
-	annotationForeignKey        = "fkey"
-	annotationRelationship      = "relationship"
+	annotationRelationNoSync    = "nosync"
+	annotaitonRelationSync      = "sync"
+	annotationForeignKey        = "foreign"
 	annotationOmitEmpty         = "omitempty"
 	annotationI18n              = "i18n"
 	annotationFieldType         = "type"
@@ -29,7 +30,9 @@ const (
 	// Hidden field
 	annotationHidden = "hidden"
 
-	annotationsManyToMany = "many2many"
+	annotationManyToMany         = "many2many"
+	annotationManyToManyDisjoint = "disjoint"
+	annotationManyToManyCommon   = "common"
 
 	// FILTERS
 	// disable for filtering purpose

@@ -99,6 +99,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 
 	modelStruct.attributes = make(map[string]*StructField)
 	modelStruct.relationships = make(map[string]*StructField)
+	modelStruct.foreignKeys = make(map[string]*StructField)
 	modelStruct.collectionURLIndex = -1
 
 	var assignedFields int
@@ -170,6 +171,14 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 				structField.jsonAPIName = "client-id"
 				structField.fieldType = ClientID
 				modelStruct.clientID = structField
+			case annotationForeignKey:
+				structField.fieldType = ForeignKey
+				_, ok := modelStruct.foreignKeys[structField.jsonAPIName]
+				if ok {
+					err = errors.Errorf("Duplicated jsonapi foreign key name: '%s' for model: '%v'", structField.jsonAPIName, modelStruct.modelType.Name())
+					return err
+				}
+				modelStruct.foreignKeys[structField.jsonAPIName] = structField
 			default:
 				return errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.modelType.Name(), tField.Name)
 			}
@@ -206,9 +215,39 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 
 					}
 				}
+			case annotationRelation:
+				// if relationship match the type e.t.c
+				if structField.relationship == nil {
+					structField.relationship = &Relationship{}
+				}
+
+				r := structField.relationship
+				for _, value := range values {
+					switch value {
+					case annotationRelationNoSync:
+						b := false
+						r.Sync = &b
+					case annotationManyToMany:
+						r.Kind = RelMany2Many
+					case annotationManyToManyDisjoint:
+						r.Kind = RelMany2ManyDisjoint
+					case annotationManyToManyCommon:
+						r.Kind = RelMany2ManyCommon
+					case annotaitonRelationSync:
+						b := true
+						r.Sync = &b
+					default:
+						r.BackReferenceFieldname = value
+
+					}
+				}
+				// if field is foreign key match with relationship
+			case annotationForeignKey:
+
 			}
 		}
 	}
+
 	if assignedFields == 0 {
 		err = fmt.Errorf("Model has no correct jsonapi fields: %v", modelType)
 		return err
@@ -271,26 +310,6 @@ func getSliceElemType(modelType reflect.Type) (reflect.Type, error) {
 	return modelType, nil
 }
 
-func (c *Controller) getRelationship(sField *StructField) (*Relationship, error) {
-	t := sField.refStruct
-
-	switch t.Type.Kind() {
-	case reflect.Ptr:
-		t = t.Type.Elem()
-		if t.Type.Elem() == reflect.Struct {
-			fallthrough
-		} else {
-			c.log().Debugf("The relationship is of nonstruct pointer type.")
-			return nil, IErrInvalidType
-		}
-	case reflect.Struct:
-	case reflect.Slice:
-	default:
-		// error
-	}
-
-}
-
 func setRelatedType(sField *StructField) error {
 
 	modelType := sField.refStruct.Type
@@ -322,8 +341,4 @@ func setRelatedType(sField *StructField) error {
 	}
 	sField.relatedModelType = modelType
 	return nil
-}
-
-func getTagValue(tagname string, sField *StructField) string {
-	sfield
 }

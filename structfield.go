@@ -27,6 +27,9 @@ const (
 
 	// RelationshipMultiple is a 'relationship' with multiple objects
 	RelationshipMultiple
+
+	// ForeignKey is the field type that is responsible for the relationships
+	ForeignKey
 )
 
 func (f FieldType) String() string {
@@ -84,6 +87,8 @@ type StructField struct {
 	// isListRelated
 	isListRelated bool
 
+	relationship *Relationship
+
 	fieldFlags fieldFlag
 
 	// omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
@@ -106,6 +111,11 @@ func (s *StructField) GetJSONAPIName() string {
 // GetReflectStructField - gets the reflect.StructField for given field.
 func (s *StructField) GetReflectStructField() reflect.StructField {
 	return s.refStruct
+}
+
+// GetRelationship is a simple getter function for the structfield's relationship
+func (s *StructField) GetRelationship() *Relationship {
+	return s.relationship
 }
 
 // GetFieldType - gets the field's reflect.Type

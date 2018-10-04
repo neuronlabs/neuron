@@ -738,6 +738,10 @@ func (c *Controller) PrecomputeModels(models ...interface{}) error {
 
 	for _, model := range c.Models.models {
 		model.nestedIncludedCount = model.initComputeNestedIncludedCount(0, c.IncludeNestedLimit)
+		err = c.setRelationships()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
