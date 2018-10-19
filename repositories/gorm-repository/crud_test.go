@@ -34,7 +34,7 @@ func TestGORMPatch(t *testing.T) {
 		value := scope.Value.(*UserGORM)
 		*value = *u
 
-		scope.UpdatedFields = append(scope.UpdatedFields, scope.Struct.GetAttributeField("name"))
+		scope.SelectedFields = append(scope.SelectedFields, scope.Struct.GetAttributeField("name"))
 
 		assert.Nil(t, repo.Patch(scope))
 
@@ -55,7 +55,7 @@ func TestGORMPatch(t *testing.T) {
 		require.NoError(t, db.First(userBefore).Error)
 
 		scope.NewValueSingle()
-		scope.UpdatedFields = append(scope.UpdatedFields, scope.Struct.GetRelationshipField("pets"))
+		scope.SelectedFields = append(scope.SelectedFields, scope.Struct.GetRelationshipField("pets"))
 
 		v := scope.GetValueAddress().(*UserGORM)
 		v.ID = 1
@@ -83,7 +83,7 @@ func TestGORMPatch(t *testing.T) {
 
 		scope.NewValueSingle()
 
-		scope.UpdatedFields = append(scope.UpdatedFields, scope.Struct.GetRelationshipField("pets"))
+		scope.SelectedFields = append(scope.SelectedFields, scope.Struct.GetRelationshipField("pets"))
 
 		v := scope.GetValueAddress().(*UserGORM)
 		v.ID = 1
@@ -107,7 +107,7 @@ func TestGORMPatch(t *testing.T) {
 		assert.NotNil(t, petBefore.Owner)
 
 		scope.NewValueSingle()
-		scope.UpdatedFields = append(scope.UpdatedFields, scope.Struct.GetRelationshipField("owner"))
+		scope.SelectedFields = append(scope.SelectedFields, scope.Struct.GetRelationshipField("owner"))
 
 		v := scope.GetValueAddress().(*PetGORM)
 		v.ID = 3

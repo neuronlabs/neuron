@@ -1,9 +1,10 @@
 package jsonapi
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"github.com/kucjac/uni-logger"
+	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"log"
 	"net/http"
@@ -44,8 +45,8 @@ type Scope struct {
 	Value        interface{}
 	valueAddress interface{}
 
-	// UpdatedFields are the fields that were updated
-	UpdatedFields []*StructField
+	// SelectedFields are the fields that were updated
+	SelectedFields []*StructField
 
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
@@ -70,6 +71,8 @@ type Scope struct {
 	// AttributeFilters contain filter for the attribute fields
 	AttributeFilters []*FilterField
 
+	ForeignKeyFilters []*FilterField
+
 	// LanguageFilters contain information about language filters
 	LanguageFilters *FilterField
 
@@ -92,6 +95,9 @@ type Scope struct {
 
 	// FlagUseLinks
 	FlagUseLinks *bool
+
+	// FlagAllowClientID
+	FlagAllowClientID *bool
 
 	Count int
 
@@ -117,6 +123,8 @@ type Scope struct {
 
 	// unilogger.Logger
 	logger unilogger.LeveledLogger
+
+	ctx context.Context
 }
 
 func (s *Scope) AddFilterField(filter *FilterField) error {
@@ -136,6 +144,10 @@ func (s *Scope) AddFilterField(filter *FilterField) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Scope) Context() context.Context {
+	return s.ctx
 }
 
 // Returns the collection name for given scope
@@ -182,6 +194,15 @@ func (s *Scope) GetLangtagValue() (langtag string, err error) {
 		err = fmt.Errorf("The GetLangtagValue allows single pointer type value only. Value type:'%v'", v.Type())
 	}
 	return
+}
+
+func (s *Scope) IsPrimaryFieldSelected() bool {
+	for _, field := range s.SelectedFields {
+		if field == s.Struct.primary {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Scope) Log() unilogger.LeveledLogger {
@@ -271,6 +292,7 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 		err = s.errNilValueProvided()
 		return
 	}
+	relScope.ctx = s.Context()
 
 	scopeValue := reflect.ValueOf(s.Value)
 	if scopeValue.Type().Kind() != reflect.Ptr {
@@ -289,6 +311,7 @@ func (s *Scope) GetRelatedScope() (relScope *Scope, err error) {
 		relScope.IsMany = true
 		return
 	} else {
+
 		primaries, err = relatedField.getRelationshipPrimariyValues(fieldValue)
 		if err != nil {
 			return
@@ -599,6 +622,7 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 			errs = append(errs, err)
 			continue
 		}
+
 		_, ok := s.Fieldset[sField.jsonAPIName]
 		if ok {
 			// duplicate
@@ -611,6 +635,14 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 			continue
 		}
 		s.Fieldset[sField.jsonAPIName] = sField
+
+		if sField.isRelationship() {
+			if sField.relationship != nil && sField.relationship.Kind == RelBelongsTo {
+				if fk := sField.relationship.ForeignKey; fk != nil {
+					s.Fieldset[fk.jsonAPIName] = fk
+				}
+			}
+		}
 	}
 
 	return
@@ -651,6 +683,7 @@ func (s *Scope) setPrimaryFilterValues(primField *StructField, values ...interfa
 
 	fv := &FilterValues{}
 	fv.Values = append(fv.Values, values...)
+
 	fv.Operator = OpIn
 	filter.Values = append(filter.Values, fv)
 }
@@ -1219,7 +1252,104 @@ func (s *Scope) setValueFromAddressable() error {
 		return nil
 	}
 	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.Struct.modelType, s.valueAddress)
+}
 
+func (s *Scope) getFieldValue(sField *StructField) (reflect.Value, error) {
+	return modelValueByStructField(s.Value, sField)
+}
+
+func (s *Scope) setBelongsToForeignKey() error {
+	if s.Value == nil {
+		return errors.Errorf("Nil value provided. %#v", s)
+	}
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Ptr:
+		err := s.Struct.setBelongsToForeigns(v)
+		if err != nil {
+			return err
+		}
+
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			err := s.Struct.setBelongsToForeigns(elem)
+			if err != nil {
+				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+			}
+		}
+	}
+	return nil
+
+}
+
+func (s *Scope) setBelongsToRelationWithFields(fields ...*StructField) error {
+	if s.Value == nil {
+		return errors.Errorf("Nil value provided. %#v", s)
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Ptr:
+		err := s.Struct.setBelongsToRelationWithFields(v, fields...)
+		if err != nil {
+			return err
+		}
+
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			err := s.Struct.setBelongsToRelationWithFields(elem, fields...)
+			if err != nil {
+				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Scope) setBelongsToForeignKeyWithFields(fields ...*StructField) error {
+	if s.Value == nil {
+		return errors.Errorf("Nil value provided. %#v", s)
+	}
+
+	v := reflect.ValueOf(s.Value)
+	switch v.Kind() {
+	case reflect.Ptr:
+		err := s.Struct.setBelongsToForeignsWithFields(v, fields...)
+		if err != nil {
+			return err
+		}
+
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			err := s.Struct.setBelongsToForeignsWithFields(elem, fields...)
+			if err != nil {
+				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+			}
+		}
+	}
+	return nil
+
+}
+
+// modelValueByStrucfField gets the value by the provided StructField
+func modelValueByStructField(
+	model interface{},
+	sField *StructField,
+) (reflect.Value, error) {
+	if model == nil {
+		return reflect.ValueOf(model), errors.New("Provided empty value.")
+	}
+
+	v := reflect.ValueOf(model)
+	if v.Kind() != reflect.Ptr {
+		return v, errors.New("The value must be a single, non nil pointer value.")
+	}
+	v = v.Elem()
+
+	return v.FieldByIndex(sField.refStruct.Index), nil
 }
 
 func getURLVariables(req *http.Request, mStruct *ModelStruct, indexFirst, indexSecond int,

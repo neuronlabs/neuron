@@ -2,13 +2,14 @@ package jsonapi
 
 import (
 	"errors"
+	"github.com/kucjac/uni-db"
 	"net/http"
 	"reflect"
 	"runtime/debug"
 )
 
 // GetPresetValues gets the values from the presetScope
-func (h *JSONAPIHandler) GetPresetValues(
+func (h *Handler) GetPresetValues(
 	presetScope *Scope,
 	rw http.ResponseWriter,
 ) (values []interface{}, err error) {
@@ -28,11 +29,17 @@ func (h *JSONAPIHandler) GetPresetValues(
 		return
 	}
 
-	dbErr := repo.List(presetScope)
-	if dbErr != nil {
-		h.manageDBError(rw, dbErr)
-		err = newHandlerError(HErrAlreadyWritten, dbErr.Message)
-		return
+	err = repo.List(presetScope)
+	if err != nil {
+		if dbErr, ok := err.(*unidb.Error); ok {
+			h.manageDBError(rw, dbErr)
+			err = newHandlerError(HErrAlreadyWritten, dbErr.Message)
+			return
+		} else if errObj, ok := err.(*ErrorObject); ok {
+			err = newHandlerError(HErrAlreadyWritten, errObj.Err.Error())
+			h.MarshalErrors(rw)
+			return
+		}
 	}
 	v := reflect.ValueOf(presetScope.Value)
 	for i := 0; i < v.Len(); i++ {
@@ -104,7 +111,7 @@ func (h *JSONAPIHandler) GetPresetValues(
 // PresetScopeValue presets provided values for given scope.
 // The fieldFilter points where the value should be set within given scope.
 // The scope value should not be nil
-func (h *JSONAPIHandler) PresetScopeValue(
+func (h *Handler) PresetScopeValue(
 	scope *Scope,
 	fieldFilter *FilterField,
 	values ...interface{},
@@ -224,7 +231,7 @@ func (h *JSONAPIHandler) PresetScopeValue(
 	return nil
 }
 
-func (h *JSONAPIHandler) SetPresetFilters(
+func (h *Handler) SetPresetFilters(
 	scope *Scope,
 	model *ModelHandler,
 	req *http.Request,
@@ -250,7 +257,7 @@ func (h *JSONAPIHandler) SetPresetFilters(
 
 // SetPresetValues sets provided values for given filterfield.
 // If the filterfield does not contain values or subfield values the function returns error.
-func (h *JSONAPIHandler) SetPresetFilterValues(
+func (h *Handler) SetPresetFilterValues(
 	filter *FilterField,
 	values ...interface{},
 ) error {
@@ -274,7 +281,7 @@ PRIVATE
 
 */
 
-func (h *JSONAPIHandler) getPresetFilter(
+func (h *Handler) getPresetFilter(
 	key interface{},
 	presetScope *Scope,
 	req *http.Request,
@@ -283,7 +290,7 @@ func (h *JSONAPIHandler) getPresetFilter(
 	return h.getPrecheckFilter(key, presetScope, req, model)
 }
 
-func (h *JSONAPIHandler) getPrecheckFilter(
+func (h *Handler) getPrecheckFilter(
 	key interface{},
 	precheckScope *Scope,
 	req *http.Request,

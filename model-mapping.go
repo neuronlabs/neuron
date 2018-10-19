@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"reflect"
 	"sync"
+	"time"
 )
 
 var (
@@ -94,7 +95,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 	if ok {
 		modelStruct.collectionType = collectioner.CollectionName()
 	} else {
-		modelStruct.collectionType = getNameByConvention(inflection.Plural(modelType.Name()), c.NamingStrategy)
+		modelStruct.collectionType = c.NamerFunc(inflection.Plural(modelType.Name()))
 	}
 
 	modelStruct.attributes = make(map[string]*StructField)
@@ -132,7 +133,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 		if name != "" {
 			structField.jsonAPIName = name
 		} else {
-			structField.setFieldName(c.NamingStrategy)
+			structField.jsonAPIName = c.NamerFunc(tField.Name)
 		}
 
 		// Set field type
@@ -166,11 +167,16 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 						structField.jsonAPIName, modelStruct.modelType.Name())
 					return err
 				}
+
+				switch structField.refStruct.Type {
+				case reflect.TypeOf(time.Time{}):
+					structField.fieldFlags = structField.fieldFlags | fTime
+				case reflect.TypeOf(&time.Time{}):
+					structField.fieldFlags = structField.fieldFlags | fPtrTime
+				default:
+
+				}
 				modelStruct.attributes[structField.jsonAPIName] = structField
-			case annotationClientID:
-				structField.jsonAPIName = "client-id"
-				structField.fieldType = ClientID
-				modelStruct.clientID = structField
 			case annotationForeignKey:
 				structField.fieldType = ForeignKey
 				_, ok := modelStruct.foreignKeys[structField.jsonAPIName]
@@ -193,11 +199,13 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 				for _, value := range values {
 
 					switch value {
+					case annotationClientID:
+						structField.fieldFlags = structField.fieldFlags | fClientID
 					case annotationNoFilter:
 						structField.fieldFlags = structField.fieldFlags | fNoFilter
 					case annotationHidden:
 						structField.fieldFlags = structField.fieldFlags | fHidden
-					case annotationSortable:
+					case annotationNotSortable:
 						structField.fieldFlags = structField.fieldFlags | fSortable
 					case annotationISO8601:
 						structField.fieldFlags = structField.fieldFlags | fIso8601
@@ -237,6 +245,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 						b := true
 						r.Sync = &b
 					default:
+						c.log().Infof("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.modelType.Name(), structField.fieldName, value)
 						r.BackReferenceFieldname = value
 
 					}

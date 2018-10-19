@@ -64,8 +64,8 @@ type Controller struct {
 
 	logger unilogger.LeveledLogger
 
-	// NamingStrategy defines the strategy how the model's and it's fields are being named
-	NamingStrategy NamingConvention
+	// Namer defines the function strategy how the model's and it's fields are being named
+	NamerFunc Namer
 
 	// StrictUnmarshalMode if set to true, the incoming data cannot contain
 	// any unknown fields
@@ -74,7 +74,9 @@ type Controller struct {
 
 func (c *Controller) log() unilogger.LeveledLogger {
 	if c.logger == nil {
-		c.logger = unilogger.NewBasicLogger(os.Stdout, "", log.LstdFlags)
+		basic := unilogger.NewBasicLogger(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+		basic.SetLevel(unilogger.INFO)
+		c.logger = basic
 	}
 	return c.logger
 }
@@ -88,6 +90,7 @@ func NewController(coverage ...interface{}) *Controller {
 		ErrorLimitRelated:  1,
 		IncludeNestedLimit: 1,
 		FilterValueLimit:   1,
+		NamerFunc:          NamingSnake,
 	}
 	c.Locale = language.NewCoverage(coverage...)
 	c.Matcher = language.NewMatcher(c.Locale.Tags())
@@ -116,6 +119,7 @@ func DefaultController(coverage ...interface{}) *Controller {
 		FlagUseLinks:           &defFlagUseLinks,
 		FlagMetaCountList:      &defFlagCountList,
 		FlagReturnPatchContent: &defFlagPatchContent,
+		NamerFunc:              NamingSnake,
 	}
 	c.Locale = language.NewCoverage(coverage...)
 	c.Matcher = language.NewMatcher(c.Locale.Tags())
@@ -149,6 +153,7 @@ func (c *Controller) BuildScopeList(
 		}
 	)
 	scope = newRootScope(mStruct)
+	scope.ctx = req.Context()
 	scope.logger = c.log()
 
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
@@ -351,6 +356,7 @@ func (c *Controller) buildScopeSingle(
 	q := req.URL.Query()
 
 	scope = newRootScope(mStruct)
+	scope.ctx = scope.Context()
 	scope.logger = c.log()
 
 	if id == nil {
@@ -394,6 +400,19 @@ func (c *Controller) BuildScopeRelated(
 		currentIncludedFieldIndex: -1,
 		kind:   rootKind,
 		logger: c.log(),
+		ctx:    req.Context(),
+	}
+
+	scope.newValueSingle()
+
+	scopeVal := reflect.ValueOf(scope.Value).Elem()
+	prim := scopeVal.FieldByIndex(mStruct.primary.refStruct.Index)
+
+	if er := setPrimaryField(id, prim); er != nil {
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided 'id' is of invalid type.")
+		errs = append(errs, errObj)
+		return
 	}
 
 	scope.collectionScope = scope
@@ -413,6 +432,14 @@ func (c *Controller) BuildScopeRelated(
 	}
 
 	scope.Fieldset[related] = relationField
+
+	if relationField.relationship.Kind == RelBelongsTo {
+		fk := relationField.relationship.ForeignKey
+		if fk != nil {
+			scope.Fieldset[fk.jsonAPIName] = fk
+		}
+	}
+
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
 
 	// preset related scope
@@ -466,8 +493,20 @@ func (c *Controller) BuildScopeRelationship(
 		currentIncludedFieldIndex: -1,
 		kind:   rootKind,
 		logger: c.log(),
+		ctx:    req.Context(),
 	}
 	scope.collectionScope = scope
+	scope.newValueSingle()
+
+	scopeVal := reflect.ValueOf(scope.Value).Elem()
+	prim := scopeVal.FieldByIndex(mStruct.primary.refStruct.Index)
+
+	if er := setPrimaryField(id, prim); er != nil {
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = fmt.Sprintf("Provided 'id' is of invalid type.")
+		errs = append(errs, errObj)
+		return
+	}
 
 	// set primary field filter
 	errs = scope.setPrimaryFilterfield(id)
@@ -486,6 +525,13 @@ func (c *Controller) BuildScopeRelationship(
 
 	// preset root scope
 	scope.Fieldset[relationship] = relationField
+
+	if relationField.relationship != nil && relationField.relationship.Kind == RelBelongsTo {
+		fk := relationField.relationship.ForeignKey
+		if fk != nil {
+			scope.Fieldset[fk.jsonAPIName] = fk
+		}
+	}
 	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
 	scope.createModelsRootScope(relationField.relatedStruct)
 	scope.IncludedScopes[relationField.relatedStruct].Fieldset = nil
@@ -503,11 +549,15 @@ func (c *Controller) BuildScopeRelationship(
 // model. Then it sets the id filters for given scope.
 // If the url is constructed incorrectly it returns an internal error.
 func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
+	c.log().Debug("GetAndSetIDFIlter")
+
 	id, err := getID(req, scope.Struct)
 	if err != nil {
 		return err
 	}
+
 	scope.setIDFilterValues(id)
+
 	return nil
 }
 
@@ -521,15 +571,43 @@ func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) error {
 		return IErrNoValue
 	}
 
-	v := reflect.ValueOf(scope.Value)
-	if v.Kind() != reflect.Ptr {
+	val := reflect.ValueOf(scope.Value)
+	if val.IsNil() {
+		return nil
+	}
+
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	} else {
 		return IErrInvalidType
 	}
 
-	v = v.Elem()
-	primary := v.Field(scope.Struct.primary.GetFieldIndex())
-	if err := setPrimaryField(id, primary); err != nil {
-		return err
+	c.log().Debugf("Setting newPrim value")
+	newPrim := reflect.New(scope.Struct.primary.refStruct.Type).Elem()
+
+	err = setPrimaryField(id, newPrim)
+	if err != nil {
+		errObj := ErrInvalidQueryParameter.Copy()
+		errObj.Detail = "Provided invalid id value within the url."
+		return errObj
+	}
+
+	primVal := val.FieldByIndex(scope.Struct.primary.refStruct.Index)
+
+	if reflect.DeepEqual(primVal.Interface(), reflect.Zero(scope.Struct.primary.refStruct.Type).Interface()) {
+		primVal.Set(newPrim)
+	} else {
+		c.log().Debugf("Checking the values")
+		if newPrim.Interface() != primVal.Interface() {
+			errObj := ErrInvalidQueryParameter.Copy()
+			errObj.Detail = "Provided invalid id value within the url. The id value doesn't match the primary field within the root object."
+			return errObj
+		}
+	}
+
+	v := reflect.ValueOf(scope.Value)
+	if v.Kind() != reflect.Ptr {
+		return IErrInvalidType
 	}
 	return nil
 }
@@ -731,6 +809,7 @@ func (c *Controller) PrecomputeModels(models ...interface{}) error {
 		if err != nil {
 			return err
 		}
+
 		model.initComputeSortedFields()
 		model.initComputeThisIncludedCount()
 		c.Models.collections[model.collectionType] = model.modelType
@@ -738,10 +817,11 @@ func (c *Controller) PrecomputeModels(models ...interface{}) error {
 
 	for _, model := range c.Models.models {
 		model.nestedIncludedCount = model.initComputeNestedIncludedCount(0, c.IncludeNestedLimit)
-		err = c.setRelationships()
-		if err != nil {
-			return err
-		}
+
+	}
+	err = c.setRelationships()
+	if err != nil {
+		return err
 	}
 
 	return nil

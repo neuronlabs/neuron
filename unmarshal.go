@@ -68,16 +68,16 @@ func (c *Controller) UnmarshalScopeMany(in io.Reader, model interface{}) (*Scope
 func (c *Controller) UnmarshalScopeOne(
 	in io.Reader,
 	model interface{},
-	addUnmarshaledFields bool,
+	addSelectedFields bool,
 ) (*Scope, error) {
 	t := reflect.TypeOf(model)
-	return c.unmarshalScopeOne(in, t, addUnmarshaledFields)
+	return c.unmarshalScopeOne(in, t, addSelectedFields)
 }
 
 func (c *Controller) unmarshalScopeOne(
 	in io.Reader,
 	t reflect.Type,
-	addUnmarshaledFields bool,
+	addSelectedFields bool,
 ) (*Scope, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -86,7 +86,7 @@ func (c *Controller) unmarshalScopeOne(
 	if mStruct == nil {
 		return nil, IErrModelNotMapped
 	}
-	return c.unmarshalScope(in, mStruct, false, addUnmarshaledFields)
+	return c.unmarshalScope(in, mStruct, false, addSelectedFields)
 }
 
 func (c *Controller) Unmarshal(in io.Reader, v interface{}) error {
@@ -122,7 +122,10 @@ func (c *Controller) unmarshalScope(
 	}
 
 	if usedFields && !useMany {
-		scope.UpdatedFields = append(scope.UpdatedFields, fields...)
+		for _, field := range fields {
+			scope.SelectedFields = append(scope.SelectedFields, field)
+		}
+
 	}
 	return scope, nil
 
@@ -152,6 +155,10 @@ func (c *Controller) unmarshal(
 		}
 		var fields []*StructField
 		if usedFields {
+			if one.Data.ID != "" {
+				fields = append(fields, mStruct.primary)
+			}
+
 			for attr := range one.Data.Attributes {
 				field, ok := mStruct.attributes[attr]
 				if ok {
@@ -340,17 +347,17 @@ func (c *Controller) unmarshalNode(
 		}
 	}
 
-	if data.ClientID != "" {
-		if mStruct.clientID != nil {
-			clientID := modelValue.FieldByIndex(mStruct.clientID.refStruct.Index)
-			if err = unmarshalIDField(clientID, data.ClientID); err != nil {
-				return
-			}
-		} else {
-			err = IErrClientIDDisallowed
-			return
-		}
-	}
+	// if data.ClientID != "" {
+	// 	if mStruct.clientID != nil {
+	// 		clientID := modelValue.FieldByIndex(mStruct.clientID.refStruct.Index)
+	// 		if err = unmarshalIDField(clientID, data.ClientID); err != nil {
+	// 			return
+	// 		}
+	// 	} else {
+	// 		err = IErrClientIDDisallowed
+	// 		return
+	// 	}
+	// }
 	if data.Attributes != nil {
 		for attrName, attrValue := range data.Attributes {
 			modelAttr, ok := mStruct.attributes[attrName]
@@ -371,7 +378,7 @@ func (c *Controller) unmarshalNode(
 			v := reflect.ValueOf(attrValue)
 
 			// time
-			if modelAttr.isTime() && modelAttr.isPtrTime() {
+			if modelAttr.isTime() || modelAttr.isPtrTime() {
 				if modelAttr.isIso8601() {
 					var tm string
 					if v.Kind() == reflect.String {

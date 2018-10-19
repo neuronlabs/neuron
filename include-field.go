@@ -194,6 +194,8 @@ func (i *IncludeField) copyScopeBoundaries() {
 
 	// fieldset is taken by reference - copied if there is nested
 	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
+	i.Scope.ctx = i.Scope.collectionScope.ctx
+	i.Scope.logger = i.Scope.collectionScope.logger
 
 	for _, nested := range i.Scope.IncludedFields {
 		// if the nested include is not found within the collection fieldset

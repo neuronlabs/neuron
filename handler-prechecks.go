@@ -9,7 +9,7 @@ GET/LIST Precheck Filters
 
 */
 
-func (h *JSONAPIHandler) QueryPrecheckPair(
+func (h *Handler) QueryPrecheckPair(
 	scope *Scope,
 	pairs ...*PresetPair,
 ) error {

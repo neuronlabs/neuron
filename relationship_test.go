@@ -16,7 +16,7 @@ func TestMappedRelationships(t *testing.T) {
 			model, err := c.GetModelStruct(&User{})
 			require.NoError(t, err)
 
-			pets, ok := model.relationships[getNameByConvention("Pets", c.NamingStrategy)]
+			pets, ok := model.relationships[c.NamerFunc("Pets")]
 			require.True(t, ok)
 
 			require.NotNil(t, pets.relationship)
@@ -28,7 +28,7 @@ func TestMappedRelationships(t *testing.T) {
 			petModel, err := c.GetModelStruct(&Pet{})
 			require.NoError(t, err)
 
-			owners, ok := petModel.relationships[getNameByConvention("Owners", c.NamingStrategy)]
+			owners, ok := petModel.relationships[c.NamerFunc("Owners")]
 			require.True(t, ok)
 
 			assert.Equal(t, owners, pets.relationship.BackReferenceField)

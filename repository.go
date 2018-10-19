@@ -1,9 +1,5 @@
 package jsonapi
 
-import (
-	"github.com/kucjac/uni-db"
-)
-
 // Repository is an interface that specifies
 type Repository interface {
 	Create(scope *Scope) error

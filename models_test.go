@@ -84,11 +84,10 @@ type Car struct {
 
 type Blog struct {
 	ID            int       `jsonapi:"type=primary"`
-	ClientID      string    `jsonapi:"type=client-id"`
 	Title         string    `jsonapi:"type=attr;name=title"`
 	Posts         []*Post   `jsonapi:"type=relation;name=posts"`
 	CurrentPost   *Post     `jsonapi:"type=relation;name=current_post"`
-	CurrentPostID int       `jsonapi:"type=foreign;name=current_post_id"`
+	CurrentPostID uint64    `jsonapi:"type=foreign;name=current_post_id"`
 	CreatedAt     time.Time `jsonapi:"type=attr;name=created_at;flags=iso8601"`
 	ViewCount     int       `jsonapi:"type=attr;name=view_count"`
 }
@@ -96,18 +95,16 @@ type Blog struct {
 type Post struct {
 	ID            uint64     `jsonapi:"type=primary"`
 	BlogID        int        `jsonapi:"type=foreign;name=blog_id"`
-	ClientID      string     `jsonapi:"type=client-id"`
 	Title         string     `jsonapi:"type=attr;name=title"`
 	Body          string     `jsonapi:"type=attr;name=body"`
-	Comments      []*Comment `jsonapi:"type=relation;name=comments;foreign=post_id"`
-	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment;foreign=post_id"`
+	Comments      []*Comment `jsonapi:"type=relation;name=comments;foreign=PostID"`
+	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment;foreign=PostID"`
 }
 
 type Comment struct {
-	ID       int    `jsonapi:"type=primary"`
-	ClientID string `jsonapi:"type=client-id"`
-	PostID   int    `jsonapi:"type=foreign;name=post_id"`
-	Body     string `jsonapi:"type=attr;name=body"`
+	ID     int    `jsonapi:"type=primary"`
+	PostID uint64 `jsonapi:"type=foreign;name=post_id"`
+	Body   string `jsonapi:"type=attr;name=body"`
 }
 
 type Book struct {

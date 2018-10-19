@@ -10,7 +10,7 @@ func getUpdatedGormFields(
 	scope *jsonapi.Scope,
 ) (res []*gorm.StructField) {
 outer:
-	for _, jsField := range scope.UpdatedFields {
+	for _, jsField := range scope.SelectedFields {
 		for _, gField := range mStruct.StructFields {
 			if jsField.GetFieldIndex() == gField.Struct.Index[0] {
 				res = append(res, gField)
@@ -26,7 +26,7 @@ func getUpdatedGormFieldNames(
 	scope *jsonapi.Scope,
 ) (res []string) {
 outer:
-	for _, jsField := range scope.UpdatedFields {
+	for _, jsField := range scope.SelectedFields {
 		for _, gField := range mStruct.StructFields {
 			if jsField.GetFieldIndex() == gField.Struct.Index[0] {
 				if jsField.IsRelationship() {

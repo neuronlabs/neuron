@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 )
@@ -20,9 +21,6 @@ type ModelStruct struct {
 
 	// Primary is a jsonapi primary field
 	primary *StructField
-
-	// ClientID field that contains Client-Generated ID
-	clientID *StructField
 
 	// language is a field that contains the language information
 	language *StructField
@@ -80,6 +78,10 @@ func (m *ModelStruct) GetAttributeField(attr string) *StructField {
 // GetRelationshipField - gets the relationship StructField for provided relationship
 func (m *ModelStruct) GetRelationshipField(relationship string) *StructField {
 	return m.relationships[relationship]
+}
+
+func (m *ModelStruct) AllowClientID() bool {
+	return m.primary.allowClientID()
 }
 
 // ListRelationshipFields - lists all relationship fields for given struct
@@ -140,6 +142,99 @@ func (m *ModelStruct) GetFieldByJSONAPIName(jsonapiName string) (*StructField, e
 
 func (m *ModelStruct) SetModelURL(url string) error {
 	return m.setModelURL(url)
+}
+
+func (m *ModelStruct) setBelongsToForeigns(v reflect.Value) error {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Type() != m.modelType {
+		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
+	}
+	for _, rel := range m.relationships {
+		if rel.relationship != nil && rel.relationship.Kind == RelBelongsTo {
+			relVal := v.FieldByIndex(rel.refStruct.Index)
+			if reflect.DeepEqual(relVal.Interface(), reflect.Zero(relVal.Type()).Interface()) {
+				continue
+			}
+			if relVal.Kind() == reflect.Ptr {
+				relVal = relVal.Elem()
+			}
+			fkVal := v.FieldByIndex(rel.relationship.ForeignKey.refStruct.Index)
+			relPrim := rel.relatedStruct.primary
+			relPrimVal := relVal.FieldByIndex(relPrim.refStruct.Index)
+			fkVal.Set(relPrimVal)
+		}
+	}
+	return nil
+}
+
+func (m *ModelStruct) setBelongsToRelationWithFields(
+	v reflect.Value,
+	fields ...*StructField,
+) error {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Type() != m.modelType {
+		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
+	}
+
+	for _, field := range fields {
+
+		rel, ok := m.relationships[field.jsonAPIName]
+		if ok && rel.relationship != nil &&
+			rel.relationship.Kind == RelBelongsTo {
+
+			fkVal := v.FieldByIndex(rel.relationship.ForeignKey.refStruct.Index)
+			relVal := v.FieldByIndex(rel.refStruct.Index)
+			relType := relVal.Type()
+			if relType.Kind() == reflect.Ptr {
+				relType = relType.Elem()
+			}
+
+			if relVal.IsNil() {
+				relVal.Set(reflect.New(relType))
+			}
+			relVal = relVal.Elem()
+
+			relPrim := relVal.FieldByIndex(rel.relatedStruct.primary.refStruct.Index)
+			relPrim.Set(fkVal)
+		}
+	}
+	return nil
+}
+
+func (m *ModelStruct) setBelongsToForeignsWithFields(v reflect.Value, fields ...*StructField) error {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Type() != m.modelType {
+		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
+	}
+
+	for _, field := range fields {
+		rel, ok := m.relationships[field.jsonAPIName]
+		if ok &&
+			rel.relationship != nil &&
+			rel.relationship.Kind == RelBelongsTo {
+			relVal := v.FieldByIndex(rel.refStruct.Index)
+			if reflect.DeepEqual(relVal.Interface(), reflect.Zero(relVal.Type()).Interface()) {
+				continue
+			}
+			if relVal.Kind() == reflect.Ptr {
+				relVal = relVal.Elem()
+			}
+			fkVal := v.FieldByIndex(rel.relationship.ForeignKey.refStruct.Index)
+			relPrim := rel.relatedStruct.primary
+			relPrimVal := relVal.FieldByIndex(relPrim.refStruct.Index)
+			fkVal.Set(relPrimVal)
+		}
+	}
+	return nil
 }
 
 func (m *ModelStruct) setModelURL(url string) error {
@@ -282,6 +377,13 @@ func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel in
 
 	return nestedCount
 }
+
+// func (m *ModelStruct) initCheckStructFieldFlags() error {
+
+// 	for _, field := range m.fields {
+
+// 	}
+// }
 
 func (m *ModelStruct) initCheckFieldTypes() error {
 	err := m.primary.initCheckFieldType()

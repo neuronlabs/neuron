@@ -1,10 +1,11 @@
 package jsonapi
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-logger"
+	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"gopkg.in/go-playground/validator.v9"
 	"net/http"
@@ -24,7 +25,7 @@ var (
 	IErrModelHandlerNotFound = errors.New("Model Handler not found.")
 )
 
-type JSONAPIHandler struct {
+type Handler struct {
 	// controller
 	Controller *Controller
 
@@ -56,11 +57,11 @@ func NewHandler(
 	c *Controller,
 	log unilogger.LeveledLogger,
 	DBErrMgr *ErrorManager,
-) *JSONAPIHandler {
+) *Handler {
 	if DBErrMgr == nil {
 		DBErrMgr = NewDBErrorMgr()
 	}
-	h := &JSONAPIHandler{
+	h := &Handler{
 		Controller:      c,
 		log:             log,
 		DBErrMgr:        DBErrMgr,
@@ -81,10 +82,10 @@ func NewHandler(
 
 // AddModelHandlers adds the model handlers for given JSONAPI Handler.
 // If there are handlers with the same type the funciton returns error.
-func (h *JSONAPIHandler) AddModelHandlers(models ...*ModelHandler) error {
+func (h *Handler) AddModelHandlers(models ...*ModelHandler) error {
 	for _, model := range models {
 		if _, ok := h.ModelHandlers[model.ModelType]; ok {
-			err := fmt.Errorf("ModelHandler of type: '%s' is already inside the JSONAPIHandler", model.ModelType.Name())
+			err := fmt.Errorf("ModelHandler of type: '%s' is already inside the Handler", model.ModelType.Name())
 			return err
 		}
 		h.ModelHandlers[model.ModelType] = model
@@ -92,7 +93,7 @@ func (h *JSONAPIHandler) AddModelHandlers(models ...*ModelHandler) error {
 	return nil
 }
 
-func (h *JSONAPIHandler) AddPrecheckFilters(
+func (h *Handler) AddPrecheckFilters(
 	scope *Scope,
 	req *http.Request,
 	rw http.ResponseWriter,
@@ -120,7 +121,7 @@ func (h *JSONAPIHandler) AddPrecheckFilters(
 	return true
 }
 
-func (h *JSONAPIHandler) AddPrecheckPairFilters(
+func (h *Handler) AddPrecheckPairFilters(
 	scope *Scope,
 	model *ModelHandler,
 	endpoint *Endpoint,
@@ -186,7 +187,7 @@ func (h *JSONAPIHandler) AddPrecheckPairFilters(
 	return true
 }
 
-func (h *JSONAPIHandler) CheckPrecheckValues(
+func (h *Handler) CheckPrecheckValues(
 	scope *Scope,
 	filter *FilterField,
 ) (err error) {
@@ -265,12 +266,12 @@ func (h *JSONAPIHandler) CheckPrecheckValues(
 // GetRepositoryByType returns the repository by provided model type.
 // If no modelHandler is found within the handler - then the default repository would be
 // set.
-func (h *JSONAPIHandler) GetRepositoryByType(model reflect.Type) (repo Repository) {
+func (h *Handler) GetRepositoryByType(model reflect.Type) (repo Repository) {
 	return h.getModelRepositoryByType(model)
 }
 
 // Exported method to get included values for given scope
-func (h *JSONAPIHandler) GetIncluded(
+func (h *Handler) GetIncluded(
 	scope *Scope,
 	rw http.ResponseWriter,
 	req *http.Request,
@@ -281,7 +282,7 @@ func (h *JSONAPIHandler) GetIncluded(
 	}
 
 	if err := scope.SetCollectionValues(); err != nil {
-		h.log.Errorf("Setting collection values for the scope of type: %v. Err: %v", scope.Struct.GetType(), err)
+		h.log.Errorf("Setting collection values for the scope of type: %v failed. Err: %v", scope.Struct.GetType(), err)
 		h.MarshalInternalError(rw)
 		return
 	}
@@ -328,8 +329,20 @@ func (h *JSONAPIHandler) GetIncluded(
 				return
 			}
 
+			if includedField.Scope == nil {
+				h.log.Errorf("Model: %v, Included repository for model: %v. List() set scope.Value to nil.", scope.Struct.modelType.Name(), includedField.relatedStruct.modelType.Name())
+				h.MarshalInternalError(rw)
+				return
+			}
+
 			if errObj := h.HookAfterReader(includedField.Scope); errObj != nil {
 				h.MarshalErrors(rw, errObj)
+				return
+			}
+
+			err := h.getForeginRelationships(includedField.Scope.ctx, includedField.Scope)
+			if err != nil {
+				h.manageDBError(rw, err)
 				return
 			}
 
@@ -342,7 +355,7 @@ func (h *JSONAPIHandler) GetIncluded(
 	return true
 }
 
-func (h *JSONAPIHandler) EndpointForbidden(
+func (h *Handler) EndpointForbidden(
 	model *ModelHandler,
 	endpoint EndpointType,
 ) http.HandlerFunc {
@@ -360,14 +373,16 @@ func (h *JSONAPIHandler) EndpointForbidden(
 
 }
 
-func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request, rw http.ResponseWriter) error {
+func (h *Handler) GetRelationshipFilters(
+	scope *Scope,
+	req *http.Request,
+	rw http.ResponseWriter,
+) error {
 
-	h.log.Debug("-------Getting Relationship Filters--------")
 	// every relationship filter is for different field
 	// replace the filter with the preset values of id field
 	// so that the repository should not handle the relationship filter
 	for i, relFilter := range scope.RelationshipFilters {
-
 		// Every relationship filter may contain multiple subfilters
 		relationshipScope, err := h.Controller.NewScope(reflect.New(relFilter.GetRelatedModelType()).Interface())
 		if err != nil {
@@ -424,8 +439,9 @@ func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request,
 		}
 
 		var (
-			attrFilter bool
-			primFilter bool
+			attrFilter    bool
+			primFilter    bool
+			foreignFilter bool
 		)
 
 		// Get relationship scope filters
@@ -437,13 +453,15 @@ func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request,
 			case Attribute:
 				relationshipScope.AttributeFilters = append(relationshipScope.AttributeFilters, subFieldFilter)
 				attrFilter = true
-
+			case ForeignKey:
+				relationshipScope.ForeignKeyFilters = append(relationshipScope.ForeignKeyFilters, subFieldFilter)
+				foreignFilter = true
 			default:
 				h.log.Warningf("The subfield of the filter cannot be of relationship filter type. Model: '%s',", scope.Struct.GetType().Name(), req.URL.Path)
 			}
 		}
 
-		if primFilter && !attrFilter {
+		if primFilter && !(attrFilter || foreignFilter) {
 			continue
 		}
 
@@ -457,6 +475,10 @@ func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request,
 		dbErr := h.GetRepositoryByType(relationshipScope.Struct.GetType()).List(relationshipScope)
 		if dbErr != nil {
 			return dbErr
+		}
+
+		if err = h.getForeginRelationships(relationshipScope.Context(), relationshipScope); err != nil {
+			return err
 		}
 
 		if errObj := h.HookAfterReader(relationshipScope); errObj != nil {
@@ -482,6 +504,7 @@ func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request,
 			StructField: relFilter.GetRelatedModelStruct().GetPrimaryField(),
 			Values:      []*FilterValues{{Operator: OpIn, Values: values}},
 		}
+
 		relationFilter := &FilterField{StructField: relFilter.StructField, Relationships: []*FilterField{subField}}
 
 		scope.RelationshipFilters[i] = relationFilter
@@ -491,7 +514,7 @@ func (h *JSONAPIHandler) GetRelationshipFilters(scope *Scope, req *http.Request,
 }
 
 // MarshalScope is a handler helper for marshaling the provided scope.
-func (h *JSONAPIHandler) MarshalScope(
+func (h *Handler) MarshalScope(
 	scope *Scope,
 	rw http.ResponseWriter,
 	req *http.Request,
@@ -514,16 +537,16 @@ func (h *JSONAPIHandler) MarshalScope(
 
 // SetLanguages sets the default langauges for given handler.
 // Creates the language matcher for given languages.
-func (h *JSONAPIHandler) SetLanguages(languages ...language.Tag) {
+func (h *Handler) SetLanguages(languages ...language.Tag) {
 	h.LanguageMatcher = language.NewMatcher(languages)
 	h.SupportedLanguages = languages
 }
 
-func (h *JSONAPIHandler) SetDefaultRepo(Repositoriesitory Repository) {
+func (h *Handler) SetDefaultRepo(Repositoriesitory Repository) {
 	h.DefaultRepository = Repositoriesitory
 }
 
-func (h *JSONAPIHandler) UnmarshalScope(
+func (h *Handler) UnmarshalScope(
 	model reflect.Type,
 	rw http.ResponseWriter,
 	req *http.Request,
@@ -532,11 +555,7 @@ func (h *JSONAPIHandler) UnmarshalScope(
 		scope *Scope
 		err   error
 	)
-	if req.Method == "PATCH" {
-		scope, err = h.Controller.unmarshalScopeOne(req.Body, model, true)
-	} else {
-		scope, err = h.Controller.unmarshalScopeOne(req.Body, model, false)
-	}
+	scope, err = h.Controller.unmarshalScopeOne(req.Body, model, true)
 	if err != nil {
 		errObj, ok := err.(*ErrorObject)
 		if ok {
@@ -551,16 +570,18 @@ func (h *JSONAPIHandler) UnmarshalScope(
 		return nil
 	}
 
+	scope.ctx = req.Context()
+
 	return scope
 }
 
-func (h *JSONAPIHandler) MarshalInternalError(rw http.ResponseWriter) {
+func (h *Handler) MarshalInternalError(rw http.ResponseWriter) {
 	SetContentType(rw)
 	rw.WriteHeader(http.StatusInternalServerError)
 	MarshalErrors(rw, ErrInternalError.Copy())
 }
 
-func (h *JSONAPIHandler) MarshalErrors(rw http.ResponseWriter, errors ...*ErrorObject) {
+func (h *Handler) MarshalErrors(rw http.ResponseWriter, errors ...*ErrorObject) {
 	SetContentType(rw)
 	if len(errors) > 0 {
 		code, err := strconv.Atoi(errors[0].Status)
@@ -580,7 +601,7 @@ func SetContentType(rw http.ResponseWriter) {
 	rw.Header().Set("Content-Type", MediaType)
 }
 
-func (h *JSONAPIHandler) HandleValidateError(
+func (h *Handler) HandleValidateError(
 	model *ModelHandler,
 	err error,
 	rw http.ResponseWriter,
@@ -610,7 +631,7 @@ func (h *JSONAPIHandler) HandleValidateError(
 	return
 }
 
-// func (h *JSONAPIHandler) checkManyValues(
+// func (h *Handler) checkManyValues(
 // 	filterValue *FilterValues,
 // 	fieldValues ...reflect.Value,
 // ) (ok bool) {
@@ -630,7 +651,7 @@ func (h *JSONAPIHandler) HandleValidateError(
 
 // }
 
-func (h *JSONAPIHandler) checkValues(filterValue *FilterValues, fieldValue reflect.Value) (ok bool) {
+func (h *Handler) checkValues(filterValue *FilterValues, fieldValue reflect.Value) (ok bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			h.log.Error("Paniced while checking values. '%s'", r)
@@ -658,7 +679,7 @@ func (h *JSONAPIHandler) checkValues(filterValue *FilterValues, fieldValue refle
 
 }
 
-func (h *JSONAPIHandler) checkIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
+func (h *Handler) checkIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
 	h.log.Debug("CheckIn")
 	if len(values) == 0 {
 		return false
@@ -708,7 +729,7 @@ func (h *JSONAPIHandler) checkIn(fieldValue reflect.Value, values ...interface{}
 	return
 }
 
-func (h *JSONAPIHandler) checkNotIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
+func (h *Handler) checkNotIn(fieldValue reflect.Value, values ...interface{}) (ok bool) {
 
 	return !h.checkIn(fieldValue, values...)
 }
@@ -771,7 +792,7 @@ func checkContains(fieldValue reflect.Value, values ...interface{}) (ok bool) {
 	return
 }
 
-func (h *JSONAPIHandler) addPresetFilterToPresetScope(
+func (h *Handler) addPresetFilterToPresetScope(
 	presetScope *Scope,
 	presetFilter *FilterField,
 ) bool {
@@ -787,7 +808,7 @@ func (h *JSONAPIHandler) addPresetFilterToPresetScope(
 	return true
 }
 
-func (h *JSONAPIHandler) getModelRepositoryByType(modelType reflect.Type) (repo Repository) {
+func (h *Handler) getModelRepositoryByType(modelType reflect.Type) (repo Repository) {
 	model, ok := h.ModelHandlers[modelType]
 	if !ok {
 		repo = h.DefaultRepository
@@ -800,7 +821,556 @@ func (h *JSONAPIHandler) getModelRepositoryByType(modelType reflect.Type) (repo 
 	return repo
 }
 
-func (h *JSONAPIHandler) handleHandlerError(hErr *HandlerError, rw http.ResponseWriter) bool {
+// getForeginRelationshiops gets foreign relationships primaries
+func (h *Handler) getForeginRelationships(ctx context.Context, scope *Scope) error {
+
+	relations := map[string]*StructField{}
+
+	for name, field := range scope.Fieldset {
+		if field.isRelationship() {
+			if _, ok := relations[name]; !ok {
+				relations[name] = field
+			}
+		}
+	}
+
+	// If the included is not within fieldset, get their primaries also.
+	for _, included := range scope.IncludedFields {
+		if _, ok := relations[included.jsonAPIName]; !ok {
+			relations[included.jsonAPIName] = included.StructField
+		}
+	}
+
+	v := reflect.ValueOf(scope.Value)
+	if v.Kind() == reflect.Ptr {
+		scope.IsMany = false
+	} else if v.Kind() == reflect.Slice {
+		scope.IsMany = true
+	}
+
+	if reflect.DeepEqual(scope.Value, reflect.Zero(v.Type())) {
+		err := errors.Errorf("getForeignRelatinoships failed. Provided scope with nil value. scope.Struct: %v.", scope.Struct)
+		h.log.Error(err)
+		return err
+	}
+
+	for _, rel := range relations {
+		err := h.getForeignRelationshipValue(ctx, scope, v, rel)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// getForeignRelationshipValue gets the value for the given relationship
+func (h *Handler) getForeignRelationshipValue(
+	ctx context.Context,
+	scope *Scope,
+	v reflect.Value,
+	rel *StructField,
+) error {
+	// Check the relationships
+	if rel.relationship == nil {
+		h.log.Debugf("Empty relationship at Field: %s, Model: %s.", rel.fieldName, rel.mStruct.modelType.Name())
+		return nil
+	}
+
+	switch rel.relationship.Kind {
+	case RelHasOne:
+		// if relationship is synced get the relations primaries from the related repository
+		// if scope value is many use List
+		//
+		// if scope value is single use Get
+		//
+		// the scope should contain only foreign key as fieldset
+		// Create new relation scope
+		var (
+			op           FilterOperator
+			filterValues []interface{}
+		)
+
+		sync := rel.relationship.Sync
+		if sync != nil && !*sync {
+			return nil
+		}
+
+		if !scope.IsMany {
+			// Value already checked if nil
+
+			v = v.Elem()
+			op = OpEqual
+
+			primVal := v.FieldByIndex(scope.Struct.primary.refStruct.Index)
+			prim := primVal.Interface()
+			if reflect.DeepEqual(prim, reflect.Zero(primVal.Type()).Interface()) {
+				return nil
+			}
+
+			filterValues = []interface{}{prim}
+		} else {
+			op = OpIn
+			for i := 0; i < v.Len(); i++ {
+				elem := v.Index(i)
+				if elem.IsNil() {
+					continue
+				}
+				if elem.Kind() == reflect.Ptr {
+					elem = elem.Elem()
+				}
+
+				primVal := elem.FieldByIndex(scope.Struct.primary.refStruct.Index)
+				prim := primVal.Interface()
+				if reflect.DeepEqual(prim, reflect.Zero(primVal.Type()).Interface()) {
+					continue
+				}
+				filterValues = append(filterValues, prim)
+			}
+
+			if len(filterValues) == 0 {
+				return nil
+			}
+		}
+
+		fk := rel.relationship.ForeignKey
+		relatedScope := &Scope{
+			Struct: rel.relatedStruct,
+			Fieldset: map[string]*StructField{
+				fk.jsonAPIName: fk,
+			},
+			currentIncludedFieldIndex: -1,
+			ctx:    ctx,
+			logger: scope.logger,
+		}
+		relatedScope.collectionScope = relatedScope
+
+		// set filterfield
+		filterField := &FilterField{
+			StructField: rel.relationship.ForeignKey,
+			Values: []*FilterValues{
+				{
+					Operator: op,
+					Values:   filterValues,
+				},
+			},
+		}
+
+		relatedScope.ForeignKeyFilters = append(relatedScope.ForeignKeyFilters, filterField)
+
+		relatedRepo := h.GetRepositoryByType(relatedScope.Struct.modelType)
+		if scope.IsMany {
+			relatedScope.newValueMany()
+			err := relatedRepo.List(relatedScope)
+			if err != nil {
+				return err
+			}
+
+			// iterate over relatedScope values and match the fk's with scope's primaries.
+			relVal := reflect.ValueOf(relatedScope.Value)
+			for i := 0; i < relVal.Len(); i++ {
+				elem := relVal.Index(i)
+				if elem.IsNil() {
+					continue
+				}
+
+				if elem.Kind() == reflect.Ptr {
+					elem = elem.Elem()
+				}
+
+				fkVal := elem.FieldByIndex(fk.refStruct.Index)
+				pkVal := elem.FieldByIndex(relatedScope.Struct.primary.refStruct.Index)
+
+				pk := pkVal.Interface()
+				if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+					h.log.Debugf("Relationship HasMany. Elem value with Zero Value for foreign key. Elem: %#v, FKName: %s", elem.Interface(), fk.fieldName)
+					continue
+				}
+
+			rootLoop:
+				for j := 0; j < v.Len(); j++ {
+					rootElem := v.Index(j)
+					if rootElem.Kind() == reflect.Ptr {
+						rootElem = rootElem.Elem()
+					}
+
+					rootPrim := rootElem.FieldByIndex(scope.Struct.primary.refStruct.Index)
+					if rootPrim.Interface() == fkVal.Interface() {
+						rootElem.FieldByIndex(rel.refStruct.Index).Set(relVal.Index(i))
+						break rootLoop
+					}
+				}
+
+			}
+
+		} else {
+			relatedScope.newValueSingle()
+			err := relatedRepo.Get(relatedScope)
+			if err != nil {
+				return err
+			}
+			v.FieldByIndex(rel.refStruct.Index).Set(reflect.ValueOf(relatedScope.Value))
+		}
+
+		// After getting the values set the scope relation value into the value of the relatedscope
+	case RelHasMany:
+		// if relationship is synced get it from the related repository
+		//
+		// Use a relatedRepo.List method
+		//
+		// the scope should contain only foreign key as fieldset
+		var (
+			op           FilterOperator
+			filterValues []interface{}
+			primMap      map[interface{}]int
+			primIndex    = scope.Struct.primary.refStruct.Index
+		)
+		sync := rel.relationship.Sync
+		if sync != nil && !*sync {
+			return nil
+		}
+
+		if !scope.IsMany {
+			v = v.Elem()
+			op = OpEqual
+			pkVal := v.FieldByIndex(primIndex)
+			pk := pkVal.Interface()
+			if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+				err := errors.Errorf("Empty Scope Primary Value")
+				h.log.Debugf("Err: %v. pk:%v, Scope: %#v", err, pk, scope)
+				return err
+			}
+
+			filterValues = append(filterValues, pk)
+		} else {
+			primMap = map[interface{}]int{}
+			op = OpIn
+			for i := 0; i < v.Len(); i++ {
+				elem := v.Index(i)
+				if elem.IsNil() {
+					continue
+				}
+
+				if elem.Kind() == reflect.Ptr {
+					elem = elem.Elem()
+				}
+
+				pkVal := elem.FieldByIndex(primIndex)
+				pk := pkVal.Interface()
+
+				// if the value is Zero like continue
+				if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+					continue
+				}
+
+				primMap[pk] = i
+
+				filterValues = append(filterValues, pk)
+			}
+		}
+
+		relatedScope := &Scope{
+			Struct:                    rel.relatedStruct,
+			Fieldset:                  map[string]*StructField{},
+			currentIncludedFieldIndex: -1,
+			ctx:    ctx,
+			logger: scope.logger,
+		}
+		relatedScope.collectionScope = relatedScope
+
+		fk := rel.relationship.ForeignKey
+
+		// set filterfield
+		filterField := &FilterField{
+			StructField: fk,
+			Values: []*FilterValues{
+				{
+					Operator: op,
+					Values:   filterValues,
+				},
+			},
+		}
+		relatedScope.ForeignKeyFilters = append(relatedScope.ForeignKeyFilters, filterField)
+
+		// set fieldset
+		relatedScope.Fieldset[fk.jsonAPIName] = fk
+		relatedScope.newValueMany()
+
+		relRepo := h.GetRepositoryByType(relatedScope.Struct.modelType)
+		err := relRepo.List(relatedScope)
+		if err != nil {
+			h.log.Debugf("relationRepo List failed. Scope: %#v, Err: %v", scope, err)
+			return err
+		}
+
+		relVal := reflect.ValueOf(relatedScope.Value)
+		for i := 0; i < relVal.Len(); i++ {
+			elem := relVal.Index(i)
+			if elem.Kind() == reflect.Ptr {
+				elem = elem.Elem()
+			}
+
+			// get the foreignkey value
+			fkVal := elem.FieldByIndex(fk.refStruct.Index)
+			// pkVal := elem.FieldByIndex(relatedScope.Struct.primary.refStruct.Index)
+
+			var scopeElem reflect.Value
+			if scope.IsMany {
+				// foreign key in relation would be a primary key within root scope
+				j, ok := primMap[fkVal.Interface()]
+				if !ok {
+					h.log.Debugf("Foreign Key not found.")
+					continue
+				}
+				// rootPK should be at index 'j'
+				scopeElem = v.Index(j)
+				if scopeElem.Kind() == reflect.Ptr {
+					scopeElem = scopeElem.Elem()
+				}
+			} else {
+				scopeElem = v
+			}
+
+			elemRelVal := scopeElem.FieldByIndex(rel.refStruct.Index)
+			elemRelVal.Set(reflect.Append(elemRelVal, relVal.Index(i)))
+
+		}
+
+	case RelMany2Many:
+		// if the relationship is synced get the values from the relationship
+		sync := rel.relationship.Sync
+		if sync != nil && *sync {
+			// when sync get the relationships value from the backreference relationship
+			var (
+				filterValues = []interface{}{}
+				primMap      map[interface{}]int
+				primIndex    = scope.Struct.primary.refStruct.Index
+				op           FilterOperator
+			)
+
+			if !scope.IsMany {
+				// set isMany to false just to see the difference
+
+				op = OpEqual
+
+				// Derefernce the pointer
+				v = v.Elem()
+
+				pkVal := v.FieldByIndex(primIndex)
+				pk := pkVal.Interface()
+
+				if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+					err := errors.Errorf("Error no primary valoue set for the scope value.  Scope %#v. Value: %+v", scope, scope.Value)
+					return err
+				}
+
+				filterValues = append(filterValues, pk)
+
+			} else {
+
+				// Operator is 'in'
+				op = OpIn
+
+				// primMap contains the index of the proper scope value for
+				//given primary key value
+				primMap = map[interface{}]int{}
+				for i := 0; i < v.Len(); i++ {
+					elem := v.Index(i)
+					if elem.IsNil() {
+						continue
+					}
+
+					if elem.Kind() == reflect.Ptr {
+						elem = elem.Elem()
+					}
+
+					pkVal := elem.FieldByIndex(primIndex)
+					pk := pkVal.Interface()
+
+					// if the value is Zero like continue
+					if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+						continue
+					}
+
+					primMap[pk] = i
+
+					filterValues = append(filterValues, pk)
+				}
+			}
+
+			backReference := rel.relationship.BackReferenceField
+
+			backRefRelPrimary := backReference.relatedStruct.primary
+
+			filterField := &FilterField{
+				StructField: backReference,
+				Relationships: []*FilterField{
+					{
+						StructField: backRefRelPrimary,
+						Values: []*FilterValues{
+							{
+								Operator: op,
+								Values:   filterValues,
+							},
+						},
+					},
+				},
+			}
+
+			relatedScope := &Scope{
+				Struct: rel.relatedStruct,
+				Fieldset: map[string]*StructField{
+					backReference.jsonAPIName: backReference,
+				},
+				currentIncludedFieldIndex: -1,
+				ctx:    ctx,
+				logger: scope.logger,
+			}
+			relatedScope.collectionScope = relatedScope
+
+			relatedScope.RelationshipFilters = append(relatedScope.RelationshipFilters, filterField)
+
+			relatedScope.newValueMany()
+
+			relatedRepo := h.GetRepositoryByType(relatedScope.Struct.modelType)
+			err := relatedRepo.List(relatedScope)
+			if err != nil {
+				return err
+			}
+
+			relVal := reflect.ValueOf(relatedScope.Value)
+
+			// iterate over relatedScoep Value
+			for i := 0; i < relVal.Len(); i++ {
+				// Get Each element from the relatedScope Value
+				relElem := relVal.Index(i)
+				if relElem.IsNil() {
+					continue
+				}
+
+				// Dereference the ptr
+				if relElem.Kind() == reflect.Ptr {
+					relElem = relElem.Elem()
+				}
+
+				relPrimVal := relElem.FieldByIndex(relatedScope.Struct.primary.refStruct.Index)
+
+				// continue if empty
+				if reflect.DeepEqual(relPrimVal.Int(), reflect.Zero(relPrimVal.Type()).Interface()) {
+					continue
+				}
+
+				backRefVal := relElem.FieldByIndex(backReference.refStruct.Index)
+
+				// iterate over backreference elems
+			backRefLoop:
+				for j := 0; j < backRefVal.Len(); j++ {
+					// BackRefPrimary would be root primary
+					backRefElem := backRefVal.Index(j)
+					if backRefElem.IsNil() {
+						continue
+					}
+
+					if backRefElem.Kind() == reflect.Ptr {
+						backRefElem = backRefElem.Elem()
+					}
+
+					backRefPrimVal := backRefElem.FieldByIndex(backRefRelPrimary.refStruct.Index)
+					backRefPrim := backRefPrimVal.Interface()
+
+					if reflect.DeepEqual(backRefPrim, reflect.Zero(backRefPrimVal.Type()).Interface()) {
+						h.log.Warningf("Backreferecne Relationship Many2Many contains zero valued primary key. Scope: %#v, RelatedScope: %#v. Relationship: %#v", scope, relatedScope, rel)
+						continue backRefLoop
+					}
+
+					var val reflect.Value
+					if scope.IsMany {
+						index, ok := primMap[backRefPrim]
+						if !ok {
+							h.log.Warningf("Relationship Many2Many contains backreference primaries that doesn't match the root scope value. Scope: %#v. Relationship: %v", scope, rel)
+							continue backRefLoop
+						}
+
+						val = v.Index(index)
+					} else {
+						val = v
+					}
+
+					m2mElem := reflect.New(rel.relatedStruct.modelType)
+					m2mElem.FieldByIndex(rel.relatedStruct.primary.refStruct.Index).Set(relPrimVal)
+
+					relationField := val.FieldByIndex(rel.refStruct.Index)
+					relationField.Set(reflect.Append(relationField, m2mElem))
+				}
+
+			}
+
+		}
+	case RelBelongsTo:
+		// if scope value is a slice
+		// iterate over all entries and transfer all foreign keys into relationship primaries.
+
+		// for single value scope do it once
+
+		sync := rel.relationship.Sync
+		if sync != nil && *sync {
+			// don't know what to do now
+			// Get it from the backreference ? and
+			h.log.Warningf("Synced BelongsTo relationship. Scope: %#v, Relation: %#v", scope, rel)
+		}
+
+		fkField := rel.relationship.ForeignKey
+		if !scope.IsMany {
+			v = v.Elem()
+			fkVal := v.FieldByIndex(fkField.refStruct.Index)
+			if reflect.DeepEqual(fkVal.Interface(), reflect.Zero(fkVal.Type()).Interface()) {
+				return nil
+			}
+			relVal := v.FieldByIndex(rel.refStruct.Index)
+			if relVal.Kind() == reflect.Ptr {
+				if relVal.IsNil() {
+					relVal.Set(reflect.New(relVal.Type().Elem()))
+				}
+				relVal = relVal.Elem()
+			} else if relVal.Kind() != reflect.Struct {
+				err := errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", scope.Struct, rel)
+				h.log.Warning(err)
+				return err
+			}
+			relPrim := relVal.FieldByIndex(rel.relatedStruct.primary.refStruct.Index)
+			relPrim.Set(fkVal)
+
+		} else {
+			for i := 0; i < v.Len(); i++ {
+				elem := v.Index(i)
+				if elem.IsNil() {
+					continue
+				}
+				elem = elem.Elem()
+				fkVal := elem.FieldByIndex(fkField.refStruct.Index)
+				if reflect.DeepEqual(fkVal.Interface(), reflect.Zero(fkVal.Type()).Interface()) {
+					continue
+				}
+
+				relVal := elem.FieldByIndex(rel.refStruct.Index)
+				if relVal.Kind() == reflect.Ptr {
+					if relVal.IsNil() {
+						relVal.Set(reflect.New(relVal.Type().Elem()))
+					}
+					relVal = relVal.Elem()
+				} else if relVal.Kind() != reflect.Struct {
+					err := errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", scope.Struct, rel)
+					h.log.Warning(err)
+					return err
+				}
+				relPrim := relVal.FieldByIndex(rel.relatedStruct.primary.refStruct.Index)
+				relPrim.Set(fkVal)
+			}
+		}
+	}
+	return nil
+}
+
+func (h *Handler) handleHandlerError(hErr *HandlerError, rw http.ResponseWriter) bool {
 	switch hErr.Code {
 	case HErrInternal:
 		h.log.Error(hErr.Error())
@@ -825,23 +1395,44 @@ func (h *JSONAPIHandler) handleHandlerError(hErr *HandlerError, rw http.Response
 
 }
 
-func (h *JSONAPIHandler) manageDBError(rw http.ResponseWriter, dbErr *unidb.Error) {
-	errObj, err := h.DBErrMgr.Handle(dbErr)
-	if err != nil {
-		h.log.Error(dbErr.Message)
+func (h *Handler) manageDBError(rw http.ResponseWriter, err error) {
+	var errObj *ErrorObject
+	switch e := err.(type) {
+	case *ErrorObject:
+		h.log.Debugf("DBError is *ErrorObject: %v", e)
+		errObj = e
+	case *unidb.Error:
+		h.log.Debugf("DBError is *unidb.Error: %v", e)
+		proto, er := e.GetPrototype()
+		if er != nil {
+			h.log.Errorf("*unidb.Error.GetPrototype (%#v) failed. %v", e, err)
+			h.MarshalInternalError(rw)
+			return
+		}
+
+		if proto == unidb.ErrUnspecifiedError || proto == unidb.ErrInternalError {
+			h.log.Errorf("*unidb.ErrUnspecified. Message: %v", e.Message)
+			h.MarshalInternalError(rw)
+			return
+		}
+
+		errObj, err = h.DBErrMgr.Handle(e)
+		if err != nil {
+			h.log.Errorf("DBErrorManager.Handle failed. %v", err)
+			h.MarshalInternalError(rw)
+			return
+		}
+	default:
+		h.log.Errorf("Handler.ManageDbErrors failed. Unknown error provided %v.", err)
 		h.MarshalInternalError(rw)
 		return
-	}
-
-	if proto, _ := dbErr.GetPrototype(); proto == unidb.ErrUnspecifiedError || proto == unidb.ErrInternalError {
-		h.log.Error(dbErr)
 	}
 
 	h.MarshalErrors(rw, errObj)
 	return
 }
 
-func (h *JSONAPIHandler) errSetIDFilter(
+func (h *Handler) errSetIDFilter(
 	scope *Scope,
 	err error,
 	rw http.ResponseWriter,
@@ -852,7 +1443,7 @@ func (h *JSONAPIHandler) errSetIDFilter(
 	return
 }
 
-func (h *JSONAPIHandler) errMarshalPayload(
+func (h *Handler) errMarshalPayload(
 	payload Payloader,
 	err error,
 	model reflect.Type,
@@ -863,7 +1454,8 @@ func (h *JSONAPIHandler) errMarshalPayload(
 	h.MarshalInternalError(rw)
 }
 
-func (h *JSONAPIHandler) setScopeFlags(scope *Scope, endpoint *Endpoint, model *ModelHandler) {
+// setScopeFlags sets the flags for given scope based on the endpoint and modelHandler
+func (h *Handler) setScopeFlags(scope *Scope, endpoint *Endpoint, model *ModelHandler) {
 
 	// FlagMetaCountList
 	if scope.FlagMetaCountList == nil {
@@ -900,7 +1492,7 @@ func (h *JSONAPIHandler) setScopeFlags(scope *Scope, endpoint *Endpoint, model *
 
 }
 
-func (h *JSONAPIHandler) errMarshalScope(
+func (h *Handler) errMarshalScope(
 	rw http.ResponseWriter,
 	req *http.Request,
 ) {

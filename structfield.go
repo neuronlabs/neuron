@@ -60,6 +60,7 @@ const (
 	fLanguage
 	fHidden
 	fSortable
+	fClientID
 )
 
 // StructField represents a field structure with its json api parameters
@@ -92,6 +93,10 @@ type StructField struct {
 	fieldFlags fieldFlag
 
 	// omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
+}
+
+func (s *StructField) IsZeroValue(fieldValue interface{}) bool {
+	return reflect.DeepEqual(fieldValue, reflect.Zero(s.refStruct.Type).Interface())
 }
 
 // GetFieldIndex - gets the field index in the given model
@@ -192,13 +197,6 @@ func (s *StructField) getFieldIndex() int {
 	return s.refStruct.Index[0]
 }
 
-func (s *StructField) setFieldName(c NamingConvention) {
-	if s.jsonAPIName != "" {
-		return
-	}
-	s.jsonAPIName = getNameByConvention(s.refStruct.Name, c)
-}
-
 func (s *StructField) getTagValues(tag string) (url.Values, error) {
 	mp := url.Values{}
 	seperated := strings.Split(tag, annotationTagSeperator)
@@ -268,6 +266,10 @@ func (s *StructField) initCheckFieldType() error {
 		}
 	}
 	return nil
+}
+
+func (s *StructField) allowClientID() bool {
+	return s.fieldFlags&fClientID != 0
 }
 
 func (s *StructField) isOmitEmpty() bool {

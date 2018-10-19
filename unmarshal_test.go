@@ -268,8 +268,8 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(buf, &Blog{}, true)
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
-			assert.Contains(t, scope.UpdatedFields, scope.Struct.attributes["title"])
-			assert.Len(t, scope.UpdatedFields, 1)
+			assert.Contains(t, scope.SelectedFields, scope.Struct.attributes["title"])
+			assert.Len(t, scope.SelectedFields, 1)
 		}
 
 	})
@@ -283,8 +283,8 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["title"])
-				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["view_count"])
+				assert.Contains(t, scope.SelectedFields, mStruct.attributes["title"])
+				assert.Contains(t, scope.SelectedFields, mStruct.attributes["view_count"])
 			}
 		}
 	})
@@ -312,8 +312,8 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.UpdatedFields, 1)
-				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["current_post"])
+				assert.Len(t, scope.SelectedFields, 1)
+				assert.Contains(t, scope.SelectedFields, mStruct.relationships["current_post"])
 			}
 		}
 	})
@@ -347,8 +347,8 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.UpdatedFields, 1)
-				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["posts"])
+				assert.Len(t, scope.SelectedFields, 1)
+				assert.Contains(t, scope.SelectedFields, mStruct.relationships["posts"])
 			}
 		}
 	})
@@ -387,10 +387,10 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.UpdatedFields, 3)
-				assert.Contains(t, scope.UpdatedFields, mStruct.attributes["title"])
-				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["current_post"])
-				assert.Contains(t, scope.UpdatedFields, mStruct.relationships["posts"])
+				assert.Len(t, scope.SelectedFields, 3)
+				assert.Contains(t, scope.SelectedFields, mStruct.attributes["title"])
+				assert.Contains(t, scope.SelectedFields, mStruct.relationships["current_post"])
+				assert.Contains(t, scope.SelectedFields, mStruct.relationships["posts"])
 			}
 		}
 	})

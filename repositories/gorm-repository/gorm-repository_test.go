@@ -194,7 +194,7 @@ func getHttpPair(method, target string, body io.Reader,
 	return
 }
 
-func prepareHandler(languages []language.Tag, models ...interface{}) *jsonapi.JSONAPIHandler {
+func prepareHandler(languages []language.Tag, models ...interface{}) *jsonapi.Handler {
 	c := jsonapi.NewController()
 
 	logger := unilogger.MustGetLoggerWrapper(unilogger.NewBasicLogger(os.Stderr, "", log.Ldate))

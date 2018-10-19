@@ -37,7 +37,7 @@ type HookAfterDeleter interface {
 	JSONAPIAfterDelete(scope *Scope) error
 }
 
-func (h *JSONAPIHandler) HookBeforeReader(scope *Scope) *ErrorObject {
+func (h *Handler) HookBeforeReader(scope *Scope) *ErrorObject {
 	if scope.Value == nil {
 		h.log.Errorf("Provided nil value to HookBeforeReader. Model: %v", scope.Struct.GetType().Name())
 		return ErrInternalError.Copy()
@@ -93,7 +93,7 @@ func (h *JSONAPIHandler) HookBeforeReader(scope *Scope) *ErrorObject {
 	return nil
 }
 
-func (h *JSONAPIHandler) HookAfterReader(scope *Scope) *ErrorObject {
+func (h *Handler) HookAfterReader(scope *Scope) *ErrorObject {
 	if scope.Value == nil {
 		h.log.Errorf("Provided nil value after HookAfterReader. Model: %v", scope.Struct.GetType().Name())
 		return ErrInternalError.Copy()

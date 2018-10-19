@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func RouteHandler(router *gin.Engine, handler *jsonapi.JSONAPIHandler) error {
+func RouteHandler(router *gin.Engine, handler *jsonapi.Handler) error {
 	for _, model := range handler.ModelHandlers {
 		// mStruct := handler.Controller.Models.Get(model.ModelType)
 		mStruct := handler.Controller.Models.Get(model.ModelType)

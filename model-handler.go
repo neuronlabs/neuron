@@ -296,15 +296,15 @@ func (m *ModelHandler) newModelType(model interface{}) (err error) {
 
 /**
 
-JSONAPIHandler Methods with ModelHandler
+Handler Methods with ModelHandler
 
 */
 
-// AddModelsPresetPair gets the model handler from the JSONAPIHandler, and adds the presetpair
+// AddModelsPresetPair gets the model handler from the Handler, and adds the presetpair
 // to the specific endpoint for this model.
-// Returns error if the model is not present within JSONAPIHandler or if the model does not
+// Returns error if the model is not present within Handler or if the model does not
 // support given endpoint.
-func (h *JSONAPIHandler) AddModelsPresetPair(
+func (h *Handler) AddModelsPresetPair(
 	model interface{},
 	presetPair *PresetPair,
 	endpoint EndpointType,
@@ -320,11 +320,11 @@ func (h *JSONAPIHandler) AddModelsPresetPair(
 	return nil
 }
 
-// AddModelsPrecheckPair gets the model handler from the JSONAPIHandler, and adds the precheckPair
+// AddModelsPrecheckPair gets the model handler from the Handler, and adds the precheckPair
 // to the specific endpoint for this model.
-// Returns error if the model is not present within JSONAPIHandler or if the model does not
+// Returns error if the model is not present within Handler or if the model does not
 // support given endpoint.
-func (h *JSONAPIHandler) AddModelsPrecheckPair(
+func (h *Handler) AddModelsPrecheckPair(
 	model interface{},
 	precheckPair *PresetPair,
 	endpoint EndpointType,
@@ -343,7 +343,7 @@ func (h *JSONAPIHandler) AddModelsPrecheckPair(
 // AddModelsEndpoint adds the endpoint to the provided model.
 // If the model is not set within given handler, an endpoint is already occupied or is of unknown
 // type the function returns error.
-func (h *JSONAPIHandler) AddModelsEndpoint(model interface{}, endpoint *Endpoint) error {
+func (h *Handler) AddModelsEndpoint(model interface{}, endpoint *Endpoint) error {
 	handler, err := h.getModelHandler(model)
 	if err != nil {
 		return err
@@ -355,9 +355,9 @@ func (h *JSONAPIHandler) AddModelsEndpoint(model interface{}, endpoint *Endpoint
 }
 
 // ReplaceModelsEndpoint replaces an endpoint for provided model.
-// If the model is not set within JSONAPIHandler or an endpoint is of unknown type the function
+// If the model is not set within Handler or an endpoint is of unknown type the function
 // returns an error.
-func (h *JSONAPIHandler) ReplaceModelsEndpoint(model interface{}, endpoint *Endpoint) error {
+func (h *Handler) ReplaceModelsEndpoint(model interface{}, endpoint *Endpoint) error {
 	handler, err := h.getModelHandler(model)
 	if err != nil {
 		return err
@@ -369,12 +369,12 @@ func (h *JSONAPIHandler) ReplaceModelsEndpoint(model interface{}, endpoint *Endp
 }
 
 // GetModelHandler gets the model handler that matches the provided model type.
-// If no handler is found within JSONAPIHandler the function returns an error.
-func (h *JSONAPIHandler) GetModelHandler(model interface{}) (mHandler *ModelHandler, err error) {
+// If no handler is found within Handler the function returns an error.
+func (h *Handler) GetModelHandler(model interface{}) (mHandler *ModelHandler, err error) {
 	return h.getModelHandler(model)
 }
 
-func (h *JSONAPIHandler) getModelHandler(model interface{}) (mHandler *ModelHandler, err error) {
+func (h *Handler) getModelHandler(model interface{}) (mHandler *ModelHandler, err error) {
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()

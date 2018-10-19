@@ -38,7 +38,7 @@ func buildLanguageTags(languages string) ([]language.Tag, []*ErrorObject) {
 	return tags, errs
 }
 
-func (h *JSONAPIHandler) GetLanguage(
+func (h *Handler) GetLanguage(
 	req *http.Request,
 	rw http.ResponseWriter,
 ) (tag language.Tag, ok bool) {
@@ -54,7 +54,7 @@ func (h *JSONAPIHandler) GetLanguage(
 	return tag, true
 }
 
-func (h *JSONAPIHandler) DisplaySupportedLanguages() []string {
+func (h *Handler) DisplaySupportedLanguages() []string {
 	namer := display.Tags(language.English)
 	var names []string = make([]string, len(h.SupportedLanguages))
 	for i, lang := range h.SupportedLanguages {
@@ -65,7 +65,7 @@ func (h *JSONAPIHandler) DisplaySupportedLanguages() []string {
 
 // CheckLanguage checks the language value within given scope's Value.
 // It parses the field's value into language.Tag, and if no matching language is provided or the // language is not supported, it writes error to the response.
-func (h *JSONAPIHandler) CheckValueLanguage(
+func (h *Handler) CheckValueLanguage(
 	scope *Scope,
 	rw http.ResponseWriter,
 ) (langtag language.Tag, ok bool) {
@@ -122,6 +122,6 @@ func (h *JSONAPIHandler) CheckValueLanguage(
 
 // HeaderContentLanguage sets the response Header 'Content-Language' to the lang tag provided in
 // argument.
-func (h *JSONAPIHandler) HeaderContentLanguage(rw http.ResponseWriter, langtag language.Tag) {
+func (h *Handler) HeaderContentLanguage(rw http.ResponseWriter, langtag language.Tag) {
 	rw.Header().Add(headerAcceptLanguage, langtag.String())
 }

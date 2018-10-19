@@ -194,8 +194,9 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 	primIndex := primStruct.getFieldIndex()
 	primaryVal := modelVal.Field(primIndex)
+
 	var err error
-	if !primStruct.isHidden() {
+	if !primStruct.isHidden() && !primStruct.IsZeroValue(primaryVal.Interface()) {
 		err = setNodePrimary(primaryVal, node)
 		if err != nil {
 			return nil, err
@@ -205,7 +206,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	for _, field := range scope.getModelsRootScope(scope.Struct).Fieldset {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
-		if field.isHidden() {
+		if field.isHidden() || field.IsZeroValue(fieldValue.Interface()) {
 			continue
 		}
 
@@ -259,11 +260,6 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 				} else {
 					node.Attributes[field.jsonAPIName] = fieldValue.Interface()
 				}
-			}
-		case ClientID:
-			clientID := fieldValue.String()
-			if clientID != "" {
-				node.ClientID = clientID
 			}
 		case RelationshipMultiple, RelationshipSingle:
 

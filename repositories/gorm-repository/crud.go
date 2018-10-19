@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-func (g *GORMRepository) Create(scope *jsonapi.Scope) *unidb.Error {
+func (g *GORMRepository) Create(scope *jsonapi.Scope) error {
 
 	/**
 
@@ -43,10 +43,9 @@ func (g *GORMRepository) Create(scope *jsonapi.Scope) *unidb.Error {
 	}
 
 	return nil
-
 }
 
-func (g *GORMRepository) Get(scope *jsonapi.Scope) *unidb.Error {
+func (g *GORMRepository) Get(scope *jsonapi.Scope) error {
 
 	/**
 
@@ -102,7 +101,7 @@ func (g *GORMRepository) Get(scope *jsonapi.Scope) *unidb.Error {
 	return nil
 }
 
-func (g *GORMRepository) List(scope *jsonapi.Scope) *unidb.Error {
+func (g *GORMRepository) List(scope *jsonapi.Scope) error {
 	if scope.Value == nil {
 		scope.NewValueMany()
 	}
@@ -172,7 +171,7 @@ func (g *GORMRepository) List(scope *jsonapi.Scope) *unidb.Error {
 	return nil
 }
 
-func (g *GORMRepository) Patch(scope *jsonapi.Scope) *unidb.Error {
+func (g *GORMRepository) Patch(scope *jsonapi.Scope) error {
 	/**
 
 	  PATCH: HANDLE NIL VALUE
@@ -242,7 +241,7 @@ func (g *GORMRepository) Patch(scope *jsonapi.Scope) *unidb.Error {
 	return nil
 }
 
-func (g *GORMRepository) Delete(scope *jsonapi.Scope) *unidb.Error {
+func (g *GORMRepository) Delete(scope *jsonapi.Scope) error {
 	if scope.Value == nil {
 		scope.NewValueSingle()
 	}

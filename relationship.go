@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"github.com/pkg/errors"
+	"net/http"
 	"reflect"
 )
 
@@ -31,7 +32,7 @@ type Relationship struct {
 
 	// Sync is a flag that defines if the relationship opertaions
 	// should be synced with the related many2many relationship
-	// or the foreignkey in related model
+	// or the foreignkey in related foreign model
 	Sync *bool
 
 	// BackReference Fieldname is a field name that is back-reference
@@ -42,6 +43,10 @@ type Relationship struct {
 	BackReferenceField *StructField
 }
 
+func (r Relationship) IsToOne() bool {
+	return r.isToOne()
+}
+
 func (r Relationship) isToOne() bool {
 	switch r.Kind {
 	case RelHasOne, RelBelongsTo:
@@ -50,12 +55,20 @@ func (r Relationship) isToOne() bool {
 	return false
 }
 
+func (r Relationship) IsToMany() bool {
+	return r.isToMany()
+}
+
 func (r Relationship) isToMany() bool {
 	switch r.Kind {
 	case RelHasOne, RelBelongsTo, RelUnknown:
 		return false
 	}
 	return true
+}
+
+func (r Relationship) IsManyToMany() bool {
+	return r.isMany2Many()
 }
 
 func (r Relationship) isMany2Many() bool {
@@ -93,13 +106,22 @@ func (c *Controller) setRelationships() error {
 						continue
 					}
 					if bf := relationship.BackReferenceFieldname; bf != "" {
-						bf = getNameByConvention(bf, c.NamingStrategy)
+						bf = c.NamerFunc(bf)
 						backReferenced, ok := relField.relatedStruct.relationships[bf]
 						if !ok {
 							err = errors.Errorf("The backreference collection named: '%s' is invalid. Model: %s, Sfield: '%s'", bf, model.modelType.Name(), relField.refStruct.Name)
 							return err
 						}
+
+						mustBeType := reflect.SliceOf(reflect.New(model.modelType).Type())
+
+						if backReferenced.refStruct.Type != mustBeType {
+							err = errors.Errorf("The backreference field for relation: %v within model: %v   is of invalid type. Wanted: %v. Is: %v", relField.fieldName, model.modelType.Name(), mustBeType, backReferenced.refStruct.Type)
+							return err
+						}
+
 						relationship.BackReferenceField = backReferenced
+
 					}
 					continue
 				}
@@ -108,18 +130,30 @@ func (c *Controller) setRelationships() error {
 				relationship.Kind = RelHasMany
 
 				if relationship.Sync != nil && !(*relationship.Sync) {
+					c.log().Debugf("Relationship: %s is non-synced.", relField.fieldName)
 					continue
 				}
+				c.log().Debugf("Relationship: %s is synced.", relField.fieldName)
 
 				if fkeyFieldName == "" {
 					fkeyFieldName = model.modelType.Name() + "ID"
 				}
-				fkeyName := getNameByConvention(fkeyFieldName, c.NamingStrategy)
+				fkeyName := c.NamerFunc(fkeyFieldName)
 				fk, ok := relField.relatedStruct.foreignKeys[fkeyName]
 				if !ok {
 					return errors.Errorf("Foreign key not found for the relationship: '%s'. Model: '%s'", relField.fieldName, model.modelType.Name())
 				}
 
+				if model.primary.refStruct.Type != fk.refStruct.Type {
+
+					return errors.Errorf("The foreign key in model: %v for the has-many relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
+						fk.relatedModelType.Name(),
+						relField.fieldName,
+						model.modelType.Name(),
+						model.primary.refStruct.Type,
+						fk.refStruct.Type,
+					)
+				}
 				relationship.ForeignKey = fk
 				b := true
 
@@ -131,12 +165,12 @@ func (c *Controller) setRelationships() error {
 				if fkeyFieldName == "" {
 					fkeyFieldName = relField.refStruct.Name + "ID"
 				}
-				fkeyName := getNameByConvention(fkeyFieldName, c.NamingStrategy)
-
+				fkeyName := c.NamerFunc(fkeyFieldName)
 				nosync := (relationship.Sync != nil && !*relationship.Sync)
+				c.log().Debugf("Model: %v Looking for foreignkey: %s", model.modelType.Name(), fkeyName)
 				fk, ok := model.foreignKeys[fkeyName]
 				if !ok {
-					c.log().Debugf("Not found for %s", fkeyName)
+					c.log().Debugf("Not found within root model for relation: %s, foreign: %s", relField.fieldName, fkeyFieldName)
 					relationship.Kind = RelHasOne
 					if nosync {
 						continue
@@ -146,13 +180,42 @@ func (c *Controller) setRelationships() error {
 						return errors.Errorf("Foreign key not found for the relationship: '%s'. Model: '%s'", relField.fieldName, model.modelType.Name())
 					}
 
+					if model.primary.refStruct.Type != fk.refStruct.Type {
+						return errors.Errorf("The foreign key in model: %v for the has-one relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
+							fk.mStruct.modelType.Name(),
+							relField.fieldName,
+							model.modelType.Name(),
+							model.primary.refStruct.Type,
+							fk.refStruct.Type)
+					}
+					sync := true
+					relationship.Sync = &sync
+					c.log().Debugf("Found within related model: %v field: %v", relField.relatedStruct.modelType.Name(), fk.fieldName)
+
 				} else {
 					c.log().Debugf("found for: %s", relField.fieldName)
+					if relField.relatedStruct.primary.refStruct.Type != fk.refStruct.Type {
+						return errors.Errorf("The foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
+							relField.fieldName,
+							relField.relatedModelType.Name(),
+							relField.relatedStruct.primary.refStruct.Type,
+							fk.refStruct.Type,
+						)
+					}
 					relationship.Kind = RelBelongsTo
 				}
 				relationship.ForeignKey = fk
 			}
 		}
 	}
+	return nil
+}
+
+func (h *Handler) getSyncedRelationships(
+	scope *Scope,
+	req *http.Request,
+	rw http.ResponseWriter,
+) error {
+
 	return nil
 }

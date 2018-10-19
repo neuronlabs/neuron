@@ -2,22 +2,37 @@ package jsonapi
 
 const (
 	// StructTag annotation strings
-	annotationJSONAPI           = "jsonapi"
-	annotationPrimary           = "primary"
-	annotationID                = "id"
-	annotationClientID          = "client-id"
-	annotationLanguage          = "langtag"
-	annotationAttribute         = "attr"
-	annotationRelation          = "relation"
-	annotationRelationNoSync    = "nosync"
-	annotaitonRelationSync      = "sync"
-	annotationForeignKey        = "foreign"
-	annotationOmitEmpty         = "omitempty"
-	annotationI18n              = "i18n"
-	annotationFieldType         = "type"
-	annotationFlags             = "flags"
-	annotationName              = "name"
-	annotationISO8601           = "iso8601"
+	annotationJSONAPI = "jsonapi"
+
+	// type tag
+	annotationPrimary   = "primary"
+	annotationID        = "id"
+	annotationClientID  = "client-id"
+	annotationLanguage  = "langtag"
+	annotationAttribute = "attr"
+	annotationRelation  = "relation"
+
+	// relation tag
+	annotationManyToMany         = "many2many"
+	annotationManyToManyDisjoint = "disjoint"
+	annotationManyToManyCommon   = "common"
+	annotationRelationNoSync     = "nosync"
+	annotaitonRelationSync       = "sync"
+	annotationForeignKey         = "foreign"
+
+	// name tag
+	annotationName = "name"
+
+	// flags tag
+	annotationHidden      = "hidden"
+	annotationISO8601     = "iso8601"
+	annotationOmitEmpty   = "omitempty"
+	annotationI18n        = "i18n"
+	annotationFieldType   = "type"
+	annotationFlags       = "flags"
+	annotationNoFilter    = "nofilter"
+	annotationNotSortable = "nosort"
+
 	annotationSeperator         = ","
 	annotationRelationSeperator = ":"
 	annotationTagSeperator      = ";"
@@ -27,18 +42,8 @@ const (
 	annotationOpenedBracket   = '['
 	annotationClosedBracket   = ']'
 
-	// Hidden field
-	annotationHidden = "hidden"
-
-	annotationManyToMany         = "many2many"
-	annotationManyToManyDisjoint = "disjoint"
-	annotationManyToManyCommon   = "common"
-
 	// FILTERS
 	// disable for filtering purpose
-	annotationNoFilter = "nofilter"
-
-	annotationSortable = "sortable"
 
 	// logical filters
 	annotationEqual        = "eq"
