@@ -296,7 +296,7 @@ func TestHandlerGet(t *testing.T) {
 						scope, ok := args.Get(0).(*Scope)
 						require.True(t, ok)
 
-						if assert.Len(t, scope.Fieldset, 1) {
+						if assert.Len(t, scope.Fieldset, 2) {
 							_, ok := scope.Fieldset["title"]
 							assert.True(t, ok)
 						}

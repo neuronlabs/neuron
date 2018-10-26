@@ -159,7 +159,6 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 				modelStruct.relationships[structField.jsonAPIName] = structField
 			case annotationAttribute:
 				structField.fieldType = Attribute
-				modelStruct.fields = append(modelStruct.fields, structField)
 				// check if no duplicates
 				_, ok := modelStruct.attributes[structField.jsonAPIName]
 				if ok {
@@ -167,6 +166,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 						structField.jsonAPIName, modelStruct.modelType.Name())
 					return err
 				}
+				modelStruct.fields = append(modelStruct.fields, structField)
 
 				switch structField.refStruct.Type {
 				case reflect.TypeOf(time.Time{}):
@@ -184,6 +184,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 					err = errors.Errorf("Duplicated jsonapi foreign key name: '%s' for model: '%v'", structField.jsonAPIName, modelStruct.modelType.Name())
 					return err
 				}
+				modelStruct.fields = append(modelStruct.fields, structField)
 				modelStruct.foreignKeys[structField.jsonAPIName] = structField
 			default:
 				return errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.modelType.Name(), tField.Name)

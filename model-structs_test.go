@@ -196,5 +196,5 @@ func TestAttrArray(t *testing.T) {
 	err = MarshalPayload(b, p)
 	assertNil(t, err)
 
-	t.Log(b.String())
+	c.log().Debug(b.String())
 }

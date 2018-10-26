@@ -1,13 +1,65 @@
 package gormrepo
 
 import (
-	"fmt"
 	"github.com/jinzhu/gorm"
+	"github.com/kucjac/jsonapi"
 	"reflect"
 	"strings"
 )
 
-func changeableField(scope *gorm.Scope, field *gorm.Field) bool {
+func isFieldEqual(gField *gorm.StructField, jField *jsonapi.StructField) bool {
+	switch len(gField.Struct.Index) {
+	case 1:
+		return gField.Struct.Index[0] == jField.GetReflectStructField().Index[0]
+	default:
+		if len(jField.GetReflectStructField().Index) != len(gField.Struct.Index) {
+			return false
+		}
+
+		return gField.Name == jField.GetFieldName()
+	}
+	return false
+}
+
+func (g *GORMRepository) changeableField(
+	scope *gorm.Scope,
+	field *gorm.Field,
+	jScope *jsonapi.Scope,
+) bool {
+	if jScope != nil {
+
+		for _, jField := range jScope.Struct.GetFields() {
+			if !isFieldEqual(field.StructField, jField) {
+				continue
+			}
+
+			// scope.Log("Found for field: %v", field.Name)
+			if rel := jField.GetRelationship(); rel != nil {
+				// scope.Log(fmt.Sprintf("Field: %v is relationship", field.Name))
+				switch rel.Kind {
+				case jsonapi.RelBelongsTo:
+					// if relation is of belongs to kind do nothing
+					break
+				case jsonapi.RelHasMany, jsonapi.RelHasOne:
+					if rel.Sync != nil && !*rel.Sync {
+						// if the relation is not synced allow it to get locally relations
+						break
+					}
+					return false
+				case jsonapi.RelMany2Many, jsonapi.RelMany2ManyCommon:
+					if rel.Sync != nil && *rel.Sync {
+						// if the relation is synced the relationship values wouldbe taken from the
+						// relationship repository
+						return false
+					}
+					// otherwise allow to
+					break
+				}
+			}
+		}
+
+	}
+
 	if selectAttrs := scope.SelectAttrs(); len(selectAttrs) > 0 {
 		for _, attr := range selectAttrs {
 			if field.Name == attr || field.DBName == attr {
@@ -26,7 +78,14 @@ func changeableField(scope *gorm.Scope, field *gorm.Field) bool {
 	return true
 }
 
-func saveAssociationCheck(scope *gorm.Scope, field *gorm.Field) (autoUpdate bool, autoCreate bool, saveReference bool, r *gorm.Relationship) {
+func (g *GORMRepository) saveAssociationCheck(
+	scope *gorm.Scope,
+	field *gorm.Field,
+	jScope *jsonapi.Scope,
+) (
+	autoUpdate bool, autoCreate bool, saveReference bool,
+	r *gorm.Relationship,
+) {
 	checkTruth := func(value interface{}) bool {
 		if v, ok := value.(bool); ok && !v {
 			return false
@@ -41,9 +100,11 @@ func saveAssociationCheck(scope *gorm.Scope, field *gorm.Field) (autoUpdate bool
 
 		return true
 	}
-
-	if changeableField(scope, field) && !field.IsBlank && !field.IsIgnored {
+	changeable := g.changeableField(scope, field, jScope)
+	// scope.Log(fmt.Sprintf("Field %s, changeable: %v. JSONAPI: %v", field.Name, changeable, jScope != nil))
+	if changeable && !field.IsBlank && !field.IsIgnored {
 		if r = field.Relationship; r != nil {
+
 			autoUpdate, autoCreate, saveReference = true, true, true
 
 			if value, ok := scope.Get("gorm:save_associations"); ok {
@@ -77,12 +138,29 @@ func saveAssociationCheck(scope *gorm.Scope, field *gorm.Field) (autoUpdate bool
 	return
 }
 
-func saveAfterAssociationsCallback(scope *gorm.Scope) {
-	scope.Log("After Association Callback")
-	for _, field := range scope.Fields() {
-		autoUpdate, autoCreate, saveReference, relationship := saveAssociationCheck(scope, field)
+func (g *GORMRepository) saveAfterAssociationsCallback(scope *gorm.Scope) {
 
-		if relationship != nil && (relationship.Kind == "has_one" || relationship.Kind == "has_many" || relationship.Kind == "many_to_many") {
+	jScope, ok := g.getJScope(scope)
+	if !ok {
+		g.log().Debugf("jsonapi.Scope not found for the scope: %#v", scope)
+	}
+
+	if jScope != nil {
+		gormType := scope.GetModelStruct().ModelType
+
+		if jScope.Struct.GetType() != gormType {
+			g.log().Warningf("Scope type doesn't match. JScope: %v, GormScope: %#v", jScope.Struct.GetType(), scope)
+			jScope = nil
+		}
+
+	}
+
+	for _, field := range scope.Fields() {
+		autoUpdate, autoCreate, saveReference, relationship := g.saveAssociationCheck(scope, field, jScope)
+
+		if relationship != nil && (relationship.Kind == "has_one" ||
+			relationship.Kind == "has_many" ||
+			relationship.Kind == "many_to_many") {
 			value := field.Field
 
 			switch value.Kind() {
@@ -107,11 +185,12 @@ func saveAfterAssociationsCallback(scope *gorm.Scope) {
 						}
 					}
 
-					if autoUpdate {
-						// scope.Err(newDB.Where(newScope.PrimaryField().DBName, newScope.PrimaryField().Field.Interface()).Updates(elem))
-
-						scope.Log("AutoUpdate")
-						scope.Err(newDB.Model(elem).Updates(elem).Error)
+					if newScope.PrimaryKeyZero() {
+						if autoCreate {
+							scope.Err(newDB.Save(elem).Error)
+						}
+					} else if autoUpdate {
+						scope.Err(newDB.Save(elem).Error)
 					}
 
 					if !scope.New(newScope.Value).PrimaryKeyZero() && saveReference {
@@ -141,11 +220,11 @@ func saveAfterAssociationsCallback(scope *gorm.Scope) {
 
 				if newScope.PrimaryKeyZero() {
 					if autoCreate {
-						scope.Log("AutoCreate")
+						g.log().Debugf("AutCreate single value for: %#v", elem)
 						scope.Err(scope.NewDB().Save(elem).Error)
 					}
 				} else if autoUpdate {
-					scope.Log("AutoUpdate")
+					g.log().Debugf("AutoUpdate model: %#v", elem)
 					scope.Err(scope.NewDB().Model(elem).Updates(elem).Error)
 				}
 			}
@@ -154,34 +233,35 @@ func saveAfterAssociationsCallback(scope *gorm.Scope) {
 	}
 }
 
-func saveBeforeAssociationsCallback(scope *gorm.Scope) {
-	scope.Log("BeforeAssoctiationsCallback")
-	for _, field := range scope.Fields() {
-		relationship := field.Relationship
+// // saveBeforeAssociationsCallback
+// func saveBeforeAssociationsCallback(scope *gorm.Scope) {
+// 	scope.Log("BeforeAssoctiationsCallback")
+// 	for _, field := range scope.Fields() {
+// 		relationship := field.Relationship
 
-		if relationship != nil && relationship.Kind == "belongs_to" {
-			scope.Log(fmt.Sprintf("Checking field: %s", field.Name))
-			fieldValue := field.Field.Addr().Interface()
-			newScope := scope.New(fieldValue)
+// 		if relationship != nil && relationship.Kind == "belongs_to" {
+// 			scope.Log(fmt.Sprintf("Checking field: %s", field.Name))
+// 			fieldValue := field.Field.Addr().Interface()
+// 			newScope := scope.New(fieldValue)
 
-			if newScope.PrimaryKeyZero() {
-				scope.Log("PK is zero")
-				continue
-				// scope.Log("Provided invalid relationship value")
-				// scope.Err(IErrInvalidRelationshipValue)
-			}
+// 			if newScope.PrimaryKeyZero() {
+// 				scope.Log("PK is zero")
+// 				continue
+// 				// scope.Log("Provided invalid relationship value")
+// 				// scope.Err(IErrInvalidRelationshipValue)
+// 			}
 
-			if len(relationship.ForeignFieldNames) != 0 {
-				// set value's foreign key
-				for idx, fieldName := range relationship.ForeignFieldNames {
-					associationForeignName := relationship.AssociationForeignDBNames[idx]
-					if foreignField, ok := scope.New(fieldValue).FieldByName(associationForeignName); ok {
-						scope.Log(fmt.Sprintf("Setting value: %v for field: %v", foreignField.Field.Interface(), fieldName))
-						scope.Err(scope.SetColumn(fieldName, foreignField.Field.Interface()))
-					}
-				}
-			}
+// 			if len(relationship.ForeignFieldNames) != 0 {
+// 				// set value's foreign key
+// 				for idx, fieldName := range relationship.ForeignFieldNames {
+// 					associationForeignName := relationship.AssociationForeignDBNames[idx]
+// 					if foreignField, ok := scope.New(fieldValue).FieldByName(associationForeignName); ok {
+// 						scope.Log(fmt.Sprintf("Setting value: %v for field: %v", foreignField.Field.Interface(), fieldName))
+// 						scope.Err(scope.SetColumn(fieldName, foreignField.Field.Interface()))
+// 					}
+// 				}
+// 			}
 
-		}
-	}
-}
+// 		}
+// 	}
+// }

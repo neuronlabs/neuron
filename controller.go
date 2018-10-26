@@ -72,6 +72,10 @@ type Controller struct {
 	StrictUnmarshalMode bool
 }
 
+func (c *Controller) Log() unilogger.LeveledLogger {
+	return c.log()
+}
+
 func (c *Controller) log() unilogger.LeveledLogger {
 	if c.logger == nil {
 		basic := unilogger.NewBasicLogger(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)

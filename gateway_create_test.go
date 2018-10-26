@@ -226,7 +226,7 @@ func TestHandlerCreate(t *testing.T) {
 							}
 						}
 						assert.Equal(t, idGenerated, post.BlogID)
-						assert.Contains(t, scope.SelectedFields, scope.Struct.foreignKeys["current_post"], scope.SelectedFields)
+						assert.Contains(t, scope.SelectedFields, scope.Struct.foreignKeys["blog_id"])
 					})
 
 					h.Create(mh, mh.Create).ServeHTTP(rw, req)

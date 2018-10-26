@@ -127,6 +127,24 @@ type Scope struct {
 	ctx context.Context
 }
 
+func (s *Scope) AddSelectedFields(fields ...string) error {
+	for _, addField := range fields {
+		var found bool
+	inner:
+		for _, structField := range s.Struct.fields {
+			if addField == structField.jsonAPIName || addField == structField.fieldName {
+				s.SelectedFields = append(s.SelectedFields, structField)
+				found = true
+				break inner
+			}
+		}
+		if !found {
+			return errors.Errorf("Field: '%s' not found within model: %s", addField, s.Struct.GetCollectionType())
+		}
+	}
+	return nil
+}
+
 func (s *Scope) AddFilterField(filter *FilterField) error {
 	if filter.mStruct != s.Struct {
 		err := fmt.Errorf("Filter Struct does not match with the scope. Model: %v, filterField: %v", s.Struct.GetType().Name(), filter.StructField.GetFieldName())

@@ -2,12 +2,20 @@ package gormrepo
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi"
 	"github.com/kucjac/uni-db/gormconv"
+	"github.com/kucjac/uni-logger"
+	"log"
+	"os"
 	"reflect"
-	"runtime/debug"
+	debugStack "runtime/debug"
+)
+
+var (
+	idCounter uint64
 )
 
 const (
@@ -21,18 +29,44 @@ var (
 	IErrBadRelationshipField = errors.New("This repository does not allow relationship filter of field different than primary.")
 )
 
+var debug *bool = flag.Bool("debug", false, "Sets the log level to DEBUG.")
+
 type GORMRepository struct {
 	db        *gorm.DB
 	converter *gormconv.GORMConverter
+
+	ptrSize int
+
+	logger   unilogger.LeveledLogger
+	logLevel unilogger.Level
 }
 
 func New(db *gorm.DB) (*GORMRepository, error) {
 	gormRepo := &GORMRepository{}
-	err := gormRepo.initialize(db)
+	err := gormRepo.initialize(db.New())
 	if err != nil {
 		return nil, err
 	}
+
 	return gormRepo, nil
+}
+
+// GetLogLevel gets the current log level.
+func (g *GORMRepository) GetLogLevel() unilogger.Level {
+	return g.logLevel
+}
+
+// SetLogLevel sets the log level for given unilogger.Level
+func (g *GORMRepository) SetLogLevel(level unilogger.Level) {
+	g.logLevel = level
+
+	if levelSetter, ok := g.logger.(unilogger.LevelSetter); ok {
+		levelSetter.SetLevel(level)
+	}
+}
+
+func (g *GORMRepository) SetLogger(logger unilogger.LeveledLogger) {
+	g.logger = logger
 }
 
 func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
@@ -40,13 +74,13 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 		err = errors.New("Nil pointer as an argument provided.")
 		return
 	}
+
 	g.db = db
 
-	g.db.Callback().Create().Replace("gorm:save_before_associations", saveBeforeAssociationsCallback)
-	g.db.Callback().Update().Replace("gorm:save_before_associations", saveBeforeAssociationsCallback)
+	db.Callback().Create().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
+	db.Callback().Update().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
 
-	g.db.Callback().Create().Replace("gorm:save_after_associations", saveAfterAssociationsCallback)
-	g.db.Callback().Update().Replace("gorm:save_after_associations", saveAfterAssociationsCallback)
+	g.ptrSize = len(fmt.Sprintf("%v", db))
 
 	// Get Error converter
 	g.converter, err = gormconv.New(db)
@@ -54,7 +88,23 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 		return err
 	}
 
+	g.logLevel = unilogger.ERROR
+
+	if *debug {
+		g.logLevel = unilogger.DEBUG
+	}
+
 	return nil
+}
+
+func (g *GORMRepository) log() unilogger.LeveledLogger {
+	if g.logger == nil {
+		logger := unilogger.NewBasicLogger(os.Stdout, "GORM Repository ", log.Ldate|log.Ltime|log.Lshortfile)
+		logger.SetLevel(g.logLevel)
+		g.logger = logger
+	}
+	return g.logger
+
 }
 
 func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, error) {
@@ -62,7 +112,7 @@ func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, e
 	mStruct := gormScope.GetModelStruct()
 	db := gormScope.DB()
 
-	err := buildFilters(db, mStruct, jsonScope)
+	err := g.buildFilters(db, mStruct, jsonScope)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +132,7 @@ func (g *GORMRepository) buildScopeList(jsonScope *jsonapi.Scope,
 	mStruct := gormScope.GetModelStruct()
 
 	// Filters
-	err = buildFilters(db, mStruct, jsonScope)
+	err = g.buildFilters(db, mStruct, jsonScope)
 	if err != nil {
 		// fmt.Println(err.Error())
 		return nil, err
@@ -205,7 +255,7 @@ func (g *GORMRepository) getRelationship(
 
 	defer func() {
 		if r := recover(); r != nil {
-			debug.PrintStack()
+			debugStack.PrintStack()
 			switch perr := r.(type) {
 			case *reflect.ValueError:
 				err = fmt.Errorf("Provided invalid value input to the repository. Error: %s", perr.Error())
@@ -309,7 +359,7 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 
 	for _, gormField := range mStruct.PrimaryFields {
 		// fmt.Printf("GormFieldIndex: '%v', JsonAPI: '%v'\n", gormField.Struct.Index[0], jsonScope.Struct.GetPrimaryField().GetFieldIndex())
-		if gormField.Struct.Index[0] == jsonScope.Struct.GetPrimaryField().GetFieldIndex() {
+		if isFieldEqual(gormField, jsonScope.Struct.GetPrimaryField()) {
 			if gormField.IsIgnored {
 				continue
 			}
@@ -331,7 +381,6 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 				if gField.Struct.Index[0] == index {
 
 					if gField.IsIgnored {
-
 						continue
 					}
 					// this is the field
@@ -339,24 +388,52 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 				}
 			}
 		} else {
-			if field.GetFieldKind() == jsonapi.RelationshipSingle {
-				for _, gField := range mStruct.StructFields {
+			if rel := field.GetRelationship(); rel != nil {
+				switch rel.Kind {
+				case jsonapi.RelBelongsTo:
+					continue
+				case jsonapi.RelHasMany, jsonapi.RelHasOne:
+					if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
+						continue
+					}
+				case jsonapi.RelMany2Many:
+					if rel.Sync != nil && *rel.Sync {
+						continue
+					}
+				default:
+					continue
+				}
+
+				var gField *gorm.StructField
+				for _, gField = range mStruct.StructFields {
 					if gField.Struct.Index[0] == field.GetFieldIndex() {
-						if gField.IsIgnored {
-							continue
-						}
-						rel := gField.Relationship
+						break
+					}
+				}
+				if gField == nil {
+					continue
+				}
+				if gField.IsIgnored {
+					continue
+				}
+				gormRel := gField.Relationship
 
-						if rel != nil && rel.Kind == "belongs_to" {
+				if gormRel != nil {
+					switch gormRel.Kind {
+					case "has_one", "has_many":
+						*db = *db.Preload(gField.Name, func(internal *gorm.DB) *gorm.DB {
+							return internal.Select(gormRel.ForeignDBNames)
+						})
+					case "many_to_many":
+						*db = *db.Preload(gField.Name, func(internal *gorm.DB) *gorm.DB {
+							return internal.Select(gormRel.AssociationForeignDBNames)
+						})
+					default:
+						continue
 
-							if rel.ForeignDBNames[0] != "id" {
-								fields += ", " + rel.ForeignDBNames[0]
-							}
-						}
 					}
 				}
 			}
-
 		}
 	}
 	*db = *db.Select(fields)

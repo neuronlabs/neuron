@@ -26,7 +26,7 @@ func TestSplitBracketParameter(t *testing.T) {
 		splitted, err = splitBracketParameter(v.Str)
 		if !v.Val {
 			assertError(t, err)
-			t.Log(err)
+			// t.Log(err)
 			if err == nil {
 				t.Log(v.Str)
 			}
@@ -42,7 +42,7 @@ func TestFilterOperators(t *testing.T) {
 	assertFalse(t, OpEqual.isRangable())
 	assertFalse(t, OpEqual.isStringOnly())
 	assertTrue(t, OpContains.isStringOnly())
-	t.Log(OpGreaterThan.String())
+	// t.Log(OpGreaterThan.String())
 
 	assertEqual(t, annotationGreaterThan, OpGreaterThan.String())
 	assertTrue(t, len(FilterOperator(666).String()) == len("unknown operator"))

@@ -406,7 +406,7 @@ func TestBuildScopeRelationship(t *testing.T) {
 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}}
 	postsScope, err := scope.GetRelationshipScope()
 	assertNil(t, err)
-	t.Log(postsScope.Fieldset)
+
 	assertEqual(t, relationshipKind, postsScope.kind)
 	assertEqual(t, reflect.TypeOf([]*Post{}), reflect.TypeOf(postsScope.Value))
 	posts, ok := postsScope.Value.([]*Post)
@@ -450,9 +450,6 @@ func TestBuildScopeRelated(t *testing.T) {
 
 	assertEqual(t, 1, len(scope.Fieldset))
 
-	t.Log(scope.PrimaryFilters)
-	t.Log(scope.AttributeFilters)
-
 	scope.Value = &Blog{}
 
 	assertTrue(t, scope.NextIncludedField(), failNow)
@@ -460,8 +457,6 @@ func TestBuildScopeRelated(t *testing.T) {
 	assertNoError(t, err, failNow)
 
 	assertNotNil(t, inc, failNow)
-
-	t.Log(inc.Scope.PrimaryFilters)
 
 	// Case 2:
 	// invalid field name
@@ -674,7 +669,7 @@ func TestControllerNewFilterField(t *testing.T) {
 
 	assertEqual(t, OpEqual, filterField.Values[0].Operator)
 	assertEqual(t, len(values), len(filterField.Values[0].Values))
-	t.Log(filterField.Values[0].Values)
+
 }
 
 func TestControllerLanguageQuery(t *testing.T) {

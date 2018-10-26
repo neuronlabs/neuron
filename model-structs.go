@@ -42,6 +42,7 @@ type ModelStruct struct {
 	// field that are ready for translations
 	i18n []*StructField
 
+	// ForeignKeys is a contianer for the foriegn keys for the relationships
 	foreignKeys map[string]*StructField
 
 	// sortScopeCount is the number of sortable fields in the model
@@ -78,6 +79,10 @@ func (m *ModelStruct) GetAttributeField(attr string) *StructField {
 // GetRelationshipField - gets the relationship StructField for provided relationship
 func (m *ModelStruct) GetRelationshipField(relationship string) *StructField {
 	return m.relationships[relationship]
+}
+
+func (m *ModelStruct) GetForeignKeyField(foreign string) *StructField {
+	return m.foreignKeys[foreign]
 }
 
 func (m *ModelStruct) AllowClientID() bool {
@@ -130,6 +135,15 @@ func (m *ModelStruct) GetLanguageField() *StructField {
 
 // 	return sField, nil
 // }
+
+func (m *ModelStruct) FieldByName(name string) (field *StructField, ok bool) {
+	for _, sfield := range m.fields {
+		if field.refStruct.Name == name {
+			return sfield, true
+		}
+	}
+	return nil, false
+}
 
 func (m *ModelStruct) GetFieldByJSONAPIName(jsonapiName string) (*StructField, error) {
 	for _, field := range m.fields {

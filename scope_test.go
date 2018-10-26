@@ -1,7 +1,6 @@
 package jsonapi
 
 import (
-	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
@@ -78,7 +77,6 @@ func TestScopeSetSortScopes(t *testing.T) {
 	// get too many sortfields
 	errs = userRootScope.buildSortFields("name", "surname", "somethingelse")
 	assertNotEmpty(t, errs)
-	t.Log(errs)
 
 	// check multiple with multiple sortable fields
 	c.PrecomputeModels(&Driver{}, &Car{})
@@ -100,7 +98,7 @@ func TestScopeSetSortScopes(t *testing.T) {
 
 	errs = driverRootScope.buildSortFields("invalid")
 	assertNotEmpty(t, errs)
-	fmt.Println(errs)
+
 }
 
 func TestBuildIncludedScopes(t *testing.T) {
@@ -214,7 +212,6 @@ func TestNewFilterScope(t *testing.T) {
 	for i := range correctParams {
 		_, errs = blogScope.buildFilterfield("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
 		assertEmpty(t, errs)
-		t.Log(errs)
 	}
 	// for k, v := range blogScope.Filters {
 	// 	t.Logf("Key: %v, FieldName: %v", k, v.fieldName)

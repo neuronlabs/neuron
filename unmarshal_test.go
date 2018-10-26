@@ -245,12 +245,6 @@ func TestUnmarshalScopeMany(t *testing.T) {
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			assert.NotEmpty(t, scope.Value)
-			v := scope.Value.([]*Blog)
-			for _, blog := range v {
-				t.Logf("Scope value: %#v", blog)
-				t.Logf("CurrentPost: %v", blog.CurrentPost)
-			}
-
 		}
 	})
 
@@ -269,7 +263,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			assert.Contains(t, scope.SelectedFields, scope.Struct.attributes["title"])
-			assert.Len(t, scope.SelectedFields, 1)
+			assert.Len(t, scope.SelectedFields, 2)
 		}
 
 	})
@@ -312,7 +306,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.SelectedFields, 1)
+				assert.Len(t, scope.SelectedFields, 2)
 				assert.Contains(t, scope.SelectedFields, mStruct.relationships["current_post"])
 			}
 		}
@@ -347,7 +341,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.SelectedFields, 1)
+				assert.Len(t, scope.SelectedFields, 2)
 				assert.Contains(t, scope.SelectedFields, mStruct.relationships["posts"])
 			}
 		}
@@ -387,7 +381,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct.collectionType) {
 				mStruct := scope.Struct
-				assert.Len(t, scope.SelectedFields, 3)
+				assert.Len(t, scope.SelectedFields, 4)
 				assert.Contains(t, scope.SelectedFields, mStruct.attributes["title"])
 				assert.Contains(t, scope.SelectedFields, mStruct.relationships["current_post"])
 				assert.Contains(t, scope.SelectedFields, mStruct.relationships["posts"])

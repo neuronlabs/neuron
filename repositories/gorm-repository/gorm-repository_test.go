@@ -1,10 +1,9 @@
 package gormrepo
 
 import (
-	"fmt"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/kucjac/jsonapi"
+	_ "github.com/kucjac/uni-db/gormconv/dialects/sqlite"
 	"github.com/kucjac/uni-logger"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/language"
@@ -21,19 +20,27 @@ import (
 var db *gorm.DB
 
 type UserGORM struct {
-	ID        uint       `jsonapi:"primary,users"`
-	Name      string     `jsonapi:"attr,name"`
-	Surname   string     `jsonapi:"attr,surname"`
-	Pets      []*PetGORM `jsonapi:"relation,pets" gorm:"foreignkey:OwnerID"`
-	CreatedAt time.Time  `jsonapi:"attr,created-at"`
+	ID        uint       `jsonapi:"type=primary"`
+	Name      string     `jsonapi:"type=attr"`
+	Surname   string     `jsonapi:"type=attr"`
+	Pets      []*PetGORM `jsonapi:"type=relation;foreign=OwnerID" gorm:"foreignkey:OwnerID"`
+	CreatedAt time.Time  `jsonapi:"type=attr,name=created-at"`
+}
+
+func (u *UserGORM) CollectionName() string {
+	return "users"
 }
 
 type PetGORM struct {
-	ID        uint      `jsonapi:"primary,pets"`
-	Name      string    `jsonapi:"attr,name"`
-	CreatedAt time.Time `jsonapi:"attr,created-at"`
-	Owner     *UserGORM `jsonapi:"relation,owner" gorm:"foreignkey:OwnerID"`
-	OwnerID   uint      `jsonapi:"-"`
+	ID        uint      `jsonapi:"type=primary"`
+	Name      string    `jsonapi:"type=attr"`
+	CreatedAt time.Time `jsonapi:"type=attr,name=created-at"`
+	Owner     *UserGORM `jsonapi:"type=relation" gorm:"foreignkey:OwnerID"`
+	OwnerID   uint      `jsonapi:"type=foreign"`
+}
+
+func (p *PetGORM) CollectionName() string {
+	return "pets"
 }
 
 func TestGORMRepositoryGet(t *testing.T) {
@@ -71,21 +78,6 @@ func TestGORMRepositoryGet(t *testing.T) {
 	err = scope.SetCollectionValues()
 	assert.NoError(t, err)
 
-	// t.Log(scope.Value)
-
-	// for _, includedScope := range scope.IncludedScopes {
-	// 	if len(includedScope.IncludeValues) > 0 {
-	// 		t.Log(includedScope.PrimaryFilters[0].Values[0].Values)
-	// 		dbErr = repo.List(includedScope)
-	// 		assert.Nil(t, dbErr)
-	// 		manyIncludes := includedScope.Value.([]*PetGORM)
-	// 		t.Log(manyIncludes[0])
-	// 	} else {
-	// 		t.Log("No values")
-	// 	}
-
-	// }
-
 }
 
 func TestGORMRepositoryList(t *testing.T) {
@@ -94,6 +86,7 @@ func TestGORMRepositoryList(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer clearDB()
+
 	repo, err := prepareGORMRepo(&UserGORM{}, &PetGORM{})
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +155,11 @@ func prepareGORMRepo(models ...interface{}) (*GORMRepository, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.Debug()
+	if *debug {
+		db.LogMode(true)
+		db.Debug()
+	}
+
 	db.AutoMigrate(models...)
 	repo, err := New(db)
 	if err != nil {
@@ -249,7 +246,6 @@ func settleBlogs(db *gorm.DB) error {
 
 	for _, blog := range blogs {
 		if err := db.Create(blog).Error; err != nil {
-			fmt.Println(blog)
 			return err
 		}
 

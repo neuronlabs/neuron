@@ -41,14 +41,14 @@ func TestMarshalScope(t *testing.T) {
 		assertNil(t, err)
 		err = includedField.Scope.SetCollectionValues()
 		assertNil(t, err)
-		t.Log(includedField.fieldName)
+
 		for includedField.Scope.NextIncludedField() {
 			includedField.Scope.CurrentIncludedField()
 			nestedIncluded, err := includedField.Scope.CurrentIncludedField()
 			assertNil(t, err)
 			_, err = nestedIncluded.GetMissingPrimaries()
 			assertNil(t, err)
-			t.Log(nestedIncluded.fieldName)
+
 			err = nestedIncluded.Scope.SetCollectionValues()
 			assertNil(t, err)
 		}
@@ -60,7 +60,7 @@ func TestMarshalScope(t *testing.T) {
 	err = MarshalPayload(buf, payload)
 	assertNoError(t, err)
 	// even if included, there is no
-	t.Log(buf.String())
+
 	assertTrue(t, strings.Contains(buf.String(), "{\"type\":\"posts\",\"id\":\"1"))
 	assertTrue(t, strings.Contains(buf.String(), "\"title\":\"My own title.\""))
 	assertTrue(t, strings.Contains(buf.String(), "{\"type\":\"comments\",\"id\":\"1\",\"attributes\":{\"body\""))
@@ -144,8 +144,6 @@ func TestMarshalScopeRelationship(t *testing.T) {
 	err = MarshalPayload(buffer, payload)
 	assertNil(t, err)
 
-	t.Log(buffer)
-
 }
 
 type HiddenModel struct {
@@ -175,5 +173,4 @@ func TestMarshalHiddenScope(t *testing.T) {
 	err = MarshalPayload(buffer, payload)
 	assertNoError(t, err, failNow)
 
-	t.Log(buffer)
 }

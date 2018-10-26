@@ -6,7 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi"
 	"reflect"
-	"runtime/debug"
+	debugStack "runtime/debug"
 )
 
 var (
@@ -56,7 +56,7 @@ func (g *GORMRepository) prepareRelationshipScopes(
 
 	defer func() {
 		if r := recover(); r != nil {
-			debug.PrintStack()
+			debugStack.PrintStack()
 			switch perr := r.(type) {
 			case *reflect.ValueError:
 				err = fmt.Errorf("Provided invalid value input to the repository. Error: %s", perr.Error())

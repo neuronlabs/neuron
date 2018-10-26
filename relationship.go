@@ -102,9 +102,9 @@ func (c *Controller) setRelationships() error {
 			case reflect.Slice:
 				// has many by default
 				if relationship.isMany2Many() {
-					if relationship.Sync != nil && !(*relationship.Sync) {
-						continue
-					}
+					// if relationship.Sync != nil && !(*relationship.Sync) {
+					// 	continue
+					// }
 					if bf := relationship.BackReferenceFieldname; bf != "" {
 						bf = c.NamerFunc(bf)
 						backReferenced, ok := relField.relatedStruct.relationships[bf]
@@ -129,12 +129,6 @@ func (c *Controller) setRelationships() error {
 				// HasMany
 				relationship.Kind = RelHasMany
 
-				if relationship.Sync != nil && !(*relationship.Sync) {
-					c.log().Debugf("Relationship: %s is non-synced.", relField.fieldName)
-					continue
-				}
-				c.log().Debugf("Relationship: %s is synced.", relField.fieldName)
-
 				if fkeyFieldName == "" {
 					fkeyFieldName = model.modelType.Name() + "ID"
 				}
@@ -155,6 +149,12 @@ func (c *Controller) setRelationships() error {
 					)
 				}
 				relationship.ForeignKey = fk
+
+				if relationship.Sync != nil && !(*relationship.Sync) {
+					c.log().Debugf("Relationship: %s is non-synced.", relField.fieldName)
+					continue
+				}
+
 				b := true
 
 				relationship.Sync = &b
@@ -172,9 +172,6 @@ func (c *Controller) setRelationships() error {
 				if !ok {
 					c.log().Debugf("Not found within root model for relation: %s, foreign: %s", relField.fieldName, fkeyFieldName)
 					relationship.Kind = RelHasOne
-					if nosync {
-						continue
-					}
 					fk, ok = relField.relatedStruct.foreignKeys[fkeyName]
 					if !ok {
 						return errors.Errorf("Foreign key not found for the relationship: '%s'. Model: '%s'", relField.fieldName, model.modelType.Name())
@@ -188,7 +185,7 @@ func (c *Controller) setRelationships() error {
 							model.primary.refStruct.Type,
 							fk.refStruct.Type)
 					}
-					sync := true
+					sync := !nosync
 					relationship.Sync = &sync
 					c.log().Debugf("Found within related model: %v field: %v", relField.relatedStruct.modelType.Name(), fk.fieldName)
 
