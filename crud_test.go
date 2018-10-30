@@ -3,10 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"flag"
-	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-logger"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"golang.org/x/text/language"
 	"io"
 	"log"
@@ -14,54 +11,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
-	"testing"
 )
 
 var debugFlag *bool = flag.Bool("debug", false, "Log level debug")
 
 type funcScopeMatcher func(*Scope) bool
-
-func TestHandlerDelete(t *testing.T) {
-	h := prepareHandler(defaultLanguages, blogModels...)
-	mockRepo := &MockRepository{}
-	h.SetDefaultRepo(mockRepo)
-
-	blogHandler := h.ModelHandlers[reflect.TypeOf(BlogSDK{})]
-	blogHandler.Delete = &Endpoint{Type: Delete}
-
-	// Case 1:
-	// Correct delete.
-	rw, req := getHttpPair("DELETE", "/blogs/1", nil)
-	mockRepo.On("Delete", mock.Anything).Once().Return(nil)
-	h.Delete(blogHandler, blogHandler.Delete).ServeHTTP(rw, req)
-	assert.Equal(t, 204, rw.Result().StatusCode)
-
-	// Case 2:
-	// Invalid model provided
-	// rw, req = getHttpPair("DELETE", "/models/1", nil)
-	// h.Delete(h.ModelHandlers[reflect.TypeOf(Model{})]).ServeHTTP(rw, req)
-	// assert.Equal(t, 500, rw.Result().StatusCode)
-
-	// Case 3:
-	// Invalid url for ID - internal
-	rw, req = getHttpPair("DELETE", "/blogs", nil)
-	h.Delete(blogHandler, blogHandler.Delete).ServeHTTP(rw, req)
-	assert.Equal(t, 500, rw.Result().StatusCode)
-
-	// Case 4:
-	// Invalid ID - user error
-	rw, req = getHttpPair("DELETE", "/blogs/stringtype-id", nil)
-	h.Delete(blogHandler, blogHandler.Delete).ServeHTTP(rw, req)
-	assert.Equal(t, 400, rw.Result().StatusCode)
-
-	// Case 5:
-	// Repository error
-	rw, req = getHttpPair("DELETE", "/blogs/1", nil)
-	mockRepo.On("Delete", mock.Anything).Once().Return(unidb.ErrIntegrConstViolation.New())
-	h.Delete(blogHandler, blogHandler.Delete).ServeHTTP(rw, req)
-	assert.Equal(t, 400, rw.Result().StatusCode)
-
-}
 
 var (
 	defaultLanguages = []language.Tag{language.English, language.Polish}

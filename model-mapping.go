@@ -147,6 +147,8 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 			case annotationPrimary:
 				structField.fieldType = Primary
 				modelStruct.primary = structField
+				modelStruct.fields = append(modelStruct.fields, structField)
+
 			case annotationRelation:
 				modelStruct.fields = append(modelStruct.fields, structField)
 				err = setRelatedType(structField)
@@ -238,15 +240,11 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 						r.Sync = &b
 					case annotationManyToMany:
 						r.Kind = RelMany2Many
-					case annotationManyToManyDisjoint:
-						r.Kind = RelMany2ManyDisjoint
-					case annotationManyToManyCommon:
-						r.Kind = RelMany2ManyCommon
 					case annotaitonRelationSync:
 						b := true
 						r.Sync = &b
 					default:
-						c.log().Infof("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.modelType.Name(), structField.fieldName, value)
+						c.log().Debugf("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.modelType.Name(), structField.fieldName, value)
 						r.BackReferenceFieldname = value
 
 					}

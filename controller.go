@@ -565,25 +565,25 @@ func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
 	return nil
 }
 
-func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) error {
+func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) (prim interface{}, err error) {
 	id, err := getID(req, scope.Struct)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if scope.Value == nil {
-		return IErrNoValue
+		return nil, IErrNoValue
 	}
 
 	val := reflect.ValueOf(scope.Value)
 	if val.IsNil() {
-		return nil
+		return nil, IErrScopeNoValue
 	}
 
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	} else {
-		return IErrInvalidType
+		return nil, IErrInvalidType
 	}
 
 	c.log().Debugf("Setting newPrim value")
@@ -593,7 +593,7 @@ func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) error {
 	if err != nil {
 		errObj := ErrInvalidQueryParameter.Copy()
 		errObj.Detail = "Provided invalid id value within the url."
-		return errObj
+		return nil, errObj
 	}
 
 	primVal := val.FieldByIndex(scope.Struct.primary.refStruct.Index)
@@ -605,15 +605,15 @@ func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) error {
 		if newPrim.Interface() != primVal.Interface() {
 			errObj := ErrInvalidQueryParameter.Copy()
 			errObj.Detail = "Provided invalid id value within the url. The id value doesn't match the primary field within the root object."
-			return errObj
+			return nil, errObj
 		}
 	}
 
 	v := reflect.ValueOf(scope.Value)
 	if v.Kind() != reflect.Ptr {
-		return IErrInvalidType
+		return nil, IErrInvalidType
 	}
-	return nil
+	return primVal.Interface(), nil
 }
 
 // GetModelStruct returns the ModelStruct for provided model

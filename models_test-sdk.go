@@ -38,7 +38,7 @@ type BlogSDK struct {
 	SomeAttr          string   `jsonapi:"type=attr"`
 	AuthorID          int      `jsonapi:"type=foreign"`
 	CurrentPost       *PostSDK `jsonapi:"type=relation;foreign=BlogID"`
-	CurrentPostNoSync *PostSDK `jsonapi:"type=relation;relation=nosync"`
+	CurrentPostNoSync *PostSDK `jsonapi:"type=relation;foreign=BlogIDNoSync;relation=nosync"`
 }
 
 func (c BlogSDK) CollectionName() string {
@@ -49,9 +49,10 @@ type PostSDK struct {
 	ID             int           `jsonapi:"type=primary"`
 	Title          string        `jsonapi:"type=attr"`
 	BlogID         int           `jsonapi:"type=foreign"`
+	BlogIDNoSync   int           `jsonapi:"type=foreign"`
 	CreatedAt      time.Time     `jsonapi:"type=attr"`
 	Comments       []*CommentSDK `jsonapi:"type=relation;foreign=PostID"`
-	CommentsNoSync []*CommentSDK `jsonapi:"type=relation;relation=nosync"`
+	CommentsNoSync []*CommentSDK `jsonapi:"type=relation;foreign=PostIDNoSync;relation=nosync"`
 }
 
 func (c PostSDK) CollectionName() string {
@@ -59,10 +60,11 @@ func (c PostSDK) CollectionName() string {
 }
 
 type CommentSDK struct {
-	ID     int      `jsonapi:"type=primary"`
-	Body   string   `jsonapi:"type=attr"`
-	Post   *PostSDK `jsonapi:"type=relation;foreign=PostID"`
-	PostID int      `jsonapi:"type=foreign"`
+	ID           int      `jsonapi:"type=primary"`
+	Body         string   `jsonapi:"type=attr"`
+	Post         *PostSDK `jsonapi:"type=relation;foreign=PostID"`
+	PostID       int      `jsonapi:"type=foreign"`
+	PostIDNoSync int      `jsonapi:"type=foreign"`
 }
 
 func (c CommentSDK) CollectionName() string {
@@ -72,8 +74,8 @@ func (c CommentSDK) CollectionName() string {
 type PetSDK struct {
 	ID         int         `jsonapi:"type=primary"`
 	Name       string      `jsonapi:"type=attr"`
-	Humans     []*HumanSDK `jsonapi:"type=relation;relation=many2many,common"`
-	HumansSync []*HumanSDK `jsonapi:"type=relation;relation=many2many,sync,PetsSync"`
+	Humans     []*HumanSDK `jsonapi:"type=relation;relation=many2many"`
+	HumansSync []*HumanSDK `jsonapi:"type=relation;relation=many2many,sync,Pets"`
 	Legs       int         `jsonapi:"type=attr"`
 }
 
@@ -82,10 +84,9 @@ func (c PetSDK) CollectionName() string {
 }
 
 type HumanSDK struct {
-	ID       int       `jsonapi:"type=primary"`
-	Name     string    `jsonapi:"type=attr"`
-	Pets     []*PetSDK `jsonapi:"type=relation;relation=many2many,common"`
-	PetsSync []*PetSDK `jsonapi:"type=relation;relation=many2many,sync,HumansSync"`
+	ID   int       `jsonapi:"type=primary"`
+	Name string    `jsonapi:"type=attr"`
+	Pets []*PetSDK `jsonapi:"type=relation;relation=many2many"`
 }
 
 func (c HumanSDK) CollectionName() string {

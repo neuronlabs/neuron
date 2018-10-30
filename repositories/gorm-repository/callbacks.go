@@ -46,7 +46,7 @@ func (g *GORMRepository) changeableField(
 						break
 					}
 					return false
-				case jsonapi.RelMany2Many, jsonapi.RelMany2ManyCommon:
+				case jsonapi.RelMany2Many:
 					if rel.Sync != nil && *rel.Sync {
 						// if the relation is synced the relationship values wouldbe taken from the
 						// relationship repository

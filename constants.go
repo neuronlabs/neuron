@@ -13,12 +13,17 @@ const (
 	annotationRelation  = "relation"
 
 	// relation tag
-	annotationManyToMany         = "many2many"
-	annotationManyToManyDisjoint = "disjoint"
-	annotationManyToManyCommon   = "common"
-	annotationRelationNoSync     = "nosync"
-	annotaitonRelationSync       = "sync"
-	annotationForeignKey         = "foreign"
+	annotationManyToMany     = "many2many"
+	annotationRelationNoSync = "nosync"
+	annotaitonRelationSync   = "sync"
+	annotationForeignKey     = "foreign"
+
+	annotationRelationRestrict = "restrict"
+	annotationRelationNoAction = "no-action"
+	annotationRelationCascade  = "cascade"
+	annotationRelationSetNull  = "set-null"
+
+	annotationDefault = "default"
 
 	// name tag
 	annotationName = "name"

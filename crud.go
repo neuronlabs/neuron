@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"net/http"
 	"reflect"
 )
@@ -33,6 +34,7 @@ func (h *Handler) getRelationshipScope(
 func (h *Handler) patchRelationScope(
 	ctx context.Context,
 	scope *Scope,
+
 	primVal, relPrim reflect.Value,
 	relField *StructField,
 ) (err error) {
@@ -52,7 +54,8 @@ func (h *Handler) patchRelationScope(
 	}
 
 	if fkValue.Type() != primVal.Type() {
-		h.log.Errorf("CreateHandler. Unexpected error occurred. Fun: Patch BelongsTo Relationship. ForeignKey value is of different type than the primary of the model. Model: %v, FK: %v PK: %v", fkValue.Type(), primVal.Type())
+		err = errors.Errorf("CreateHandler. Unexpected error occurred. Fun: Patch BelongsTo Relationship. ForeignKey value is of different type than the primary of the model. Model: %v, FK: %v PK: %v", fkValue.Type(), primVal.Type())
+		h.log.Error(err)
 		return
 	}
 

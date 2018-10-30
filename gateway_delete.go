@@ -45,6 +45,8 @@ func (h *Handler) Delete(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 			return
 		}
 
+		// primary := scope.PrimaryFilters[0].Values[0].Values[0]
+
 		/**
 
 		  DELETE: PRECHECK PAIRS
@@ -143,6 +145,107 @@ func (h *Handler) Delete(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 			}
 		}
 
+		err = h.deleteForeignRelationships(scope)
+		if err != nil {
+			h.manageDBError(rw, err)
+			return
+		}
+
 		rw.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func (h *Handler) deleteForeignRelationships(
+	scope *Scope,
+) error {
+
+	// IS NULL
+	for _, field := range scope.Struct.fields {
+		if !field.IsRelationship() {
+			continue
+		}
+
+		rel := field.relationship
+		switch rel.Kind {
+		case RelBelongsTo:
+			continue
+		case RelHasOne, RelHasMany:
+			if rel.Sync != nil && !*rel.Sync {
+				continue
+			}
+			clearScope := newRootScope(field.relatedStruct)
+			clearScope.ctx = scope.ctx
+			clearScope.logger = scope.logger
+			clearScope.newValueSingle()
+			clearScope.SelectedFields = []*StructField{rel.ForeignKey}
+
+			for _, prim := range scope.PrimaryFilters {
+				foreignFilter := &(*prim)
+				foreignFilter.StructField = rel.ForeignKey
+				err := clearScope.AddFilterField(foreignFilter)
+				if err != nil {
+					h.log.Errorf("Delete relationship HasOne. AddFilterField failed. %v", err)
+					return err
+				}
+			}
+
+			relationRepo := h.GetRepositoryByType(clearScope.Struct.modelType)
+			err := relationRepo.Patch(clearScope)
+			if err != nil {
+				dbErr, ok := err.(*unidb.Error)
+				if ok && dbErr.Compare(unidb.ErrNoResult) {
+					continue
+				}
+				return err
+			}
+
+		case RelMany2Many:
+			if rel.Sync != nil && !*rel.Sync {
+				continue
+			}
+			if rel.BackReferenceField == nil {
+				continue
+			}
+			clearScope := newRootScope(field.relatedStruct)
+			clearScope.ctx = scope.ctx
+			clearScope.logger = scope.logger
+			clearScope.newValueSingle()
+			clearScope.SelectedFields = []*StructField{rel.ForeignKey}
+
+			innerFilter := &FilterField{
+				StructField: rel.BackReferenceField.relatedStruct.primary,
+			}
+			ff := &FilterField{
+				StructField: rel.BackReferenceField,
+				Relationships: []*FilterField{
+					innerFilter,
+				},
+			}
+
+			for _, prim := range scope.PrimaryFilters {
+				innerFilter.Values = append(innerFilter.Values, prim.Values...)
+			}
+
+			err := clearScope.AddFilterField(ff)
+			if err != nil {
+				h.log.Errorf("Delete relationship HasOne. AddFilterField failed. %v", err)
+				return err
+			}
+
+			clearScope.SelectedFields = []*StructField{rel.BackReferenceField}
+
+			repo := h.GetRepositoryByType(clearScope.Struct.modelType)
+
+			err = repo.Patch(clearScope)
+			if err != nil {
+				dbErr, ok := err.(*unidb.Error)
+				if ok && dbErr.Compare(unidb.ErrNoResult) {
+					return nil
+				}
+				return err
+			}
+		}
+	}
+
+	return nil
 }

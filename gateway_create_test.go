@@ -289,7 +289,7 @@ func TestHandlerCreate(t *testing.T) {
 					rw, req := getHttpPair(
 						"POST",
 						"/humans",
-						h.getModelJSON(&HumanSDK{PetsSync: []*PetSDK{{ID: petID1}, {ID: petID2}}}),
+						h.getModelJSON(&HumanSDK{Pets: []*PetSDK{{ID: petID1}, {ID: petID2}}}),
 					)
 
 					humanModel := h.ModelHandlers[reflect.TypeOf(HumanSDK{})]
@@ -304,12 +304,12 @@ func TestHandlerCreate(t *testing.T) {
 						require.True(t, ok)
 
 						human.ID = humanID
-						if assert.Len(t, human.PetsSync, 2) {
-							pet1 := human.PetsSync[0]
+						if assert.Len(t, human.Pets, 2) {
+							pet1 := human.Pets[0]
 							if assert.NotNil(t, pet1) {
 								assert.Equal(t, petID1, pet1.ID, pet1)
 							}
-							pet2 := human.PetsSync[1]
+							pet2 := human.Pets[1]
 							if assert.NotNil(t, pet2) {
 								assert.Equal(t, petID2, pet2.ID, pet2)
 							}
