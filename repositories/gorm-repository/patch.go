@@ -116,24 +116,35 @@ func (g *GORMRepository) patchNonSyncedRelations(
 		var wheres string
 		values := []interface{}{}
 		for _, wq := range wqs {
-			wheres += wq.Str
+			wheres += wq.Str + " AND "
 			values = append(values, wq.values...)
 		}
 
+		wheres = wheres[:len(wheres)-5]
+
 		primaryFieldNames := g.getSelectedGormFieldValues(mStruct, scope.Struct.GetPrimaryField())
-		q := fmt.Sprintf("SELECT \"%s\" FROM \"%s\" WHERE (%s)", primaryFieldNames[0], mStruct.TableName(db), wheres)
+		q := fmt.Sprintf("SELECT %s FROM \"%s\" WHERE (%s)", primaryFieldNames[0], mStruct.TableName(rootDB), wheres)
 
 		g.log().Debugf("Query: %s", q)
 
-		rows, err := db.Exec(q, values...).Rows()
+		rows, err := db.New().Raw(q, values...).Rows()
 		// if err := db..Select(primaryFieldNames[0]).Find(&primaries).Error; err != nil {
 		if err != nil {
-			return errors.Wrapf(err, "Getting primaries for model: %s failed.")
+			g.log().Errorf("Error while getting rows: %v", err)
+			return errors.Wrapf(err, "Getting primaries for model: %s failed.", mStruct.ModelType.Name())
 		}
 
 		err = func() error {
 			defer rows.Close()
 			for rows.Next() {
+				cols, _ := rows.Columns()
+				g.log().Debugf("Columns: %v", cols)
+				colTypes, _ := rows.ColumnTypes()
+				var tps string
+				for _, tp := range colTypes {
+					tps += tp.Name() + ", "
+				}
+				g.log().Debugf("ColumnTypes: %+v", tps)
 				switch scope.Struct.GetPrimaryField().GetReflectStructField().Type.Kind() {
 				case reflect.Int:
 					var i int
@@ -523,7 +534,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				relScope := db.NewScope(reflect.New(field.GetFieldType()).Interface())
 
 				var gRelationField *gorm.StructField
-				for _, gField := range relScope.GetModelStruct().StructFields {
+				for _, gField := range mStruct.StructFields {
 					if isFieldEqual(gField, field) {
 						gRelationField = gField
 						break

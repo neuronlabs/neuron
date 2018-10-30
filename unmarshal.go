@@ -379,6 +379,9 @@ func (c *Controller) unmarshalNode(
 
 			// time
 			if modelAttr.isTime() || modelAttr.isPtrTime() {
+				if attrValue == nil {
+					continue
+				}
 				if modelAttr.isIso8601() {
 					var tm string
 					if v.Kind() == reflect.String {
@@ -421,10 +424,28 @@ func (c *Controller) unmarshalNode(
 				}
 				continue
 			}
+
 			if fieldValue.Type() == reflect.TypeOf([]string{}) {
+				if attrValue == nil {
+					continue
+				}
 				values := make([]string, v.Len())
 				for i := 0; i < v.Len(); i++ {
-					values[i] = v.Index(i).Interface().(string)
+					elem := v.Index(i)
+					if elem.IsNil() {
+						errObj := ErrInvalidJSONFieldValue.Copy()
+						errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field doesn't allow 'null' value", attrName)
+						err = errObj
+						return
+					}
+					strVal, ok := elem.Interface().(string)
+					if !ok {
+						errObj := ErrInvalidJSONFieldValue.Copy()
+						errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field allow only string values. Field type: %v. Value: %v", attrName, elem.Kind(), elem.Interface())
+						err = errObj
+						return
+					}
+					values[i] = strVal
 				}
 
 				fieldValue.Set(reflect.ValueOf(values))
@@ -493,6 +514,9 @@ func (c *Controller) unmarshalNode(
 
 			// Field was a Pointer type
 			if fieldValue.Kind() == reflect.Ptr {
+				if attrValue == nil {
+					continue
+				}
 				var concreteVal reflect.Value
 
 				switch cVal := attrValue.(type) {

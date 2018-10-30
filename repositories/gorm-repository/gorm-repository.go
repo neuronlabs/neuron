@@ -2,7 +2,6 @@ package gormrepo
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi"
@@ -28,8 +27,6 @@ const (
 var (
 	IErrBadRelationshipField = errors.New("This repository does not allow relationship filter of field different than primary.")
 )
-
-var debug *bool = flag.Bool("debug", false, "Sets the log level to DEBUG.")
 
 type GORMRepository struct {
 	db        *gorm.DB
@@ -86,12 +83,6 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 	g.converter, err = gormconv.New(db)
 	if err != nil {
 		return err
-	}
-
-	g.logLevel = unilogger.ERROR
-
-	if *debug {
-		g.logLevel = unilogger.DEBUG
 	}
 
 	return nil

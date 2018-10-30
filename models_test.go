@@ -12,6 +12,13 @@ type ModelNonTagged struct {
 	ID int
 }
 
+type UnmarshalModel struct {
+	ID          string     `jsonapi:"type=primary"`
+	PtrString   *string    `jsonapi:"type=attr"`
+	PtrTime     *time.Time `jsonapi:"type=attr"`
+	StringSlice []string   `jsonapi:"type=attr"`
+}
+
 type ModelBadTypes struct {
 	ID           string     `jsonapi:"type=primary"`
 	StringField  string     `jsonapi:"type=attr;name=string_field"`

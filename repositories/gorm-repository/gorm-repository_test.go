@@ -1,6 +1,7 @@
 package gormrepo
 
 import (
+	"flag"
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi"
 	_ "github.com/kucjac/uni-db/gormconv/dialects/sqlite"
@@ -17,6 +18,7 @@ import (
 	"time"
 )
 
+var *debug = flag.Bool("debug", false, "Debug level")
 var db *gorm.DB
 
 type UserGORM struct {

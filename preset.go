@@ -137,7 +137,7 @@ func (c *Controller) MustBuildPresetFilter(
 	fieldFilter string,
 	values ...interface{},
 ) *PresetFilter {
-	filter, err := c.NewFilterField(fieldFilter, values...)
+	filter, err := c.NewFilterFieldWithForeigns(fieldFilter, values...)
 	if err != nil {
 		panic(err)
 	}

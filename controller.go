@@ -130,6 +130,10 @@ func DefaultController(coverage ...interface{}) *Controller {
 	return c
 }
 
+func (c *Controller) SetLogger(logger unilogger.LeveledLogger) {
+	c.logger = logger
+}
+
 /**
 
 PRESETS
@@ -656,6 +660,137 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 	scope.logger = c.log()
 
 	return scope, nil
+}
+
+func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...interface{},
+) (filter *FilterField, err error) {
+
+	if valid := strings.HasPrefix(fieldFilter, QueryParamFilter); !valid {
+		err = fmt.Errorf("Invalid field filter argument provided: '%s'. The argument should be composed as: 'filter[collection][field]([subfield][operator])|([operator]).", fieldFilter)
+		return
+	}
+
+	var splitted []string
+	splitted, err = splitBracketParameter(fieldFilter[len(QueryParamFilter):])
+	if err != nil {
+		return
+	}
+
+	mStruct := c.Models.GetByCollection(splitted[0])
+	if mStruct == nil {
+		err = fmt.Errorf("The model for collection: '%s' is not precomputed within controller. Cannot clreate new filter field.", splitted[0])
+		return
+	}
+
+	var (
+		structField *StructField
+		operator    FilterOperator
+	)
+	handle3and4 := func() {
+		structField = mStruct.relationships[splitted[1]]
+		if structField == nil {
+			err = fmt.Errorf("Invalid field name provided in fieldFilter: '%s'.", fieldFilter)
+			return
+		}
+		filter = &FilterField{StructField: structField}
+
+		if splitted[2] == "id" {
+			structField = filter.relatedStruct.primary
+		} else {
+			if structField = filter.relatedStruct.attributes[splitted[2]]; structField == nil {
+				if structField = filter.relatedStruct.foreignKeys[splitted[2]]; structField == nil {
+					err = fmt.Errorf("Invalid subfield name provided: '%s' for the query: '%s'.", splitted[2], fieldFilter)
+					return
+				}
+			}
+		}
+		subfieldFilter := &FilterField{StructField: structField}
+
+		if len(splitted) == 4 {
+			var ok bool
+			operator, ok = operatorsValue[splitted[3]]
+			if !ok {
+				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[3], fieldFilter)
+				return
+			}
+		} else {
+			operator = OpIn
+		}
+
+		fv := &FilterValues{Operator: operator, Values: make([]interface{}, len(values))}
+		for i, value := range values {
+			t := reflect.TypeOf(value)
+			if t == subfieldFilter.refStruct.Type {
+				fv.Values[i] = value
+			} else {
+				err = fmt.Errorf("Invalid value type provided for filter: '%s', '%v' and should be: '%s'", fieldFilter, t, subfieldFilter.refStruct.Type)
+				return
+			}
+		}
+
+		subfieldFilter.Values = append(subfieldFilter.Values, fv)
+
+		// Add subfield
+		filter.Relationships = append(filter.Relationships, subfieldFilter)
+	}
+
+	handle2and3 := func() {
+		if splitted[1] == "id" {
+			structField = mStruct.primary
+		} else {
+			structField = mStruct.attributes[splitted[1]]
+			if structField == nil {
+				structField = mStruct.foreignKeys[splitted[1]]
+				if structField == nil {
+					if structField = mStruct.relationships[splitted[1]]; structField != nil {
+						if len(splitted) == 3 {
+							handle3and4()
+						} else {
+							err = fmt.Errorf("The relationship field: '%s' in the filter argument must specify the subfield. Filter: '%s'", splitted[1], fieldFilter)
+						}
+					} else {
+						err = fmt.Errorf("Invalid field name: '%s' for the collection: '%s'.", splitted[1], splitted[0])
+					}
+					return
+				}
+
+			}
+		}
+		filter = &FilterField{StructField: structField}
+		var ok bool
+		if len(splitted) == 3 {
+			operator, ok = operatorsValue[splitted[2]]
+			if !ok {
+				err = fmt.Errorf("Invalid operator provided: '%s' for the field filter: '%s'.", splitted[2], fieldFilter)
+				return
+			}
+		} else {
+			operator = OpIn
+		}
+		fv := &FilterValues{Operator: operator, Values: make([]interface{}, len(values))}
+
+		for i, value := range values {
+			t := reflect.TypeOf(value)
+			if t == filter.refStruct.Type {
+				fv.Values[i] = value
+			} else {
+				err = fmt.Errorf("Invalid value type provided for filter: '%s', '%v' and should be: '%s'", fieldFilter, t, filter.refStruct.Type)
+				return
+			}
+		}
+		filter.Values = append(filter.Values, fv)
+	}
+
+	switch len(splitted) {
+	case 2, 3:
+		handle2and3()
+	case 4:
+		handle3and4()
+	default:
+		err = fmt.Errorf("The filter argument: '%s' is of invalid form.", fieldFilter)
+		return
+	}
+	return
 }
 
 // NewFilterField creates new filter field based on the fieldFilter argument and provided values

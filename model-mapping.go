@@ -114,6 +114,11 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 		if !ok {
 			continue
 		}
+
+		if tag == "-" {
+			continue
+		}
+
 		var tagValues url.Values
 		tField := modelType.Field(i)
 

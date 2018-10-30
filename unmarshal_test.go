@@ -197,6 +197,110 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("nil_ptr_attributes", func(t *testing.T) {
+		in := strings.NewReader(`
+				{
+				  "data": {
+				  	"type":"unmarshal_models",
+				  	"id":"3",
+				  	"attributes":{
+				  	  "ptr_string": null,
+				  	  "ptr_time": null,
+				  	  "string_slice": []				  	  
+				  	}
+				  }
+				}`)
+
+		clearMap()
+		err := c.PrecomputeModels(&UnmarshalModel{})
+		require.Nil(t, err)
+
+		scope, err := c.UnmarshalScopeOne(in, &UnmarshalModel{}, false)
+		if assert.NoError(t, err) {
+
+			m, ok := scope.Value.(*UnmarshalModel)
+			if assert.True(t, ok) {
+				assert.Nil(t, m.PtrString)
+				assert.Nil(t, m.PtrTime)
+				assert.Empty(t, m.StringSlice)
+			}
+		}
+	})
+
+	t.Run("ptr_attr_with_values", func(t *testing.T) {
+		in := strings.NewReader(`
+				{
+				  "data": {
+				  	"type":"unmarshal_models",
+				  	"id":"3",
+				  	"attributes":{
+				  	  "ptr_string": "maciej",
+				  	  "ptr_time": 1540909418248,
+				  	  "string_slice": ["marcin","michal"]				  	  
+				  	}
+				  }
+				}`)
+		clearMap()
+		err := c.PrecomputeModels(&UnmarshalModel{})
+		require.Nil(t, err)
+
+		scope, err := c.UnmarshalScopeOne(in, &UnmarshalModel{}, false)
+		if assert.NoError(t, err) {
+
+			m, ok := scope.Value.(*UnmarshalModel)
+			if assert.True(t, ok) {
+				if assert.NotNil(t, m.PtrString) {
+					assert.Equal(t, "maciej", *m.PtrString)
+				}
+				if assert.NotNil(t, m.PtrTime) {
+					assert.Equal(t, int64(1540909418248), m.PtrTime.Unix())
+				}
+				if assert.Len(t, m.StringSlice, 2) {
+					assert.Equal(t, "marcin", m.StringSlice[0])
+					assert.Equal(t, "michal", m.StringSlice[1])
+				}
+			}
+		}
+	})
+
+	t.Run("slice_attr_with_null", func(t *testing.T) {
+		in := strings.NewReader(`
+				{
+				  "data": {
+				  	"type":"unmarshal_models",
+				  	"id":"3",
+				  	"attributes":{				  	  				  	  
+				  	  "string_slice": [null,"michal"]				  	  
+				  	}
+				  }
+				}`)
+		clearMap()
+		err := c.PrecomputeModels(&UnmarshalModel{})
+		require.Nil(t, err)
+
+		_, err = c.UnmarshalScopeOne(in, &UnmarshalModel{}, false)
+		assert.Error(t, err)
+	})
+
+	t.Run("slice_value_with_invalid_type", func(t *testing.T) {
+		in := strings.NewReader(`
+				{
+				  "data": {
+				  	"type":"unmarshal_models",
+				  	"id":"3",
+				  	"attributes":{				  	  				  	  
+				  	  "string_slice": [1, "15"]				  	  
+				  	}
+				  }
+				}`)
+		clearMap()
+		err := c.PrecomputeModels(&UnmarshalModel{})
+		require.Nil(t, err)
+
+		_, err = c.UnmarshalScopeOne(in, &UnmarshalModel{}, false)
+		assert.Error(t, err)
+	})
 }
 
 func TestUnmarshalScopeMany(t *testing.T) {
