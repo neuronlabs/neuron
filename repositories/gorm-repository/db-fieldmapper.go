@@ -16,7 +16,7 @@ func (g *GORMRepository) getJScope(scope *gorm.Scope) (*jsonapi.Scope, bool) {
 
 	v, ok := scope.Get(jsIndexKey)
 	if !ok {
-		g.log().Debugf("Getting jsonapi.Scope for db: %p failed.", db)
+		g.log().Debugf("Getting jsonapi.Scope for db: %p failed.", scope.DB())
 		return nil, ok
 	}
 	var jScope *jsonapi.Scope
