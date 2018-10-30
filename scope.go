@@ -155,6 +155,8 @@ func (s *Scope) AddFilterField(filter *FilterField) error {
 		s.PrimaryFilters = append(s.PrimaryFilters, filter)
 	case Attribute:
 		s.AttributeFilters = append(s.AttributeFilters, filter)
+	case ForeignKey:
+		s.ForeignKeyFilters = append(s.ForeignKeyFilters, filter)
 	case RelationshipMultiple, RelationshipSingle:
 		s.RelationshipFilters = append(s.RelationshipFilters, filter)
 	default:
@@ -177,6 +179,51 @@ func (s *Scope) GetCollection() string {
 // Used for included Field scopes for getting their model root scope, that contains all
 func (s *Scope) GetCollectionScope() *Scope {
 	return s.collectionScope
+}
+
+func (s *Scope) SetAllFields() {
+	fieldset := map[string]*StructField{}
+	for _, field := range s.Struct.GetFields() {
+		fieldset[field.jsonAPIName] = field
+	}
+	s.Fieldset = fieldset
+}
+
+func (s *Scope) SetFields(fields ...interface{}) error {
+	fieldset := map[string]*StructField{}
+	for _, field := range fields {
+		var found bool
+		switch f := field.(type) {
+		case string:
+
+			for _, sField := range s.Struct.fields {
+				if sField.jsonAPIName == f || sField.fieldName == f {
+					fieldset[sField.jsonAPIName] = sField
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.Errorf("Field: '%s' not found for model:'%s'", f, s.Struct.modelType.Name())
+			}
+
+		case *StructField:
+			for _, sField := range s.Struct.fields {
+				if sField == f {
+					fieldset[sField.jsonAPIName] = f
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.Errorf("Field: '%v' not found for model:'%s'", f.GetFieldName(), s.Struct.modelType.Name())
+			}
+		default:
+			return errors.Errorf("Unknown field type: %v", reflect.TypeOf(f))
+		}
+	}
+	s.Fieldset = fieldset
+	return nil
 }
 
 // GetLangtagValue returns the value of the langtag for given scope

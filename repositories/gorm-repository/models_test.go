@@ -54,10 +54,10 @@ type Simple struct {
 
 type Human struct {
 	ID            int         `jsonapi:"type=primary"`
-	Nose          *BodyPart   `jsonapi:"type=relation;foreign=HumanID" gorm:"foreignkey=HumanID"`
-	NoseNonSynced *BodyPart   `jsonapi:"type=relation;foreign=HumanNonSyncID;relation=nosync" gorm:"foreignkey=HumanNonSyncID"`
-	Ears          []*BodyPart `jsonapi:"type=relation;foreign=HumanID" gorm:"foreignkey=HumanID"`
-	EarsNonSync   []*BodyPart `jsonapi:"type=relation;foreign=HumanNonSyncID;relation=nosync" gorm:"foreignkey=HumanNonSyncID"`
+	Nose          *BodyPart   `jsonapi:"type=relation;foreign=HumanID" gorm:"foreignkey:HumanID"`
+	NoseNonSynced *BodyPart   `jsonapi:"type=relation;foreign=HumanNonSyncID;relation=nosync" gorm:"foreignkey:HumanNonSyncID"`
+	Ears          []*BodyPart `jsonapi:"type=relation;foreign=HumanID" gorm:"foreignkey:HumanID"`
+	EarsNonSync   []*BodyPart `jsonapi:"type=relation;foreign=HumanNonSyncID;relation=nosync" gorm:"foreignkey:HumanNonSyncID"`
 }
 
 type BodyPart struct {

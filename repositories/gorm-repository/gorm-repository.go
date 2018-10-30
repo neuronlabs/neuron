@@ -118,7 +118,7 @@ func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, e
 	}
 
 	// FieldSets
-	if err = buildFieldSets(db, jsonScope, mStruct); err != nil {
+	if err = g.buildFieldSets(db, jsonScope, mStruct); err != nil {
 		return nil, err
 	}
 	return gormScope, nil
@@ -126,7 +126,7 @@ func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, e
 
 func (g *GORMRepository) buildScopeList(jsonScope *jsonapi.Scope,
 ) (gormScope *gorm.Scope, err error) {
-	gormScope = g.db.NewScope(jsonScope.Value)
+	gormScope = g.db.NewScope(jsonScope.GetValueAddress())
 	db := gormScope.DB()
 
 	mStruct := gormScope.GetModelStruct()
@@ -139,7 +139,7 @@ func (g *GORMRepository) buildScopeList(jsonScope *jsonapi.Scope,
 	}
 
 	// FieldSets
-	if err = buildFieldSets(db, jsonScope, mStruct); err != nil {
+	if err = g.buildFieldSets(db, jsonScope, mStruct); err != nil {
 		return
 	}
 
@@ -349,42 +349,27 @@ func buildPaginate(db *gorm.DB, jsonScope *jsonapi.Scope) {
 }
 
 // buildFieldSets helper for building FieldSets
-func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct) error {
+func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct) error {
 
 	var (
 		fields    string
 		foundPrim bool
 	)
-	// add primary
-
-	for _, gormField := range mStruct.PrimaryFields {
-		// fmt.Printf("GormFieldIndex: '%v', JsonAPI: '%v'\n", gormField.Struct.Index[0], jsonScope.Struct.GetPrimaryField().GetFieldIndex())
-		if isFieldEqual(gormField, jsonScope.Struct.GetPrimaryField()) {
-			if gormField.IsIgnored {
-				continue
-			}
-			fields += gormField.DBName
-			foundPrim = true
-			break
-		}
-	}
-
-	if !foundPrim {
-		err := fmt.Errorf("The primary field for the model: '%v' is not found within gorm.ModelStruct", mStruct.ModelType)
-		return err
-	}
 
 	for _, field := range jsonScope.Fieldset {
 		if !field.IsRelationship() {
 			index := field.GetFieldIndex()
 			for _, gField := range mStruct.StructFields {
 				if gField.Struct.Index[0] == index {
-
 					if gField.IsIgnored {
 						continue
 					}
+
+					if field.IsPrimary() {
+						foundPrim = true
+					}
 					// this is the field
-					fields += ", " + gField.DBName
+					fields += gField.DBName + ", "
 				}
 			}
 		} else {
@@ -406,11 +391,12 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 
 				var gField *gorm.StructField
 				for _, gField = range mStruct.StructFields {
-					if gField.Struct.Index[0] == field.GetFieldIndex() {
+					if isFieldEqual(gField, field) {
 						break
 					}
 				}
 				if gField == nil {
+					g.log().Debug("Gorm field not found for: '%s'", field.GetFieldName())
 					continue
 				}
 				if gField.IsIgnored {
@@ -421,13 +407,11 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 				if gormRel != nil {
 					switch gormRel.Kind {
 					case "has_one", "has_many":
-						*db = *db.Preload(gField.Name, func(internal *gorm.DB) *gorm.DB {
-							return internal.Select(gormRel.ForeignDBNames)
-						})
+						g.log().Debugf("Preloading relation: %s with fk: %s", field.GetFieldName(), gormRel.ForeignFieldNames[0])
+
+						*db = *db.Preload(gField.Name)
 					case "many_to_many":
-						*db = *db.Preload(gField.Name, func(internal *gorm.DB) *gorm.DB {
-							return internal.Select(gormRel.AssociationForeignDBNames)
-						})
+						*db = *db.Preload(gField.Name)
 					default:
 						continue
 
@@ -435,6 +419,18 @@ func buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelSt
 				}
 			}
 		}
+	}
+
+	if !foundPrim {
+		for _, primField := range mStruct.PrimaryFields {
+			if isFieldEqual(primField, jsonScope.Struct.GetPrimaryField()) {
+				fields = primField.DBName + ", " + fields
+			}
+		}
+	}
+
+	if len(fields) > 0 {
+		fields = fields[:len(fields)-2]
 	}
 	*db = *db.Select(fields)
 	return nil

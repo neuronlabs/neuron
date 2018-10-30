@@ -1006,6 +1006,10 @@ func (h *Handler) getForeignRelationshipValue(
 			relatedScope.newValueSingle()
 			err := relatedRepo.Get(relatedScope)
 			if err != nil {
+				dberr, ok := err.(*unidb.Error)
+				if ok && dberr.Compare(unidb.ErrNoResult) {
+					return nil
+				}
 				return err
 			}
 			v.FieldByIndex(rel.refStruct.Index).Set(reflect.ValueOf(relatedScope.Value))

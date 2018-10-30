@@ -14,8 +14,15 @@ const (
 	RelHasOne
 	RelHasMany
 	RelMany2Many
-	RelMany2ManyDisjoint
-	RelMany2ManyCommon
+)
+
+type RelationshipOption int
+
+const (
+	Restrict RelationshipOption = iota
+	NoAction
+	Cascade
+	SetNull
 )
 
 // By default the relationship many2many is local
@@ -41,6 +48,15 @@ type Relationship struct {
 
 	// BackReferenceField
 	BackReferenceField *StructField
+
+	// OnUpdate is a relationship option which determines
+	// how the relationship should operate while updating the root object
+	// By default it is set to Restrict
+	OnUpdate RelationshipOption
+
+	// OnDelete is a relationship option which determines
+	// how the relationship should operate while deleting the root object
+	OnDelete RelationshipOption
 }
 
 func (r Relationship) IsToOne() bool {
@@ -73,7 +89,7 @@ func (r Relationship) IsManyToMany() bool {
 
 func (r Relationship) isMany2Many() bool {
 	switch r.Kind {
-	case RelMany2ManyCommon, RelMany2ManyDisjoint, RelMany2Many:
+	case RelMany2Many:
 		return true
 	}
 	return false

@@ -138,7 +138,7 @@ func (m *ModelStruct) GetLanguageField() *StructField {
 
 func (m *ModelStruct) FieldByName(name string) (field *StructField, ok bool) {
 	for _, sfield := range m.fields {
-		if field.refStruct.Name == name {
+		if sfield.refStruct.Name == name {
 			return sfield, true
 		}
 	}
