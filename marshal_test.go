@@ -2,6 +2,8 @@ package jsonapi
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http/httptest"
 	"reflect"
 	"strings"
@@ -120,6 +122,80 @@ func TestMarshalScope(t *testing.T) {
 
 	err = MarshalPayload(buf, payload)
 	assertNil(t, err)
+
+	t.Run("MarshalToManyRelationship", func(t *testing.T) {
+		clearMap()
+		require.NoError(t, c.PrecomputeModels(&Pet{}, &User{}))
+
+		scope, err := c.NewScope(&Pet{})
+		require.NoError(t, err)
+
+		scope.Value = &Pet{ID: 5, Owners: []*User{{ID: 2}, {ID: 3}}}
+		scope.SetFields("Owners")
+
+		payload, err := c.MarshalScope(scope)
+		if assert.NoError(t, err) {
+			single, ok := payload.(*OnePayload)
+			if assert.True(t, ok) {
+				if assert.NotNil(t, single.Data) {
+					if assert.NotEmpty(t, single.Data.Relationships) {
+						if assert.NotNil(t, single.Data.Relationships["owners"]) {
+							owners, ok := single.Data.Relationships["owners"].(*RelationshipManyNode)
+							if assert.True(t, ok) {
+								var count int
+								for _, owner := range owners.Data {
+									if assert.NotNil(t, owner) {
+										switch owner.ID {
+										case "2", "3":
+											count += 1
+										}
+									}
+								}
+								assert.Equal(t, 2, count)
+							}
+
+						}
+					}
+				}
+			}
+		}
+
+	})
+
+	t.Run("MarshalToManyEmptyRelationship", func(t *testing.T) {
+		clearMap()
+		require.NoError(t, c.PrecomputeModels(&Pet{}, &User{}))
+
+		scope, err := c.NewScope(&Pet{})
+		require.NoError(t, err)
+
+		scope.Value = &Pet{ID: 5, Owners: []*User{}}
+		scope.SetFields("Owners")
+
+		payload, err := c.MarshalScope(scope)
+		if assert.NoError(t, err) {
+			single, ok := payload.(*OnePayload)
+			if assert.True(t, ok) {
+				if assert.NotNil(t, single.Data) {
+					if assert.NotEmpty(t, single.Data.Relationships) {
+						if assert.NotNil(t, single.Data.Relationships["owners"]) {
+							owners, ok := single.Data.Relationships["owners"].(*RelationshipManyNode)
+							if assert.True(t, ok, reflect.TypeOf(single.Data.Relationships["owners"]).String()) {
+								if assert.NotNil(t, owners) {
+									assert.Empty(t, owners.Data)
+								}
+							}
+
+						}
+					}
+				}
+				buf := bytes.Buffer{}
+				assert.NoError(t, MarshalPayload(&buf, single))
+				assert.Contains(t, buf.String(), "owners")
+			}
+		}
+
+	})
 }
 
 func TestMarshalScopeRelationship(t *testing.T) {

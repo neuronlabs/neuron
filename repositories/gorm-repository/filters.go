@@ -177,7 +177,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 	}
 
 	for _, relationFilter := range scope.RelationshipFilters {
-		if rel := relationFilter.GetRelationship(); rel != nil && rel.IsManyToMany() {
+		if rel := relationFilter.GetRelationship(); rel != nil {
 			switch rel.Kind {
 			case jsonapi.RelHasMany, jsonapi.RelHasOne:
 				if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
@@ -275,6 +275,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 
 				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Relationships[0])
 				if err != nil {
+					g.log().Debugf("Error while createing Many2Many WHERE query: %v", err)
 					return err
 				}
 
@@ -282,6 +283,8 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 				op := sqlizeOperator(jsonapi.OpIn)
 				valueMark := "(?)"
 				q := fmt.Sprintf("%s %s %s", columnName, op, valueMark)
+
+				g.log().Debug("Many2Many filter query: %s", q)
 
 				*db = *db.Where(q, relDB.QueryExpr())
 

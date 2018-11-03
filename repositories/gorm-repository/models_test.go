@@ -76,3 +76,8 @@ type M2MSecond struct {
 	ID     int         `jsonapi:"type=primary"`
 	Firsts []*M2MFirst `jsonapi:"type=relation;relation=many2many" gorm:"many2many:first_seconds"`
 }
+
+type UnmappedM2m struct {
+	ID        int         `jsonapi:"type=primary"`
+	BodyParts []*BodyPart `jsonapi:"type=relation;relation=many2many" gorm:"many2many:some_name"`
+}

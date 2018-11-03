@@ -306,7 +306,7 @@ func (h *Handler) Create(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 			}
 		}
 
-		err = scope.setBelongsToForeignKeyWithFields(scope.SelectedFields...)
+		err = scope.setBelongsToForeignKeyWithFields()
 		if err != nil {
 			h.log.Errorf("scope.setBelongsToForeignKey failed. Scope: %#v, %v", scope, err)
 			h.MarshalInternalError(rw)
@@ -396,8 +396,6 @@ func (h *Handler) Create(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 					return
 				}
 
-				h.log.Debugf("Relation: %s", relField.jsonAPIName)
-
 				// Check if the relation is empty
 				if rel.isToMany() {
 					// check if not empty
@@ -422,6 +420,7 @@ func (h *Handler) Create(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 						return
 					}
 
+					h.log.Debugf("Patching Foreign Relation: %s for model: %s", relField.jsonAPIName, scope.Struct.collectionType)
 					// Prepare the patch scope
 					// if relationship is too many
 					switch rel.Kind {
@@ -431,6 +430,7 @@ func (h *Handler) Create(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 						// if the backreferenced relation is non synced (HasOne and HasMany)
 						continue
 					case RelHasOne, RelHasMany:
+						h.log.Debugf("Patching Relationship of type: %s", rel.Kind.String())
 						err := h.patchRelationScope(ctx, scope, primVal, relPrim, relField)
 						if err != nil {
 							switch e := err.(type) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi"
+	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-db/gormconv"
 	"github.com/kucjac/uni-logger"
 	"log"
@@ -48,6 +49,15 @@ func New(db *gorm.DB) (*GORMRepository, error) {
 	return gormRepo, nil
 }
 
+func (g *GORMRepository) NewDB() *gorm.DB {
+	db := g.db.New()
+	db = db.Set("gorm:association_autoupdate", false)
+	db = db.Set("gorm:association_autocreate", false)
+	db = db.Set("gorm:association_save_reference", false)
+	db = db.Set("gorm:save_associations", false)
+	return db
+}
+
 // GetLogLevel gets the current log level.
 func (g *GORMRepository) GetLogLevel() unilogger.Level {
 	return g.logLevel
@@ -76,6 +86,9 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 
 	db.Callback().Create().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
 	db.Callback().Update().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
+
+	db.Callback().Create().Replace("gorm:save_before_associations", g.saveBeforeAssociationsCallback)
+	db.Callback().Update().Replace("gorm:save_before_associations", g.saveBeforeAssociationsCallback)
 
 	g.ptrSize = len(fmt.Sprintf("%v", db))
 
@@ -363,52 +376,6 @@ func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, m
 					fields += gField.DBName + ", "
 				}
 			}
-		} else {
-			if rel := field.GetRelationship(); rel != nil {
-				switch rel.Kind {
-				case jsonapi.RelBelongsTo:
-					continue
-				case jsonapi.RelHasMany, jsonapi.RelHasOne:
-					if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
-						continue
-					}
-				case jsonapi.RelMany2Many:
-					if rel.Sync != nil && *rel.Sync {
-						continue
-					}
-				default:
-					continue
-				}
-
-				var gField *gorm.StructField
-				for _, gField = range mStruct.StructFields {
-					if isFieldEqual(gField, field) {
-						break
-					}
-				}
-				if gField == nil {
-					g.log().Debug("Gorm field not found for: '%s'", field.GetFieldName())
-					continue
-				}
-				if gField.IsIgnored {
-					continue
-				}
-				gormRel := gField.Relationship
-
-				if gormRel != nil {
-					switch gormRel.Kind {
-					case "has_one", "has_many":
-						g.log().Debugf("Preloading relation: %s with fk: %s", field.GetFieldName(), gormRel.ForeignFieldNames[0])
-
-						*db = *db.Preload(gField.Name)
-					case "many_to_many":
-						*db = *db.Preload(gField.Name)
-					default:
-						continue
-
-					}
-				}
-			}
 		}
 	}
 
@@ -462,5 +429,156 @@ func buildSorts(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct
 		}
 	}
 
+	return nil
+}
+
+func (g *GORMRepository) getListRelationships(
+	db *gorm.DB,
+	scope *jsonapi.Scope,
+) error {
+	v := reflect.ValueOf(scope.Value)
+	if v.Kind() != reflect.Slice {
+		return errors.New("Provided value is not a slice")
+	}
+
+	if v.IsNil() {
+		return errors.New("Nil value provided")
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		elem := v.Index(i)
+		if elem.IsNil() {
+			continue
+		}
+		elemVal := elem.Interface()
+		if err := g.getRelationships(db, scope, elemVal); err != nil {
+			return err
+		}
+
+		v.Index(i).Set(reflect.ValueOf(elemVal))
+	}
+	return nil
+}
+
+func (g *GORMRepository) getRelationships(
+	db *gorm.DB,
+	scope *jsonapi.Scope,
+	value interface{},
+) error {
+
+	gScope := db.New().NewScope(value)
+
+	for _, field := range scope.Fieldset {
+		if rel := field.GetRelationship(); rel != nil {
+			switch rel.Kind {
+			case jsonapi.RelBelongsTo:
+				continue
+			case jsonapi.RelHasMany, jsonapi.RelHasOne:
+				if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
+					continue
+				}
+			case jsonapi.RelMany2Many:
+				if rel.Sync != nil && *rel.Sync {
+					continue
+				}
+			default:
+				continue
+			}
+			tx := gScope.DB().Set("gorm:association:source", value)
+
+			var gField *gorm.Field
+			for _, gField = range gScope.Fields() {
+				if isFieldEqual(gField.StructField, field) {
+					break
+				}
+			}
+			if gField == nil {
+				g.log().Debug("Gorm field not found for: '%s'", field.GetFieldName())
+				continue
+			}
+
+			if gField.IsIgnored {
+				continue
+			}
+
+			if rel := gField.Relationship; rel != nil {
+				switch rel.Kind {
+				case "has_one":
+					for idx, foreignKey := range rel.ForeignDBNames {
+						if f, ok := gScope.FieldByName(rel.AssociationForeignDBNames[idx]); ok {
+							tx = tx.Where(fmt.Sprintf("%v = ?", gScope.Quote(foreignKey)), f.Field.Interface())
+						}
+					}
+					if rel.PolymorphicType != "" {
+						tx = tx.Where(fmt.Sprintf("%v = ?", gScope.Quote(rel.PolymorphicDBName)), rel.PolymorphicValue)
+					}
+
+					if gField.Field.IsNil() {
+						gField.Field.Set(reflect.New(gField.Field.Type().Elem()))
+					}
+					fValue := gField.Field.Interface()
+					g.log().Debugf("Field Type: %v", gField.Field.Type().String())
+					relScope := db.NewScope(fValue)
+
+					// g.log().Debugf("HasOneQuery: %s", tx.Select(relScope.Quote(relScope.PrimaryKey())).SubQuery())
+					g.log().Debugf("fValue: %+v", fValue)
+					err := tx.Select(relScope.Quote(relScope.PrimaryKey())).Find(fValue).Error
+					if err != nil {
+						dbErr := g.converter.Convert(err)
+						if !dbErr.Compare(unidb.ErrNoResult) {
+							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							return dbErr
+						}
+					}
+
+					gField.Field.Set(reflect.ValueOf(fValue))
+				case "has_many":
+					for idx, foreignKey := range rel.ForeignDBNames {
+						if f, ok := gScope.FieldByName(rel.AssociationForeignDBNames[idx]); ok {
+							w := fmt.Sprintf("%v = ?", gScope.Quote(foreignKey))
+							g.log().Debugf("Adding has_many where: '%s'", w)
+							tx = tx.Where(w, f.Field.Interface())
+						}
+					}
+					if rel.PolymorphicType != "" {
+						tx = tx.Where(fmt.Sprintf("%v = ?", gScope.Quote(rel.PolymorphicDBName)), rel.PolymorphicValue)
+					}
+
+					fValue := gField.Field.Addr().Interface()
+					relScope := db.NewScope(fValue)
+
+					g.log().Debug("HasMany Query: %+v", tx.QueryExpr())
+					err := tx.Select(relScope.PrimaryKey()).Find(fValue).Error
+					if err != nil {
+						dbErr := g.converter.Convert(err)
+						if !dbErr.Compare(unidb.ErrNoResult) {
+							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							return dbErr
+						}
+					}
+
+					gField.Field.Set(reflect.ValueOf(fValue).Elem())
+
+				case "many_to_many":
+					jth := rel.JoinTableHandler
+					fValue := gField.Field.Addr().Interface()
+					g.log().Debugf("Many2Many query: %v", jth.JoinWith(jth, tx, value).SubQuery())
+					err := jth.JoinWith(jth, tx, value).Find(fValue).Error
+					if err != nil {
+						dbErr := g.converter.Convert(err)
+						if !dbErr.Compare(unidb.ErrNoResult) {
+							g.log().Errorf("Error while getting relation many2many: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							return dbErr
+						}
+					}
+					gField.Field.Set(reflect.ValueOf(fValue).Elem())
+				default:
+					continue
+
+				}
+			}
+
+		}
+	}
 	return nil
 }

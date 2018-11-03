@@ -38,7 +38,11 @@ outer:
 			continue
 		}
 		for _, gField := range mStruct.StructFields {
+			if gField.IsIgnored {
+				continue
+			}
 			if isFieldEqual(gField, jsField) {
+
 				names = append(names, gField.DBName)
 				continue outer
 			}
@@ -61,6 +65,9 @@ func getUpdatedGormFieldNames(
 outer:
 	for _, jsField := range fields {
 		for _, gField := range mStruct.StructFields {
+			if gField.IsIgnored {
+				continue
+			}
 			if jsField.GetFieldIndex() == gField.Struct.Index[0] {
 				if jsField.IsRelationship() {
 					continue
@@ -106,9 +113,13 @@ outer:
 		if jsField.IsPrimary() {
 			continue outer
 		}
+	gormFields:
 		for _, gField := range mStruct.StructFields {
-			if jsField.GetFieldIndex() == gField.Struct.Index[0] {
+			if gField.IsIgnored {
+				continue gormFields
+			}
 
+			if isFieldEqual(gField, jsField) {
 				field := v.FieldByIndex(jsField.GetReflectStructField().Index)
 				fieldVal := field.Interface()
 				if jsField.GetFieldKind() == jsonapi.ForeignKey {

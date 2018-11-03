@@ -11,6 +11,10 @@ import (
 )
 
 func (g *GORMRepository) Patch(scope *jsonapi.Scope) error {
+	g.log().Debug("START PATCH")
+	defer func() {
+		g.log().Debug("FINISHED PATCH")
+	}()
 	db := g.db.New()
 	db = db.Begin()
 
@@ -67,15 +71,16 @@ func (g *GORMRepository) Patch(scope *jsonapi.Scope) error {
 	// fieldNames := g.getSelectedGormFieldValues(modelStruct, scope.SelectedFields...)
 	values := g.getUpdatedFieldValues(modelStruct, scope)
 
-	db = db.Table(modelStruct.TableName(db)).Updates(values)
-	if err := db.Error; err != nil {
-		g.log().Errorf("GormRepo Update failed. %v", err)
-		db.Rollback()
-		g.log().Debugf("Rollback err: %v", db.Error)
-		return g.converter.Convert(err)
+	if len(values) > 0 {
+		db = db.Table(modelStruct.TableName(db)).Updates(values)
+		if err := db.Error; err != nil {
+			g.log().Errorf("GormRepo Update failed. %v", err)
+			db.Rollback()
+			g.log().Debugf("Rollback err: %v", db.Error)
+			return g.converter.Convert(err)
+		}
+		g.log().Debugf("Updated correctly.")
 	}
-	g.log().Debugf("Updated correctly.")
-
 	err := g.patchNonSyncedRelations(scope, modelStruct, db)
 	if err != nil {
 		db.Rollback()
@@ -120,10 +125,14 @@ func (g *GORMRepository) patchNonSyncedRelations(
 			values = append(values, wq.values...)
 		}
 
-		wheres = wheres[:len(wheres)-5]
+		if len(wheres) > 0 {
+			wheres = wheres[:len(wheres)-5]
+		} else {
+			return nil
+		}
 
 		primaryFieldNames := g.getSelectedGormFieldValues(mStruct, scope.Struct.GetPrimaryField())
-		q := fmt.Sprintf("SELECT %s FROM \"%s\" WHERE (%s)", primaryFieldNames[0], mStruct.TableName(rootDB), wheres)
+		q := fmt.Sprintf("SELECT \"%s\" FROM \"%s\" WHERE (%s)", primaryFieldNames[0], mStruct.TableName(rootDB), wheres)
 
 		g.log().Debugf("Query: %s", q)
 
@@ -341,7 +350,9 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							relScope.Quote(relScope.GetModelStruct().TableName(db))+"."+relScope.Quote(gForeignField.DBName),
 						)
 						if err = relScope.DB().Exec(clearSQL, primaries[0]).Error; err != nil {
+							g.log().Debugf("ClearSQL Error for relationship has one: %v", err)
 							dbErr := g.converter.Convert(err)
+							dbErr.Message = err.Error()
 							if !dbErr.Compare(unidb.ErrNoResult) {
 								return dbErr
 							}
@@ -466,6 +477,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							relScope.Quote(relScope.GetModelStruct().TableName(db))+"."+relScope.Quote(primField.DBName),
 							relPrimQuotationMarks,
 						)
+						g.log().Debugf("ClearSQL for  relationship HasMany: %s", clearSQL)
 						clearValues := []interface{}{nil, primaries[0]}
 						clearValues = append(clearValues, relPrimValues...)
 
@@ -482,6 +494,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							relScope.Quote(relScope.GetModelStruct().TableName(db))+"."+relScope.Quote(primField.DBName),
 							relPrimQuotationMarks,
 						)
+
+						g.log().Debugf("UpdateSQL for HasMany model %s", updateSQL)
 						updateValues := append([]interface{}{primaries[0]}, relPrimValues...)
 						err = db.Exec(updateSQL, updateValues...).Error
 						if err != nil {
@@ -497,8 +511,10 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							relScope.QuotedTableName(),
 							relScope.QuotedTableName()+"."+relScope.Quote(fkField.DBName),
 						)
+						g.log().Debugf("ClearSQL for relation HasMany: %s", clearSQL)
 						clearValues := []interface{}{nil, primaries[0]}
 						if err := db.Exec(clearSQL, clearValues...).Error; err != nil {
+							g.log().Debugf("ClearValues failed for relation HasMany: %v", err)
 							return errors.Wrapf(err, "Clearing relation values failed for model: %s relation: %s.", scope.Struct.GetType().Name(), field.GetFieldName())
 						}
 					}
@@ -556,13 +572,17 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				// DELETE FROM jointable WHERE associated_root.id IN ( primaries)
 				clearRelations := fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s)",
 					relScope.Quote(gRelationField.Relationship.JoinTableHandler.Table(db)),
-					relScope.Quote(gRelationField.Relationship.AssociationForeignDBNames[0]),
+					relScope.Quote(gRelationField.Relationship.ForeignDBNames[0]),
 					primaryQuotationMarks,
 				)
 
+				g.log().Debugf("Clear Relations SQL for relation many2many: %s", clearRelations)
+
 				err = relScope.DB().Exec(clearRelations, primaries...).Error
 				if err != nil {
+					g.log().Debugf("ClearRelations failed for relationship many2many. %v", err)
 					dbErr := g.converter.Convert(err)
+					dbErr.Message = err.Error()
 					if !dbErr.Compare(unidb.ErrNoResult) {
 						return dbErr
 					}
@@ -579,6 +599,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					relScope.Quote(gRelationField.Relationship.AssociationForeignDBNames[0]),
 					relScope.Quote(gRelationField.Relationship.ForeignDBNames[0]),
 				)
+
+				g.log().Debugf("SQL Inserting new many2many relationships: %s", insertSQL)
 				relPrim := field.GetRelatedModelStruct().GetPrimaryField()
 				for _, primary := range primaries {
 					for i := 0; i < vField.Len(); i++ {
@@ -597,9 +619,12 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						if reflect.DeepEqual(elemPrimValue, reflect.Zero(relPrim.GetFieldType()).Interface()) {
 							continue
 						}
-						err = relScope.DB().Exec(insertSQL, primary, elemPrimValue).Error
+						err = relScope.DB().Exec(insertSQL, elemPrimValue, primary).Error
 						if err != nil {
-							return g.converter.Convert(err)
+							g.log().Debugf("Inserting new many2many relationships failed. %v", err)
+							dbErr := g.converter.Convert(err)
+							dbErr.Message = err.Error()
+							return dbErr
 						}
 					}
 				}

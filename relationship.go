@@ -16,6 +16,21 @@ const (
 	RelMany2Many
 )
 
+func (r RelationshipKind) String() string {
+	switch r {
+	case RelUnknown:
+	case RelBelongsTo:
+		return "BelongsTo"
+	case RelHasOne:
+		return "HasOne"
+	case RelHasMany:
+		return "HasMany"
+	case RelMany2Many:
+		return "Many2Many"
+	}
+	return "Unknown"
+}
+
 type RelationshipOption int
 
 const (

@@ -1373,7 +1373,7 @@ func (s *Scope) setBelongsToRelationWithFields(fields ...*StructField) error {
 	return nil
 }
 
-func (s *Scope) setBelongsToForeignKeyWithFields(fields ...*StructField) error {
+func (s *Scope) setBelongsToForeignKeyWithFields() error {
 	if s.Value == nil {
 		return errors.Errorf("Nil value provided. %#v", s)
 	}
@@ -1381,17 +1381,43 @@ func (s *Scope) setBelongsToForeignKeyWithFields(fields ...*StructField) error {
 	v := reflect.ValueOf(s.Value)
 	switch v.Kind() {
 	case reflect.Ptr:
-		err := s.Struct.setBelongsToForeignsWithFields(v, fields...)
+		fks, err := s.Struct.setBelongsToForeignsWithFields(v, s)
 		if err != nil {
 			return err
+		}
+		for _, fk := range fks {
+			var found bool
+		inner:
+			for _, selected := range s.SelectedFields {
+				if fk == selected {
+					found = true
+					break inner
+				}
+			}
+			if !found {
+				s.SelectedFields = append(s.SelectedFields, fk)
+			}
 		}
 
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
-			err := s.Struct.setBelongsToForeignsWithFields(elem, fields...)
+			fks, err := s.Struct.setBelongsToForeignsWithFields(elem, s)
 			if err != nil {
 				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+			}
+			for _, fk := range fks {
+				var found bool
+			innerSlice:
+				for _, selected := range s.SelectedFields {
+					if fk == selected {
+						found = true
+						break innerSlice
+					}
+				}
+				if !found {
+					s.SelectedFields = append(s.SelectedFields, fk)
+				}
 			}
 		}
 	}

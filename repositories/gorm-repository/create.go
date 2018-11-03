@@ -6,7 +6,10 @@ import (
 )
 
 func (g *GORMRepository) Create(scope *jsonapi.Scope) error {
-	db := g.db.New()
+	g.log().Debug("CREATE BEGIN")
+	defer func() { g.log().Debug("CREATE FINISHED") }()
+
+	db := g.NewDB()
 
 	// Set the JSONAPI pointer into the gorm repo
 	g.setJScope(scope, db)
@@ -31,8 +34,17 @@ func (g *GORMRepository) Create(scope *jsonapi.Scope) error {
 
 	g.getJScope(db.NewScope(scope.Value))
 
+	modelStruct := db.NewScope(scope.Value).GetModelStruct()
+
 	err := db.Create(scope.Value).Error
 	if err != nil {
+		return g.converter.Convert(err)
+	}
+
+	sc := db.NewScope(scope.Value)
+	scope.SetPrimaryFilters(sc.PrimaryKeyValue())
+
+	if err := g.patchNonSyncedRelations(scope, modelStruct, db); err != nil {
 		return g.converter.Convert(err)
 	}
 

@@ -7,7 +7,8 @@ import (
 )
 
 func (g *GORMRepository) Get(scope *jsonapi.Scope) error {
-
+	g.log().Debug("START GET")
+	defer func() { g.log().Debug("FINISHED GET") }()
 	/**
 
 	  GET: PREPARE GORM SCOPE
@@ -32,6 +33,15 @@ func (g *GORMRepository) Get(scope *jsonapi.Scope) error {
 	err = gormScope.DB().First(scope.Value).Error
 	if err != nil {
 		return g.converter.Convert(err)
+	}
+
+	if err := g.getRelationships(gormScope.DB(), scope, scope.Value); err != nil {
+		dbErr, ok := err.(*unidb.Error)
+		if !ok {
+			dbErr = g.converter.Convert(err)
+		}
+		return dbErr
+
 	}
 
 	/**

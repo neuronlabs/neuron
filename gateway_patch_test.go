@@ -18,6 +18,7 @@ func TestHandlerPatch(t *testing.T) {
 			model.Patch = &Endpoint{}
 			model.Repository = &MockRepository{}
 		}
+
 		return h
 	}
 
@@ -56,6 +57,12 @@ func TestHandlerPatch(t *testing.T) {
 
 				assert.Equal(t, blog.ID, blogPatched.ID)
 				assert.Equal(t, blog.SomeAttr, blogPatched.SomeAttr)
+			})
+
+			repo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+				_, ok := args.Get(0).(*Scope)
+				require.True(t, ok)
+
 			})
 
 			h.Patch(model, model.Patch).ServeHTTP(rw, req)
@@ -97,6 +104,11 @@ func TestHandlerPatch(t *testing.T) {
 				}
 			})
 
+			repo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+				_, ok := args.Get(0).(*Scope)
+				require.True(t, ok)
+
+			})
 			h.Patch(model, model.Patch).ServeHTTP(rw, req)
 
 			if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
@@ -166,6 +178,12 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
+					repo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
+
+					})
+
 					h.Patch(model, model.Patch).ServeHTTP(rw, req)
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
@@ -230,6 +248,12 @@ func TestHandlerPatch(t *testing.T) {
 						h.log.Debugf("Patch post repo: %#v", scope.Value)
 					})
 
+					repo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
+
+					})
+
 					h.Patch(model, model.Patch).ServeHTTP(rw, req)
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
@@ -264,6 +288,12 @@ func TestHandlerPatch(t *testing.T) {
 
 						assert.Len(t, scope.SelectedFields, 2)
 						assert.Equal(t, blog.ID, blogPatched.ID)
+					})
+
+					repo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
+
 					})
 
 					h.Patch(model, model.Patch).ServeHTTP(rw, req)
@@ -351,6 +381,13 @@ func TestHandlerPatch(t *testing.T) {
 							}
 						}
 					})
+
+					postRepo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
+
+					})
+
 					h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req)
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
@@ -421,6 +458,12 @@ func TestHandlerPatch(t *testing.T) {
 						}
 					})
 
+					postRepo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
+
+					})
+
 					h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req)
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
@@ -441,6 +484,8 @@ func TestHandlerPatch(t *testing.T) {
 				t.Run("SetNew", func(t *testing.T) {
 					models := []interface{}{&PetSDK{}, &HumanSDK{}}
 					h := prepareHandler(defaultLanguages, models...)
+					f := false
+					h.Controller.FlagReturnPatchContent = &f
 					for _, model := range h.ModelHandlers {
 
 						model.Repository = &MockRepository{}
@@ -621,7 +666,11 @@ func TestHandlerPatch(t *testing.T) {
 							}
 						}
 					})
+					petRepo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
 
+					})
 					// humanRepo.AssertNumberOfCalls(t, "Patch", 2)
 
 					// if assert.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) }) {
@@ -702,6 +751,12 @@ func TestHandlerPatch(t *testing.T) {
 							}
 						}
 						assert.Zero(t, human.Pets)
+
+					})
+
+					petRepo.On("Get", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+						_, ok := args.Get(0).(*Scope)
+						require.True(t, ok)
 
 					})
 

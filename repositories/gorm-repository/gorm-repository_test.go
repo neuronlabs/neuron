@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var *debug = flag.Bool("debug", false, "Debug level")
+var debug = flag.Bool("debug", false, "Debug level")
 var db *gorm.DB
 
 type UserGORM struct {

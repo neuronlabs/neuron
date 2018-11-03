@@ -8,6 +8,8 @@ import (
 )
 
 func (g *GORMRepository) List(scope *jsonapi.Scope) error {
+	g.log().Debug("LIST BEGIN")
+	defer func() { g.log().Debug("LIST FINISHED") }()
 	if scope.Value == nil {
 		return IErrNoValuesProvided
 	}
@@ -39,6 +41,9 @@ func (g *GORMRepository) List(scope *jsonapi.Scope) error {
 	}
 	scope.SetValueFromAddressable()
 
+	if err = g.getListRelationships(db, scope); err != nil {
+		return g.converter.Convert(err)
+	}
 	/**
 
 	  LIST: HOOK AFTER READ

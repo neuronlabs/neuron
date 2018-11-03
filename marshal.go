@@ -206,7 +206,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	for _, field := range scope.getModelsRootScope(scope.Struct).Fieldset {
 
 		fieldValue := modelVal.Field(field.getFieldIndex())
-		if field.isHidden() || field.IsZeroValue(fieldValue.Interface()) {
+		if field.isHidden() {
 			continue
 		}
 

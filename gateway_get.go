@@ -8,10 +8,14 @@ import (
 // repository.
 func (h *Handler) Get(model *ModelHandler, endpoint *Endpoint) http.HandlerFunc {
 	return func(rw http.ResponseWriter, req *http.Request) {
+
+		h.log.Debug("GW-GET BEGIN")
+		defer func() { h.log.Debug("GW-GET FINISHED") }()
 		if _, ok := h.ModelHandlers[model.ModelType]; !ok {
 			h.MarshalInternalError(rw)
 			return
 		}
+
 		SetContentType(rw)
 
 		/**

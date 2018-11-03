@@ -221,16 +221,18 @@ func (m *ModelStruct) setBelongsToRelationWithFields(
 	return nil
 }
 
-func (m *ModelStruct) setBelongsToForeignsWithFields(v reflect.Value, fields ...*StructField) error {
+func (m *ModelStruct) setBelongsToForeignsWithFields(
+	v reflect.Value, scope *Scope,
+) ([]*StructField, error) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 
 	if v.Type() != m.modelType {
-		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
+		return nil, errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
 	}
-
-	for _, field := range fields {
+	fks := []*StructField{}
+	for _, field := range scope.SelectedFields {
 		rel, ok := m.relationships[field.jsonAPIName]
 		if ok &&
 			rel.relationship != nil &&
@@ -246,9 +248,10 @@ func (m *ModelStruct) setBelongsToForeignsWithFields(v reflect.Value, fields ...
 			relPrim := rel.relatedStruct.primary
 			relPrimVal := relVal.FieldByIndex(relPrim.refStruct.Index)
 			fkVal.Set(relPrimVal)
+			fks = append(fks, rel.relationship.ForeignKey)
 		}
 	}
-	return nil
+	return fks, nil
 }
 
 func (m *ModelStruct) setModelURL(url string) error {

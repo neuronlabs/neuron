@@ -220,7 +220,6 @@ func TestPatch(t *testing.T) {
 							assert.Equal(t, human.ID, nose.HumanNonSyncID)
 						}
 					})
-
 				})
 
 				t.Run("Zero", func(t *testing.T) {
@@ -536,8 +535,6 @@ func TestPatch(t *testing.T) {
 					require.NoError(t, repo.db.Create(secondOne).Error)
 					require.NoError(t, repo.db.Create(secondTwo).Error)
 
-					require.NoError(t, repo.db.Model(first).Association("Seconds").Append(secondOne).Error)
-
 					scope, err := c.NewScope(&M2MFirst{})
 					require.NoError(t, err)
 
@@ -551,13 +548,44 @@ func TestPatch(t *testing.T) {
 						seconds := []*M2MSecond{}
 						assert.NoError(t, db.Model(first).Related(&seconds, "Seconds").Error)
 
-						assert.Len(t, seconds, 1)
+						if assert.Len(t, seconds, 1) {
+							assert.Equal(t, secondTwo.ID, seconds[0].ID)
+						}
 
-						assert.NotEqual(t, seconds[0].ID, secondOne.ID)
-						assert.Equal(t, seconds[0].ID, secondTwo.ID)
 					}
 				})
+				t.Run("NoBackReference", func(t *testing.T) {
+					models := []interface{}{&UnmappedM2m{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
 
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
+
+					scope, err := c.NewScope(&UnmappedM2m{})
+					require.NoError(t, err)
+
+					bp := &BodyPart{ID: 1}
+					require.NoError(t, repo.db.Create(bp).Error)
+
+					u := &UnmappedM2m{ID: 2}
+					require.NoError(t, repo.db.Create(u).Error)
+
+					scope.Value = &UnmappedM2m{ID: 2, BodyParts: []*BodyPart{{ID: 1}}}
+					scope.AddSelectedFields("BodyParts")
+					scope.SetPrimaryFilters(2)
+
+					if assert.NoError(t, repo.Patch(scope)) {
+						scope.SetAllFields()
+						scope.SetPrimaryFilters(2)
+						u := &UnmappedM2m{}
+						scope.Value = u
+						assert.NoError(t, repo.Get(scope))
+
+						assert.Len(t, u.BodyParts, 1)
+
+					}
+				})
 			})
 		},
 	}

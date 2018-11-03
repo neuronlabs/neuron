@@ -101,39 +101,71 @@ func TestList(t *testing.T) {
 			})
 
 			t.Run("NonSynced", func(t *testing.T) {
-				models := []interface{}{&Human{}, &BodyPart{}}
-				c, err := prepareJSONAPI(models...)
-				require.NoError(t, err)
+				t.Run("Exists", func(t *testing.T) {
+					models := []interface{}{&Human{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
 
-				repo, err := prepareGORMRepo(models...)
-				require.NoError(t, err)
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
 
-				scope, err := c.NewScope(&Human{})
-				require.NoError(t, err)
+					scope, err := c.NewScope(&Human{})
+					require.NoError(t, err)
 
-				human := &Human{ID: 4}
+					human := &Human{ID: 4}
 
-				nose := &BodyPart{ID: 5, HumanNonSyncID: human.ID}
-				require.NoError(t, repo.db.Create(human).Error)
-				require.NoError(t, repo.db.Create(nose).Error)
+					nose := &BodyPart{ID: 5, HumanNonSyncID: human.ID}
+					require.NoError(t, repo.db.Create(human).Error)
+					require.NoError(t, repo.db.Create(nose).Error)
 
-				scope.NewValueMany()
+					scope.NewValueMany()
 
-				scope.SetPrimaryFilters(human.ID)
-				require.NoError(t, scope.SetFields("NoseNonSynced"))
+					scope.SetPrimaryFilters(human.ID)
+					require.NoError(t, scope.SetFields("NoseNonSynced"))
 
-				err = repo.List(scope)
-				if assert.NoError(t, err) {
-					hum, ok := scope.Value.([]*Human)
-					require.True(t, ok)
+					err = repo.List(scope)
+					if assert.NoError(t, err) {
+						hum, ok := scope.Value.([]*Human)
+						require.True(t, ok)
 
-					assert.Equal(t, human.ID, hum[0].ID)
-					assert.Zero(t, hum[0].Nose)
-					if assert.NotZero(t, hum[0].NoseNonSynced) {
-						assert.Equal(t, nose.ID, hum[0].NoseNonSynced.ID)
+						assert.Equal(t, human.ID, hum[0].ID)
+						assert.Zero(t, hum[0].Nose)
+						if assert.NotZero(t, hum[0].NoseNonSynced) {
+							assert.Equal(t, nose.ID, hum[0].NoseNonSynced.ID)
+						}
 					}
-				}
+				})
+
+				t.Run("NotExists", func(t *testing.T) {
+					models := []interface{}{&Human{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
+
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
+
+					scope, err := c.NewScope(&Human{})
+					require.NoError(t, err)
+
+					human := &Human{ID: 4}
+
+					require.NoError(t, repo.db.Create(human).Error)
+
+					scope.NewValueMany()
+
+					scope.SetPrimaryFilters(human.ID)
+					require.NoError(t, scope.SetFields("NoseNonSynced"))
+
+					err = repo.List(scope)
+					if assert.NoError(t, err) {
+						hum, ok := scope.Value.([]*Human)
+						require.True(t, ok)
+						assert.Equal(t, human.ID, hum[0].ID)
+						assert.Zero(t, human.NoseNonSynced)
+					}
+				})
 			})
+
 		},
 		"RelationHasMany": func(t *testing.T) {
 			t.Run("Synced", func(t *testing.T) {
@@ -171,51 +203,136 @@ func TestList(t *testing.T) {
 
 			})
 			t.Run("NonSynced", func(t *testing.T) {
-				models := []interface{}{&Human{}, &BodyPart{}}
-				c, err := prepareJSONAPI(models...)
-				require.NoError(t, err)
+				t.Run("Exists", func(t *testing.T) {
+					models := []interface{}{&Human{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
 
-				repo, err := prepareGORMRepo(models...)
-				require.NoError(t, err)
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
 
-				scope, err := c.NewScope(&Human{})
-				require.NoError(t, err)
+					scope, err := c.NewScope(&Human{})
+					require.NoError(t, err)
 
-				human := &Human{ID: 4}
+					human := &Human{ID: 4}
 
-				earID1, earID2 := 5, 6
-				ears := []*BodyPart{{ID: earID1, HumanNonSyncID: human.ID}, {ID: earID2, HumanNonSyncID: human.ID}}
-				require.NoError(t, repo.db.Create(human).Error)
-				for _, ear := range ears {
-					require.NoError(t, repo.db.Create(ear).Error)
-				}
+					earID1, earID2 := 5, 6
+					ears := []*BodyPart{{ID: earID1, HumanNonSyncID: human.ID}, {ID: earID2, HumanNonSyncID: human.ID}}
+					require.NoError(t, repo.db.Create(human).Error)
+					for _, ear := range ears {
+						require.NoError(t, repo.db.Create(ear).Error)
+					}
 
-				scope.NewValueMany()
+					scope.NewValueMany()
 
-				scope.SetPrimaryFilters(human.ID)
-				require.NoError(t, scope.SetFields("EarsNonSync"))
+					scope.SetPrimaryFilters(human.ID)
+					require.NoError(t, scope.SetFields("EarsNonSync"))
 
-				err = repo.List(scope)
-				if assert.NoError(t, err) {
-					hum, ok := scope.Value.([]*Human)
-					require.True(t, ok)
+					err = repo.List(scope)
+					if assert.NoError(t, err) {
+						hum, ok := scope.Value.([]*Human)
+						require.True(t, ok)
 
-					assert.Equal(t, human.ID, hum[0].ID)
-					assert.Zero(t, hum[0].Ears)
-					if assert.NotZero(t, hum[0].EarsNonSync) {
-						var count int
-						for _, earNS := range hum[0].EarsNonSync {
-							switch earNS.ID {
-							case earID1, earID2:
-								count++
-							default:
-								t.FailNow()
+						assert.Equal(t, human.ID, hum[0].ID)
+						assert.Zero(t, hum[0].Ears)
+						if assert.NotZero(t, hum[0].EarsNonSync) {
+							var count int
+							for _, earNS := range hum[0].EarsNonSync {
+								switch earNS.ID {
+								case earID1, earID2:
+									count++
+								default:
+									t.FailNow()
+								}
+							}
+							assert.Equal(t, 2, count)
+						}
+					}
+				})
+
+				t.Run("NotExists", func(t *testing.T) {
+					models := []interface{}{&Human{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
+
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
+
+					scope, err := c.NewScope(&Human{})
+					require.NoError(t, err)
+
+					human1 := &Human{ID: 4}
+					human2 := &Human{ID: 10}
+
+					earID1, earID2 := 5, 6
+					ears := []*BodyPart{{ID: earID1}, {ID: earID2}}
+					require.NoError(t, repo.db.Create(human1).Error)
+					require.NoError(t, repo.db.Create(human2).Error)
+					for _, ear := range ears {
+						require.NoError(t, repo.db.Create(ear).Error)
+					}
+
+					scope.NewValueMany()
+
+					scope.SetPrimaryFilters(human1.ID, human2.ID)
+					require.NoError(t, scope.SetFields("EarsNonSync"))
+
+					err = repo.List(scope)
+					if assert.NoError(t, err) {
+						hum, ok := scope.Value.([]*Human)
+						require.True(t, ok)
+
+						assert.Len(t, hum, 2)
+						for _, hm := range hum {
+							assert.Empty(t, hm.EarsNonSync)
+						}
+					}
+				})
+
+				t.Run("MatchExisting", func(t *testing.T) {
+					models := []interface{}{&Human{}, &BodyPart{}}
+					c, err := prepareJSONAPI(models...)
+					require.NoError(t, err)
+
+					repo, err := prepareGORMRepo(models...)
+					require.NoError(t, err)
+
+					scope, err := c.NewScope(&Human{})
+					require.NoError(t, err)
+
+					humanID1, humanID2 := 10, 12
+					humans := []*Human{{ID: humanID1}, {ID: humanID2}}
+
+					earID1, earID2, earID3 := 5, 6, 10
+					ears := []*BodyPart{{ID: earID1, HumanNonSyncID: humanID1}, {ID: earID2, HumanNonSyncID: humanID2}, {ID: earID3, HumanNonSyncID: humanID1}}
+					for _, hum := range humans {
+						require.NoError(t, repo.db.Create(hum).Error)
+					}
+
+					for _, ear := range ears {
+						require.NoError(t, repo.db.Create(ear).Error)
+					}
+
+					scope.NewValueMany()
+
+					scope.SetPrimaryFilters(humanID1, humanID2)
+					require.NoError(t, scope.SetFields("EarsNonSync"))
+
+					err = repo.List(scope)
+					if assert.NoError(t, err) {
+						humansGet, ok := scope.Value.([]*Human)
+						require.True(t, ok)
+
+						for _, hum := range humansGet {
+							switch hum.ID {
+							case humanID1:
+								assert.Len(t, hum.EarsNonSync, 2)
+							case humanID2:
+								assert.Len(t, hum.EarsNonSync, 1)
 							}
 						}
-						assert.Equal(t, 2, count)
 					}
-				}
-
+				})
 			})
 		},
 		"RelationMany2Many": func(t *testing.T) {

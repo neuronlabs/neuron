@@ -51,7 +51,8 @@ func TestCreate(t *testing.T) {
 				scope, err := c.NewScope(models[0])
 				require.NoError(t, err)
 
-				scope.Value = &Comment{ID: 2, Body: "Some body", PostID: 1}
+				scope.Value = &Comment{ID: 2, Body: "Some body", Post: &Post{ID: 1}, PostID: 1}
+				scope.AddSelectedFields("id", "body", "post", "post_id")
 
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
@@ -92,6 +93,8 @@ func TestCreate(t *testing.T) {
 
 				scope.Value = blog
 
+				scope.AddSelectedFields("title", "current_post")
+
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
 					relPost := &Post{}
@@ -125,6 +128,7 @@ func TestCreate(t *testing.T) {
 				require.NoError(t, err)
 
 				scope.Value = human
+				scope.AddSelectedFields("nose_non_synced")
 
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
@@ -195,6 +199,7 @@ func TestCreate(t *testing.T) {
 				require.NoError(t, err)
 
 				scope.Value = human
+				scope.AddSelectedFields("ears_non_sync")
 
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
@@ -226,6 +231,7 @@ func TestCreate(t *testing.T) {
 				require.NoError(t, err)
 
 				scope.Value = m2mFirst
+				scope.AddSelectedFields("seconds_sync")
 
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
@@ -247,12 +253,14 @@ func TestCreate(t *testing.T) {
 				repo, err := prepareGORMRepo(models...)
 				require.NoError(t, err)
 
+				repo.db.Create(&M2MSecond{ID: 5})
 				m2mFirst := &M2MFirst{Seconds: []*M2MSecond{{ID: 5}}}
 
 				scope, err := c.NewScope(m2mFirst)
 				require.NoError(t, err)
 
 				scope.Value = m2mFirst
+				require.NoError(t, scope.AddSelectedFields("seconds"))
 
 				err = repo.Create(scope)
 				if assert.NoError(t, err) {
@@ -278,11 +286,11 @@ func TestCreate(t *testing.T) {
 
 			scope, err := c.NewScope(&Simple{})
 			require.NoError(t, err)
-
 			require.NoError(t, repo.db.Create(&Simple{ID: 1}).Error)
 
 			// create duplicate
 			scope.Value = &Simple{ID: 1, Attr1: "some", Attr2: 1}
+			scope.AddSelectedFields("id", "attr1", "attr2")
 
 			err = repo.Create(scope)
 			assert.Error(t, err)

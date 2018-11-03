@@ -209,7 +209,7 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 			}
 		}
 
-		err = scope.setBelongsToForeignKeyWithFields(scope.SelectedFields...)
+		err = scope.setBelongsToForeignKeyWithFields()
 		if err != nil {
 			h.log.Errorf("scope.setBelongsToForeignKey failed. Scope: %#v, %v", scope, err)
 			h.MarshalInternalError(rw)
@@ -727,6 +727,20 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 		*/
 		if scope.FlagReturnPatchContent != nil {
 			if *scope.FlagReturnPatchContent {
+				scope.SetAllFields()
+
+				if err = repo.Get(scope); err != nil {
+					h.manageDBError(rw, err)
+					return
+				}
+				if errObj := h.HookAfterReader(scope); errObj != nil {
+					h.MarshalErrors(rw, errObj)
+					return
+				}
+				if err = h.getForeginRelationships(ctx, scope); err != nil {
+					h.manageDBError(rw, err)
+					return
+				}
 
 				h.MarshalScope(scope, rw, req)
 			} else {
