@@ -199,13 +199,13 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 			}
 
 			// The relationshipfilter
-			if len(relationFilter.Relationships) != 1 {
+			if len(relationFilter.Nested) != 1 {
 				err = IErrBadRelationshipField
 				return err
 			}
 
 			// The subfield of relationfilter must be a primary key
-			if !relationFilter.Relationships[0].IsPrimary() {
+			if !relationFilter.Nested[0].IsPrimary() {
 				err = IErrBadRelationshipField
 				return err
 			}
@@ -234,7 +234,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 					return err
 				}
 
-				err = addWhere(db, mStruct.TableName(db), foreignField.DBName, relationFilter.Relationships[0])
+				err = addWhere(db, mStruct.TableName(db), foreignField.DBName, relationFilter.Nested[0])
 				if err != nil {
 					return err
 				}
@@ -245,7 +245,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 				relMStruct := relScope.GetModelStruct()
 				relDB := relScope.DB()
 
-				err = buildRelationFilters(relDB, relMStruct, relationFilter.Relationships[0])
+				err = buildRelationFilters(relDB, relMStruct, relationFilter.Nested[0])
 				if err != nil {
 					return err
 				}
@@ -273,7 +273,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 					Select(joinTableHandler.SourceForeignKeys()[0].DBName)
 				// fmt.Printf("%v", relDB)
 
-				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Relationships[0])
+				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Nested[0])
 				if err != nil {
 					g.log().Debugf("Error while createing Many2Many WHERE query: %v", err)
 					return err
@@ -405,13 +405,13 @@ func (g *GORMRepository) getQueryFilters(
 			}
 
 			// The relationshipfilter
-			if len(relationFilter.Relationships) != 1 {
+			if len(relationFilter.Nested) != 1 {
 				err = IErrBadRelationshipField
 				return nil, err
 			}
 
 			// The subfield of relationfilter must be a primary key
-			if !relationFilter.Relationships[0].IsPrimary() {
+			if !relationFilter.Nested[0].IsPrimary() {
 				err = IErrBadRelationshipField
 				return nil, err
 			}
@@ -440,7 +440,7 @@ func (g *GORMRepository) getQueryFilters(
 					return nil, err
 				}
 
-				wq, err := buildWhere(mStruct.TableName(db), foreignField.DBName, relationFilter.Relationships[0])
+				wq, err := buildWhere(mStruct.TableName(db), foreignField.DBName, relationFilter.Nested[0])
 				if err != nil {
 					return nil, err
 				}
@@ -453,7 +453,7 @@ func (g *GORMRepository) getQueryFilters(
 				relMStruct := relScope.GetModelStruct()
 				relDB := relScope.DB()
 
-				err = buildRelationFilters(relDB, relMStruct, relationFilter.Relationships[0])
+				err = buildRelationFilters(relDB, relMStruct, relationFilter.Nested[0])
 				if err != nil {
 					return nil, err
 				}
@@ -481,7 +481,7 @@ func (g *GORMRepository) getQueryFilters(
 					Select(joinTableHandler.SourceForeignKeys()[0].DBName)
 				// fmt.Printf("%v", relDB)
 
-				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Relationships[0])
+				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Nested[0])
 				if err != nil {
 					return nil, err
 				}

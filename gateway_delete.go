@@ -217,7 +217,7 @@ func (h *Handler) deleteForeignRelationships(
 			}
 			ff := &FilterField{
 				StructField: rel.BackReferenceField,
-				Relationships: []*FilterField{
+				Nested: []*FilterField{
 					innerFilter,
 				},
 			}

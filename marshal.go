@@ -13,8 +13,58 @@ import (
 var (
 	IErrUnexpectedType = errors.
 				New("models should be a struct pointer or slice of struct pointers")
-	IErrExpectedSlice = errors.New("models should be a slice of struct pointers")
+	IErrExpectedSlice      = errors.New("models should be a slice of struct pointers")
+	IErrNilValue           = errors.New("Nil value provided.")
+	IErrValueNotAddresable = errors.New("Provided value is not addressable")
 )
+
+func (c *Controller) Marshal(w io.Writer, v interface{}) error {
+	if v == nil {
+		return IErrNilValue
+	}
+
+	var isMany bool
+	refVal := reflect.ValueOf(v)
+	t := refVal.Type()
+
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	if t.Kind() == reflect.Slice {
+		isMany = true
+		t = t.Elem()
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+	}
+
+	if t.Kind() != reflect.Struct {
+		return IErrUnexpectedType
+	}
+
+	mStruct := c.Models.Get(t)
+	if mStruct == nil {
+		return IErrModelNotMapped
+	}
+
+	var payload Payloader
+	if isMany {
+		nodes, err := c.visitManyNodes(refVal, mStruct)
+		if err != nil {
+			return err
+		}
+		payload = &ManyPayload{Data: nodes}
+	} else {
+		node, err := c.visistNode(refVal, mStruct)
+		if err != nil {
+			return err
+		}
+		payload = &OnePayload{Data: node}
+	}
+
+	return MarshalPayload(w, payload)
+}
 
 func MarshalPayload(w io.Writer, payload Payloader) error {
 	err := json.NewEncoder(w).Encode(payload)
@@ -96,53 +146,6 @@ func marshalIncludedScope(
 	return
 }
 
-// func marshalIncludedField(
-// 	includedField *IncludeField,
-// 	included *[]*Node,
-// 	controller *Controller,
-// ) (err error) {
-// 	err = marshalIncludedScope(includedField.Scope, included, controller)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	for _, nestedInclude := range includedField.Scope.IncludedFields {
-// 		err = marshalIncludedField(nestedInclude, included, controller)
-// 		if err != nil {
-// 			return
-// 		}
-// 	}
-// 	return
-// }
-
-// func marshalIncludedScope(scope *Scope, included *[]*Node, controller *Controller) error {
-// 	// get this
-// 	scopeValue := reflect.ValueOf(scope.Value)
-// 	switch scopeValue.Kind() {
-// 	case reflect.Slice:
-// 		nodes, err := visitScopeManyNodes(scope, controller)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		*included = append(*included, nodes...)
-// 	case reflect.Ptr:
-// 		node, err := visitScopeNode(scope.Value, scope, controller)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		*included = append(*included, node)
-// 	}
-// 	// iterate over subscopes and marshalsubscopes
-// 	for _, sub := range scope.IncludedScopes {
-// 		err := marshalIncludedScope(sub, included, controller)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
 func marshalScopeOne(scope *Scope, controller *Controller) (*OnePayload, error) {
 	node, err := visitScopeNode(scope.Value, scope, controller)
 	if err != nil {
@@ -179,6 +182,191 @@ func visitScopeManyNodes(scope *Scope, controller *Controller,
 	return nodes, nil
 }
 
+func (c *Controller) visitManyNodes(v reflect.Value, mStruct *ModelStruct) ([]*Node, error) {
+	nodes := []*Node{}
+
+	for i := 0; i < v.Len(); i++ {
+		elem := v.Index(i)
+		if elem.IsNil() {
+			continue
+		}
+		node, err := c.visistNode(elem, mStruct)
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
+func (c *Controller) visistNode(
+	value reflect.Value,
+	mStruct *ModelStruct,
+) (*Node, error) {
+
+	if reflect.Indirect(value).Kind() != reflect.Struct {
+		return nil, IErrUnexpectedType
+	}
+
+	valInt := value.Interface()
+
+	node := &Node{Type: mStruct.collectionType}
+	modelVal := value.Elem()
+
+	primStruct := mStruct.primary
+
+	primIndex := primStruct.getFieldIndex()
+	primaryVal := modelVal.Field(primIndex)
+
+	var err error
+	if !primStruct.isHidden() && !primStruct.IsZeroValue(primaryVal.Interface()) {
+		err = setNodePrimary(primaryVal, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, field := range mStruct.fields {
+
+		// Omit hidden fields
+		if field.isHidden() {
+			continue
+		}
+
+		fieldValue := modelVal.FieldByIndex(field.refStruct.Index)
+		if field.isOmitEmpty() {
+			if reflect.DeepEqual(fieldValue.Interface(), reflect.Zero(field.refStruct.Type).Interface()) {
+				continue
+			}
+
+		}
+
+		switch field.fieldType {
+		case Attribute:
+			if node.Attributes == nil {
+				node.Attributes = make(map[string]interface{})
+			}
+
+			if field.isTime() {
+				t := fieldValue.Interface().(time.Time)
+
+				if t.IsZero() {
+					continue
+				}
+
+				if field.isIso8601() {
+					node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
+				} else {
+					node.Attributes[field.jsonAPIName] = t.Unix()
+				}
+			} else if field.isPtrTime() {
+				if fieldValue.IsNil() {
+					if field.isOmitEmpty() {
+						continue
+					}
+					node.Attributes[field.jsonAPIName] = nil
+				} else {
+					t := fieldValue.Interface().(*time.Time)
+
+					if t.IsZero() && field.isOmitEmpty() {
+						continue
+					}
+
+					if field.isIso8601() {
+						node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
+					} else {
+						node.Attributes[field.jsonAPIName] = t.Unix()
+					}
+				}
+			} else {
+				emptyValue := reflect.Zero(fieldValue.Type())
+				if field.isOmitEmpty() && reflect.
+					DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+					continue
+				}
+
+				strAttr, ok := fieldValue.Interface().(string)
+				if ok {
+					node.Attributes[field.jsonAPIName] = strAttr
+				} else {
+					node.Attributes[field.jsonAPIName] = fieldValue.Interface()
+				}
+			}
+		case RelationshipMultiple, RelationshipSingle:
+
+			var isSlice bool = field.fieldType == RelationshipMultiple
+			if field.isOmitEmpty() &&
+				(isSlice && fieldValue.Len() == 0 || !isSlice && fieldValue.IsNil()) {
+				continue
+			}
+
+			if node.Relationships == nil {
+				node.Relationships = make(map[string]interface{})
+			}
+
+			// how to handle links?
+			var relLinks *Links
+
+			if linkableModel, ok := valInt.(RelationshipLinkable); ok {
+				relLinks = linkableModel.JSONAPIRelationshipLinks(field.jsonAPIName)
+			} else if c.FlagUseLinks != nil && *c.FlagUseLinks {
+				link := make(map[string]interface{})
+				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", c.APIURLBase, mStruct.collectionType, node.ID, field.jsonAPIName)
+				link["related"] = fmt.Sprintf("%s/%s/%s/%s", c.APIURLBase, mStruct.collectionType, node.ID, field.jsonAPIName)
+				links := Links(link)
+				relLinks = &links
+			}
+
+			var relMeta *Meta
+			if metableModel, ok := valInt.(Metable); ok {
+				relMeta = metableModel.JSONAPIMeta()
+			}
+			if isSlice {
+				// get RelationshipManyNode
+				relationship, err := visitRelationshipManyNode(fieldValue, primaryVal, field, c)
+				if err != nil {
+					return nil, err
+				}
+
+				relationship.Links = relLinks
+				relationship.Meta = relMeta
+				node.Relationships[field.jsonAPIName] = relationship
+			} else {
+				// is to-one relationship
+				if fieldValue.IsNil() {
+
+					node.Relationships[field.jsonAPIName] = &RelationshipOneNode{Links: relLinks, Meta: relMeta}
+					continue
+				}
+				relatedNode, err := visitRelationshipNode(fieldValue, primaryVal, field, c)
+				if err != nil {
+					return nil, err
+				}
+				relationship := &RelationshipOneNode{
+					Data:  relatedNode,
+					Links: relLinks,
+					Meta:  relMeta,
+				}
+				node.Relationships[field.jsonAPIName] = relationship
+			}
+		}
+	}
+
+	if linkable, ok := valInt.(Linkable); ok {
+		node.Links = linkable.JSONAPILinks()
+	} else if c.FlagUseLinks != nil && *c.FlagUseLinks {
+
+		links := make(map[string]interface{})
+		links["self"] = fmt.Sprintf("%s/%s/%s", c.APIURLBase, mStruct.collectionType, node.ID)
+
+		linksObj := Links(links)
+		node.Links = &(linksObj)
+	}
+
+	return node, nil
+}
+
 func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 ) (*Node, error) {
 
@@ -204,12 +392,11 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 	}
 
 	for _, field := range scope.getModelsRootScope(scope.Struct).Fieldset {
-
-		fieldValue := modelVal.Field(field.getFieldIndex())
 		if field.isHidden() {
 			continue
 		}
 
+		fieldValue := modelVal.Field(field.getFieldIndex())
 		switch field.fieldType {
 		case Attribute:
 			if node.Attributes == nil {

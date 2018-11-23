@@ -30,6 +30,9 @@ const (
 
 	// ForeignKey is the field type that is responsible for the relationships
 	ForeignKey
+
+	// FilterKey is the field that is used only for special case filtering
+	FilterKey
 )
 
 func (f FieldType) String() string {
@@ -109,12 +112,27 @@ func (s *StructField) GetFieldName() string {
 	return s.fieldName
 }
 
+// Name returns the StructFields Golang Name
+func (s *StructField) Name() string {
+	return s.refStruct.Name
+}
+
 func (s *StructField) GetJSONAPIName() string {
+	return s.jsonAPIName
+}
+
+// ApiName returns the StructField name
+func (s *StructField) ApiName() string {
 	return s.jsonAPIName
 }
 
 // GetReflectStructField - gets the reflect.StructField for given field.
 func (s *StructField) GetReflectStructField() reflect.StructField {
+	return s.refStruct
+}
+
+// ReflectField returns the proper reflect.StructField for the given StructField.
+func (s *StructField) ReflectField() reflect.StructField {
 	return s.refStruct
 }
 
@@ -126,6 +144,11 @@ func (s *StructField) GetRelationship() *Relationship {
 // GetFieldType - gets the field's reflect.Type
 func (s *StructField) GetFieldType() reflect.Type {
 	return s.refStruct.Type
+}
+
+// FieldKind returns the field's FieldType
+func (s *StructField) FieldKind() FieldType {
+	return s.fieldType
 }
 
 // GetRelatedModelType gets the reflect.Type of the related model

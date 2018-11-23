@@ -731,7 +731,7 @@ func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...in
 		subfieldFilter.Values = append(subfieldFilter.Values, fv)
 
 		// Add subfield
-		filter.Relationships = append(filter.Relationships, subfieldFilter)
+		filter.Nested = append(filter.Nested, subfieldFilter)
 	}
 
 	handle2and3 := func() {
@@ -867,7 +867,7 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 		subfieldFilter.Values = append(subfieldFilter.Values, fv)
 
 		// Add subfield
-		filter.Relationships = append(filter.Relationships, subfieldFilter)
+		filter.Nested = append(filter.Nested, subfieldFilter)
 	}
 
 	handle2and3 := func() {

@@ -101,6 +101,8 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 	modelStruct.attributes = make(map[string]*StructField)
 	modelStruct.relationships = make(map[string]*StructField)
 	modelStruct.foreignKeys = make(map[string]*StructField)
+	modelStruct.filterKeys = make(map[string]*StructField)
+
 	modelStruct.collectionURLIndex = -1
 
 	var assignedFields int
@@ -193,6 +195,15 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 				}
 				modelStruct.fields = append(modelStruct.fields, structField)
 				modelStruct.foreignKeys[structField.jsonAPIName] = structField
+			case annotationFilterKey:
+				structField.fieldType = FilterKey
+				_, ok := modelStruct.filterKeys[structField.jsonAPIName]
+				if ok {
+					err = errors.Errorf("Duplicated jsonapi filter key name: '%s' for model: '%v'", structField.jsonAPIName, modelStruct.modelType.Name())
+					return err
+				}
+				// modelStruct.fields = append(modelStruct.fields, structField)
+				modelStruct.filterKeys[structField.jsonAPIName] = structField
 			default:
 				return errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.modelType.Name(), tField.Name)
 			}

@@ -301,6 +301,243 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		_, err = c.UnmarshalScopeOne(in, &UnmarshalModel{}, false)
 		assert.Error(t, err)
 	})
+
+	t.Run("Map", func(t *testing.T) {
+		t.Helper()
+
+		type maptest struct {
+			model interface{}
+			r     string
+			f     func(t *testing.T, s *Scope, err error)
+		}
+
+		type MpString struct {
+			ID  int               `jsonapi:"type=primary"`
+			Map map[string]string `jsonapi:"type=attr"`
+		}
+		type MpPtrString struct {
+			ID  int                `jsonapi:"type=primary"`
+			Map map[string]*string `jsonapi:"type=attr"`
+		}
+		type MpInt struct {
+			ID  int            `jsonapi:"type=primary"`
+			Map map[string]int `jsonapi:"type=attr"`
+		}
+		type MpPtrInt struct {
+			ID  int             `jsonapi:"type=primary"`
+			Map map[string]*int `jsonapi:"type=attr"`
+		}
+		type MpFloat struct {
+			ID  int                `jsonapi:"type=primary"`
+			Map map[string]float64 `jsonapi:"type=attr"`
+		}
+
+		type MpPtrFloat struct {
+			ID  int                 `jsonapi:"type=primary"`
+			Map map[string]*float64 `jsonapi:"type=attr"`
+		}
+
+		tests := map[string]maptest{
+			"InvalidKey": {
+				model: &MpString{},
+				r: `{"data":{"type":"mp_strings","id":"1",
+			"attributes":{"map": {1:"some"}}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+			},
+			"StringKey": {
+				model: &MpString{},
+				r: `{"data":{"type":"mp_strings","id":"1",
+			"attributes":{"map": {"key":"value"}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpString)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							assert.Equal(t, "value", model.Map["key"])
+						}
+					}
+				},
+			},
+			"InvalidStrValue": {
+				model: &MpString{},
+				r: `{"data":{"type":"mp_strings","id":"1",
+			"attributes":{"map": {"key":{}}}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+			},
+			"InvalidStrValueFloat": {
+				model: &MpString{},
+				r: `{"data":{"type":"mp_strings","id":"1",
+			"attributes":{"map": {"key":1.23}}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+			},
+			"InvalidStrValueNil": {
+				model: &MpString{},
+				r: `{"data":{"type":"mp_strings","id":"1",
+			"attributes":{"map": {"key":null}}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+			},
+
+			"PtrStringKey": {
+				model: &MpPtrString{},
+				r: `{"data":{"type":"mp_ptr_strings","id":"1",
+			"attributes":{"map": {"key":"value"}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrString)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							if assert.NotNil(t, model.Map["key"]) {
+								assert.Equal(t, "value", *model.Map["key"])
+							}
+
+						}
+					}
+				},
+			},
+			"NullPtrStringKey": {
+				model: &MpPtrString{},
+				r: `{"data":{"type":"mp_ptr_strings","id":"1",
+			"attributes":{"map": {"key":null}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrString)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							assert.True(t, ok)
+							assert.Nil(t, model.Map["key"], v)
+						}
+					}
+				},
+			},
+			"IntKey": {
+				model: &MpInt{},
+				r: `{"data":{"type":"mp_ints","id":"1",
+			"attributes":{"map": {"key":1}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpInt)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							assert.True(t, ok)
+							assert.Equal(t, 1, v)
+						}
+					}
+				},
+			},
+			"PtrIntKey": {
+				model: &MpPtrInt{},
+				r: `{"data":{"type":"mp_ptr_ints","id":"1",
+			"attributes":{"map": {"key":1}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrInt)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							if assert.True(t, ok) {
+								if assert.NotNil(t, v) {
+									assert.Equal(t, 1, *v)
+								}
+							}
+
+						}
+					}
+				},
+			},
+			"NilPtrIntKey": {
+				model: &MpPtrInt{},
+				r: `{"data":{"type":"mp_ptr_ints","id":"1",
+			"attributes":{"map": {"key":null}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrInt)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							if assert.True(t, ok) {
+								assert.Nil(t, v)
+							}
+						}
+					}
+				},
+			},
+			"FloatKey": {
+				model: &MpFloat{},
+				r: `{"data":{"type":"mp_floats","id":"1",
+			"attributes":{"map": {"key":1.2151}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpFloat)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							if assert.True(t, ok) {
+								assert.Equal(t, 1.2151, v)
+							}
+						}
+					}
+				},
+			},
+			"PtrFloatKey": {
+				model: &MpPtrFloat{},
+				r: `{"data":{"type":"mp_ptr_floats","id":"1",
+			"attributes":{"map": {"key":1.2151}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrFloat)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							if assert.True(t, ok) {
+								if assert.NotNil(t, v) {
+									assert.Equal(t, 1.2151, *v)
+								}
+							}
+						}
+					}
+				},
+			},
+			"NilPtrFloatKey": {
+				model: &MpPtrFloat{},
+				r: `{"data":{"type":"mp_ptr_floats","id":"1",
+			"attributes":{"map": {"key":null}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					if assert.NoError(t, err) {
+						model, ok := s.Value.(*MpPtrFloat)
+						require.True(t, ok)
+						if assert.NotNil(t, model.Map) {
+							v, ok := model.Map["key"]
+							if assert.True(t, ok) {
+								assert.Nil(t, v)
+							}
+						}
+					}
+				},
+			},
+		}
+
+		for name, test := range tests {
+			t.Run(name, func(t *testing.T) {
+				clearMap()
+				in := strings.NewReader(test.r)
+				err := c.PrecomputeModels(test.model)
+				require.NoError(t, err)
+				scope, err := c.UnmarshalScopeOne(in, test.model, false)
+				test.f(t, scope, err)
+			})
+		}
+	})
+
 }
 
 func TestUnmarshalScopeMany(t *testing.T) {

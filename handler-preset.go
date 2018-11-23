@@ -142,11 +142,11 @@ func (h *Handler) PresetScopeValue(
 	fIndex := fieldFilter.GetFieldIndex()
 	field := v.Field(fIndex)
 
-	if len(fieldFilter.Relationships) != 0 {
+	if len(fieldFilter.Nested) != 0 {
 		switch fieldFilter.GetFieldKind() {
 
 		case RelationshipSingle:
-			relIndex := fieldFilter.Relationships[0].GetFieldIndex()
+			relIndex := fieldFilter.Nested[0].GetFieldIndex()
 			if field.IsNil() {
 				field.Set(reflect.New(field.Type().Elem()))
 			}
@@ -175,7 +175,7 @@ func (h *Handler) PresetScopeValue(
 
 		case RelationshipMultiple:
 			fieldElemType := fieldFilter.GetRelatedModelType()
-			relatedIndex := fieldFilter.Relationships[0].GetFieldIndex()
+			relatedIndex := fieldFilter.Nested[0].GetFieldIndex()
 			for _, value := range values {
 				refValue := reflect.ValueOf(value)
 				fieldElem := reflect.New(fieldElemType)
@@ -265,9 +265,9 @@ func (h *Handler) SetPresetFilterValues(
 		fv := filter.Values[0]
 		(*fv).Values = values
 		return nil
-	} else if len(filter.Relationships) != 0 {
-		if len(filter.Relationships[0].Values) != 0 {
-			fv := filter.Relationships[0].Values[0]
+	} else if len(filter.Nested) != 0 {
+		if len(filter.Nested[0].Values) != 0 {
+			fv := filter.Nested[0].Values[0]
 			(*fv).Values = values
 			return nil
 		}

@@ -45,6 +45,9 @@ type ModelStruct struct {
 	// ForeignKeys is a contianer for the foriegn keys for the relationships
 	foreignKeys map[string]*StructField
 
+	// filterKeys is a container for the filter keys
+	filterKeys map[string]*StructField
+
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
 
@@ -71,9 +74,29 @@ func (m *ModelStruct) GetPrimaryField() *StructField {
 	return m.primary
 }
 
+// PrimaryField returns the primary index field for the model.
+func (m *ModelStruct) PrimaryField() *StructField {
+	return m.primary
+}
+
 // GetAttributeField - gets the attribute StructField for provided attribute.
 func (m *ModelStruct) GetAttributeField(attr string) *StructField {
 	return m.attributes[attr]
+}
+
+// Attribute gets the attribute on the base of the jsonapi tag name
+func (m *ModelStruct) Attribute(attr string) (*StructField, bool) {
+	sField, ok := m.attributes[attr]
+	return sField, ok
+}
+
+// Attributes gets the attributes StructField for the given model.
+func (m *ModelStruct) Attributes() (attrs []*StructField) {
+	for _, attr := range m.attributes {
+		attrs = append(attrs, attr)
+	}
+	return
+
 }
 
 // GetRelationshipField - gets the relationship StructField for provided relationship
@@ -83,6 +106,18 @@ func (m *ModelStruct) GetRelationshipField(relationship string) *StructField {
 
 func (m *ModelStruct) GetForeignKeyField(foreign string) *StructField {
 	return m.foreignKeys[foreign]
+}
+
+// FilterKey gets the filter key struct field for the given model struct
+// if the key is not found the returned boolean returns false
+func (m *ModelStruct) FilterKey(key string) (*StructField, bool) {
+	sField, ok := m.filterKeys[key]
+	return sField, ok
+}
+
+// FilterKeys gets the filterkeys for the given model struct
+func (m *ModelStruct) FilterKeys() map[string]*StructField {
+	return m.filterKeys
 }
 
 func (m *ModelStruct) AllowClientID() bool {

@@ -65,7 +65,7 @@ func TestHandlerPatch(t *testing.T) {
 
 			})
 
-			h.Patch(model, model.Patch).ServeHTTP(rw, req)
+			require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
 			if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 
@@ -184,7 +184,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
-					h.Patch(model, model.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 						blogUnm := &BlogSDK{}
@@ -254,7 +254,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
-					h.Patch(model, model.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 						blogUnm := &BlogSDK{}
@@ -296,7 +296,9 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
-					h.Patch(model, model.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() {
+						h.Patch(model, model.Patch).ServeHTTP(rw, req)
+					})
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 						blogUnm := &BlogSDK{}
@@ -388,7 +390,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
-					h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() { h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req) })
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 						h.log.Debugf("%s", rw.Body.String())
@@ -464,7 +466,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					})
 
-					h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() { h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req) })
 
 					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
 						h.log.Debugf("%s", rw.Body.String())
@@ -563,10 +565,10 @@ func TestHandlerPatch(t *testing.T) {
 						require.True(t, ok)
 						if assert.Len(t, scope.RelationshipFilters, 1) {
 							assert.Equal(t, petsField, scope.RelationshipFilters[0].StructField)
-							if assert.Len(t, scope.RelationshipFilters[0].Relationships, 1) {
-								assert.Equal(t, petsField.relatedStruct.primary, scope.RelationshipFilters[0].Relationships[0].StructField)
-								if assert.Len(t, scope.RelationshipFilters[0].Relationships[0].Values, 1) {
-									filterValue := scope.RelationshipFilters[0].Relationships[0].Values[0]
+							if assert.Len(t, scope.RelationshipFilters[0].Nested, 1) {
+								assert.Equal(t, petsField.relatedStruct.primary, scope.RelationshipFilters[0].Nested[0].StructField)
+								if assert.Len(t, scope.RelationshipFilters[0].Nested[0].Values, 1) {
+									filterValue := scope.RelationshipFilters[0].Nested[0].Values[0]
 									assert.Equal(t, OpEqual, filterValue.Operator)
 									assert.Contains(t, filterValue.Values, petID)
 
@@ -741,8 +743,8 @@ func TestHandlerPatch(t *testing.T) {
 
 						if assert.Len(t, scope.RelationshipFilters, 1) {
 							assert.Equal(t, petsField, scope.RelationshipFilters[0].StructField)
-							if assert.Len(t, scope.RelationshipFilters[0].Relationships, 1) {
-								relFilter := scope.RelationshipFilters[0].Relationships[0]
+							if assert.Len(t, scope.RelationshipFilters[0].Nested, 1) {
+								relFilter := scope.RelationshipFilters[0].Nested[0]
 								if assert.Len(t, relFilter.Values, 1) {
 									fv := relFilter.Values[0]
 									assert.Equal(t, OpEqual, fv.Operator)
@@ -761,7 +763,7 @@ func TestHandlerPatch(t *testing.T) {
 					})
 
 					// if assert.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) }) {
-					h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req)
+					require.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) })
 					assert.Equal(t, 200, rw.Code, rw.Body.String())
 
 					humanRepo.AssertCalled(t, "Patch", mock.Anything)
@@ -833,10 +835,10 @@ func TestHandlerPatch(t *testing.T) {
 	// 		t.Logf("Scope value: %+v\n\n", arg.Value)
 	// 		// t.Log(arg.PrimaryFilters[0].Values[0].Values)
 	// 		// assert.NotEmpty(t, arg.RelationshipFilters)
-	// 		// assert.NotEmpty(t, arg.RelationshipFilters[0].Relationships)
-	// 		// assert.NotEmpty(t, arg.RelationshipFilters[0].Relationships[0].Values)
-	// 		// t.Log(arg.RelationshipFilters[0].Relationships[0].Values[0].Values)
-	// 		// t.Log(arg.RelationshipFilters[0].Relationships[0].Values[0].Operator)
+	// 		// assert.NotEmpty(t, arg.RelationshipFilters[0].Nested)
+	// 		// assert.NotEmpty(t, arg.RelationshipFilters[0].Nested[0].Values)
+	// 		// t.Log(arg.RelationshipFilters[0].Nested[0].Values[0].Values)
+	// 		// t.Log(arg.RelationshipFilters[0].Nested[0].Values[0].Operator)
 	// 	})
 
 	// rw, req = getHttpPair("PATCH", "/comments/1", h.getModelJSON(&CommentSDK{Body: "Some body."}))

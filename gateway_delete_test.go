@@ -247,8 +247,8 @@ func TestGatewayDelete(t *testing.T) {
 					assert.Contains(t, scope.SelectedFields, petsField)
 					if assert.Len(t, scope.RelationshipFilters, 1) {
 						if assert.Equal(t, petsField, scope.RelationshipFilters[0].StructField) {
-							if assert.Len(t, scope.RelationshipFilters[0].Relationships, 1) {
-								relFilter := scope.RelationshipFilters[0].Relationships[0]
+							if assert.Len(t, scope.RelationshipFilters[0].Nested, 1) {
+								relFilter := scope.RelationshipFilters[0].Nested[0]
 								assert.Equal(t, petsField.relatedStruct.primary, relFilter.StructField)
 
 								if assert.Len(t, relFilter.Values, 1) {

@@ -359,6 +359,8 @@ func (c *Controller) unmarshalNode(
 	// 	}
 	// }
 	if data.Attributes != nil {
+
+		// Iterate over the data attributes
 		for attrName, attrValue := range data.Attributes {
 			modelAttr, ok := mStruct.attributes[attrName]
 			if !ok || (ok && modelAttr.isHidden()) {
@@ -375,6 +377,7 @@ func (c *Controller) unmarshalNode(
 			fieldValue := modelValue.FieldByIndex(modelAttr.refStruct.Index)
 			fieldType := modelAttr.refStruct
 
+			// v is the incoming value
 			v := reflect.ValueOf(attrValue)
 
 			// time
@@ -544,6 +547,148 @@ func (c *Controller) unmarshalNode(
 				continue
 			}
 
+			// Check if the value is not a map
+			if fieldValue.Kind() == reflect.Map {
+				if v.Kind() != reflect.Map {
+					if attrValue == nil {
+						c.log().Debug("Nil attr value")
+						continue
+					}
+
+					errObj := ErrInvalidJSONFieldValue.Copy()
+					errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field doesn't allow 'null' value", attrName)
+					err = errObj
+					return
+				}
+
+				// allow only k,v with k as string
+
+				if v.Type().Key().Kind() != reflect.String {
+					c.log().Debug("Unmarshal map field:'%s'. Incoming field key type: '%s'", v.Type().String())
+					errObj := ErrInvalidJSONFieldValue.Copy()
+					errObj.Detail = fmt.Sprintf("Attribute Field: '%s' in the collection: '%s' is a hashmap type with keys of 'string' type.", attrName, mStruct.collectionType)
+					err = errObj
+					return
+				}
+
+				mapValueType := fieldValue.Type().Elem()
+				var isPtrValue bool
+
+				if mapValueType.Kind() == reflect.Ptr {
+					isPtrValue = true
+					mapValueType = mapValueType.Elem()
+				}
+
+				keys := v.MapKeys()
+				if len(keys) > 0 && fieldValue.IsNil() {
+					fieldValue.Set(reflect.MakeMap(fieldValue.Type()))
+				}
+
+				setMapValues := func(key, mpIndex reflect.Value) error {
+					// Check if the value is of pointer type
+
+					mpIndexValue := mpIndex.Interface()
+					if isPtrValue {
+						// check if mpIndex is not nil
+						if mpIndexValue == nil {
+							fieldValue.SetMapIndex(key, reflect.Zero(fieldValue.Type().Elem()))
+							return nil
+						}
+					}
+
+					if mapValueType.Kind() == reflect.String {
+						// check if the value is string
+						mpString, ok := mpIndexValue.(string)
+						if !ok {
+							err := ErrInvalidJSONFieldValue.Copy()
+							err.Detail = fmt.Sprintf("Attribute field: '%s' in the collection: '%s' is a hashmap with values of type: 'string'. Provided value is not valid: '%v'", attrName, mpIndex, mpIndex.Interface())
+							return err
+						}
+
+						// if the map value type is of pointer type get the address value
+						if isPtrValue {
+							fieldValue.SetMapIndex(key, reflect.ValueOf(&mpString))
+						} else {
+							fieldValue.SetMapIndex(key, reflect.ValueOf(mpString))
+						}
+						return nil
+					}
+
+					c.log().Debugf("mpIndex.Kind(): '%v' mpIndex.Type().Kind(): '%v'", mpIndex.Type(), mpIndex.Type().Kind())
+
+					// the map attribute allow only strings and numeric values as a value
+					// json.Decoder sets the json.Number as float64
+					// the strings are already checked
+
+					floatValue, ok := mpIndexValue.(float64)
+
+					if !ok {
+						c.log().Debugf("mpIndex Kind: %v", mpIndex.Kind())
+						errObj := ErrInvalidJSONFieldValue.Copy()
+						errObj.Detail = fmt.Sprintf("Attribute field: '%s' in the collection: '%s' is a hashmap with values of type: %s. Provided value is not valid: '%v'", attrName, mStruct.collectionType, mapValueType.Kind().String(), mpIndex.Interface())
+						return errObj
+					}
+
+					var numericValue reflect.Value
+					switch mapValueType.Kind() {
+					case reflect.Int:
+						n := int(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Int8:
+						n := int8(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Int16:
+						n := int16(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Int32:
+						n := int32(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Int64:
+						n := int64(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Uint:
+						n := uint(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Uint8:
+						n := uint8(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Uint16:
+						n := uint16(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Uint32:
+						n := uint32(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Uint64:
+						n := uint64(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Float32:
+						n := float32(floatValue)
+						numericValue = reflect.ValueOf(&n)
+					case reflect.Float64:
+						n := floatValue
+						numericValue = reflect.ValueOf(&n)
+					default:
+						return IErrUnknownFieldNumberType
+					}
+
+					if isPtrValue {
+						fieldValue.SetMapIndex(key, numericValue)
+					} else {
+						fieldValue.SetMapIndex(key, numericValue.Elem())
+					}
+
+					return nil
+				}
+
+				for _, k := range keys {
+					err = setMapValues(k, v.MapIndex(k))
+					if err != nil {
+						return
+					}
+				}
+				continue
+			}
+
 			// As a final catch-all, ensure types line up to avoid a runtime panic.
 			if fieldValue.Kind() != v.Kind() {
 				unmErr := new(json.UnmarshalFieldError)
@@ -558,6 +703,7 @@ func (c *Controller) unmarshalNode(
 			}
 			fieldValue.Set(reflect.ValueOf(attrValue))
 		}
+
 	}
 
 	if data.Relationships != nil {

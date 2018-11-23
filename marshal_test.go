@@ -11,6 +11,140 @@ import (
 	"time"
 )
 
+func TestMarshal(t *testing.T) {
+	buf := bytes.Buffer{}
+
+	prepare := func(t *testing.T, models ...interface{}) {
+		t.Helper()
+		clearMap()
+		buf.Reset()
+		require.NoError(t, c.PrecomputeModels(models...))
+	}
+
+	prepareBlogs := func(t *testing.T) {
+		prepare(t, &Blog{}, &Post{}, &Comment{})
+	}
+
+	tests := map[string]func(*testing.T){
+		"single": func(t *testing.T) {
+			prepareBlogs(t)
+
+			value := &Blog{ID: 5, Title: "My title", ViewCount: 14}
+			if assert.NoError(t, c.Marshal(&buf, value)) {
+				marshaled := buf.String()
+				assert.Contains(t, marshaled, `"title":"My title"`)
+				assert.Contains(t, marshaled, `"view_count":14`)
+				assert.Contains(t, marshaled, `"id":"5"`)
+			}
+		},
+		"singleWithMap": func(t *testing.T) {
+			t.Run("PtrString", func(t *testing.T) {
+				type MpString struct {
+					ID  int                `jsonapi:"type=primary"`
+					Map map[string]*string `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpString{})
+
+				kv := "some"
+				value := &MpString{ID: 5, Map: map[string]*string{"key": &kv}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":"some"}`)
+				}
+			})
+
+			t.Run("NilString", func(t *testing.T) {
+				type MpString struct {
+					ID  int                `jsonapi:"type=primary"`
+					Map map[string]*string `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpString{})
+				value := &MpString{ID: 5, Map: map[string]*string{"key": nil}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":null}`)
+				}
+			})
+
+			t.Run("PtrInt", func(t *testing.T) {
+				type MpInt struct {
+					ID  int             `jsonapi:"type=primary"`
+					Map map[string]*int `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpInt{})
+
+				kv := 5
+				value := &MpInt{ID: 5, Map: map[string]*int{"key": &kv}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":5}`)
+				}
+			})
+			t.Run("NilPtrInt", func(t *testing.T) {
+				type MpInt struct {
+					ID  int             `jsonapi:"type=primary"`
+					Map map[string]*int `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpInt{})
+
+				value := &MpInt{ID: 5, Map: map[string]*int{"key": nil}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":null}`)
+				}
+			})
+			t.Run("PtrFloat", func(t *testing.T) {
+				type MpFloat struct {
+					ID  int                 `jsonapi:"type=primary"`
+					Map map[string]*float64 `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpFloat{})
+
+				fv := 1.214
+				value := &MpFloat{ID: 5, Map: map[string]*float64{"key": &fv}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":1.214}`)
+				}
+			})
+			t.Run("NilPtrFloat", func(t *testing.T) {
+				type MpFloat struct {
+					ID  int                 `jsonapi:"type=primary"`
+					Map map[string]*float64 `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpFloat{})
+
+				value := &MpFloat{ID: 5, Map: map[string]*float64{"key": nil}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":null}`)
+				}
+			})
+
+		},
+		"many": func(t *testing.T) {
+			prepareBlogs(t)
+
+			values := []*Blog{{ID: 5, Title: "First"}, {ID: 2, Title: "Second"}}
+			if assert.NoError(t, c.Marshal(&buf, values)) {
+				marshaled := buf.String()
+				assert.Contains(t, marshaled, `"title":"First"`)
+				assert.Contains(t, marshaled, `"title":"Second"`)
+
+				assert.Contains(t, marshaled, `"id":"5"`)
+				assert.Contains(t, marshaled, `"id":"2"`)
+				t.Log(marshaled)
+			}
+		},
+	}
+
+	for name, testFunc := range tests {
+
+		t.Run(name, testFunc)
+	}
+
+}
+
 func TestMarshalScope(t *testing.T) {
 
 	buf := bytes.NewBufferString("")

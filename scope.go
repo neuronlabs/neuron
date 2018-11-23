@@ -73,6 +73,9 @@ type Scope struct {
 
 	ForeignKeyFilters []*FilterField
 
+	// FilterKeyFilters are the filters for the 'FilterKey' field type
+	FilterKeyFilters []*FilterField
+
 	// LanguageFilters contain information about language filters
 	LanguageFilters *FilterField
 
@@ -145,6 +148,60 @@ func (s *Scope) AddSelectedFields(fields ...string) error {
 	return nil
 }
 
+func (s *Scope) DeleteSelectedFields(fields ...*StructField) error {
+
+	erease := func(sFields *[]*StructField, i int) {
+		if i < len(*sFields)-1 {
+			(*sFields)[i] = (*sFields)[len(*sFields)-1]
+		}
+		(*sFields) = (*sFields)[:len(*sFields)-1]
+		return
+	}
+
+ScopeFields:
+	for i := len(s.SelectedFields) - 1; i >= 0; i-- {
+		if len(fields) == 0 {
+			break ScopeFields
+		}
+
+		for j, field := range fields {
+			if s.SelectedFields[i] == field {
+				// found the field
+				// erease from fields
+				erease(&fields, j)
+
+				// Erease from Selected fields
+				s.SelectedFields = append(s.SelectedFields[:i], s.SelectedFields[i+1:]...)
+				continue ScopeFields
+			}
+		}
+	}
+
+	if len(fields) > 0 {
+		var notEreased string
+		for _, field := range fields {
+			notEreased += field.ApiName() + " "
+		}
+		return errors.Errorf("The following fields were not in the Selected fields scope: '%v'", notEreased)
+	}
+
+	return nil
+}
+
+func (s *Scope) deleteSelectedField(index int) error {
+	if index > len(s.SelectedFields)-1 {
+		return errors.Errorf("Index out of range: %v", index)
+	}
+
+	// copy the last element
+	if index < len(s.SelectedFields)-1 {
+		s.SelectedFields[index] = s.SelectedFields[len(s.SelectedFields)-1]
+		s.SelectedFields[len(s.SelectedFields)-1] = nil
+	}
+	s.SelectedFields = s.SelectedFields[:len(s.SelectedFields)-1]
+	return nil
+}
+
 func (s *Scope) AddFilterField(filter *FilterField) error {
 	if filter.mStruct != s.Struct {
 		err := fmt.Errorf("Filter Struct does not match with the scope. Model: %v, filterField: %v", s.Struct.GetType().Name(), filter.StructField.GetFieldName())
@@ -159,6 +216,9 @@ func (s *Scope) AddFilterField(filter *FilterField) error {
 		s.ForeignKeyFilters = append(s.ForeignKeyFilters, filter)
 	case RelationshipMultiple, RelationshipSingle:
 		s.RelationshipFilters = append(s.RelationshipFilters, filter)
+	case FilterKey:
+		s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
+
 	default:
 		err := fmt.Errorf("Provided filter field of invalid kind. Model: %v. FilterField: %v", s.Struct.GetType().Name(), filter.StructField.GetFieldName())
 		return err
@@ -179,6 +239,67 @@ func (s *Scope) GetCollection() string {
 // Used for included Field scopes for getting their model root scope, that contains all
 func (s *Scope) GetCollectionScope() *Scope {
 	return s.collectionScope
+}
+
+type DialectFieldNamer func(*StructField) string
+
+func (s *Scope) SelectedFieldValues(namer DialectFieldNamer) (
+	values map[string]interface{}, err error,
+) {
+	if s.Value == nil {
+		err = IErrNilValue
+		return
+	}
+
+	values = map[string]interface{}{}
+
+	v := reflect.ValueOf(s.Value)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	for _, field := range s.SelectedFields {
+		fieldName := namer(field)
+		// Skip empty fieldnames
+		if fieldName == "" {
+			continue
+		}
+		values[fieldName] = v.FieldByIndex(field.refStruct.Index).Interface()
+	}
+	return
+}
+
+func (s *Scope) FieldsetDialectNames(namer DialectFieldNamer) []string {
+	fieldNames := []string{}
+	for _, field := range s.Fieldset {
+		dialectName := namer(field)
+		if dialectName == "" {
+			continue
+		}
+		fieldNames = append(fieldNames, dialectName)
+	}
+	return fieldNames
+}
+
+// GetFieldValue
+func (s *Scope) GetFieldValue(field *StructField) (value interface{}, err error) {
+	if s.Value == nil {
+		err = IErrNilValue
+		return
+	}
+
+	if s.Struct != field.mStruct {
+		err = errors.Errorf("Field: %s is not a Model: %v field.", field.fieldName, s.Struct.modelType.Name())
+		return
+	}
+
+	v := reflect.ValueOf(s.Value)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	value = v.FieldByIndex(field.refStruct.Index).Interface()
+	return
 }
 
 func (s *Scope) SetAllFields() {
@@ -672,7 +793,10 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 		return
 	}
 
-	s.Fieldset = make(map[string]*StructField)
+	prim := s.Struct.primary
+	s.Fieldset = map[string]*StructField{
+		prim.fieldName: prim,
+	}
 
 	for _, field := range fields {
 		if field == "" {
@@ -816,13 +940,19 @@ func (s *Scope) buildFilterfield(
 					errs = append(errs, errObj)
 					return
 				}
-				invalidName(fieldName, m.collectionType)
-				return
-			}
-			if sField.isLanguage() {
-				fField = s.getOrCreateLangaugeFilter()
+				sField, ok = m.filterKeys[fieldName]
+				if !ok {
+					invalidName(fieldName, m.collectionType)
+					return
+				}
+
+				fField = s.getOrCreateFilterKeyFilter(sField)
 			} else {
-				fField = s.getOrCreateAttributeFilter(sField)
+				if sField.isLanguage() {
+					fField = s.getOrCreateLangaugeFilter()
+				} else {
+					fField = s.getOrCreateAttributeFilter(sField)
+				}
 			}
 		}
 		errObjects = fField.setValues(m.collectionType, values, OpEqual)
@@ -837,19 +967,23 @@ func (s *Scope) buildFilterfield(
 				// jeżeli relacja ->
 				sField, ok = m.relationships[fieldName]
 				if !ok {
-					invalidName(fieldName, m.collectionType)
+					sField, ok = m.filterKeys[fieldName]
+					if !ok {
+						invalidName(fieldName, m.collectionType)
+						return
+					}
+
+					fField = s.getOrCreateFilterKeyFilter(sField)
+				} else {
+					// if field were already used
+					fField = s.getOrCreateRelationshipFilter(sField)
+
+					errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
+					if errObj != nil {
+						errs = append(errs, errObj)
+					}
 					return
 				}
-
-				// if field were already used
-				fField = s.getOrCreateRelationshipFilter(sField)
-
-				errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
-				if errObj != nil {
-					errs = append(errs, errObj)
-				}
-
-				return
 			}
 
 			if sField.isLanguage() {
@@ -961,6 +1095,22 @@ func (s *Scope) getOrCreateAttributeFilter(
 	filter = &FilterField{StructField: sField}
 	s.AttributeFilters = append(s.AttributeFilters, filter)
 
+	return filter
+}
+
+func (s *Scope) getOrCreateFilterKeyFilter(sField *StructField) (filter *FilterField) {
+	if s.FilterKeyFilters == nil {
+		s.FilterKeyFilters = []*FilterField{}
+	}
+
+	for _, fkFilter := range s.FilterKeyFilters {
+		if fkFilter.StructField == sField {
+			filter = fkFilter
+			return
+		}
+	}
+	filter = &FilterField{StructField: sField}
+	s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
 	return filter
 }
 

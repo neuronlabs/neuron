@@ -162,7 +162,7 @@ func TestBuildScopeList(t *testing.T) {
 	assertEmpty(t, errs)
 
 	// title, posts
-	assertEqual(t, 2, len(scope.Fieldset))
+	assertEqual(t, 3, len(scope.Fieldset))
 	// assertNotEqual(t, scope.Fieldset[0].fieldName, scope.Fieldset[1].fieldName)
 
 	// fields error
@@ -229,7 +229,7 @@ func TestBuildScopeSingle(t *testing.T) {
 
 	postsScope := scope.IncludedScopes[c.MustGetModelStruct(&Post{})]
 	assertNotNil(t, postsScope)
-	assertEqual(t, 1, len(postsScope.Fieldset))
+	assertEqual(t, 2, len(postsScope.Fieldset))
 	// assertNotNil(t, postsScope.Fieldset["title"])
 
 	// errored
@@ -655,8 +655,8 @@ func TestControllerNewFilterField(t *testing.T) {
 	assertEqual(t, mStruct.relationships["posts"], filterField.StructField)
 	assertEqual(t, c.MustGetModelStruct(&Post{}), filterField.relatedStruct, failNow)
 
-	assertNotEmpty(t, filterField.Relationships, failNow)
-	assertEqual(t, c.MustGetModelStruct(&Post{}).primary, filterField.Relationships[0].StructField)
+	assertNotEmpty(t, filterField.Nested, failNow)
+	assertEqual(t, c.MustGetModelStruct(&Post{}).primary, filterField.Nested[0].StructField)
 
 	filter = "filter[posts][title][eq]"
 	values = []interface{}{"myTitle", "yourTitle"}

@@ -353,9 +353,11 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							g.log().Debugf("ClearSQL Error for relationship has one: %v", err)
 							dbErr := g.converter.Convert(err)
 							dbErr.Message = err.Error()
-							if !dbErr.Compare(unidb.ErrNoResult) {
-								return dbErr
+							if dbErr.Compare(unidb.ErrNoResult) {
+								dbErr = unidb.ErrForeignKeyViolation.NewWithMessage(fmt.Sprintf("Relation: %s", field.GetFieldName()))
 							}
+							return dbErr
+
 						}
 					}
 				} else {
@@ -485,7 +487,11 @@ func (g *GORMRepository) patchNonSyncedRelations(
 
 						// err = relScope.DB().Table(relScope.TableName()).Updates(fieldValues).Error
 						if err != nil {
-							errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", scope.Struct.GetType(), field.GetFieldName())
+							dbErr := g.converter.Convert(err)
+							if !dbErr.Compare(unidb.ErrNoResult) {
+								return dbErr
+							}
+							g.log().Debug(errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", scope.Struct.GetType(), field.GetFieldName()))
 						}
 
 						updateSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s IN (%s)",
@@ -499,7 +505,9 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						updateValues := append([]interface{}{primaries[0]}, relPrimValues...)
 						err = db.Exec(updateSQL, updateValues...).Error
 						if err != nil {
-							errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", scope.Struct.GetType(), field.GetFieldName())
+							err = errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", scope.Struct.GetType(), field.GetFieldName())
+							dbErr := unidb.ErrForeignKeyViolation.NewWithMessage(err.Error())
+							return dbErr
 						}
 
 					} else {
@@ -514,8 +522,11 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						g.log().Debugf("ClearSQL for relation HasMany: %s", clearSQL)
 						clearValues := []interface{}{nil, primaries[0]}
 						if err := db.Exec(clearSQL, clearValues...).Error; err != nil {
-							g.log().Debugf("ClearValues failed for relation HasMany: %v", err)
-							return errors.Wrapf(err, "Clearing relation values failed for model: %s relation: %s.", scope.Struct.GetType().Name(), field.GetFieldName())
+							dbErr := g.converter.Convert(err)
+							if !dbErr.Compare(unidb.ErrNoResult) {
+								g.log().Error(errors.Wrapf(err, "Clearing relation values failed for model: %s relation: %s.", scope.Struct.GetType().Name(), field.GetFieldName()))
+								return dbErr
+							}
 						}
 					}
 				} else {
@@ -580,10 +591,10 @@ func (g *GORMRepository) patchNonSyncedRelations(
 
 				err = relScope.DB().Exec(clearRelations, primaries...).Error
 				if err != nil {
-					g.log().Debugf("ClearRelations failed for relationship many2many. %v", err)
 					dbErr := g.converter.Convert(err)
 					dbErr.Message = err.Error()
 					if !dbErr.Compare(unidb.ErrNoResult) {
+						g.log().Errorf("ClearRelations failed for relationship many2many. %v", err)
 						return dbErr
 					}
 				}

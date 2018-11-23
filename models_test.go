@@ -96,7 +96,7 @@ type Blog struct {
 	CurrentPost   *Post     `jsonapi:"type=relation;name=current_post"`
 	CurrentPostID uint64    `jsonapi:"type=foreign;name=current_post_id"`
 	CreatedAt     time.Time `jsonapi:"type=attr;name=created_at;flags=iso8601"`
-	ViewCount     int       `jsonapi:"type=attr;name=view_count"`
+	ViewCount     int       `jsonapi:"type=attr;name=view_count;flags=omitempty"`
 }
 
 type Post struct {

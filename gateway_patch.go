@@ -515,7 +515,7 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 							clearScope.AddFilterField(
 								&FilterField{
 									StructField: rel.BackReferenceField,
-									Relationships: []*FilterField{
+									Nested: []*FilterField{
 										{
 											StructField: rel.BackReferenceField.relatedStruct.primary,
 											Values: []*FilterValues{
@@ -575,7 +575,7 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 							clearScope.AddFilterField(
 								&FilterField{
 									StructField: rel.BackReferenceField,
-									Relationships: []*FilterField{
+									Nested: []*FilterField{
 										{
 											StructField: rel.BackReferenceField.relatedStruct.primary,
 											Values: []*FilterValues{

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestHandlerGet(t *testing.T) {
+func TestGatewayGet(t *testing.T) {
 
 	getHandler := func() *Handler {
 		h := prepareHandler(defaultLanguages, blogModels...)

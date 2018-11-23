@@ -199,8 +199,8 @@ func (h *Handler) CheckPrecheckValues(
 	checkSingle := func(single reflect.Value) bool {
 		field := single.Field(filter.GetFieldIndex())
 		h.log.Debugf("Checking field: %v", single.Type().Field(filter.GetFieldIndex()).Name)
-		if len(filter.Relationships) > 0 {
-			relatedIndex := filter.Relationships[0].GetFieldIndex()
+		if len(filter.Nested) > 0 {
+			relatedIndex := filter.Nested[0].GetFieldIndex()
 
 			switch filter.GetFieldKind() {
 			case RelationshipSingle:
@@ -212,9 +212,9 @@ func (h *Handler) CheckPrecheckValues(
 					field = field.Elem()
 				}
 				relatedField := field.Field(relatedIndex)
-				ok := h.checkValues(filter.Relationships[0].Values[0], relatedField)
+				ok := h.checkValues(filter.Nested[0].Values[0], relatedField)
 				if !ok {
-					h.log.Debug("Values does not match: %v", filter.Relationships[0].Values[0], relatedField.Interface())
+					h.log.Debug("Values does not match: %v", filter.Nested[0].Values[0], relatedField.Interface())
 				}
 				return ok
 			case RelationshipMultiple:
@@ -224,8 +224,8 @@ func (h *Handler) CheckPrecheckValues(
 						fieldElem = fieldElem.Elem()
 					}
 					relatedField := fieldElem.Field(relatedIndex)
-					if ok := h.checkValues(filter.Relationships[0].Values[0], relatedField); !ok {
-						h.log.Debug("Values does not match: %v", filter.Relationships[0].Values[0], relatedField.Interface())
+					if ok := h.checkValues(filter.Nested[0].Values[0], relatedField); !ok {
+						h.log.Debug("Values does not match: %v", filter.Nested[0].Values[0], relatedField.Interface())
 						return false
 					}
 				}
@@ -445,7 +445,7 @@ func (h *Handler) GetRelationshipFilters(
 		)
 
 		// Get relationship scope filters
-		for _, subFieldFilter := range relFilter.Relationships {
+		for _, subFieldFilter := range relFilter.Nested {
 			switch subFieldFilter.GetFieldKind() {
 			case Primary:
 				relationshipScope.PrimaryFilters = append(relationshipScope.PrimaryFilters, subFieldFilter)
@@ -505,7 +505,7 @@ func (h *Handler) GetRelationshipFilters(
 			Values:      []*FilterValues{{Operator: OpIn, Values: values}},
 		}
 
-		relationFilter := &FilterField{StructField: relFilter.StructField, Relationships: []*FilterField{subField}}
+		relationFilter := &FilterField{StructField: relFilter.StructField, Nested: []*FilterField{subField}}
 
 		scope.RelationshipFilters[i] = relationFilter
 
@@ -1044,6 +1044,9 @@ func (h *Handler) getForeignRelationshipValue(
 				return err
 			}
 
+			relField := v.FieldByIndex(rel.refStruct.Index)
+			relField.Set(reflect.Zero(rel.refStruct.Type))
+
 			filterValues = append(filterValues, pk)
 		} else {
 			primMap = map[interface{}]int{}
@@ -1067,6 +1070,9 @@ func (h *Handler) getForeignRelationshipValue(
 				}
 
 				primMap[pk] = i
+
+				relField := elem.FieldByIndex(rel.refStruct.Index)
+				relField.Set(reflect.Zero(rel.refStruct.Type))
 
 				filterValues = append(filterValues, pk)
 			}
@@ -1117,7 +1123,6 @@ func (h *Handler) getForeignRelationshipValue(
 			fkVal := elem.FieldByIndex(fk.refStruct.Index)
 			// pkVal := elem.FieldByIndex(relatedScope.Struct.primary.refStruct.Index)
 
-			var scopeElem reflect.Value
 			if scope.IsMany {
 				// foreign key in relation would be a primary key within root scope
 				j, ok := primMap[fkVal.Interface()]
@@ -1126,16 +1131,17 @@ func (h *Handler) getForeignRelationshipValue(
 					continue
 				}
 				// rootPK should be at index 'j'
+				var scopeElem reflect.Value
 				scopeElem = v.Index(j)
 				if scopeElem.Kind() == reflect.Ptr {
 					scopeElem = scopeElem.Elem()
 				}
+				elemRelVal := scopeElem.FieldByIndex(rel.refStruct.Index)
+				elemRelVal.Set(reflect.Append(elemRelVal, relVal.Index(i)))
 			} else {
-				scopeElem = v
+				elemRelVal := v.FieldByIndex(rel.refStruct.Index)
+				elemRelVal.Set(reflect.Append(elemRelVal, relVal.Index(i)))
 			}
-
-			elemRelVal := scopeElem.FieldByIndex(rel.refStruct.Index)
-			elemRelVal.Set(reflect.Append(elemRelVal, relVal.Index(i)))
 
 		}
 
@@ -1207,7 +1213,7 @@ func (h *Handler) getForeignRelationshipValue(
 
 			filterField := &FilterField{
 				StructField: backReference,
-				Relationships: []*FilterField{
+				Nested: []*FilterField{
 					{
 						StructField: backRefRelPrimary,
 						Values: []*FilterValues{

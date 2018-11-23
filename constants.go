@@ -11,6 +11,7 @@ const (
 	annotationLanguage  = "langtag"
 	annotationAttribute = "attr"
 	annotationRelation  = "relation"
+	annotationFilterKey = "filterkey"
 
 	// relation tag
 	annotationManyToMany     = "many2many"

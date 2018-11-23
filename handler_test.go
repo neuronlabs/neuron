@@ -98,5 +98,5 @@ func TestGetRelationshipsFilter(t *testing.T) {
 	assert.NotEmpty(t, scope.RelationshipFilters)
 	assert.NotEmpty(t, scope.RelationshipFilters[0])
 
-	assert.Contains(t, scope.RelationshipFilters[0].Relationships[0].Values[0].Values, 3, 4)
+	assert.Contains(t, scope.RelationshipFilters[0].Nested[0].Values[0].Values, 3, 4)
 }

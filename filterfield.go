@@ -112,7 +112,7 @@ type FilterField struct {
 	// if given filterField is a relationship type it should be filter by it's
 	// subfields (for given relation type).
 	// Relationships are the filter values for given relationship FilterField
-	Relationships []*FilterField
+	Nested []*FilterField
 }
 
 func (f *FilterField) copy() *FilterField {
@@ -125,10 +125,10 @@ func (f *FilterField) copy() *FilterField {
 		}
 	}
 
-	if len(f.Relationships) != 0 {
-		dst.Relationships = make([]*FilterField, len(f.Relationships))
-		for i, value := range f.Relationships {
-			dst.Relationships[i] = value.copy()
+	if len(f.Nested) != 0 {
+		dst.Nested = make([]*FilterField, len(f.Nested))
+		for i, value := range f.Nested {
+			dst.Nested[i] = value.copy()
 		}
 	}
 	return dst
@@ -213,7 +213,7 @@ func (f *FilterField) setValues(collection string, values []string, op FilterOpe
 }
 
 func (f *FilterField) addSubfieldFilter(appendFilter *FilterField) {
-	for _, rel := range f.Relationships {
+	for _, rel := range f.Nested {
 		if rel.getFieldIndex() == appendFilter.getFieldIndex() {
 			rel.Values = append(rel.Values, appendFilter.Values...)
 			return
@@ -221,7 +221,7 @@ func (f *FilterField) addSubfieldFilter(appendFilter *FilterField) {
 	}
 
 	// If there is no relationships already add whole filter
-	f.Relationships = append(f.Relationships, appendFilter)
+	f.Nested = append(f.Nested, appendFilter)
 
 	return
 }
