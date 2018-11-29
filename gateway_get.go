@@ -385,7 +385,7 @@ func (h *Handler) GetRelationship(root *ModelHandler, endpoint *Endpoint) http.H
 			return
 		}
 
-		h.setScopeFlags(scope, endpoint, root)
+		scope.setFlags(endpoint, root, h.Controller)
 
 		/**
 

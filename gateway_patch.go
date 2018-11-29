@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"context"
+	"github.com/kucjac/jsonapi/flags"
 	"github.com/kucjac/uni-db"
 	"net/http"
 	"reflect"
@@ -34,7 +35,8 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 		}
 
 		h.log.Debugf("Patching the scope.Value: %#v", scope.Value)
-		h.setScopeFlags(scope, endpoint, model)
+
+		scope.setFlags(endpoint, model, h.Controller)
 
 		/**
 
@@ -725,27 +727,24 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 		  PATCH: MARSHAL RESULT
 
 		*/
-		if scope.FlagReturnPatchContent != nil {
-			if *scope.FlagReturnPatchContent {
-				scope.SetAllFields()
 
-				if err = repo.Get(scope); err != nil {
-					h.manageDBError(rw, err)
-					return
-				}
-				if errObj := h.HookAfterReader(scope); errObj != nil {
-					h.MarshalErrors(rw, errObj)
-					return
-				}
-				if err = h.getForeginRelationships(ctx, scope); err != nil {
-					h.manageDBError(rw, err)
-					return
-				}
+		if f, ok := scope.Flags().Get(flags.ReturnPatchContent); ok && f {
+			scope.SetAllFields()
 
-				h.MarshalScope(scope, rw, req)
-			} else {
-				rw.WriteHeader(http.StatusNoContent)
+			if err = repo.Get(scope); err != nil {
+				h.manageDBError(rw, err)
+				return
 			}
+			if errObj := h.HookAfterReader(scope); errObj != nil {
+				h.MarshalErrors(rw, errObj)
+				return
+			}
+			if err = h.getForeginRelationships(ctx, scope); err != nil {
+				h.manageDBError(rw, err)
+				return
+			}
+
+			h.MarshalScope(scope, rw, req)
 		} else {
 			rw.WriteHeader(http.StatusNoContent)
 		}

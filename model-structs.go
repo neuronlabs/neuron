@@ -57,6 +57,8 @@ type ModelStruct struct {
 
 	modelURL           string
 	collectionURLIndex int
+
+	ctrl *Controller
 }
 
 // GetType - gets the reflect.Type of the model that modelstruct is based on.

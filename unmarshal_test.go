@@ -524,6 +524,14 @@ func TestUnmarshalScopeOne(t *testing.T) {
 					}
 				},
 			},
+			"InvalidMapForm": {
+				model: &MpPtrFloat{},
+				r: `{"data":{"type":"mp_ptr_floats","id":1",
+				"attributes":{"map": ["string1"]}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+			},
 		}
 
 		for name, test := range tests {

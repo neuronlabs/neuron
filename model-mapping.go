@@ -90,6 +90,7 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 
 	modelStruct := new(ModelStruct)
 	modelStruct.modelType = modelType
+	modelStruct.ctrl = c
 
 	collectioner, ok := model.(Collectioner)
 	if ok {
@@ -184,6 +185,9 @@ func (c *Controller) buildModelStruct(model interface{}, modelMap *ModelMap) err
 					structField.fieldFlags = structField.fieldFlags | fPtrTime
 				default:
 
+				}
+				if structField.refStruct.Type.Kind() == reflect.Map {
+					structField.fieldFlags = structField.fieldFlags | fMap
 				}
 				modelStruct.attributes[structField.jsonAPIName] = structField
 			case annotationForeignKey:

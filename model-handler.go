@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"errors"
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"net/http"
 	"reflect"
 )
@@ -29,14 +30,8 @@ type ModelHandler struct {
 
 	Delete *Endpoint
 
-	// FlagUseLinks is a flag that defines if the endpoint should use links
-	FlagUseLinks *bool
-
-	// GetModified defines if the result for Patch Should be returned.
-	FlagReturnPatchContent *bool
-
-	// FlagMetaCountList is a flag that defines if the List result should include objects count
-	FlagMetaCountList *bool
+	// Flags is the container for the flags variables
+	fContainer *flags.Container
 
 	// Repository defines the repository for the provided model
 	Repository Repository
@@ -60,6 +55,7 @@ func NewModelHandler(
 	endpoints ...EndpointType,
 ) (m *ModelHandler, err error) {
 	m = new(ModelHandler)
+	m.fContainer = flags.New()
 
 	if err = m.newModelType(model); err != nil {
 		return
@@ -87,6 +83,13 @@ func NewModelHandler(
 		}
 	}
 	return
+}
+
+func (m *ModelHandler) Flags() *flags.Container {
+	if m.fContainer == nil {
+		m.fContainer = flags.New()
+	}
+	return m.fContainer
 }
 
 // AddPresetScope adds preset scope to provided endpoint.

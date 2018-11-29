@@ -126,7 +126,7 @@ func TestBuildScopeList(t *testing.T) {
 	assertNotEmpty(t, errs)
 
 	// filter
-	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][eq]=12,55", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[blogs][id][$eq]=12,55", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 
@@ -143,7 +143,7 @@ func TestBuildScopeList(t *testing.T) {
 	//	- invalid operator
 	//	- invalid value
 	//	- not included collection - 'posts'
-	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[[blogs][id][eq]=12,55&filter[blogs][id][invalid]=125&filter[blogs][id]=stringval&filter[posts][id]=12&fields[blogs]=id", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?filter[[blogs][id][$eq]=12,55&filter[blogs][id][invalid]=125&filter[blogs][id]=stringval&filter[posts][id]=12&fields[blogs]=id", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
 	assertNotEmpty(t, errs)
@@ -289,7 +289,7 @@ func TestBuildScopeSingle(t *testing.T) {
 	req = httptest.NewRequest("GET", "/api/v1/blogs/123?filter[posts][id]=1&include=current_post", nil)
 	scope, errs, err = c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
-	assertEmpty(t, errs)
+	assert.Empty(t, errs)
 
 	// invalid form
 
@@ -552,8 +552,8 @@ func TestPresetScope(t *testing.T) {
 
 	// Select all possible comments for blog with id 1 where only last 10 post are taken into
 	// account
-	query := "preset=blogs.posts&filter[blogs][id][eq]=1&page[limit][posts]=10&sort[posts]=-id&fields[posts]=comments"
-	filter := "filter[comments][id][eq]"
+	query := "preset=blogs.posts&filter[blogs][id][$eq]=1&page[limit][posts]=10&sort[posts]=-id&fields[posts]=comments"
+	filter := "filter[comments][id][$eq]"
 	var (
 		presetPair *PresetPair
 	)
@@ -641,7 +641,7 @@ func TestPresetScope(t *testing.T) {
 }
 
 func TestControllerNewFilterField(t *testing.T) {
-	filter := "filter[blogs][posts][id][notin]"
+	filter := "filter[blogs][posts][id][$notin]"
 	values := []interface{}{uint64(1), uint64(2), uint64(3), uint64(4)}
 
 	clearMap()
@@ -658,7 +658,7 @@ func TestControllerNewFilterField(t *testing.T) {
 	assertNotEmpty(t, filterField.Nested, failNow)
 	assertEqual(t, c.MustGetModelStruct(&Post{}).primary, filterField.Nested[0].StructField)
 
-	filter = "filter[posts][title][eq]"
+	filter = "filter[posts][title][$eq]"
 	values = []interface{}{"myTitle", "yourTitle"}
 
 	filterField, err = c.NewFilterField(filter, values...)
@@ -698,7 +698,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 
 	// Case 3:
 	// invidividual filter with operator
-	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][in]=pl,en", nil)
+	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][$in]=pl,en", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertEmpty(t, errs)
@@ -707,7 +707,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 
 	// Case 4:
 	// provide not supported language
-	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][eq]="+language.Turkish.String(), nil)
+	_, req = getHttpPair("GET", "/translateable?filter[translateable][langcode][$eq]="+language.Turkish.String(), nil)
 	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})
 	assertNoError(t, err)
 	assertNotEmpty(t, errs)
@@ -715,7 +715,7 @@ func TestControllerLanguageQuery(t *testing.T) {
 	// Case 5:
 	// provided unsupported languages and syntetically invalid
 	_, req = getHttpPair("GET",
-		"/translateable?filter[translateable][langcode][in]=pl-EN,123",
+		"/translateable?filter[translateable][langcode][$in]=pl-EN,123",
 		nil,
 	)
 	_, errs, err = c.BuildScopeList(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Modeli18n{})})

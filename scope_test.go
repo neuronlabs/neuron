@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
@@ -187,14 +188,14 @@ func TestNewFilterScope(t *testing.T) {
 
 	var correctParams [][]string = [][]string{
 		{"id"},
-		{"id", "eq"},
+		{"id", "$eq"},
 		{"title"},
-		{"title", "gt"},
+		{"title", "$gt"},
 		{"current_post", "id"},
-		{"current_post", "id", "eq"},
-		{"current_post", "title", "lt"},
-		{"posts", "id", "gt"},
-		{"posts", "body", "contains"},
+		{"current_post", "id", "$eq"},
+		{"current_post", "title", "$lt"},
+		{"posts", "id", "$gt"},
+		{"posts", "body", "$contains"},
 	}
 	var correctValues [][]string = [][]string{
 		{"1", "2"},
@@ -210,8 +211,8 @@ func TestNewFilterScope(t *testing.T) {
 
 	blogScope := getBlogScope()
 	for i := range correctParams {
-		_, errs = blogScope.buildFilterfield("blogs", correctValues[i], blogScope.Struct, correctParams[i]...)
-		assertEmpty(t, errs)
+		_, errs = buildFilterField(blogScope, "blogs", correctValues[i], c, blogScope.Struct, blogScope.Flags(), correctParams[i]...)
+		assert.Empty(t, errs)
 	}
 	// for k, v := range blogScope.Filters {
 	// 	t.Logf("Key: %v, FieldName: %v", k, v.fieldName)
@@ -266,7 +267,7 @@ func TestNewFilterScope(t *testing.T) {
 	for i := range invParams {
 		blogScope := getBlogScope()
 		// t.Log(i)
-		_, errs = blogScope.buildFilterfield("blogs", invValues[i], blogScope.Struct, invParams[i]...)
+		_, errs = buildFilterField(blogScope, "blogs", invValues[i], c, blogScope.Struct, blogScope.Flags(), invParams[i]...)
 		assertNotEmpty(t, errs)
 		// t.Logf("%d: %s", i, errs)
 	}
@@ -351,10 +352,10 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	includedField.Scope.ResetIncludedField()
 	assertTrue(t, includedField.Scope.NextIncludedField())
 
-	req = httptest.NewRequest("GET", "/api/v1/blogs?include=posts&filter[posts][id][gt]=0&filter[posts][title][startswith]=this&filter[posts][latest_comment][id][gt]=3", nil)
+	req = httptest.NewRequest("GET", "/api/v1/blogs?include=posts&filter[posts][id][$gt]=0&filter[posts][title][$startswith]=this&filter[posts][latest_comment][id][$gt]=3", nil)
 	scope, errs, err = c.BuildScopeList(req, &Endpoint{Type: List}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 	assertNil(t, err)
-	assertEmpty(t, errs)
+	assert.Empty(t, errs)
 	assertNotNil(t, scope)
 	scope.Value = []*Blog{
 		{ID: 1, Posts: []*Post{{ID: 1}, {ID: 2}}},

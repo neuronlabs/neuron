@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"io"
 	"reflect"
 	"strconv"
@@ -310,7 +311,7 @@ func (c *Controller) visistNode(
 
 			if linkableModel, ok := valInt.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.jsonAPIName)
-			} else if c.FlagUseLinks != nil && *c.FlagUseLinks {
+			} else if value, ok := c.Flags.Get(flags.UseLinks); ok && value {
 				link := make(map[string]interface{})
 				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", c.APIURLBase, mStruct.collectionType, node.ID, field.jsonAPIName)
 				link["related"] = fmt.Sprintf("%s/%s/%s/%s", c.APIURLBase, mStruct.collectionType, node.ID, field.jsonAPIName)
@@ -355,8 +356,7 @@ func (c *Controller) visistNode(
 
 	if linkable, ok := valInt.(Linkable); ok {
 		node.Links = linkable.JSONAPILinks()
-	} else if c.FlagUseLinks != nil && *c.FlagUseLinks {
-
+	} else if value, ok := c.Flags.Get(flags.UseLinks); ok && value {
 		links := make(map[string]interface{})
 		links["self"] = fmt.Sprintf("%s/%s/%s", c.APIURLBase, mStruct.collectionType, node.ID)
 
@@ -465,7 +465,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 			if linkableModel, ok := scope.Value.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.jsonAPIName)
-			} else if scope.FlagUseLinks != nil && *scope.FlagUseLinks {
+			} else if value, ok := scope.Flags().Get(flags.UseLinks); ok && value {
 				link := make(map[string]interface{})
 				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
 				link["related"] = fmt.Sprintf("%s/%s/%s/%s", controller.APIURLBase, scope.Struct.collectionType, node.ID, field.jsonAPIName)
@@ -510,7 +510,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 	if linkable, ok := scope.Value.(Linkable); ok {
 		node.Links = linkable.JSONAPILinks()
-	} else if scope.FlagUseLinks != nil && *scope.FlagUseLinks {
+	} else if value, ok := scope.Flags().Get(flags.UseLinks); ok && value {
 		links := make(map[string]interface{})
 		var self string
 		switch scope.kind {

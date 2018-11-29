@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"github.com/kucjac/jsonapi/flags"
 	"net/http"
 )
 
@@ -95,17 +96,18 @@ type Endpoint struct {
 
 	Middlewares []MiddlewareFunc
 
-	// FlagUseLinks is a flag that defines if the endpoint should use links
-	FlagUseLinks *bool
-
-	// GetModified defines if the result for Patch Should be returned.
-	FlagReturnPatchContent *bool
-
-	// FlagMetaCountList is a flag that defines if the List result should include objects count
-	FlagMetaCountList *bool
+	// Flags are the default behavior definitions for given endpoint
+	container *flags.Container
 
 	// CustomHandlerFunc is a http.HandlerFunc defined for this endpoint
 	CustomHandlerFunc http.HandlerFunc
+}
+
+func (e *Endpoint) Flags() *flags.Container {
+	if e.container == nil {
+		e.container = flags.New()
+	}
+	return e.container
 }
 
 func (e *Endpoint) HasPrechecks() bool {

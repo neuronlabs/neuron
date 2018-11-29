@@ -26,7 +26,7 @@ func (h *Handler) Delete(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 			return
 		}
 
-		h.setScopeFlags(scope, endpoint, model)
+		scope.setFlags(endpoint, model, h.Controller)
 
 		/**
 

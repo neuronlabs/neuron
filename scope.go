@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"context"
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"github.com/kucjac/uni-logger"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
@@ -90,17 +91,8 @@ type Scope struct {
 
 	IsMany bool
 
-	// FlagReturnPatchContent is a flag for the scope if the modified value should be returned.
-	FlagReturnPatchContent *bool
-
-	// FlagCountList
-	FlagMetaCountList *bool
-
-	// FlagUseLinks
-	FlagUseLinks *bool
-
-	// FlagAllowClientID
-	FlagAllowClientID *bool
+	// Flags is the container for all flag variablesF
+	fContainer *flags.Container
 
 	Count int
 
@@ -186,6 +178,17 @@ ScopeFields:
 	}
 
 	return nil
+}
+
+func (s *Scope) Flags() *flags.Container {
+	if s.fContainer == nil {
+		s.fContainer = flags.New()
+		for _, sf := range scopeCtxFlags {
+			s.fContainer.SetFrom(sf, s.Struct.ctrl.Flags)
+		}
+	}
+
+	return s.fContainer
 }
 
 func (s *Scope) deleteSelectedField(index int) error {
@@ -760,6 +763,10 @@ func newScope(modelStruct *ModelStruct) *Scope {
 		currentIncludedFieldIndex: -1,
 	}
 
+	for _, sf := range scopeCtxFlags {
+		scope.Flags().SetFrom(sf, modelStruct.ctrl.Flags)
+	}
+
 	// set all fields
 	for _, field := range modelStruct.fields {
 		scope.Fieldset[field.jsonAPIName] = field
@@ -877,168 +884,8 @@ func (s *Scope) setPrimaryFilterValues(primField *StructField, values ...interfa
 	filter.Values = append(filter.Values, fv)
 }
 
-func (s *Scope) setPrimaryFilterfield(value string) (errs []*ErrorObject) {
-	_, errs = s.buildFilterfield(s.Struct.collectionType, []string{value}, s.Struct, annotationID, annotationEqual)
-	return
-}
-
-// splitted contains filter fields after filter[collection]
-// i.e. /blogs?filter[blogs][posts][id][ne]=10
-// splitted should be then [posts, id, ne]
-func (s *Scope) buildFilterfield(
-	collection string,
-	values []string,
-	m *ModelStruct,
-	splitted ...string,
-) (fField *FilterField, errs []*ErrorObject) {
-	var (
-		sField    *StructField
-		op        FilterOperator
-		ok        bool
-		fieldName string
-
-		errObj     *ErrorObject
-		errObjects []*ErrorObject
-		// private function for returning ErrObject
-		invalidName = func(fieldName, collection string) {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Provided invalid filter field name: '%s' for the '%s' collection.", fieldName, collection)
-			errs = append(errs, errObj)
-			return
-		}
-		invalidOperator = func(operator string) {
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' for the '%s' field.", operator, fieldName)
-			errs = append(errs, errObj)
-			return
-		}
-	)
-
-	// check if any parameters are set for filtering
-	if len(splitted) == 0 {
-		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprint("Too few filter parameters. Valid format is: filter[collection][field][subfield|operator]([operator])*.")
-		errs = append(errs, errObj)
-		return
-	}
-
-	// for all cases first value should be a fieldName
-	fieldName = splitted[0]
-
-	switch len(splitted) {
-	case 1:
-		// if there is only one argument it must be an attribute.
-		if fieldName == "id" {
-			fField = s.getOrCreateIDFilter()
-		} else {
-			sField, ok = m.attributes[fieldName]
-			if !ok {
-				_, ok = m.relationships[fieldName]
-				if ok {
-					errObj = ErrInvalidQueryParameter.Copy()
-					errObj.Detail = fmt.Sprintf("Provided filter field: '%s' is a relationship. In order to filter a relationship specify the relationship's field. i.e. '/%s?filter[%s][id]=123'", fieldName, m.collectionType, fieldName)
-					errs = append(errs, errObj)
-					return
-				}
-				sField, ok = m.filterKeys[fieldName]
-				if !ok {
-					invalidName(fieldName, m.collectionType)
-					return
-				}
-
-				fField = s.getOrCreateFilterKeyFilter(sField)
-			} else {
-				if sField.isLanguage() {
-					fField = s.getOrCreateLangaugeFilter()
-				} else {
-					fField = s.getOrCreateAttributeFilter(sField)
-				}
-			}
-		}
-		errObjects = fField.setValues(m.collectionType, values, OpEqual)
-		errs = append(errs, errObjects...)
-
-	case 2:
-		if fieldName == "id" {
-			fField = s.getOrCreateIDFilter()
-		} else {
-			sField, ok = m.attributes[fieldName]
-			if !ok {
-				// jeżeli relacja ->
-				sField, ok = m.relationships[fieldName]
-				if !ok {
-					sField, ok = m.filterKeys[fieldName]
-					if !ok {
-						invalidName(fieldName, m.collectionType)
-						return
-					}
-
-					fField = s.getOrCreateFilterKeyFilter(sField)
-				} else {
-					// if field were already used
-					fField = s.getOrCreateRelationshipFilter(sField)
-
-					errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
-					if errObj != nil {
-						errs = append(errs, errObj)
-					}
-					return
-				}
-			}
-
-			if sField.isLanguage() {
-				fField = s.getOrCreateLangaugeFilter()
-			} else {
-				fField = s.getOrCreateAttributeFilter(sField)
-			}
-
-		}
-		// it is an attribute filter
-		op, ok = operatorsValue[splitted[1]]
-		if !ok {
-			invalidOperator(splitted[1])
-			return
-		}
-		errObjects = fField.setValues(m.collectionType, values, op)
-		errs = append(errs, errObjects...)
-	case 3:
-		// musi być relacja
-		sField, ok = m.relationships[fieldName]
-		if !ok {
-			// moze ktos podal attribute
-			_, ok = m.attributes[fieldName]
-			if !ok {
-				invalidName(fieldName, m.collectionType)
-				return
-			}
-			errObj = ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Too many parameters for the attribute field: '%s'.", fieldName)
-			errs = append(errs, errObj)
-			return
-		}
-		fField = s.getOrCreateRelationshipFilter(sField)
-
-		errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
-		if errObj != nil {
-			errs = append(errs, errObj)
-		}
-
-	default:
-		errObj = ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.
-			Sprintf("Too many filter parameters for '%s' collection. ", collection)
-		errs = append(errs, errObj)
-		_, ok = m.attributes[fieldName]
-		if !ok {
-			_, ok = m.relationships[fieldName]
-			if !ok {
-				errObj = ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.
-					Sprintf("Invalid field name: '%s' for '%s' collection.", fieldName, collection)
-				errs = append(errs, errObj)
-			}
-		}
-	}
+func (s *Scope) setPrimaryFilterfield(c *Controller, value string) (errs []*ErrorObject) {
+	_, errs = buildFilterField(s, s.Struct.collectionType, []string{value}, c, s.Struct, c.Flags, annotationID, operatorEqual)
 	return
 }
 
@@ -1111,6 +958,25 @@ func (s *Scope) getOrCreateFilterKeyFilter(sField *StructField) (filter *FilterF
 	}
 	filter = &FilterField{StructField: sField}
 	s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
+	return filter
+}
+
+// getOrCreateForeignKeyFilter gets the filter field for given StructField
+// If the filterField already exists for given scope, the function returns the existing one.
+// Otherwise it craetes new filter field and returns it.
+func (s *Scope) getOrCreateForeignKeyFilter(sField *StructField) (filter *FilterField) {
+	if s.ForeignKeyFilters == nil {
+		s.ForeignKeyFilters = []*FilterField{}
+	}
+
+	for _, fkFilter := range s.ForeignKeyFilters {
+		if fkFilter.StructField == sField {
+			filter = fkFilter
+			return
+		}
+	}
+	filter = &FilterField{StructField: sField}
+	s.ForeignKeyFilters = append(s.ForeignKeyFilters, filter)
 	return filter
 }
 
@@ -1259,13 +1125,8 @@ func (s *Scope) createModelsRootScope(mStruct *ModelStruct) *Scope {
 	scope := s.createModelsScope(mStruct)
 	scope.rootScope.IncludedScopes[mStruct] = scope
 	scope.IncludedValues = NewSafeHashMap()
-	if scope.rootScope.FlagUseLinks != nil {
-		scope.FlagUseLinks = &(*scope.rootScope.FlagUseLinks)
-	}
 
-	if scope.rootScope.FlagReturnPatchContent != nil {
-		scope.FlagReturnPatchContent = &(*scope.rootScope.FlagReturnPatchContent)
-	}
+	*scope.Flags() = *scope.rootScope.Flags().Copy()
 
 	return scope
 }
@@ -1302,6 +1163,7 @@ func (s *Scope) createModelsScope(mStruct *ModelStruct) *Scope {
 	} else {
 		scope.rootScope = s.rootScope
 	}
+
 	return scope
 }
 
@@ -1749,6 +1611,12 @@ func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 	}
 
 	return &scope
+}
+
+func (s *Scope) setFlags(e *Endpoint, mh *ModelHandler, c *Controller) {
+	for _, f := range scopeCtxFlags {
+		s.Flags().SetFirst(f, e.Flags(), mh.Flags(), c.Flags)
+	}
 }
 
 // func (s *Scope) buildPresetFields(model *ModelStruct, presetFields ...string) error {

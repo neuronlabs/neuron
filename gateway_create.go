@@ -32,7 +32,7 @@ func (h *Handler) Create(model *ModelHandler, endpoint *Endpoint) http.HandlerFu
 			return
 		}
 
-		h.setScopeFlags(scope, endpoint, model)
+		scope.setFlags(endpoint, model, h.Controller)
 
 		h.log.Debugf("CREATE - model %v. Unmarshaled scope %#v", scope.Struct.modelType, scope.Value)
 		/**

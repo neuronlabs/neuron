@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"errors"
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"github.com/kucjac/uni-logger"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
@@ -15,7 +16,8 @@ import (
 	"strings"
 )
 
-// Controller
+// Controller is the data structure that is responsible for controlling all the models
+// within single API
 type Controller struct {
 	// APIURLBase is a url prefix for the resources. (I.e. having APIURLBase = "/api/v1" and
 	// resource with collection posts this would lead to links -> /api/v1/posts)
@@ -49,40 +51,19 @@ type Controller struct {
 	// FilterValueLimit is a maximum length of the filter values
 	FilterValueLimit int
 
-	// FlagUseLinks is a flag that defines if the response should contain links objects
-	FlagUseLinks *bool
-
-	// FlagReturnPatchContent is a flag that sets the default behaviour for
-	// returning successful patch content
-	// If set to true, and if given endpoint doesn't specify the behaviour
-	// differently, the api would return the content of the patched model
-	FlagReturnPatchContent *bool
-
-	// FlagMetaCountList is a flag that defines if the LIST resposne should
-	// include meta->count
-	FlagMetaCountList *bool
+	// Flags is the container for all default flags
+	Flags *flags.Container
 
 	logger unilogger.LeveledLogger
 
 	// Namer defines the function strategy how the model's and it's fields are being named
 	NamerFunc Namer
 
+	flags map[int]bool
+
 	// StrictUnmarshalMode if set to true, the incoming data cannot contain
 	// any unknown fields
 	StrictUnmarshalMode bool
-}
-
-func (c *Controller) Log() unilogger.LeveledLogger {
-	return c.log()
-}
-
-func (c *Controller) log() unilogger.LeveledLogger {
-	if c.logger == nil {
-		basic := unilogger.NewBasicLogger(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
-		basic.SetLevel(unilogger.INFO)
-		c.logger = basic
-	}
-	return c.logger
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
@@ -93,13 +74,15 @@ func NewController(coverage ...interface{}) *Controller {
 		ErrorLimitSingle:   1,
 		ErrorLimitRelated:  1,
 		IncludeNestedLimit: 1,
-		FilterValueLimit:   1,
+		FilterValueLimit:   5,
+		Flags:              flags.New(),
 		NamerFunc:          NamingSnake,
 	}
+
+	c.Flags.Set(flags.UseFilterValueLimit, true)
 	c.Locale = language.NewCoverage(coverage...)
 	c.Matcher = language.NewMatcher(c.Locale.Tags())
 	return c
-
 }
 
 // Default creates new *jsonapi.Controller with preset limits:
@@ -108,23 +91,23 @@ func NewController(coverage ...interface{}) *Controller {
 //	IncludeNestedLimit:	1
 // Controller has also set the FlagUseLinks flag to true.
 func DefaultController(coverage ...interface{}) *Controller {
-	defFlagUseLinks := true
-	defFlagCountList := false
-	defFlagPatchContent := true
-
 	c := &Controller{
 		// APIURLBase:         "/",
-		Models:                 newModelMap(),
-		ErrorLimitMany:         5,
-		ErrorLimitSingle:       2,
-		ErrorLimitRelated:      2,
-		IncludeNestedLimit:     1,
-		FilterValueLimit:       30,
-		FlagUseLinks:           &defFlagUseLinks,
-		FlagMetaCountList:      &defFlagCountList,
-		FlagReturnPatchContent: &defFlagPatchContent,
-		NamerFunc:              NamingSnake,
+		Models:             newModelMap(),
+		ErrorLimitMany:     5,
+		ErrorLimitSingle:   2,
+		ErrorLimitRelated:  2,
+		IncludeNestedLimit: 1,
+		FilterValueLimit:   30,
+		Flags:              flags.New(),
+		NamerFunc:          NamingSnake,
 	}
+
+	c.Flags.Set(flags.UseLinks, true)
+	c.Flags.Set(flags.UseFilterValueLimit, true)
+	c.Flags.Set(flags.AddMetaCountList, false)
+	c.Flags.Set(flags.ReturnPatchContent, true)
+
 	c.Locale = language.NewCoverage(coverage...)
 	c.Matcher = language.NewMatcher(c.Locale.Tags())
 	return c
@@ -170,7 +153,7 @@ func (c *Controller) BuildScopeList(
 	scope.collectionScope = scope
 	scope.IsMany = true
 
-	c.setScopeFlags(scope, endpoint, model)
+	scope.setFlags(endpoint, model, c)
 
 	// Get URLQuery
 	q := req.URL.Query()
@@ -264,7 +247,7 @@ func (c *Controller) BuildScopeList(
 			}
 
 			splitValues := strings.Split(value[0], annotationSeperator)
-			_, errorObjects = c.buildFilterField(filterScope, collection, splitValues, colModel, splitted[1:]...)
+			_, errorObjects = buildFilterField(filterScope, collection, splitValues, c, colModel, scope.Flags(), splitted[1:]...)
 			addErrors(errorObjects...)
 		case key == QueryParamSort:
 			splitted := strings.Split(value[0], annotationSeperator)
@@ -307,8 +290,7 @@ func (c *Controller) BuildScopeList(
 			errorObjects = fieldsScope.buildFieldset(splitValues...)
 			addErrors(errorObjects...)
 		case key == QueryParamPageTotal:
-			pageTotal := true
-			scope.FlagMetaCountList = &pageTotal
+			scope.Flags().Set(flags.AddMetaCountList, true)
 		case key == QueryParamLinks:
 			var er error
 			var links bool
@@ -316,7 +298,7 @@ func (c *Controller) BuildScopeList(
 			if er != nil {
 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			}
-			scope.FlagUseLinks = &links
+			scope.Flags().Set(flags.UseLinks, links)
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -379,7 +361,8 @@ func (c *Controller) buildScopeSingle(
 		scope.SetPrimaryFilters(id)
 	}
 
-	c.setScopeFlags(scope, endpoint, model)
+	scope.setFlags(endpoint, model, c)
+
 	scope.maxNestedLevel = c.IncludeNestedLimit
 
 	errs, err = c.buildQueryParametersSingle(scope, q)
@@ -434,7 +417,7 @@ func (c *Controller) BuildScopeRelated(
 		return
 	}
 
-	errs = scope.setPrimaryFilterfield(id)
+	errs = scope.setPrimaryFilterfield(c, id)
 	if len(errs) > 0 {
 		return
 	}
@@ -472,7 +455,7 @@ func (c *Controller) BuildScopeRelated(
 			errs = append(errs, ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			return
 		}
-		scope.FlagUseLinks = &links
+		scope.Flags().Set(flags.UseLinks, links)
 	}
 
 	scope.copyIncludedBoundaries()
@@ -482,7 +465,6 @@ func (c *Controller) BuildScopeRelated(
 
 func (c *Controller) BuildScopeRelationship(
 	req *http.Request, endpoint *Endpoint, model *ModelHandler,
-
 ) (scope *Scope, errs []*ErrorObject, err error) {
 	mStruct := c.Models.Get(model.ModelType)
 	if mStruct == nil {
@@ -517,7 +499,7 @@ func (c *Controller) BuildScopeRelationship(
 	}
 
 	// set primary field filter
-	errs = scope.setPrimaryFilterfield(id)
+	errs = scope.setPrimaryFilterfield(c, id)
 	if len(errs) >= c.ErrorLimitRelated {
 		return
 	}
@@ -633,6 +615,10 @@ func (c *Controller) GetModelStruct(model interface{}) (*ModelStruct, error) {
 func (c *Controller) GetSetCheckIDFilter(req *http.Request, scope *Scope,
 ) (errs []*ErrorObject, err error) {
 	return c.setIDFilter(req, scope)
+}
+
+func (c *Controller) Log() unilogger.LeveledLogger {
+	return c.log()
 }
 
 // MarshalScope marshals given scope into jsonapi format.
@@ -972,6 +958,7 @@ func (c *Controller) SetAPIURL(url string) error {
 	return nil
 }
 
+// build filterfield
 func (c *Controller) buildFilterField(
 	s *Scope,
 	collection string,
@@ -1035,13 +1022,26 @@ func (c *Controller) buildFilterField(
 					errs = append(errs, errObj)
 					return
 				}
-				invalidName(fieldName, m.collectionType)
-				return
-			}
-			if sField.isLanguage() {
-				fField = s.getOrCreateLangaugeFilter()
+
+				sField, ok = m.filterKeys[fieldName]
+				if !ok {
+					invalidName(fieldName, m.collectionType)
+					return
+				}
+				fField = s.getOrCreateFilterKeyFilter(sField)
 			} else {
-				fField = s.getOrCreateAttributeFilter(sField)
+				if sField.isLanguage() {
+					fField = s.getOrCreateLangaugeFilter()
+				} else if sField.isMap() {
+					// Map doesn't allow any default parameters
+					// i.e. filter[collection][mapfield]=something
+					errObj = ErrInvalidQueryParameter.Copy()
+					errObj.Detail = "Cannot filter field of 'Hashmap' type with no operator"
+					errs = append(errs, errObj)
+					return
+				} else {
+					fField = s.getOrCreateAttributeFilter(sField)
+				}
 			}
 		}
 
@@ -1064,7 +1064,7 @@ func (c *Controller) buildFilterField(
 				// if field were already used
 				fField = s.getOrCreateRelationshipFilter(sField)
 
-				errObj = fField.buildSubfieldFilter(values, splitted[1:]...)
+				errObj = buildNestedFilter(c, fField, values, splitted[1:]...)
 				if errObj != nil {
 					errs = append(errs, errObj)
 				}
@@ -1103,7 +1103,7 @@ func (c *Controller) buildFilterField(
 		}
 		fField = s.getOrCreateRelationshipFilter(sField)
 
-		errObj = c.buildSubfieldFilter(fField, values, splitted[1:]...)
+		errObj = buildNestedFilter(c, fField, values, splitted[1:]...)
 		if errObj != nil {
 			errs = append(errs, errObj)
 		}
@@ -1251,7 +1251,8 @@ func (c *Controller) buildQueryParametersSingle(
 
 			splitValues := strings.Split(values[0], annotationSeperator)
 
-			_, errorObjects = filterScope.buildFilterfield(collection, splitValues, colModel, splitted[1:]...)
+			_, errorObjects = buildFilterField(filterScope, collection, splitValues, c, colModel, filterScope.Flags(), splitted[1:]...)
+
 			addErrors(errorObjects...)
 		case key == QueryParamLinks:
 			var er error
@@ -1260,7 +1261,7 @@ func (c *Controller) buildQueryParametersSingle(
 			if er != nil {
 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
 			}
-			scope.FlagUseLinks = &links
+			scope.Flags().Set(flags.UseLinks, links)
 		default:
 			errObj = ErrUnsupportedQueryParameter.Copy()
 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
@@ -1273,65 +1274,6 @@ func (c *Controller) buildQueryParametersSingle(
 	}
 	scope.copyIncludedBoundaries()
 	return
-}
-
-func (c *Controller) buildSubfieldFilter(
-	f *FilterField,
-	values []string,
-	splitted ...string,
-) *ErrorObject {
-	var (
-		subfield *StructField
-		op       FilterOperator
-		ok       bool
-	)
-
-	getSubfield := func() *ErrorObject {
-		if splitted[0] == "id" {
-			subfield = f.relatedStruct.primary
-		} else {
-			subfield, ok = f.relatedStruct.attributes[splitted[0]]
-			if !ok {
-				errObj := ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("The subfield name: '%s' is invalid. Collection: '%s', Field: '%s'", splitted[0], f.jsonAPIName, f.mStruct.collectionType)
-				return errObj
-			}
-		}
-		return nil
-	}
-
-	switch len(splitted) {
-	case 1:
-		// Only the relationships fieldname
-		if err := getSubfield(); err != nil {
-			return err
-		}
-		if len(values) > 1 {
-			op = OpIn
-		} else {
-			op = OpEqual
-		}
-	case 2:
-		// relationships field name and operator
-		if err := getSubfield(); err != nil {
-			return err
-		}
-		operator := splitted[1]
-		op, ok = operatorsValue[operator]
-		if !ok {
-			errObj := ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' on collection:'%s'.", operator, f.mStruct.collectionType)
-			return errObj
-		}
-	}
-
-	filter := &FilterField{StructField: subfield}
-	errs := c.setFilterValues(filter, filter.mStruct.collectionType, values, op)
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	f.addSubfieldFilter(filter)
-	return nil
 }
 
 func (c *Controller) buildPreparedPair(
@@ -1491,7 +1433,9 @@ func (c *Controller) buildPreparedPair(
 
 			filterValues := strings.Split(value[0], annotationSeperator)
 
-			_, errs := filterScope.buildFilterfield(filterModel.collectionType, filterValues, filterModel, parameters[1:]...)
+			_, errs := buildFilterField(filterScope, filterModel.collectionType,
+				filterValues, c, filterModel, c.Flags, parameters[1:]...)
+			// _, errs := filterScope.buildFilterfield(filterModel.collectionType, filterValues, filterModel, parameters[1:]...)
 			if len(errs) != 0 {
 				err = fmt.Errorf("Error while building filter field for collection: '%s' in query: '%s'. Errs: '%s'", filterModel.collectionType, query, errs)
 				return
@@ -1637,6 +1581,15 @@ func (c *Controller) getModelStruct(model interface{}) (*ModelStruct, error) {
 	return mStruct, nil
 }
 
+func (c *Controller) log() unilogger.LeveledLogger {
+	if c.logger == nil {
+		basic := unilogger.NewBasicLogger(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
+		basic.SetLevel(unilogger.INFO)
+		c.logger = basic
+	}
+	return c.logger
+}
+
 func (c *Controller) setIDFilter(req *http.Request, scope *Scope,
 ) (errs []*ErrorObject, err error) {
 	var id string
@@ -1644,7 +1597,7 @@ func (c *Controller) setIDFilter(req *http.Request, scope *Scope,
 	if err != nil {
 		return
 	}
-	errs = scope.setPrimaryFilterfield(id)
+	errs = scope.setPrimaryFilterfield(c, id)
 	if len(errs) > 0 {
 		return
 	}
@@ -1821,43 +1774,6 @@ func (c *Controller) setIncludedLangaugeFilters(
 		return errObjects, err
 	}
 	return errObjects, nil
-}
-
-func (c *Controller) setScopeFlags(scope *Scope, endpoint *Endpoint, model *ModelHandler) {
-
-	// FlagMetaCountList
-	if scope.FlagMetaCountList == nil {
-		if endpoint.FlagMetaCountList != nil {
-			scope.FlagMetaCountList = &(*endpoint.FlagMetaCountList)
-		} else if model.FlagMetaCountList != nil {
-			scope.FlagMetaCountList = &(*model.FlagMetaCountList)
-		} else if c.FlagMetaCountList != nil {
-			scope.FlagMetaCountList = &(*c.FlagMetaCountList)
-		}
-	}
-
-	// FlagReturnPatchContent
-	if scope.FlagReturnPatchContent == nil {
-		if endpoint.FlagReturnPatchContent != nil {
-			scope.FlagReturnPatchContent = &(*endpoint.FlagReturnPatchContent)
-		} else if model.FlagReturnPatchContent != nil {
-			scope.FlagReturnPatchContent = &(*model.FlagReturnPatchContent)
-		} else if c.FlagReturnPatchContent != nil {
-			scope.FlagReturnPatchContent = &(*c.FlagReturnPatchContent)
-		}
-	}
-
-	// FlagUseLinks
-	if scope.FlagUseLinks == nil {
-		if endpoint.FlagReturnPatchContent != nil {
-			scope.FlagUseLinks = &(*endpoint.FlagUseLinks)
-		} else if model.FlagUseLinks != nil {
-			scope.FlagUseLinks = &(*model.FlagUseLinks)
-		} else if c.FlagUseLinks != nil {
-			scope.FlagUseLinks = &(*c.FlagUseLinks)
-		}
-	}
-
 }
 
 func (c *Controller) supportI18n() bool {

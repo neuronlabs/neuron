@@ -35,8 +35,7 @@ func (h *Handler) List(model *ModelHandler, endpoint *Endpoint) http.HandlerFunc
 			return
 		}
 		scope.NewValueMany()
-
-		h.setScopeFlags(scope, endpoint, model)
+		scope.setFlags(endpoint, model, h.Controller)
 
 		// LIST Estimate Language Filter
 		if scope.Struct.language != nil {

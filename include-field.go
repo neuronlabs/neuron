@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"reflect"
 )
 
@@ -188,14 +189,36 @@ func (i *IncludeField) copyScopeBoundaries() {
 	i.Scope.AttributeFilters = make([]*FilterField, len(i.Scope.collectionScope.AttributeFilters))
 	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
 
+	// copy filterKeyFilters
+	i.Scope.FilterKeyFilters = make([]*FilterField, len(i.Scope.collectionScope.FilterKeyFilters))
+	copy(i.Scope.FilterKeyFilters, i.Scope.collectionScope.FilterKeyFilters)
+
 	// relationships
 	i.Scope.RelationshipFilters = make([]*FilterField, len(i.Scope.collectionScope.RelationshipFilters))
 	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
+
+	//copy foreignKeyFilters
+	i.Scope.ForeignKeyFilters = make([]*FilterField, len(i.Scope.collectionScope.ForeignKeyFilters))
+	copy(i.Scope.ForeignKeyFilters, i.Scope.collectionScope.ForeignKeyFilters)
+
+	// copy language filters
+
+	if i.Scope.collectionScope.LanguageFilters != nil {
+		i.Scope.LanguageFilters = i.Scope.collectionScope.LanguageFilters
+	}
 
 	// fieldset is taken by reference - copied if there is nested
 	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
 	i.Scope.ctx = i.Scope.collectionScope.ctx
 	i.Scope.logger = i.Scope.collectionScope.logger
+
+	if f, ok := i.Scope.collectionScope.Flags().Get(flags.UseLinks); ok {
+		i.Scope.Flags().Set(flags.UseLinks, f)
+	}
+
+	if f, ok := i.Scope.collectionScope.Flags().Get(flags.ReturnPatchContent); ok {
+		i.Scope.Flags().Set(flags.ReturnPatchContent, f)
+	}
 
 	for _, nested := range i.Scope.IncludedFields {
 		// if the nested include is not found within the collection fieldset
@@ -215,13 +238,6 @@ func (i *IncludeField) copyScopeBoundaries() {
 			//add nested
 			i.Scope.Fieldset[nested.jsonAPIName] = nested.StructField
 		}
-		if i.Scope.collectionScope.FlagUseLinks != nil {
-			i.Scope.FlagUseLinks = &(*i.Scope.collectionScope.FlagUseLinks)
-		}
-
-		if i.Scope.collectionScope.FlagReturnPatchContent != nil {
-			i.Scope.FlagReturnPatchContent = &(*i.Scope.collectionScope.FlagReturnPatchContent)
-		}
 
 		nested.copyScopeBoundaries()
 	}
@@ -237,9 +253,22 @@ func (i *IncludeField) copyPresetFullParameters() {
 	i.Scope.AttributeFilters = make([]*FilterField, len(i.Scope.collectionScope.AttributeFilters))
 	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
 
+	// copy filterKeyFilters
+	i.Scope.FilterKeyFilters = make([]*FilterField, len(i.Scope.collectionScope.FilterKeyFilters))
+	copy(i.Scope.FilterKeyFilters, i.Scope.collectionScope.FilterKeyFilters)
+
 	// relationships
 	i.Scope.RelationshipFilters = make([]*FilterField, len(i.Scope.collectionScope.RelationshipFilters))
 	copy(i.Scope.RelationshipFilters, i.Scope.collectionScope.RelationshipFilters)
+
+	//copy foreignKeyFilters
+	i.Scope.ForeignKeyFilters = make([]*FilterField, len(i.Scope.collectionScope.ForeignKeyFilters))
+	copy(i.Scope.ForeignKeyFilters, i.Scope.collectionScope.ForeignKeyFilters)
+
+	// copy language filters
+	if i.Scope.collectionScope.LanguageFilters != nil {
+		i.Scope.LanguageFilters = i.Scope.collectionScope.LanguageFilters
+	}
 
 	// fieldset is taken by reference - copied if there is nested
 	// i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
@@ -248,12 +277,12 @@ func (i *IncludeField) copyPresetFullParameters() {
 	copy(i.Scope.Sorts, i.Scope.collectionScope.Sorts)
 
 	i.Scope.Pagination = i.Scope.collectionScope.Pagination
-	if i.Scope.collectionScope.FlagUseLinks != nil {
-		i.Scope.FlagUseLinks = &(*i.Scope.collectionScope.FlagUseLinks)
+	if f, ok := i.Scope.collectionScope.Flags().Get(flags.UseLinks); ok {
+		i.Scope.Flags().Set(flags.UseLinks, f)
 	}
 
-	if i.Scope.collectionScope.FlagReturnPatchContent != nil {
-		i.Scope.FlagReturnPatchContent = &(*i.Scope.collectionScope.FlagReturnPatchContent)
+	if f, ok := i.Scope.collectionScope.Flags().Get(flags.ReturnPatchContent); ok {
+		i.Scope.Flags().Set(flags.ReturnPatchContent, f)
 	}
 
 	for _, nested := range i.Scope.IncludedFields {

@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -486,8 +487,7 @@ func TestHandlerPatch(t *testing.T) {
 				t.Run("SetNew", func(t *testing.T) {
 					models := []interface{}{&PetSDK{}, &HumanSDK{}}
 					h := prepareHandler(defaultLanguages, models...)
-					f := false
-					h.Controller.FlagReturnPatchContent = &f
+					h.Controller.Flags.Set(flags.ReturnPatchContent, false)
 					for _, model := range h.ModelHandlers {
 
 						model.Repository = &MockRepository{}

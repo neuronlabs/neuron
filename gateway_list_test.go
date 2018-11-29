@@ -448,7 +448,7 @@ func TestHandlerList(t *testing.T) {
 					authorRepo.On("List", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
 						scope := args.Get(0).(*Scope)
 
-						assert.Len(t, scope.Fieldset, 1)
+						assert.Len(t, scope.Fieldset, 2)
 						scope.Value = []*AuthorSDK{{ID: authorID1, Name: "First"}, {ID: authorID2, Name: "Second"}}
 					})
 

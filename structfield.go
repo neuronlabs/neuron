@@ -64,6 +64,7 @@ const (
 	fHidden
 	fSortable
 	fClientID
+	fMap
 )
 
 // StructField represents a field structure with its json api parameters
@@ -329,4 +330,8 @@ func (s *StructField) isHidden() bool {
 
 func (s *StructField) isSortable() bool {
 	return s.fieldFlags&fSortable != 0
+}
+
+func (s *StructField) isMap() bool {
+	return s.fieldFlags&fMap != 0
 }

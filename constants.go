@@ -51,16 +51,6 @@ const (
 	// FILTERS
 	// disable for filtering purpose
 
-	// logical filters
-	annotationEqual        = "eq"
-	annotationIn           = "in"
-	annotationNotEqual     = "ne"
-	annotationNotIn        = "notin"
-	annotationGreaterThan  = "gt"
-	annotationGreaterEqual = "ge"
-	annotationLessThan     = "lt"
-	annotationLessEqual    = "le"
-
 	// not used currently
 	// annotationNot = "not"
 	// annotationOr  = "or"
@@ -70,9 +60,6 @@ const (
 	headerContentLanguage = "Content-Language"
 
 	// string only filters
-	annotationContains   = "contains"
-	annotationStartsWith = "startswith"
-	annotationEndsWith   = "endswith"
 
 	iso8601TimeFormat = "2006-01-02T15:04:05Z"
 
@@ -149,4 +136,23 @@ const (
 
 	// QueryParamLinks is a JSONAPI query parameter used in displaying the links of the relationships
 	QueryParamLinks = "links"
+)
+
+const (
+	// logical filters
+	operatorEqual        = "$eq"
+	operatorIn           = "$in"
+	operatorNotEqual     = "$ne"
+	operatorNotIn        = "$notin"
+	operatorGreaterThan  = "$gt"
+	operatorGreaterEqual = "$ge"
+	operatorLessThan     = "$lt"
+	operatorLessEqual    = "$le"
+	operatorIsNull       = "$isnull"
+	operatorNotNull      = "$notnull"
+	operatorExists       = "$exists"
+	operatorNotExists    = "$notexists"
+	operatorContains     = "$contains"
+	operatorStartsWith   = "$startswith"
+	operatorEndsWith     = "$endswith"
 )

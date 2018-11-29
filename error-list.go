@@ -128,6 +128,12 @@ var (
 		Status: "400",
 	}
 
+	ErrUnsupportedFilterOperator = ErrorObject{
+		Code:   "BRQ020",
+		Title:  "One of the filter operators is not supported.",
+		Status: "400",
+	}
+
 	// STATUS 403, CODE: 'AUTHXX'
 	ErrAccountDisabled = ErrorObject{
 		Code:   "AUTH01",

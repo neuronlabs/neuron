@@ -72,7 +72,7 @@ func TestHandlerCreate(t *testing.T) {
 			assert.True(t, ok, "Model not valid")
 
 			key := "my_key"
-			presetPair := h.Controller.BuildPresetPair("preset=blogs.current_post", "filter[comments][post][id][in]").WithKey(key)
+			presetPair := h.Controller.BuildPresetPair("preset=blogs.current_post", "filter[comments][post][id][$in]").WithKey(key)
 
 			assert.NoError(t, commentModel.AddPresetPair(presetPair, Create))
 			mh := h.ModelHandlers[reflect.TypeOf(BlogSDK{})]
