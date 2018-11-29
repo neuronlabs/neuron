@@ -16,7 +16,7 @@ func TestControllerCreation(t *testing.T) {
 	assertNotEmpty(t, cNew.Models)
 
 	assertEqual(t, 1, cNew.IncludeNestedLimit)
-	assertEqual(t, 1, cNew.FilterValueLimit)
+	assertEqual(t, 5, cNew.FilterValueLimit)
 
 	cDefault := DefaultController()
 	assertNotEmpty(t, cDefault.Models)

@@ -45,6 +45,7 @@ func New(db *gorm.DB) (*GORMRepository, error) {
 	if err != nil {
 		return nil, err
 	}
+	gormRepo.logLevel = unilogger.INFO
 
 	return gormRepo, nil
 }
