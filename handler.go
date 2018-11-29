@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"context"
 	"fmt"
+	"github.com/kucjac/jsonapi/flags"
 	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-logger"
 	"github.com/pkg/errors"
@@ -942,6 +943,8 @@ func (h *Handler) getForeignRelationshipValue(
 			ctx:    ctx,
 			logger: scope.logger,
 		}
+		relatedScope.fContainer = flags.New()
+		*relatedScope.fContainer = *scope.Flags()
 		relatedScope.collectionScope = relatedScope
 
 		// set filterfield
@@ -1085,6 +1088,8 @@ func (h *Handler) getForeignRelationshipValue(
 			ctx:    ctx,
 			logger: scope.logger,
 		}
+		relatedScope.fContainer = flags.New()
+		*relatedScope.fContainer = *scope.Flags()
 		relatedScope.collectionScope = relatedScope
 
 		fk := rel.relationship.ForeignKey
@@ -1235,6 +1240,8 @@ func (h *Handler) getForeignRelationshipValue(
 				ctx:    ctx,
 				logger: scope.logger,
 			}
+			relatedScope.fContainer = flags.New()
+			*relatedScope.fContainer = *scope.Flags()
 			relatedScope.collectionScope = relatedScope
 
 			relatedScope.RelationshipFilters = append(relatedScope.RelationshipFilters, filterField)
@@ -1306,7 +1313,7 @@ func (h *Handler) getForeignRelationshipValue(
 					}
 
 					m2mElem := reflect.New(rel.relatedStruct.modelType)
-					m2mElem.FieldByIndex(rel.relatedStruct.primary.refStruct.Index).Set(relPrimVal)
+					m2mElem.Elem().FieldByIndex(rel.relatedStruct.primary.refStruct.Index).Set(relPrimVal)
 
 					relationField := val.FieldByIndex(rel.refStruct.Index)
 					relationField.Set(reflect.Append(relationField, m2mElem))

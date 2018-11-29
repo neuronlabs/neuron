@@ -37,6 +37,8 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 		h.log.Debugf("Patching the scope.Value: %#v", scope.Value)
 
 		scope.setFlags(endpoint, model, h.Controller)
+		fv, ok := scope.Flags().Get(flags.ReturnPatchContent)
+		h.log.Debugf("Scope return patch content: %v, %v", fv, ok)
 
 		/**
 
@@ -729,6 +731,8 @@ func (h *Handler) Patch(model *ModelHandler, endpoint *Endpoint) http.HandlerFun
 		*/
 
 		if f, ok := scope.Flags().Get(flags.ReturnPatchContent); ok && f {
+
+			h.log.Errorf("Flag: %v, ok: %v", f, ok)
 			scope.SetAllFields()
 
 			if err = repo.Get(scope); err != nil {

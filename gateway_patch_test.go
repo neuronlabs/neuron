@@ -7,18 +7,19 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestHandlerPatch(t *testing.T) {
+func TestGatewayPatch(t *testing.T) {
 	getHandler := func() *Handler {
 		h := prepareHandler(defaultLanguages, blogModels...)
 		for _, model := range h.ModelHandlers {
 			model.Patch = &Endpoint{}
 			model.Repository = &MockRepository{}
 		}
+		h.Controller.StrictUnmarshalMode = true
+		h.Controller.Flags.Set(flags.ReturnPatchContent, false)
 
 		return h
 	}
@@ -43,7 +44,8 @@ func TestHandlerPatch(t *testing.T) {
 			h := getHandler()
 
 			blog := &BlogSDK{ID: 1, SomeAttr: "Some attribute"}
-			rw, req := getHttpPair("PATCH", "/blogs/1", h.getModelJSON(blog))
+
+			rw, req := getHttpPair("PATCH", "/blogs/1", strings.NewReader(`{"data":{"type":"blogs","id":"1","attributes":{"some_attr":"Some attribute"}}}`))
 
 			model, repo := getModelAndRepo(t, h, reflect.TypeOf(BlogSDK{}))
 
@@ -68,25 +70,14 @@ func TestHandlerPatch(t *testing.T) {
 
 			require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
-			if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-
-				h.log.Debugf("Success: %v", rw.Body.String())
-				payload, err := h.Controller.unmarshalPayload(rw.Body)
-				if assert.NoError(t, err) {
-
-					if assert.NotNil(t, payload.Data) {
-						assert.Equal(t, strconv.Itoa(blog.ID), payload.Data.ID)
-					}
-
-				}
-			}
+			assert.Equal(t, 204, rw.Code, rw.Body.String())
 		},
 		"RelationBelongsTo": func(t *testing.T) {
 			h := getHandler()
 
 			post := &PostSDK{ID: 4}
 			comment := &CommentSDK{ID: 1, Post: post}
-			rw, req := getHttpPair("PATCH", "/comments/1", h.getModelJSON(comment))
+			rw, req := getHttpPair("PATCH", "/comments/1", strings.NewReader(`{"data":{"type":"comments","id":"1","relationships":{"post":{"data":{"type":"posts","id":"4"}}}}}`))
 
 			model, repo := getModelAndRepo(t, h, reflect.TypeOf(CommentSDK{}))
 
@@ -97,7 +88,8 @@ func TestHandlerPatch(t *testing.T) {
 				commentPatched, ok := scope.Value.(*CommentSDK)
 				require.True(t, ok)
 
-				assert.Len(t, scope.SelectedFields, 2)
+				// Length should be 3 - the foreign key is selected as well as the relationships
+				assert.Len(t, scope.SelectedFields, 3)
 
 				assert.Equal(t, comment.ID, commentPatched.ID)
 				if assert.NotNil(t, commentPatched.Post) {
@@ -112,18 +104,7 @@ func TestHandlerPatch(t *testing.T) {
 			})
 			h.Patch(model, model.Patch).ServeHTTP(rw, req)
 
-			if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-
-				h.log.Debugf("Success: %v", rw.Body.String())
-				commentUnmarshaled := &CommentSDK{}
-				err := h.Controller.Unmarshal(rw.Body, commentUnmarshaled)
-				if assert.NoError(t, err) {
-					assert.Equal(t, comment.ID, commentUnmarshaled.ID)
-					if assert.NotNil(t, commentUnmarshaled.Post) {
-						assert.Equal(t, post.ID, commentUnmarshaled.Post.ID)
-					}
-				}
-			}
+			assert.Equal(t, 204, rw.Code, rw.Body.String())
 		},
 		"RelationHasOne": func(t *testing.T) {
 			t.Run("Synced", func(t *testing.T) {
@@ -132,7 +113,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					post := &PostSDK{ID: 4}
 					blog := &BlogSDK{ID: 2, CurrentPost: post}
-					rw, req := getHttpPair("PATCH", "/blogs/2", h.getModelJSON(blog))
+					rw, req := getHttpPair("PATCH", "/blogs/2", strings.NewReader(`{"data":{"type":"blogs","id":"2","relationships":{"current_post":{"data":{"type":"posts","id":"4"}}}}}`))
 
 					model, repo := getModelAndRepo(t, h, reflect.TypeOf(BlogSDK{}))
 
@@ -187,16 +168,8 @@ func TestHandlerPatch(t *testing.T) {
 
 					require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
-					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-						blogUnm := &BlogSDK{}
-						err := h.Controller.Unmarshal(rw.Body, blogUnm)
-						if assert.NoError(t, err) {
-							assert.Equal(t, blog.ID, blogUnm.ID)
-							if assert.NotNil(t, blogUnm.CurrentPost) {
-								assert.Equal(t, post.ID, blogUnm.CurrentPost.ID)
-							}
-						}
-					}
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
+
 				})
 
 				t.Run("SetNil", func(t *testing.T) {
@@ -257,16 +230,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					require.NotPanics(t, func() { h.Patch(model, model.Patch).ServeHTTP(rw, req) })
 
-					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-						blogUnm := &BlogSDK{}
-						assert.True(t, postPatched)
-						err := h.Controller.Unmarshal(rw.Body, blogUnm)
-						if assert.NoError(t, err) {
-							assert.Equal(t, blogID, blogUnm.ID)
-							assert.Nil(t, blogUnm.CurrentPost)
-
-						}
-					}
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 				})
 
 			})
@@ -277,7 +241,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					post := &PostSDK{ID: 4}
 					blog := &BlogSDK{ID: 2, CurrentPostNoSync: post}
-					rw, req := getHttpPair("PATCH", "/blogs/2", h.getModelJSON(blog))
+					rw, req := getHttpPair("PATCH", "/blogs/2", strings.NewReader(`{"data":{"type":"blogs","id":"2","relationships":{"current_post_no_sync":{"data":{"type":"posts", "id":"4"}}}}}`))
 
 					model, repo := getModelAndRepo(t, h, reflect.TypeOf(BlogSDK{}))
 					repo.On("Patch", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
@@ -301,16 +265,7 @@ func TestHandlerPatch(t *testing.T) {
 						h.Patch(model, model.Patch).ServeHTTP(rw, req)
 					})
 
-					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-						blogUnm := &BlogSDK{}
-						err := h.Controller.Unmarshal(rw.Body, blogUnm)
-						if assert.NoError(t, err) {
-							assert.Equal(t, blog.ID, blogUnm.ID)
-							if assert.NotNil(t, blogUnm.CurrentPostNoSync) {
-								assert.Equal(t, post.ID, blogUnm.CurrentPostNoSync.ID)
-							}
-						}
-					}
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 				})
 
 			})
@@ -393,23 +348,8 @@ func TestHandlerPatch(t *testing.T) {
 
 					require.NotPanics(t, func() { h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req) })
 
-					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-						h.log.Debugf("%s", rw.Body.String())
-						postUnm := &PostSDK{}
-						err := h.Controller.Unmarshal(rw.Body, postUnm)
-						if assert.NoError(t, err) {
-							assert.Equal(t, post.ID, postUnm.ID)
-							ctr := 0
-							for _, com := range postUnm.Comments {
-								switch com.ID {
-								case commentID1, commentID2:
-									ctr++
-								}
-							}
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 
-							assert.Equal(t, 2, ctr)
-						}
-					}
 				})
 
 				t.Run("SetEmpty", func(t *testing.T) {
@@ -469,15 +409,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					require.NotPanics(t, func() { h.Patch(postModel, postModel.Patch).ServeHTTP(rw, req) })
 
-					if assert.Equal(t, 200, rw.Code, rw.Body.String()) {
-						h.log.Debugf("%s", rw.Body.String())
-						postUnm := &PostSDK{}
-						err := h.Controller.Unmarshal(rw.Body, postUnm)
-						if assert.NoError(t, err) {
-							assert.Equal(t, post.ID, postUnm.ID)
-							assert.Empty(t, postUnm.Comments)
-						}
-					}
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 				})
 			})
 
@@ -488,6 +420,7 @@ func TestHandlerPatch(t *testing.T) {
 					models := []interface{}{&PetSDK{}, &HumanSDK{}}
 					h := prepareHandler(defaultLanguages, models...)
 					h.Controller.Flags.Set(flags.ReturnPatchContent, false)
+
 					for _, model := range h.ModelHandlers {
 
 						model.Repository = &MockRepository{}
@@ -580,7 +513,7 @@ func TestHandlerPatch(t *testing.T) {
 					})
 
 					// At first it should get list of related pets and it's relationships
-					humanRepo.On("List", mock.AnythingOfType("*jsonapi.Scope")).Once().Return(nil).Run(func(args mock.Arguments) {
+					humanRepo.On("List", mock.AnythingOfType("*jsonapi.Scope")).Return(nil).Run(func(args mock.Arguments) {
 						scope := args.Get(0).(*Scope)
 						_, ok := scope.Value.([]*HumanSDK)
 						require.True(t, ok)
@@ -677,7 +610,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					// if assert.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) }) {
 					h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req)
-					assert.Equal(t, 200, rw.Code, rw.Body.String())
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 					assert.Equal(t, 2, called)
 					// }
 				})
@@ -685,6 +618,7 @@ func TestHandlerPatch(t *testing.T) {
 				t.Run("SetEmpty", func(t *testing.T) {
 					models := []interface{}{&PetSDK{}, &HumanSDK{}}
 					h := prepareHandler(defaultLanguages, models...)
+					h.Controller.Flags.Set(flags.ReturnPatchContent, false)
 					for _, model := range h.ModelHandlers {
 
 						model.Repository = &MockRepository{}
@@ -764,7 +698,7 @@ func TestHandlerPatch(t *testing.T) {
 
 					// if assert.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) }) {
 					require.NotPanics(t, func() { h.Patch(petModel, petModel.Patch).ServeHTTP(rw, req) })
-					assert.Equal(t, 200, rw.Code, rw.Body.String())
+					assert.Equal(t, 204, rw.Code, rw.Body.String())
 
 					humanRepo.AssertCalled(t, "Patch", mock.Anything)
 					// }
