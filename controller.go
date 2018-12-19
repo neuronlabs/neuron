@@ -64,8 +64,6 @@ type Controller struct {
 	// StrictUnmarshalMode if set to true, the incoming data cannot contain
 	// any unknown fields
 	StrictUnmarshalMode bool
-
-	CustomOperators [string]FilterOperator
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
