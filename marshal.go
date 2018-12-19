@@ -281,9 +281,18 @@ func (c *Controller) visistNode(
 					}
 				}
 			} else {
-				emptyValue := reflect.Zero(fieldValue.Type())
-				if field.isOmitEmpty() && reflect.
-					DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+				if field.isOmitEmpty() && field.isPtr() && fieldValue.IsNil() {
+					continue
+				} else {
+					emptyValue := reflect.Zero(fieldValue.Type())
+					if field.isOmitEmpty() && reflect.
+						DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+						continue
+					}
+				}
+
+				if field.isNestedStruct() {
+					node.Attributes[field.jsonAPIName] = field.nested.MarshalValue(fieldValue).Interface()
 					continue
 				}
 

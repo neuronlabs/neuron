@@ -46,18 +46,18 @@ func TestGettersModelStruct(t *testing.T) {
 	assertTrue(t, mStruct.GetCollectionType() == "pets")
 
 	primary := mStruct.GetPrimaryField()
-	assertTrue(t, primary.fieldName == "ID")
+	assertTrue(t, primary.fieldName() == "ID")
 	assertTrue(t, primary.fieldType == Primary)
 
 	// AttrField
 	nameField := mStruct.GetAttributeField("name")
 	assertNotNil(t, nameField)
-	assertTrue(t, nameField.fieldName == "Name")
+	assertTrue(t, nameField.fieldName() == "Name")
 
 	// RelationshipField
 	relationshipField := mStruct.GetRelationshipField("owners")
 	assertNotNil(t, relationshipField)
-	assertTrue(t, relationshipField.fieldName == "Owners")
+	assertTrue(t, relationshipField.fieldName() == "Owners")
 
 	// Fields
 	fields := mStruct.GetFields()
@@ -175,26 +175,146 @@ func TestGetFieldKind(t *testing.T) {
 
 func TestAttrArray(t *testing.T) {
 
+	type arr struct {
+		model interface{}
+		f     func(*testing.T, error)
+	}
+
 	type AttrArrStruct struct {
 		ID  int       `jsonapi:"type=primary"`
 		Arr []*string `jsonapi:"type=attr"`
 	}
-	clearMap()
 
-	err := c.PrecomputeModels(&AttrArrStruct{})
-	require.NoError(t, err)
+	type ArrayModel struct {
+		ID  int       `jsonapi:"type=primary"`
+		Arr [2]string `jsonapi:"type=attr"`
+	}
 
-	scope, err := c.NewScope(&AttrArrStruct{})
-	require.NoError(t, err)
+	type SliceInt struct {
+		ID int   `jsonapi:"type=primary"`
+		Sl []int `jsonapi:"type=attr"`
+	}
 
-	scope.Value = &AttrArrStruct{ID: 1, Arr: make([]*string, 7)}
-	p, err := MarshalScope(scope, c)
-	assert.NoError(t, err)
+	type ArrInt struct {
+		ID  int    `jsonapi:"type=primary"`
+		Arr [2]int `jsonapi:"type=attr"`
+	}
+
+	type NestedStruct struct {
+		Name string
+	}
+
+	type SliceStruct struct {
+		ID int             `jsonapi:"type=primary"`
+		Sl []*NestedStruct `jsonapi:"type=attr"`
+	}
+
+	type PtrSlicePtrStruct struct {
+		ID int              `jsonapi:"type=primary"`
+		Sl *[]*NestedStruct `jsonapi:"type=attr"`
+	}
+
+	type DoubleSlice struct {
+		ID int     `jsonapi:"type=primary"`
+		Sl [][]int `jsonapi:"type=attr"`
+	}
 
 	b := bytes.NewBuffer(nil)
 
-	err = MarshalPayload(b, p)
-	assertNil(t, err)
+	tests := map[string]arr{
+		"StringPtr": {
+			model: &AttrArrStruct{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
 
-	c.log().Debug(b.String())
+				scope, err := c.NewScope(&AttrArrStruct{})
+				require.NoError(t, err)
+
+				scope.Value = &AttrArrStruct{ID: 1, Arr: make([]*string, 7)}
+				p, err := MarshalScope(scope, c)
+				assert.NoError(t, err)
+
+				err = MarshalPayload(b, p)
+				assertNil(t, err)
+
+				c.log().Debug(b.String())
+			},
+		},
+		"StringArray": {
+			model: &ArrayModel{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		"IntSlice": {
+			model: &SliceInt{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		"StructSlice": {
+			model: &SliceStruct{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+				mStruct, err := c.GetModelStruct(&SliceStruct{})
+				if assert.NoError(t, err) {
+					slField, ok := mStruct.Attribute("sl")
+					if assert.True(t, ok) {
+						assert.False(t, slField.isPtr())
+						assert.True(t, slField.isSlice())
+						assert.True(t, slField.isBasePtr())
+						assert.True(t, slField.isNestedStruct())
+					}
+				}
+			},
+		},
+		"IntArray": {
+			model: &ArrInt{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+			},
+		},
+		"PtrSlicePtrType": {
+			model: &PtrSlicePtrStruct{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+				var mStruct *ModelStruct
+				mStruct, err = c.GetModelStruct(&PtrSlicePtrStruct{})
+				if assert.NoError(t, err) {
+					slField, ok := mStruct.Attribute("sl")
+					if assert.True(t, ok) {
+						assert.True(t, slField.isPtr())
+						assert.True(t, slField.isSlice())
+						assert.True(t, slField.isBasePtr())
+						assert.True(t, slField.isNestedStruct())
+					}
+				}
+			},
+		},
+		"DoubleSlice": {
+			model: &DoubleSlice{},
+			f: func(t *testing.T, err error) {
+				require.NoError(t, err)
+				mStruct, err := c.GetModelStruct(&DoubleSlice{})
+				if assert.NoError(t, err) {
+					slField, ok := mStruct.Attribute("sl")
+					if assert.True(t, ok) {
+						assert.False(t, slField.isPtr())
+						assert.True(t, slField.isSlice())
+						assert.False(t, slField.isBasePtr())
+						assert.False(t, slField.isNestedStruct())
+					}
+				}
+			},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			clearMap()
+			err := c.PrecomputeModels(test.model)
+			test.f(t, err)
+		})
+	}
+
 }

@@ -44,6 +44,8 @@ const (
 	OpNotNull
 	OpExists
 	OpNotExists
+
+	OpStDWithin
 )
 
 const (
@@ -69,6 +71,8 @@ var (
 		operatorNotNull:   OpNotNull,
 		operatorExists:    OpExists,
 		operatorNotExists: OpNotExists,
+
+		operatorStDWithin: OpStDWithin,
 	}
 	operatorsStr = []string{
 		operatorEqual,
@@ -86,6 +90,7 @@ var (
 		operatorNotNull,
 		operatorExists,
 		operatorNotExists,
+		operatorStDWithin,
 	}
 )
 

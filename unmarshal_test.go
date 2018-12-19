@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestUnmarshalScopeOne(t *testing.T) {
@@ -302,14 +303,39 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("Array", func(t *testing.T) {
+		type ArrModel struct {
+			ID  int        `jsonapi:"type=primary"`
+			Arr [2]float64 `jsonapi:"type=attr"`
+		}
+
+		t.Run("TooManyValues", func(t *testing.T) {
+			clearMap()
+			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162,16.162]}}}`)
+			err := c.PrecomputeModels(&ArrModel{})
+			require.Nil(t, err)
+
+			_, err = c.UnmarshalScopeOne(in, &ArrModel{}, false)
+			assert.Error(t, err)
+		})
+
+		t.Run("Correct", func(t *testing.T) {
+			clearMap()
+			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162]}}}`)
+			err := c.PrecomputeModels(&ArrModel{})
+			require.Nil(t, err)
+
+			_, err = c.UnmarshalScopeOne(in, &ArrModel{}, false)
+			assert.NoError(t, err)
+		})
+	})
+	type maptest struct {
+		model interface{}
+		r     string
+		f     func(t *testing.T, s *Scope, err error)
+	}
 	t.Run("Map", func(t *testing.T) {
 		t.Helper()
-
-		type maptest struct {
-			model interface{}
-			r     string
-			f     func(t *testing.T, s *Scope, err error)
-		}
 
 		type MpString struct {
 			ID  int               `jsonapi:"type=primary"`
@@ -335,6 +361,33 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		type MpPtrFloat struct {
 			ID  int                 `jsonapi:"type=primary"`
 			Map map[string]*float64 `jsonapi:"type=attr"`
+		}
+
+		type MpSliceInt struct {
+			ID  int              `jsonapi:"type=primary"`
+			Map map[string][]int `jsonapi:"type=attr"`
+		}
+
+		type MpSlicePtrInt struct {
+			ID  int               `jsonapi:"type=primary"`
+			Map map[string][]*int `jsonapi:"type=attr"`
+		}
+
+		type MpSliceTime struct {
+			ID  int                    `jsonapi:"type=primary"`
+			Map map[string][]time.Time `jsonapi:"type=attr"`
+		}
+		type MpSlicePtrTime struct {
+			ID  int                     `jsonapi:"type=primary"`
+			Map map[string][]*time.Time `jsonapi:"type=attr"`
+		}
+		type MpPtrSliceTime struct {
+			ID  int                     `jsonapi:"type=primary"`
+			Map map[string]*[]time.Time `jsonapi:"type=attr"`
+		}
+		type MpArrayFloat struct {
+			ID  int                   `jsonapi:"type=primary"`
+			Map map[string][2]float64 `jsonapi:"type=attr"`
 		}
 
 		tests := map[string]maptest{
@@ -526,10 +579,217 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			},
 			"InvalidMapForm": {
 				model: &MpPtrFloat{},
-				r: `{"data":{"type":"mp_ptr_floats","id":1",
+				r: `{"data":{"type":"mp_ptr_floats","id":"1",
 				"attributes":{"map": ["string1"]}}}`,
 				f: func(t *testing.T, s *Scope, err error) {
 					assert.Error(t, err)
+				},
+			},
+			"SliceInt": {
+				model: &MpSliceInt{},
+				r:     `{"data":{"type":"mp_slice_ints","id":"1","attributes":{"map":{"key":[1,3]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpSliceInt)
+					if assert.True(t, ok) {
+						assert.Contains(t, v.Map["key"], 1)
+						assert.Contains(t, v.Map["key"], 3)
+					}
+				},
+			},
+
+			"SlicePtrInt": {
+				model: &MpSlicePtrInt{},
+				r:     `{"data":{"type":"mp_slice_ptr_ints","id":"1","attributes":{"map":{"key":[1,3]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpSlicePtrInt)
+					if assert.True(t, ok) {
+						kv, ok := v.Map["key"]
+						if assert.True(t, ok) {
+							var count int
+							for _, i := range kv {
+								if i != nil {
+									switch *i {
+									case 1, 3:
+										count += 1
+									}
+								}
+							}
+							assert.Equal(t, 2, count)
+						}
+						// assert.Contains(t, v.Map["key"], 1)
+						// assert.Contains(t, v.Map["key"], 3)
+					}
+				},
+			},
+			"SliceTime": {
+				model: &MpSliceTime{},
+				r:     `{"data":{"type":"mp_slice_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpSliceTime)
+					if assert.True(t, ok) {
+						kv, ok := v.Map["key"]
+						if assert.True(t, ok) {
+							var count int
+							for _, i := range kv {
+
+								switch i.Unix() {
+								case 1257895000, 1257894000:
+									count += 1
+								}
+							}
+							assert.Equal(t, 2, count)
+						}
+					}
+				},
+			},
+			"SlicePtrTime": {
+				model: &MpSlicePtrTime{},
+				r:     `{"data":{"type":"mp_slice_ptr_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000, null]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpSlicePtrTime)
+					if assert.True(t, ok) {
+						kv, ok := v.Map["key"]
+						if assert.True(t, ok) {
+							var count int
+							for _, i := range kv {
+								if i == nil {
+									count += 1
+								} else {
+									switch (*i).Unix() {
+									case 1257895000, 1257894000:
+										count += 1
+									}
+								}
+							}
+							assert.Equal(t, 3, count)
+						}
+					}
+				},
+			},
+			"PtrSliceTime": {
+				model: &MpPtrSliceTime{},
+				r:     `{"data":{"type":"mp_ptr_slice_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpPtrSliceTime)
+					if assert.True(t, ok) {
+						kv, ok := v.Map["key"]
+						if assert.True(t, ok) && assert.NotNil(t, kv) {
+							var count int
+
+							for _, i := range *kv {
+
+								switch i.Unix() {
+								case 1257895000, 1257894000:
+									count += 1
+								}
+							}
+							assert.Equal(t, 2, count)
+						}
+					}
+				},
+			},
+			"ArrayFloat": {
+				model: &MpArrayFloat{},
+				r:     `{"data":{"type":"mp_array_floats","id":"1","attributes":{"map":{"key":[12.51,261.123]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.NoError(t, err)
+
+					v, ok := s.Value.(*MpArrayFloat)
+					if assert.True(t, ok) {
+						kv, ok := v.Map["key"]
+						if ok {
+							assert.InDelta(t, 12.51, kv[0], 0.01)
+							assert.InDelta(t, 261.123, kv[1], 0.001)
+						}
+					}
+				},
+			},
+			"ArrayFloatTooManyValues": {
+				model: &MpArrayFloat{},
+				r:     `{"data":{"type":"mp_array_floats","id":"1","attributes":{"map":{"key":[12.51,261.123,12.671]}}}}`,
+				f: func(t *testing.T, s *Scope, err error) {
+					require.Error(t, err)
+				},
+			},
+		}
+
+		for name, test := range tests {
+			t.Run(name, func(t *testing.T) {
+				t.Helper()
+				clearMap()
+				in := strings.NewReader(test.r)
+				err := c.PrecomputeModels(test.model)
+				require.NoError(t, err)
+
+				var scope *Scope
+				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
+				test.f(t, scope, err)
+			})
+		}
+	})
+
+	t.Run("NestedStruct", func(t *testing.T) {
+
+		type NestedModel struct {
+			ValueFirst  int `jsonapi:"name=first"`
+			ValueSecond int `jsonapi:"name=second"`
+		}
+
+		type Simple struct {
+			ID     int          `jsonapi:"type=primary"`
+			Nested *NestedModel `jsonapi:"type=attr"`
+		}
+
+		type DoubleNested struct {
+			Nested *NestedModel `jsonapi:"name=nested"`
+		}
+
+		type SimpleDouble struct {
+			ID           int           `jsonapi:"type=primary"`
+			DoubleNested *DoubleNested `jsonapi:"type=attr;name=double"`
+		}
+
+		tests := map[string]maptest{
+			"Simple": {
+				r:     `{"data":{"type":"simples","attributes":{"nested":{"first":1,"second":2}}}}`,
+				model: &Simple{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+					v, ok := s.Value.(*Simple)
+					if assert.True(t, ok) {
+						if assert.NotNil(t, v.Nested) {
+							assert.Equal(t, 1, v.Nested.ValueFirst)
+							assert.Equal(t, 2, v.Nested.ValueSecond)
+						}
+					}
+				},
+			},
+			"SimpleWithDoubleNested": {
+				r:     `{"data":{"type":"simple_doubles","attributes":{"double":{"nested":{"first":1,"second":2}}}}}`,
+				model: &SimpleDouble{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+					v, ok := s.Value.(*SimpleDouble)
+					if assert.True(t, ok) {
+						if assert.NotNil(t, v.DoubleNested) {
+							nested := v.DoubleNested.Nested
+
+							if assert.NotNil(t, nested) {
+								assert.Equal(t, 1, nested.ValueFirst)
+								assert.Equal(t, 2, nested.ValueSecond)
+							}
+						}
+					}
 				},
 			},
 		}
@@ -543,7 +803,109 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				scope, err := c.UnmarshalScopeOne(in, test.model, false)
 				test.f(t, scope, err)
 			})
+
 		}
+	})
+
+	t.Run("Slices", func(t *testing.T) {
+
+		type AttrArrStruct struct {
+			ID  int       `jsonapi:"type=primary"`
+			Arr []*string `jsonapi:"type=attr"`
+		}
+
+		type ArrayModel struct {
+			ID  int       `jsonapi:"type=primary"`
+			Arr [2]string `jsonapi:"type=attr"`
+		}
+
+		type SliceInt struct {
+			ID int   `jsonapi:"type=primary"`
+			Sl []int `jsonapi:"type=attr"`
+		}
+
+		type ArrInt struct {
+			ID  int    `jsonapi:"type=primary"`
+			Arr [2]int `jsonapi:"type=attr"`
+		}
+
+		type NestedStruct struct {
+			Name string
+		}
+
+		type SliceStruct struct {
+			ID int             `jsonapi:"type=primary"`
+			Sl []*NestedStruct `jsonapi:"type=attr"`
+		}
+
+		tests := map[string]maptest{
+			"StringPtr": {
+				model: &AttrArrStruct{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+				},
+				r: `{"data":{"type":"attr_arr_structs","id":"1","attributes":{"arr":["first",null,"second"]}}}`,
+			},
+			"StringArray": {
+				model: &ArrayModel{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+				},
+				r: `{"data":{"type":"array_models","attributes":{"arr":["first","second"]}}}`,
+			},
+			"StringArrayOutOfRange": {
+				model: &ArrayModel{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+				r: `{"data":{"type":"array_models","attributes":{"arr":["first","second","third"]}}}`,
+			},
+			"IntSlice": {
+				model: &SliceInt{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+				},
+				r: `{"data":{"type":"slice_ints","attributes":{"sl":[1,5]}}}`,
+			},
+			"IntSliceInvalidType": {
+				model: &SliceInt{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.Error(t, err)
+				},
+				r: `{"data":{"type":"slice_ints","attributes":{"sl":[1,5,"string"]}}}`,
+			},
+			"StructSlice": {
+				model: &SliceStruct{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+				},
+				r: `{"data":{"type":"slice_structs","attributes":{"sl":[{"name":"first"}]}}}`,
+			},
+			"IntArray": {
+				model: &ArrInt{},
+				f: func(t *testing.T, s *Scope, err error) {
+					assert.NoError(t, err)
+				},
+				r: `{"data":{"type":"arr_ints","attributes":{"arr":[1,2]}}}`,
+			},
+		}
+
+		for name, test := range tests {
+			t.Run(name, func(t *testing.T) {
+				clearMap()
+				in := strings.NewReader(test.r)
+				var err error
+
+				require.NotPanics(t, func() { err = c.PrecomputeModels(test.model) })
+				require.NoError(t, err)
+
+				var scope *Scope
+				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
+
+				test.f(t, scope, err)
+			})
+		}
+
 	})
 
 }

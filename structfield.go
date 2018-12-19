@@ -33,6 +33,8 @@ const (
 
 	// FilterKey is the field that is used only for special case filtering
 	FilterKey
+
+	FTNested
 )
 
 func (f FieldType) String() string {
@@ -45,6 +47,12 @@ func (f FieldType) String() string {
 		return "ClientID"
 	case RelationshipSingle, RelationshipMultiple:
 		return "Relationship"
+	case ForeignKey:
+		return "ForeignKey"
+	case FilterKey:
+		return "FilterKey"
+	case FTNested:
+		return "Nested"
 	}
 
 	return "Unknown"
@@ -57,14 +65,22 @@ const (
 	fOmitempty fieldFlag = 1 << (iota - 1)
 	fIso8601
 	fI18n
-	fTime
-	fPtrTime
 	fNoFilter
 	fLanguage
 	fHidden
 	fSortable
 	fClientID
+
+	// field type
+	fTime
 	fMap
+	fPtr
+	fArray
+	fSlice
+	fBasePtr
+
+	fNestedStruct
+	fNestedField
 )
 
 // StructField represents a field structure with its json api parameters
@@ -73,16 +89,12 @@ type StructField struct {
 	// model is the model struct that this field is part of.
 	mStruct *ModelStruct
 
-	// FieldName
-	fieldName string
-
 	// JSONAPIName is jsonapi field name - representation for json
 	jsonAPIName string
 
 	// fieldType
 	fieldType FieldType
 
-	// Given Field
 	refStruct reflect.StructField
 
 	// relatedModelType is a model type for the relationship
@@ -94,9 +106,10 @@ type StructField struct {
 
 	relationship *Relationship
 
-	fieldFlags fieldFlag
+	// nested is the NestedStruct definition
+	nested *NestedStruct
 
-	// omitempty, iso8601, isTime, i18n, isPtrTime, noFilter, isLanguage bool
+	fieldFlags fieldFlag
 }
 
 func (s *StructField) IsZeroValue(fieldValue interface{}) bool {
@@ -110,7 +123,7 @@ func (s *StructField) GetFieldIndex() int {
 
 // GetFieldName - gets the field name for given model
 func (s *StructField) GetFieldName() string {
-	return s.fieldName
+	return s.fieldName()
 }
 
 // Name returns the StructFields Golang Name
@@ -185,6 +198,18 @@ func (s *StructField) IsPrimary() bool {
 
 func (s *StructField) isRelationship() bool {
 	return s.fieldType == RelationshipMultiple || s.fieldType == RelationshipSingle
+}
+
+// baseFieldType is the field's base dereferenced type
+func (s *StructField) baseFieldType() reflect.Type {
+	var elem reflect.Type = s.refStruct.Type
+
+	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
+		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
+
+		elem = elem.Elem()
+	}
+	return elem
 }
 
 func (s *StructField) canBeSorted() bool {
@@ -296,6 +321,10 @@ func (s *StructField) allowClientID() bool {
 	return s.fieldFlags&fClientID != 0
 }
 
+func (s *StructField) fieldName() string {
+	return s.refStruct.Name
+}
+
 func (s *StructField) isOmitEmpty() bool {
 	return s.fieldFlags&fOmitempty != 0
 }
@@ -309,7 +338,7 @@ func (s *StructField) isTime() bool {
 }
 
 func (s *StructField) isPtrTime() bool {
-	return s.fieldFlags&fPtrTime != 0
+	return (s.fieldFlags&fTime != 0) && (s.fieldFlags&fPtr != 0)
 }
 
 func (s *StructField) isI18n() bool {
@@ -334,4 +363,33 @@ func (s *StructField) isSortable() bool {
 
 func (s *StructField) isMap() bool {
 	return s.fieldFlags&fMap != 0
+}
+
+func (s *StructField) isSlice() bool {
+	return s.fieldFlags&fSlice != 0
+}
+
+func (s *StructField) isArray() bool {
+	return s.fieldFlags&fArray != 0
+}
+
+func (s *StructField) isPtr() bool {
+	return s.fieldFlags&fPtr != 0
+}
+
+func (s *StructField) isBasePtr() bool {
+	return s.fieldFlags&fBasePtr != 0
+}
+
+func (s *StructField) isNestedStruct() bool {
+	return s.nested != nil
+}
+
+// isNested means that the struct field is not defined within the ModelStruct
+func (s *StructField) isNestedField() bool {
+	return s.fieldFlags&fNestedField != 0
+}
+
+func (s *StructField) self() *StructField {
+	return s
 }

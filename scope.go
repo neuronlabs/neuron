@@ -127,7 +127,7 @@ func (s *Scope) AddSelectedFields(fields ...string) error {
 		var found bool
 	inner:
 		for _, structField := range s.Struct.fields {
-			if addField == structField.jsonAPIName || addField == structField.fieldName {
+			if addField == structField.jsonAPIName || addField == structField.fieldName() {
 				s.SelectedFields = append(s.SelectedFields, structField)
 				found = true
 				break inner
@@ -321,7 +321,7 @@ func (s *Scope) SetFields(fields ...interface{}) error {
 		case string:
 
 			for _, sField := range s.Struct.fields {
-				if sField.jsonAPIName == f || sField.fieldName == f {
+				if sField.jsonAPIName == f || sField.fieldName() == f {
 					fieldset[sField.jsonAPIName] = sField
 					found = true
 					break
@@ -802,7 +802,7 @@ func (s *Scope) buildFieldset(fields ...string) (errs []*ErrorObject) {
 
 	prim := s.Struct.primary
 	s.Fieldset = map[string]*StructField{
-		prim.fieldName: prim,
+		prim.fieldName(): prim,
 	}
 
 	for _, field := range fields {

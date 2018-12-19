@@ -375,333 +375,11 @@ func (c *Controller) unmarshalNode(
 			}
 
 			fieldValue := modelValue.FieldByIndex(modelAttr.refStruct.Index)
-			fieldType := modelAttr.refStruct
 
-			// v is the incoming value
-			v := reflect.ValueOf(attrValue)
-
-			// time
-			if modelAttr.isTime() || modelAttr.isPtrTime() {
-				if attrValue == nil {
-					continue
-				}
-				if modelAttr.isIso8601() {
-					var tm string
-					if v.Kind() == reflect.String {
-						tm = v.Interface().(string)
-					} else {
-						err = IErrInvalidISO8601
-						return
-					}
-					var t time.Time
-					t, err = time.Parse(iso8601TimeFormat, tm)
-					if err != nil {
-						err = IErrInvalidISO8601
-						return
-					}
-
-					if modelAttr.isPtrTime() {
-						fieldValue.Set(reflect.ValueOf(&t))
-					} else {
-						fieldValue.Set(reflect.ValueOf(t))
-					}
-				} else {
-					var at int64
-
-					if v.Kind() == reflect.Float64 {
-						at = int64(v.Interface().(float64))
-					} else if v.Kind() == reflect.Int {
-						at = v.Int()
-					} else {
-						err = IErrInvalidTime
-						return
-					}
-
-					t := time.Unix(at, 0)
-
-					if modelAttr.isPtrTime() {
-						fieldValue.Set(reflect.ValueOf(&t))
-					} else {
-						fieldValue.Set(reflect.ValueOf(t))
-					}
-				}
-				continue
-			}
-
-			if fieldValue.Type() == reflect.TypeOf([]string{}) {
-				if attrValue == nil {
-					continue
-				}
-				values := make([]string, v.Len())
-				for i := 0; i < v.Len(); i++ {
-					elem := v.Index(i)
-					if elem.IsNil() {
-						errObj := ErrInvalidJSONFieldValue.Copy()
-						errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field doesn't allow 'null' value", attrName)
-						err = errObj
-						return
-					}
-					strVal, ok := elem.Interface().(string)
-					if !ok {
-						errObj := ErrInvalidJSONFieldValue.Copy()
-						errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field allow only string values. Field type: %v. Value: %v", attrName, elem.Kind(), elem.Interface())
-						err = errObj
-						return
-					}
-					values[i] = strVal
-				}
-
-				fieldValue.Set(reflect.ValueOf(values))
-
-				continue
-			}
-
-			if v.Kind() == reflect.Float64 {
-				floatValue := v.Interface().(float64)
-
-				// The field may or may not be a pointer to a numeric; the kind var
-				// will not contain a pointer type
-				var kind reflect.Kind
-				if fieldValue.Kind() == reflect.Ptr {
-					kind = fieldType.Type.Elem().Kind()
-				} else {
-					kind = fieldType.Type.Kind()
-				}
-
-				var numericValue reflect.Value
-
-				switch kind {
-				case reflect.Int:
-					n := int(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int8:
-					n := int8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int16:
-					n := int16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int32:
-					n := int32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int64:
-					n := int64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint:
-					n := uint(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint8:
-					n := uint8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint16:
-					n := uint16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint32:
-					n := uint32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint64:
-					n := uint64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float32:
-					n := float32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float64:
-					n := floatValue
-					numericValue = reflect.ValueOf(&n)
-				default:
-					return IErrUnknownFieldNumberType
-				}
-
-				assign(fieldValue, numericValue)
-				continue
-			}
-
-			// Field was a Pointer type
-			if fieldValue.Kind() == reflect.Ptr {
-				if attrValue == nil {
-					continue
-				}
-				var concreteVal reflect.Value
-
-				switch cVal := attrValue.(type) {
-				case string:
-					concreteVal = reflect.ValueOf(&cVal)
-				case bool:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex64:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex128:
-					concreteVal = reflect.ValueOf(&cVal)
-				case uintptr:
-					concreteVal = reflect.ValueOf(&cVal)
-				default:
-					err = IErrUnsupportedPtrType
-					return
-				}
-
-				if fieldValue.Type() != concreteVal.Type() {
-					err = IErrUnsupportedPtrType
-					return
-				}
-
-				fieldValue.Set(concreteVal)
-				continue
-			}
-
-			// Check if the value is not a map
-			if fieldValue.Kind() == reflect.Map {
-				if v.Kind() != reflect.Map {
-					if attrValue == nil {
-						c.log().Debug("Nil attr value")
-						continue
-					}
-
-					errObj := ErrInvalidJSONFieldValue.Copy()
-					errObj.Detail = fmt.Sprintf("Invalid field value for the '%s' field. The field doesn't allow 'null' value", attrName)
-					err = errObj
-					return
-				}
-
-				// allow only k,v with k as string
-
-				if v.Type().Key().Kind() != reflect.String {
-					c.log().Debug("Unmarshal map field:'%s'. Incoming field key type: '%s'", v.Type().String())
-					errObj := ErrInvalidJSONFieldValue.Copy()
-					errObj.Detail = fmt.Sprintf("Attribute Field: '%s' in the collection: '%s' is a hashmap type with keys of 'string' type.", attrName, mStruct.collectionType)
-					err = errObj
-					return
-				}
-
-				mapValueType := fieldValue.Type().Elem()
-				var isPtrValue bool
-
-				if mapValueType.Kind() == reflect.Ptr {
-					isPtrValue = true
-					mapValueType = mapValueType.Elem()
-				}
-
-				keys := v.MapKeys()
-				if len(keys) > 0 && fieldValue.IsNil() {
-					fieldValue.Set(reflect.MakeMap(fieldValue.Type()))
-				}
-
-				setMapValues := func(key, mpIndex reflect.Value) error {
-					// Check if the value is of pointer type
-
-					mpIndexValue := mpIndex.Interface()
-					if isPtrValue {
-						// check if mpIndex is not nil
-						if mpIndexValue == nil {
-							fieldValue.SetMapIndex(key, reflect.Zero(fieldValue.Type().Elem()))
-							return nil
-						}
-					}
-
-					if mapValueType.Kind() == reflect.String {
-						// check if the value is string
-						mpString, ok := mpIndexValue.(string)
-						if !ok {
-							err := ErrInvalidJSONFieldValue.Copy()
-							err.Detail = fmt.Sprintf("Attribute field: '%s' in the collection: '%s' is a hashmap with values of type: 'string'. Provided value is not valid: '%v'", attrName, mpIndex, mpIndex.Interface())
-							return err
-						}
-
-						// if the map value type is of pointer type get the address value
-						if isPtrValue {
-							fieldValue.SetMapIndex(key, reflect.ValueOf(&mpString))
-						} else {
-							fieldValue.SetMapIndex(key, reflect.ValueOf(mpString))
-						}
-						return nil
-					}
-
-					c.log().Debugf("mpIndex.Kind(): '%v' mpIndex.Type().Kind(): '%v'", mpIndex.Type(), mpIndex.Type().Kind())
-
-					// the map attribute allow only strings and numeric values as a value
-					// json.Decoder sets the json.Number as float64
-					// the strings are already checked
-
-					floatValue, ok := mpIndexValue.(float64)
-
-					if !ok {
-						c.log().Debugf("mpIndex Kind: %v", mpIndex.Kind())
-						errObj := ErrInvalidJSONFieldValue.Copy()
-						errObj.Detail = fmt.Sprintf("Attribute field: '%s' in the collection: '%s' is a hashmap with values of type: %s. Provided value is not valid: '%v'", attrName, mStruct.collectionType, mapValueType.Kind().String(), mpIndex.Interface())
-						return errObj
-					}
-
-					var numericValue reflect.Value
-					switch mapValueType.Kind() {
-					case reflect.Int:
-						n := int(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Int8:
-						n := int8(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Int16:
-						n := int16(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Int32:
-						n := int32(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Int64:
-						n := int64(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Uint:
-						n := uint(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Uint8:
-						n := uint8(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Uint16:
-						n := uint16(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Uint32:
-						n := uint32(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Uint64:
-						n := uint64(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Float32:
-						n := float32(floatValue)
-						numericValue = reflect.ValueOf(&n)
-					case reflect.Float64:
-						n := floatValue
-						numericValue = reflect.ValueOf(&n)
-					default:
-						return IErrUnknownFieldNumberType
-					}
-
-					if isPtrValue {
-						fieldValue.SetMapIndex(key, numericValue)
-					} else {
-						fieldValue.SetMapIndex(key, numericValue.Elem())
-					}
-
-					return nil
-				}
-
-				for _, k := range keys {
-					err = setMapValues(k, v.MapIndex(k))
-					if err != nil {
-						return
-					}
-				}
-				continue
-			}
-
-			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != v.Kind() {
-				unmErr := new(json.UnmarshalFieldError)
-				unmErr.Field = fieldType
-				unmErr.Type = fieldValue.Type()
-				unmErr.Key = attrName
-				if c != nil {
-					c.log().Debugf("Error in unmarshal field: %v\n", unmErr)
-				}
-				err = unmErr
+			err = c.unmarshalAttrFieldValue(modelAttr, fieldValue, attrValue)
+			if err != nil {
 				return
 			}
-			fieldValue.Set(reflect.ValueOf(attrValue))
 		}
 
 	}
@@ -806,6 +484,559 @@ func (c *Controller) unmarshalNode(
 	}
 	return
 }
+
+func (c *Controller) unmarshalAttrFieldValue(
+	modelAttr *StructField,
+	fieldValue reflect.Value,
+	attrValue interface{},
+) (err error) {
+
+	v := reflect.ValueOf(attrValue)
+	fieldType := modelAttr.refStruct
+
+	baseType := modelAttr.baseFieldType()
+
+	if modelAttr.isSlice() || modelAttr.isArray() {
+		var sliceValue reflect.Value
+		sliceValue, err = c.unmarshalSliceValue(modelAttr, v, fieldType.Type, baseType)
+		if err != nil {
+			return
+		}
+		fieldValue.Set(sliceValue)
+	} else if modelAttr.isMap() {
+		var mapValue reflect.Value
+		mapValue, err = c.unmarshalMapValue(modelAttr, v, fieldType.Type, baseType)
+		if err != nil {
+			return
+		}
+		fieldValue.Set(mapValue)
+	} else {
+		var resultValue reflect.Value
+		resultValue, err = c.unmarshalSingleFieldValue(modelAttr, v, baseType)
+		if err != nil {
+			return
+		}
+
+		fieldValue.Set(resultValue)
+	}
+
+	return
+}
+
+func (c *Controller) unmarshalMapValue(
+	modelAttr *StructField,
+	v reflect.Value,
+	currentType reflect.Type,
+	baseType reflect.Type,
+) (mapValue reflect.Value, err error) {
+	mpType := currentType
+
+	var isPtr bool
+	if mpType.Kind() == reflect.Ptr {
+		isPtr = true
+		mpType = mpType.Elem()
+	}
+
+	if mpType.Kind() != reflect.Map {
+		err = errors.Errorf("Invalid currentType: '%s'. The field should be a Map. StructField: '%s'", currentType.String(), modelAttr.Name())
+		return
+	}
+
+	if isPtr {
+		if v.IsNil() {
+			mapValue = v
+			return
+		}
+	}
+
+	if v.Kind() != reflect.Map {
+		errObj := ErrInvalidJSONFieldValue.Copy()
+		errObj.Detail = fmt.Sprintf("Field: '%s' should contain a value of map type.", modelAttr.ApiName())
+		err = errObj
+		return
+	}
+
+	mapValue = reflect.New(currentType).Elem()
+	mapValue.Set(reflect.MakeMap(currentType))
+
+	// Get the map values type
+	nestedType := mpType.Elem()
+
+	if nestedType.Kind() == reflect.Ptr {
+		nestedType = nestedType.Elem()
+	}
+
+	for _, key := range v.MapKeys() {
+		value := v.MapIndex(key)
+
+		if value.Kind() == reflect.Interface && value.IsValid() {
+			value = value.Elem()
+		}
+
+		c.log().Debugf("Value: %v. Kind: %v", value, value.Kind())
+
+		var nestedValue reflect.Value
+		switch nestedType.Kind() {
+		case reflect.Slice, reflect.Array:
+			c.log().Debugf("Nested Slice within map field: %v", modelAttr.Name())
+			nestedValue, err = c.unmarshalSliceValue(modelAttr, value, mpType.Elem(), baseType)
+			if err != nil {
+				return
+			}
+		default:
+			c.log().Debugf("Map ModelAttr: '%s' has basePtr: '%v'", modelAttr.Name(), modelAttr.isBasePtr())
+			nestedValue, err = c.unmarshalSingleFieldValue(modelAttr, value, baseType)
+			if err != nil {
+				return
+			}
+
+			c.log().Debugf("Map ModelAttr: '%s' nestedValue: '%v'", nestedValue.Type().String())
+
+		}
+		mapValue.SetMapIndex(key, nestedValue)
+	}
+	return
+}
+
+func (c *Controller) unmarshalSliceValue(
+	modelAttr *StructField, // modelAttr is the attribute StructField
+	v reflect.Value, // v is the current field value
+	currentType reflect.Type,
+	baseType reflect.Type, // baseType is the reflect.Type that is the base of the slice
+) (fieldValue reflect.Value, err error) {
+
+	var (
+		isPtr   bool
+		capSize int
+	)
+
+	slType := currentType
+
+	if slType.Kind() == reflect.Ptr {
+		isPtr = true
+		slType = slType.Elem()
+	}
+
+	if slType.Kind() != reflect.Array && slType.Kind() != reflect.Slice {
+		err = errors.Errorf("Invalid currenType provided into 'unmarshalSliceValue' %v", slType.String())
+		c.log().Errorf("Attribute: %v, Err: %v", modelAttr.Name(), err)
+		return
+	}
+
+	if slType.Kind() == reflect.Array {
+		capSize = currentType.Len()
+	} else {
+		capSize = -1
+	}
+
+	if v.Kind() == reflect.Interface && v.IsValid() {
+		v = v.Elem()
+	}
+
+	// check what is the current value kind
+	// v Kind can't be an array -> the json unmarshaller won't unmarshal it into an array
+	if v.Kind() != reflect.Slice {
+		c.log().Debugf("Value within the slice is not of slice type. %v", v.Kind().String())
+		if v.Kind() == reflect.Interface {
+			v = v.Elem()
+			c.log().Debugf("Interface value elemed: %v, type: %v", v, v.Type())
+		}
+		errObj := ErrInvalidJSONFieldValue.Copy()
+		errObj.Detail = fmt.Sprintf("Field: '%s' the slice value is not a slice.", modelAttr.ApiName())
+		err = errObj
+		return
+	}
+
+	// check the lengths - it does matter if the provided type is an array
+	if capSize != -1 {
+		if v.Len() > capSize {
+			errObj := ErrInvalidJSONFieldValue.Copy()
+			errObj.Detail = fmt.Sprintf("Field: '%s' the slice value is too long. The maximum capacity is: '%d'", modelAttr.ApiName(), capSize)
+			err = errObj
+			return
+		}
+	}
+
+	// Create the field value
+	if currentType.Kind() == reflect.Ptr {
+		fieldValue = reflect.New(currentType.Elem()).Elem()
+	} else {
+		fieldValue = reflect.New(currentType).Elem()
+	}
+
+	// check if current type contains other slices
+	slType = slType.Elem()
+
+	var hasNestedSlice bool
+	var nestedType reflect.Type = slType
+	if slType.Kind() == reflect.Ptr {
+		nestedType = nestedType.Elem()
+	}
+
+	if nestedType.Kind() == reflect.Slice || nestedType.Kind() == reflect.Array {
+		hasNestedSlice = true
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		vElem := v.Index(i)
+
+		var nestedValue reflect.Value
+
+		// if the value is a nestedSlice unmarshal it into the slice
+		if hasNestedSlice {
+			nestedValue, err = c.unmarshalSliceValue(modelAttr, vElem, slType, baseType)
+			if err != nil {
+				c.log().Debug("Nested Slice Value failed: %v", err)
+				return
+			}
+
+			// otherwise this must be a single value
+		} else {
+			nestedValue, err = c.unmarshalSingleFieldValue(modelAttr, vElem, baseType)
+			if err != nil {
+				c.log().Debugf("NestedSlice -> unmarshalSingleFieldValue failed. %v. Velem: %v", err)
+				return
+			}
+		}
+
+		// if the value was an Array set it's value at index
+		if fieldValue.Type().Kind() == reflect.Array {
+			fieldValue.Index(i).Set(nestedValue)
+
+			// otherwise the value is a slice append new value
+		} else {
+			fieldValue.Set(reflect.Append(fieldValue, nestedValue))
+		}
+	}
+
+	// if the value was a Ptr type it's address has to be returned
+	if isPtr {
+		fieldValue = fieldValue.Addr()
+	}
+
+	return
+}
+
+// unmarshalSingleFieldValue gets the
+func (c *Controller) unmarshalSingleFieldValue(
+	modelAttr *StructField,
+	v reflect.Value, // v is the incoming value to unmarshal
+	baseType reflect.Type, // fieldType is the base Type of the model field
+) (reflect.Value, error) {
+
+	// check if the model attribute field is based with pointer
+	if modelAttr.isBasePtr() {
+		c.log().Debugf("IsBasePtr: %v", modelAttr.Name())
+		if !v.IsValid() {
+			return reflect.Zero(reflect.PtrTo(baseType)), nil
+		}
+		if v.Interface() == nil {
+			return reflect.Zero(reflect.PtrTo(baseType)), nil
+		}
+		c.log().Debugf("Value: '%v' is valid. ", v)
+	} else {
+		c.log().Debugf("Is not basePtr: %v", modelAttr.Name())
+		if !v.IsValid() {
+			return reflect.Value{}, ErrInvalidJSONFieldValue.Copy().WithDetail(fmt.Sprintf("Field: '%s'", modelAttr.ApiName()))
+		}
+		c.log().Debugf("Is Valid: %v", v)
+
+	}
+
+	if v.Kind() == reflect.Interface && v.IsValid() {
+		c.log().Debugf("Value is interface kind. %v", v)
+		v = v.Elem()
+
+		// if the value was an uinitialized interface{} then v.Elem
+		// would be invalid.
+		if !v.IsValid() {
+			return reflect.Value{}, ErrInvalidJSONFieldValue.Copy().WithDetail(fmt.Sprintf("Field: %v'", modelAttr.ApiName()))
+		}
+
+	}
+
+	if modelAttr.isTime() {
+		if modelAttr.isIso8601() {
+			var tm string
+
+			// on ISO8601 the incoming value must be a string
+			if v.Kind() == reflect.String {
+				tm = v.Interface().(string)
+			} else {
+				return reflect.Value{}, IErrInvalidISO8601
+			}
+
+			// parse the string time with iso formatting
+			t, err := time.Parse(iso8601TimeFormat, tm)
+			if err != nil {
+				return reflect.Value{}, IErrInvalidISO8601
+			}
+
+			if modelAttr.isBasePtr() {
+				return reflect.ValueOf(&t), nil
+			} else {
+				return reflect.ValueOf(t), nil
+			}
+		} else {
+			// if the time is not iso8601 it must be an integer
+			var at int64
+
+			// the integer may be a float64 or an int
+			if v.Kind() == reflect.Float64 {
+				at = int64(v.Interface().(float64))
+			} else if v.Kind() == reflect.Int || v.Kind() == reflect.Int64 {
+				at = v.Int()
+			} else {
+				c.log().Debugf("Invalid time format: %v", v.Kind().String())
+				return reflect.Value{}, IErrInvalidTime
+			}
+
+			t := time.Unix(at, 0)
+
+			if modelAttr.isBasePtr() {
+				return reflect.ValueOf(&t), nil
+			} else {
+				return reflect.ValueOf(t), nil
+			}
+		}
+	} else if modelAttr.isNestedStruct() {
+		value := v.Interface()
+		return modelAttr.nested.UnmarshalValue(c, value)
+		// if the incoming value v is of kind float64
+	} else if v.Kind() == reflect.Float64 {
+		// get the float value from the incoming 'v'
+		floatValue := v.Interface().(float64)
+
+		// The field may or may not be a pointer to a numeric; the kind var
+		// will not contain a pointer type
+
+		var numericValue reflect.Value
+		switch baseType.Kind() {
+		case reflect.Int:
+			n := int(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int8:
+			n := int8(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int16:
+			n := int16(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int32:
+			n := int32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int64:
+			n := int64(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint:
+			n := uint(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint8:
+			n := uint8(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint16:
+			n := uint16(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint32:
+			n := uint32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint64:
+			n := uint64(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Float32:
+			n := float32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Float64:
+			n := floatValue
+			numericValue = reflect.ValueOf(&n)
+		default:
+			c.log().Debugf("Unknown field number type: '%v'", baseType.String())
+			return reflect.Value{}, IErrUnknownFieldNumberType
+		}
+
+		// if the field was ptr
+		if modelAttr.isBasePtr() {
+			return numericValue, nil
+		}
+
+		return numericValue.Elem(), nil
+
+		// somehow map values are unmarshaled as int, not as float64, even though UseNumber is not
+		//set
+	} else if v.Kind() == reflect.Int {
+		// get the float value from the incoming 'v'
+		intValue := v.Interface().(int)
+
+		// The field may or may not be a pointer to a numeric; the kind var
+		// will not contain a pointer type
+
+		var numericValue reflect.Value
+		switch baseType.Kind() {
+		case reflect.Int:
+			n := int(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int8:
+			n := int8(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int16:
+			n := int16(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int32:
+			n := int32(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int64:
+			n := int64(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if intValue < 0 {
+				errObj := ErrInvalidJSONFieldValue.Copy()
+				errObj.Detail = fmt.Sprintf("Field: '%s'. Provided value: '%d' is not an unsigned integer.", modelAttr.ApiName(), intValue)
+				return reflect.Value{}, errObj
+			}
+
+			switch baseType.Kind() {
+			case reflect.Uint:
+				n := uint(intValue)
+				numericValue = reflect.ValueOf(&n)
+			case reflect.Uint8:
+				n := uint8(intValue)
+				numericValue = reflect.ValueOf(&n)
+			case reflect.Uint16:
+				n := uint16(intValue)
+				numericValue = reflect.ValueOf(&n)
+			case reflect.Uint32:
+				n := uint32(intValue)
+				numericValue = reflect.ValueOf(&n)
+			case reflect.Uint64:
+				n := uint64(intValue)
+				numericValue = reflect.ValueOf(&n)
+			}
+
+		case reflect.Float32:
+			n := float32(intValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Float64:
+			n := float64(intValue)
+			numericValue = reflect.ValueOf(&n)
+		default:
+			c.log().Debugf("Unknown field number type: '%v'", baseType.String())
+			return reflect.Value{}, IErrUnknownFieldNumberType
+		}
+
+		// if the field was ptr
+		if modelAttr.isBasePtr() {
+			return numericValue, nil
+		}
+
+		return numericValue.Elem(), nil
+	}
+
+	var concreteVal reflect.Value
+
+	value := v.Interface()
+	valueNotAllowed := func() error {
+		errObj := ErrInvalidJSONFieldValue.Copy()
+		errObj.Detail = fmt.Sprintf("The value: '%v' for the field: '%s' is not allowed", value, modelAttr.ApiName())
+		return errObj
+	}
+	switch tv := value.(type) {
+	case string:
+		if baseType.Kind() == reflect.String {
+			ptrVal := &tv
+			concreteVal = reflect.ValueOf(ptrVal).Elem()
+		} else {
+			return reflect.Value{}, valueNotAllowed()
+		}
+	case int:
+		// switch the base type if it fits
+		switch baseType.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetUint(uint64(tv))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetInt(int64(tv))
+		case reflect.Float32, reflect.Float64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetFloat(float64(tv))
+		default:
+			return reflect.Value{}, valueNotAllowed()
+		}
+	case int64:
+		// switch the base type if it fits
+		switch baseType.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetUint(uint64(tv))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetInt(int64(tv))
+		case reflect.Float32, reflect.Float64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetFloat(float64(tv))
+		default:
+			return reflect.Value{}, valueNotAllowed()
+		}
+	case float64:
+		// switch the base type if it fits
+		switch baseType.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetUint(uint64(tv))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetInt(int64(tv))
+		case reflect.Float32, reflect.Float64:
+			concreteVal = reflect.New(baseType).Elem()
+			concreteVal.SetFloat(float64(tv))
+		default:
+			return reflect.Value{}, valueNotAllowed()
+		}
+
+	case bool:
+		if baseType.Kind() == reflect.Bool {
+			ptrVal := &tv
+			concreteVal = reflect.ValueOf(ptrVal).Elem()
+		} else {
+			return reflect.Value{}, valueNotAllowed()
+		}
+	case complex128:
+		if baseType.Kind() == reflect.Complex128 {
+			ptrVal := &tv
+			concreteVal = reflect.ValueOf(ptrVal).Elem()
+		} else {
+			return reflect.Value{}, valueNotAllowed()
+		}
+
+	case complex64:
+		if baseType.Kind() == reflect.Complex64 {
+			ptrVal := &tv
+			concreteVal = reflect.ValueOf(ptrVal).Elem()
+		} else {
+			return reflect.Value{}, valueNotAllowed()
+		}
+	default:
+		// As a final catch-all, ensure types line up to avoid a runtime panic.
+		c.log().Debugf("Invalid Value: %v with Kind: %v, should be: '%v' for field %v", v, v.Kind(), baseType.String(), modelAttr.Name())
+		unmErr := new(json.UnmarshalFieldError)
+		unmErr.Field = modelAttr.refStruct
+		unmErr.Type = baseType
+		unmErr.Key = modelAttr.ApiName()
+		if c != nil {
+			c.log().Debugf("Error in unmarshal field: %v\n. Value Type: %v. Value: %v", unmErr, v.Type().String(), value)
+		}
+		return reflect.Value{}, unmErr
+	}
+
+	c.log().Debugf("AttrField: '%s' equal kind: %v", modelAttr.ApiName(), baseType.String())
+
+	if modelAttr.isBasePtr() {
+		return concreteVal.Addr(), nil
+	}
+
+	return concreteVal, nil
+}
+
+var timeType reflect.Type = reflect.TypeOf(time.Time{})
 
 func unmarshalIDField(fieldValue reflect.Value, dataValue string) error {
 	v := reflect.ValueOf(dataValue)

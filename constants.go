@@ -5,19 +5,20 @@ const (
 	annotationJSONAPI = "jsonapi"
 
 	// type tag
-	annotationPrimary   = "primary"
-	annotationID        = "id"
-	annotationClientID  = "client-id"
-	annotationLanguage  = "langtag"
-	annotationAttribute = "attr"
-	annotationRelation  = "relation"
-	annotationFilterKey = "filterkey"
+	annotationPrimary     = "primary"
+	annotationID          = "id"
+	annotationClientID    = "client-id"
+	annotationLanguage    = "langtag"
+	annotationAttribute   = "attr"
+	annotationRelation    = "relation"
+	annotationFilterKey   = "filterkey"
+	annotationForeignKey  = "foreign"
+	annotationNestedField = "nested"
 
 	// relation tag
 	annotationManyToMany     = "many2many"
 	annotationRelationNoSync = "nosync"
 	annotaitonRelationSync   = "sync"
-	annotationForeignKey     = "foreign"
 
 	annotationRelationRestrict = "restrict"
 	annotationRelationNoAction = "no-action"
@@ -155,4 +156,5 @@ const (
 	operatorContains     = "$contains"
 	operatorStartsWith   = "$startswith"
 	operatorEndsWith     = "$endswith"
+	operatorStDWithin    = "$st_dwithin"
 )

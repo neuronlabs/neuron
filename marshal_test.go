@@ -121,6 +121,20 @@ func TestMarshal(t *testing.T) {
 				}
 			})
 
+			t.Run("SliceInt", func(t *testing.T) {
+				type MpSliceInt struct {
+					ID  int              `jsonapi:"type=primary"`
+					Map map[string][]int `jsonapi:"type=attr"`
+				}
+				prepare(t, &MpSliceInt{})
+
+				value := &MpSliceInt{ID: 5, Map: map[string][]int{"key": {1, 5}}}
+				if assert.NoError(t, c.Marshal(&buf, value)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"map":{"key":[1,5]}`)
+				}
+			})
+
 		},
 		"many": func(t *testing.T) {
 			prepareBlogs(t)
@@ -135,6 +149,53 @@ func TestMarshal(t *testing.T) {
 				assert.Contains(t, marshaled, `"id":"2"`)
 				t.Log(marshaled)
 			}
+		},
+		"Nested": func(t *testing.T) {
+
+			t.Run("Simple", func(t *testing.T) {
+				type NestedSub struct {
+					First int
+				}
+
+				type Simple struct {
+					ID     int        `jsonapi:"type=primary"`
+					Nested *NestedSub `jsonapi:"type=attr"`
+				}
+
+				prepare(t, &Simple{})
+
+				err := c.Marshal(&buf, &Simple{ID: 2, Nested: &NestedSub{First: 1}})
+				if assert.NoError(t, err) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"nested":{"first":1}`)
+				}
+			})
+
+			t.Run("DoubleNested", func(t *testing.T) {
+
+				type NestedSub struct {
+					First int
+				}
+
+				type DoubleNested struct {
+					Nested *NestedSub
+				}
+
+				type Simple struct {
+					ID     int           `jsonapi:"type=primary"`
+					Double *DoubleNested `jsonapi:"type=attr"`
+				}
+
+				prepare(t, &Simple{})
+
+				err := c.Marshal(&buf, &Simple{ID: 2, Double: &DoubleNested{Nested: &NestedSub{First: 1}}})
+				if assert.NoError(t, err) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, `"nested":{"first":1}`)
+					assert.Contains(t, marshaled, `"double":{"nested"`)
+				}
+			})
+
 		},
 	}
 
