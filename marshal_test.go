@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"bytes"
+	"github.com/kucjac/uni-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http/httptest"
@@ -17,6 +18,11 @@ func TestMarshal(t *testing.T) {
 	prepare := func(t *testing.T, models ...interface{}) {
 		t.Helper()
 		clearMap()
+		if *debugFlag == true {
+			basic := c.logger.(*unilogger.BasicLogger)
+			basic.SetLevel(unilogger.DEBUG)
+			c.logger = basic
+		}
 		buf.Reset()
 		require.NoError(t, c.PrecomputeModels(models...))
 	}
@@ -36,6 +42,40 @@ func TestMarshal(t *testing.T) {
 				assert.Contains(t, marshaled, `"view_count":14`)
 				assert.Contains(t, marshaled, `"id":"5"`)
 			}
+		},
+		"Time": func(t *testing.T) {
+			type ModelPtrTime struct {
+				ID   int        `jsonapi:"type=primary"`
+				Time *time.Time `jsonapi:"type=attr"`
+			}
+
+			type ModelTime struct {
+				ID   int       `jsonapi:"type=primary"`
+				Time time.Time `jsonapi:"type=attr"`
+			}
+
+			t.Run("NoPtr", func(t *testing.T) {
+				prepare(t, &ModelTime{})
+				now := time.Now()
+				v := &ModelTime{ID: 5, Time: now}
+				if assert.NoError(t, c.Marshal(&buf, v)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, "time")
+					assert.Contains(t, marshaled, `"id":"5"`)
+				}
+			})
+
+			t.Run("Ptr", func(t *testing.T) {
+				prepare(t, &ModelPtrTime{})
+				now := time.Now()
+				v := &ModelPtrTime{ID: 5, Time: &now}
+				if assert.NoError(t, c.Marshal(&buf, v)) {
+					marshaled := buf.String()
+					assert.Contains(t, marshaled, "time")
+					assert.Contains(t, marshaled, `"id":"5"`)
+				}
+			})
+
 		},
 		"singleWithMap": func(t *testing.T) {
 			t.Run("PtrString", func(t *testing.T) {

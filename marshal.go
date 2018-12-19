@@ -250,27 +250,10 @@ func (c *Controller) visistNode(
 			}
 
 			if field.isTime() {
-				t := fieldValue.Interface().(time.Time)
+				if !field.isBasePtr() {
+					t := fieldValue.Interface().(time.Time)
 
-				if t.IsZero() {
-					continue
-				}
-
-				if field.isIso8601() {
-					node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
-				} else {
-					node.Attributes[field.jsonAPIName] = t.Unix()
-				}
-			} else if field.isPtrTime() {
-				if fieldValue.IsNil() {
-					if field.isOmitEmpty() {
-						continue
-					}
-					node.Attributes[field.jsonAPIName] = nil
-				} else {
-					t := fieldValue.Interface().(*time.Time)
-
-					if t.IsZero() && field.isOmitEmpty() {
+					if t.IsZero() {
 						continue
 					}
 
@@ -278,6 +261,26 @@ func (c *Controller) visistNode(
 						node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
 					} else {
 						node.Attributes[field.jsonAPIName] = t.Unix()
+					}
+
+				} else {
+					if fieldValue.IsNil() {
+						if field.isOmitEmpty() {
+							continue
+						}
+						node.Attributes[field.jsonAPIName] = nil
+					} else {
+						t := fieldValue.Interface().(*time.Time)
+
+						if t.IsZero() && field.isOmitEmpty() {
+							continue
+						}
+
+						if field.isIso8601() {
+							node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
+						} else {
+							node.Attributes[field.jsonAPIName] = t.Unix()
+						}
 					}
 				}
 			} else {
@@ -413,27 +416,11 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 			}
 
 			if field.isTime() {
-				t := fieldValue.Interface().(time.Time)
 
-				if t.IsZero() {
-					continue
-				}
+				if !field.isBasePtr() {
+					t := fieldValue.Interface().(time.Time)
 
-				if field.isIso8601() {
-					node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
-				} else {
-					node.Attributes[field.jsonAPIName] = t.Unix()
-				}
-			} else if field.isPtrTime() {
-				if fieldValue.IsNil() {
-					if field.isOmitEmpty() {
-						continue
-					}
-					node.Attributes[field.jsonAPIName] = nil
-				} else {
-					t := fieldValue.Interface().(*time.Time)
-
-					if t.IsZero() && field.isOmitEmpty() {
+					if t.IsZero() {
 						continue
 					}
 
@@ -441,6 +428,25 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 						node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
 					} else {
 						node.Attributes[field.jsonAPIName] = t.Unix()
+					}
+				} else {
+					if fieldValue.IsNil() {
+						if field.isOmitEmpty() {
+							continue
+						}
+						node.Attributes[field.jsonAPIName] = nil
+					} else {
+						t := fieldValue.Interface().(*time.Time)
+
+						if t.IsZero() && field.isOmitEmpty() {
+							continue
+						}
+
+						if field.isIso8601() {
+							node.Attributes[field.jsonAPIName] = t.UTC().Format(iso8601TimeFormat)
+						} else {
+							node.Attributes[field.jsonAPIName] = t.Unix()
+						}
 					}
 				}
 			} else {
