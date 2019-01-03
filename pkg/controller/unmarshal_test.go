@@ -12,8 +12,7 @@ import (
 )
 
 func TestUnmarshalScopeOne(t *testing.T) {
-
-	clearMap()
+	c := New
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	require.Nil(t, err)
 
@@ -60,7 +59,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, strconv.Itoa(http.StatusBadRequest), errObj.Status)
 				assert.Equal(t, ErrInvalidJSONDocument.Title, errObj.Title)
@@ -76,7 +75,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidResourceName.ID, errObj.ID)
 			}
@@ -91,7 +90,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONDocument.ID, errObj.ID)
 			}
@@ -107,7 +106,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -121,7 +120,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -135,7 +134,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -148,7 +147,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -161,7 +160,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -175,7 +174,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONFieldValue.ID, errObj.ID)
 			}
@@ -192,7 +191,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		scope, err := c.UnmarshalScopeOne(in, &Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
-			errObj, ok := err.(*ErrorObject)
+			errObj, ok := err.(*aerrors.ApiError)
 			if assert.True(t, ok) {
 				assert.Equal(t, ErrInvalidJSONDocument.ID, errObj.ID)
 			}
@@ -332,7 +331,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	type maptest struct {
 		model interface{}
 		r     string
-		f     func(t *testing.T, s *Scope, err error)
+		f     func(t *testing.T, s *query.Scope, err error)
 	}
 	t.Run("Map", func(t *testing.T) {
 		t.Helper()
@@ -395,7 +394,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpString{},
 				r: `{"data":{"type":"mp_strings","id":"1",
 			"attributes":{"map": {1:"some"}}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 			},
@@ -403,7 +402,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpString{},
 				r: `{"data":{"type":"mp_strings","id":"1",
 			"attributes":{"map": {"key":"value"}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpString)
 						require.True(t, ok)
@@ -417,7 +416,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpString{},
 				r: `{"data":{"type":"mp_strings","id":"1",
 			"attributes":{"map": {"key":{}}}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 			},
@@ -425,7 +424,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpString{},
 				r: `{"data":{"type":"mp_strings","id":"1",
 			"attributes":{"map": {"key":1.23}}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 			},
@@ -433,7 +432,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpString{},
 				r: `{"data":{"type":"mp_strings","id":"1",
 			"attributes":{"map": {"key":null}}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 			},
@@ -442,7 +441,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrString{},
 				r: `{"data":{"type":"mp_ptr_strings","id":"1",
 			"attributes":{"map": {"key":"value"}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrString)
 						require.True(t, ok)
@@ -459,7 +458,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrString{},
 				r: `{"data":{"type":"mp_ptr_strings","id":"1",
 			"attributes":{"map": {"key":null}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrString)
 						require.True(t, ok)
@@ -475,7 +474,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpInt{},
 				r: `{"data":{"type":"mp_ints","id":"1",
 			"attributes":{"map": {"key":1}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpInt)
 						require.True(t, ok)
@@ -491,7 +490,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrInt{},
 				r: `{"data":{"type":"mp_ptr_ints","id":"1",
 			"attributes":{"map": {"key":1}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrInt)
 						require.True(t, ok)
@@ -511,7 +510,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrInt{},
 				r: `{"data":{"type":"mp_ptr_ints","id":"1",
 			"attributes":{"map": {"key":null}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrInt)
 						require.True(t, ok)
@@ -528,7 +527,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpFloat{},
 				r: `{"data":{"type":"mp_floats","id":"1",
 			"attributes":{"map": {"key":1.2151}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpFloat)
 						require.True(t, ok)
@@ -545,7 +544,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrFloat{},
 				r: `{"data":{"type":"mp_ptr_floats","id":"1",
 			"attributes":{"map": {"key":1.2151}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrFloat)
 						require.True(t, ok)
@@ -564,7 +563,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrFloat{},
 				r: `{"data":{"type":"mp_ptr_floats","id":"1",
 			"attributes":{"map": {"key":null}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					if assert.NoError(t, err) {
 						model, ok := s.Value.(*MpPtrFloat)
 						require.True(t, ok)
@@ -581,14 +580,14 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				model: &MpPtrFloat{},
 				r: `{"data":{"type":"mp_ptr_floats","id":"1",
 				"attributes":{"map": ["string1"]}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 			},
 			"SliceInt": {
 				model: &MpSliceInt{},
 				r:     `{"data":{"type":"mp_slice_ints","id":"1","attributes":{"map":{"key":[1,3]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpSliceInt)
@@ -602,7 +601,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"SlicePtrInt": {
 				model: &MpSlicePtrInt{},
 				r:     `{"data":{"type":"mp_slice_ptr_ints","id":"1","attributes":{"map":{"key":[1,3]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpSlicePtrInt)
@@ -628,7 +627,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"SliceTime": {
 				model: &MpSliceTime{},
 				r:     `{"data":{"type":"mp_slice_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpSliceTime)
@@ -651,7 +650,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"SlicePtrTime": {
 				model: &MpSlicePtrTime{},
 				r:     `{"data":{"type":"mp_slice_ptr_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000, null]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpSlicePtrTime)
@@ -677,7 +676,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"PtrSliceTime": {
 				model: &MpPtrSliceTime{},
 				r:     `{"data":{"type":"mp_ptr_slice_times","id":"1","attributes":{"map":{"key":[1257894000,1257895000]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpPtrSliceTime)
@@ -701,7 +700,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"ArrayFloat": {
 				model: &MpArrayFloat{},
 				r:     `{"data":{"type":"mp_array_floats","id":"1","attributes":{"map":{"key":[12.51,261.123]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.NoError(t, err)
 
 					v, ok := s.Value.(*MpArrayFloat)
@@ -717,7 +716,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"ArrayFloatTooManyValues": {
 				model: &MpArrayFloat{},
 				r:     `{"data":{"type":"mp_array_floats","id":"1","attributes":{"map":{"key":[12.51,261.123,12.671]}}}}`,
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					require.Error(t, err)
 				},
 			},
@@ -731,7 +730,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				err := c.PrecomputeModels(test.model)
 				require.NoError(t, err)
 
-				var scope *Scope
+				var scope *query.Scope
 				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
 				test.f(t, scope, err)
 			})
@@ -763,7 +762,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"Simple": {
 				r:     `{"data":{"type":"simples","attributes":{"nested":{"first":1,"second":2}}}}`,
 				model: &Simple{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 					v, ok := s.Value.(*Simple)
 					if assert.True(t, ok) {
@@ -777,7 +776,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 			"SimpleWithDoubleNested": {
 				r:     `{"data":{"type":"simple_doubles","attributes":{"double":{"nested":{"first":1,"second":2}}}}}`,
 				model: &SimpleDouble{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 					v, ok := s.Value.(*SimpleDouble)
 					if assert.True(t, ok) {
@@ -841,49 +840,49 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		tests := map[string]maptest{
 			"StringPtr": {
 				model: &AttrArrStruct{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 				},
 				r: `{"data":{"type":"attr_arr_structs","id":"1","attributes":{"arr":["first",null,"second"]}}}`,
 			},
 			"StringArray": {
 				model: &ArrayModel{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 				},
 				r: `{"data":{"type":"array_models","attributes":{"arr":["first","second"]}}}`,
 			},
 			"StringArrayOutOfRange": {
 				model: &ArrayModel{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 				r: `{"data":{"type":"array_models","attributes":{"arr":["first","second","third"]}}}`,
 			},
 			"IntSlice": {
 				model: &SliceInt{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 				},
 				r: `{"data":{"type":"slice_ints","attributes":{"sl":[1,5]}}}`,
 			},
 			"IntSliceInvalidType": {
 				model: &SliceInt{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.Error(t, err)
 				},
 				r: `{"data":{"type":"slice_ints","attributes":{"sl":[1,5,"string"]}}}`,
 			},
 			"StructSlice": {
 				model: &SliceStruct{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 				},
 				r: `{"data":{"type":"slice_structs","attributes":{"sl":[{"name":"first"}]}}}`,
 			},
 			"IntArray": {
 				model: &ArrInt{},
-				f: func(t *testing.T, s *Scope, err error) {
+				f: func(t *testing.T, s *query.Scope, err error) {
 					assert.NoError(t, err)
 				},
 				r: `{"data":{"type":"arr_ints","attributes":{"arr":[1,2]}}}`,
@@ -899,7 +898,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				require.NotPanics(t, func() { err = c.PrecomputeModels(test.model) })
 				require.NoError(t, err)
 
-				var scope *Scope
+				var scope *query.Scope
 				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
 
 				test.f(t, scope, err)

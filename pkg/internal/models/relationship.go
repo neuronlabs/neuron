@@ -81,6 +81,37 @@ type Relationship struct {
 	modelType reflect.Type
 }
 
+// BackreferenceField returns the field that is backrefereneced in relationships models
+func (r *Relationship) BackreferenceField() *StructField {
+	return r.backReferenceField
+}
+
+// BackreferenceFieldName returns relationships  backrefernce field name
+func (r *Relationship) BackrefernceFieldName() string {
+	return r.backReferenceFieldname
+}
+
+// ForeignKey returns relationships foreign key
+func (r *Relationship) ForeignKey() *StructField {
+	return r.foreignKey
+}
+
+// Kind returns relationships kind
+func (r *Relationship) Kind() RelationshipKind {
+	return r.kind
+}
+
+// SetBackreferenceField sets the Backreference Field for the relationship
+func (r *Relationship) SetBackreferenceField(s *StructField) {
+	r.backReferenceField = s
+	r.backReferenceFieldname = s.Name()
+}
+
+// SetForeignKey sets foreign key structfield
+func (r *Relationship) SetForeignKey(s *StructField) {
+	r.foreignKey = s
+}
+
 // SetSync sets the relationship sync
 func (r *Relationship) SetSync(b *bool) {
 	r.sync = b
@@ -89,6 +120,16 @@ func (r *Relationship) SetSync(b *bool) {
 // SetKind sets the relationship kind
 func (r *Relationship) SetKind(kind RelationshipKind) {
 	r.kind = kind
+}
+
+// Struct returns relationship model *ModelStruct
+func (r *Relationship) Struct() *ModelStruct {
+	return r.mStruct
+}
+
+// Sync checks if the relationships syncs values with the repositories
+func (r *Relationship) Sync() *bool {
+	return r.sync
 }
 
 // RelationshipSetBackrefField sets the backreference field for the relationship

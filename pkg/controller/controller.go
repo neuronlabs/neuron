@@ -3,9 +3,11 @@ package controller
 import (
 	"errors"
 	"fmt"
+	aerrors "github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/gateway/endpoint"
 	"github.com/kucjac/jsonapi/pkg/gateway/modelhandler"
+	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/namer"
 	"github.com/kucjac/jsonapi/pkg/query"
 	"github.com/kucjac/uni-logger"
@@ -27,7 +29,7 @@ type Controller struct {
 	// resource with collection posts this would lead to links -> /api/v1/posts)
 	APIURLBase string
 
-	// Models is a *ModelStruct map that
+	// Models is a *mapping.ModelStruct map that
 	Models *ModelMap
 
 	// Locale defines the coverage of the i18n and l10n for provided system
@@ -65,11 +67,7 @@ type Controller struct {
 
 	flags map[int]bool
 
-	// StrictUnmarshalMode if set to true, the incoming data cannot contain
-	// any unknown fields
-	StrictUnmarshalMode bool
-
-	Operators query.OperatorContainer
+	Operators *query.OperatorContainer
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
@@ -82,8 +80,8 @@ func New(coverage ...interface{}) *Controller {
 		IncludeNestedLimit: 1,
 		FilterValueLimit:   5,
 		Flags:              flags.New(),
-		NamerFunc:          NamingSnake,
-		Operators:          NewOpContainer(),
+		NamerFunc:          namer.NamingSnake,
+		Operators:          query.NewOpContainer(),
 	}
 
 	c.Flags.Set(flags.UseFilterValueLimit, true)
@@ -107,8 +105,8 @@ func Default(coverage ...interface{}) *Controller {
 		IncludeNestedLimit: 1,
 		FilterValueLimit:   30,
 		Flags:              flags.New(),
-		NamerFunc:          NamingSnake,
-		Operators:          NewOpContainer(),
+		NamerFunc:          namer.NamingSnake,
+		Operators:          query.NewOpContainer(),
 	}
 
 	c.Flags.Set(flags.UseLinks, true)
@@ -133,8 +131,9 @@ PRESETS
 */
 
 func (c *Controller) BuildScopeList(
-	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
-) (scope *query.Scope, errs []*ErrorObject, err error) {
+	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.
+		ModelHandler,
+) (scope *query.Scope, errs []*aerrors.ApiError, err error) {
 	// Get ModelStruct
 
 	mStruct := c.Models.Get(model.ModelType)
@@ -145,9 +144,9 @@ func (c *Controller) BuildScopeList(
 
 	// overloadPreventer - is a warden upon invalid query parameters
 	var (
-		errObj       *ErrorObject
-		errorObjects []*ErrorObject
-		addErrors    = func(errObjects ...*ErrorObject) {
+		errObj       *aerrors.ApiError
+		errorObjects []*aerrors.ApiError
+		addErrors    = func(errObjects ...*aerrors.ApiError) {
 			errs = append(errs, errObjects...)
 			scope.currentErrorCount += len(errObjects)
 		}
@@ -156,7 +155,7 @@ func (c *Controller) BuildScopeList(
 	scope.ctx = req.Context()
 	scope.logger = c.log()
 
-	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.IncludedScopes = make(map[*mapping.ModelStruct]*query.Scope)
 
 	scope.maxNestedLevel = c.IncludeNestedLimit
 	scope.collectionScope = scope
@@ -334,16 +333,16 @@ func (c *Controller) BuildScopeList(
 }
 
 func (c *Controller) BuildScopeSingle(
-	req *http.Request, endpoint *Endpoint, model *ModelHandler,
-) (scope *Scope, errs []*ErrorObject, err error) {
+	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
+) (scope *query.Scope, errs []*aerrors.ApiError, err error) {
 	return c.buildScopeSingle(req, endpoint, model, nil)
 }
 
 // BuildScopeSingle builds the scope for given request and model.
 // It gets and sets the ID from the 'http' request.
 func (c *Controller) buildScopeSingle(
-	req *http.Request, endpoint *Endpoint, model *ModelHandler, id interface{},
-) (scope *Scope, errs []*ErrorObject, err error) {
+	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler, id interface{},
+) (scope *query.Scope, errs []*aerrors.ApiError, err error) {
 	// get model type
 	// Get ModelStruct
 	mStruct := c.Models.Get(model.ModelType)
@@ -381,8 +380,8 @@ func (c *Controller) buildScopeSingle(
 
 // BuildScopeRelated builds the scope for the related
 func (c *Controller) BuildScopeRelated(
-	req *http.Request, endpoint *Endpoint, model *ModelHandler,
-) (scope *Scope, errs []*ErrorObject, err error) {
+	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
+) (scope *query.Scope, errs []*aerrors.ApiError, err error) {
 	mStruct := c.Models.Get(model.ModelType)
 	if mStruct == nil {
 		err = IErrModelNotMapped
@@ -396,7 +395,7 @@ func (c *Controller) BuildScopeRelated(
 
 	scope = &Scope{
 		Struct:                    mStruct,
-		Fieldset:                  make(map[string]*StructField),
+		Fieldset:                  make(map[string]*mapping.StructField),
 		currentIncludedFieldIndex: -1,
 		kind:   rootKind,
 		logger: c.log(),
@@ -440,7 +439,7 @@ func (c *Controller) BuildScopeRelated(
 		}
 	}
 
-	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.IncludedScopes = make(map[*mapping.ModelStruct]*query.Scope)
 
 	// preset related scope
 	includedField := scope.getOrCreateIncludeField(relationField)
@@ -473,8 +472,8 @@ func (c *Controller) BuildScopeRelated(
 }
 
 func (c *Controller) BuildScopeRelationship(
-	req *http.Request, endpoint *Endpoint, model *ModelHandler,
-) (scope *Scope, errs []*ErrorObject, err error) {
+	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
+) (scope *query.Scope, errs []*aerrors.ApiError, err error) {
 	mStruct := c.Models.Get(model.ModelType)
 	if mStruct == nil {
 		err = IErrModelNotMapped
@@ -488,7 +487,7 @@ func (c *Controller) BuildScopeRelationship(
 
 	scope = &Scope{
 		Struct:                    mStruct,
-		Fieldset:                  make(map[string]*StructField),
+		Fieldset:                  make(map[string]*mapping.StructField),
 		currentIncludedFieldIndex: -1,
 		kind:   rootKind,
 		logger: c.log(),
@@ -531,7 +530,7 @@ func (c *Controller) BuildScopeRelationship(
 			scope.Fieldset[fk.jsonAPIName] = fk
 		}
 	}
-	scope.IncludedScopes = make(map[*ModelStruct]*Scope)
+	scope.IncludedScopes = make(map[*mapping.ModelStruct]*query.Scope)
 	scope.createModelsRootScope(relationField.relatedStruct)
 	scope.IncludedScopes[relationField.relatedStruct].Fieldset = nil
 
@@ -547,7 +546,7 @@ func (c *Controller) BuildScopeRelationship(
 // GetAndSetIDFilter is the method that gets the ID value from the request path, for given scope's
 // model. Then it sets the id query.for given scope.
 // If the url is constructed incorrectly it returns an internal error.
-func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
+func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *query.Scope) error {
 	c.log().Debug("GetAndSetIDFIlter")
 
 	id, err := getID(req, scope.Struct)
@@ -560,7 +559,7 @@ func (c *Controller) GetAndSetIDFilter(req *http.Request, scope *Scope) error {
 	return nil
 }
 
-func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) (prim interface{}, err error) {
+func (c *Controller) GetAndSetID(req *http.Request, scope *query.Scope) (prim interface{}, err error) {
 	id, err := getID(req, scope.Struct)
 	if err != nil {
 		return nil, err
@@ -613,16 +612,16 @@ func (c *Controller) GetAndSetID(req *http.Request, scope *Scope) (prim interfac
 
 // GetModelStruct returns the ModelStruct for provided model
 // Returns error if provided model does not exists in the PrecomputedMap
-func (c *Controller) GetModelStruct(model interface{}) (*ModelStruct, error) {
+func (c *Controller) GetModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	return c.getModelStruct(model)
 }
 
 // GetCheckSetIDFilter the method that gets the ID value from the request path, for given scope
 // model.then prepares the primary filter field for given id value.
 // if an internal error occurs returns an 'error'.
-// if user error occurs returns array of *ErrorObject's.
-func (c *Controller) GetSetCheckIDFilter(req *http.Request, scope *Scope,
-) (errs []*ErrorObject, err error) {
+// if user error occurs returns array of *aerrors.ApiError's.
+func (c *Controller) GetSetCheckIDFilter(req *http.Request, scope *query.Scope,
+) (errs []*aerrors.ApiError, err error) {
 	return c.setIDFilter(req, scope)
 }
 
@@ -631,13 +630,13 @@ func (c *Controller) Log() unilogger.LeveledLogger {
 }
 
 // MarshalScope marshals given scope into jsonapi format.
-func (c *Controller) MarshalScope(scope *Scope) (payloader Payloader, err error) {
+func (c *Controller) MarshalScope(scope *query.Scope) (payloader Payloader, err error) {
 	return marshalScope(scope, c)
 }
 
 // MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
 // panics if the model does not exists in the map.
-func (c *Controller) MustGetModelStruct(model interface{}) *ModelStruct {
+func (c *Controller) MustGetModelStruct(model interface{}) *mapping.ModelStruct {
 	mStruct, err := c.getModelStruct(model)
 	if err != nil {
 		panic(err)
@@ -645,7 +644,7 @@ func (c *Controller) MustGetModelStruct(model interface{}) *ModelStruct {
 	return mStruct
 }
 
-func (c *Controller) NewScope(model interface{}) (*Scope, error) {
+func (c *Controller) NewScope(model interface{}) (*query.Scope, error) {
 	mStruct, err := c.GetModelStruct(model)
 	if err != nil {
 		return nil, err
@@ -658,7 +657,7 @@ func (c *Controller) NewScope(model interface{}) (*Scope, error) {
 }
 
 func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...interface{},
-) (filter *FilterField, err error) {
+) (filter *query.FilterField, err error) {
 
 	if valid := strings.HasPrefix(fieldFilter, QueryParamFilter); !valid {
 		err = fmt.Errorf("Invalid field filter argument provided: '%s'. The argument should be composed as: 'filter[collection][field]([subfield][operator])|([operator]).", fieldFilter)
@@ -678,8 +677,8 @@ func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...in
 	}
 
 	var (
-		structField *StructField
-		operator    *FilterOperator
+		structField *mapping.StructField
+		operator    *query.Operator
 	)
 	handle3and4 := func() {
 		structField = mStruct.relationships[splitted[1]]
@@ -796,7 +795,7 @@ func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...in
 //				The operator or subfield are not required.
 //		@values - the values of type matching the filter field
 func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
-) (filter *FilterField, err error) {
+) (filter *query.FilterField, err error) {
 
 	if valid := strings.HasPrefix(fieldFilter, QueryParamFilter); !valid {
 		err = fmt.Errorf("Invalid field filter argument provided: '%s'. The argument should be composed as: 'filter[collection][field]([subfield][operator])|([operator]).", fieldFilter)
@@ -816,8 +815,8 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 	}
 
 	var (
-		structField *StructField
-		operator    FilterOperator
+		structField *mapping.StructField
+		operator    query.Operator
 	)
 	handle3and4 := func() {
 		structField = mStruct.relationships[splitted[1]]
@@ -969,20 +968,20 @@ func (c *Controller) SetAPIURL(url string) error {
 
 // build filterfield
 func (c *Controller) buildFilterField(
-	s *Scope,
+	s *query.Scope,
 	collection string,
 	values []string,
-	m *ModelStruct,
+	m *mapping.ModelStruct,
 	splitted ...string,
-) (fField *FilterField, errs []*ErrorObject) {
+) (fField *query.FilterField, errs []*aerrors.ApiError) {
 	var (
-		sField    *StructField
-		op        FilterOperator
+		sField    *mapping.StructField
+		op        query.Operator
 		ok        bool
 		fieldName string
 
-		errObj     *ErrorObject
-		errObjects []*ErrorObject
+		errObj     *aerrors.ApiError
+		errObjects []*aerrors.ApiError
 		// private function for returning ErrObject
 		invalidName = func(fieldName, collection string) {
 			errObj = ErrInvalidQueryParameter.Copy()
@@ -1137,16 +1136,16 @@ func (c *Controller) buildFilterField(
 }
 
 func (c *Controller) buildQueryParametersSingle(
-	scope *Scope, q url.Values,
-) (errs []*ErrorObject, err error) {
+	scope *query.Scope, q url.Values,
+) (errs []*aerrors.ApiError, err error) {
 
 	var (
-		addErrors = func(errObjects ...*ErrorObject) {
+		addErrors = func(errObjects ...*aerrors.ApiError) {
 			errs = append(errs, errObjects...)
 			scope.currentErrorCount += len(errObjects)
 		}
-		errObj       *ErrorObject
-		errorObjects []*ErrorObject
+		errObj       *aerrors.ApiError
+		errorObjects []*aerrors.ApiError
 	)
 	// Check first included in order to create subscopes
 	included, ok := q[QueryParamInclude]
@@ -1288,7 +1287,7 @@ func (c *Controller) buildQueryParametersSingle(
 func (c *Controller) buildPreparedPair(
 	query, fieldFilter string,
 	check bool,
-) (presetScope *Scope, filter *FilterField) {
+) (presetScope *query.Scope, filter *query.FilterField) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -1346,10 +1345,10 @@ func (c *Controller) buildPreparedPair(
 		}
 	}
 
-	var selectIncludedFieldset func(scope *Scope) error
+	var selectIncludedFieldset func(scope *query.Scope) error
 
-	selectIncludedFieldset = func(scope *Scope) error {
-		scope.Fieldset = make(map[string]*StructField)
+	selectIncludedFieldset = func(scope *query.Scope) error {
+		scope.Fieldset = make(map[string]*mapping.StructField)
 		for scope.NextIncludedField() {
 			included, err := scope.CurrentIncludedField()
 			if err != nil {
@@ -1462,7 +1461,7 @@ func (c *Controller) buildPreparedPair(
 				return
 			}
 
-			var sortScope *Scope
+			var sortScope *query.Scope
 			if parameters[0] == presetScope.Struct.collectionType {
 				sortScope = presetScope
 			} else {
@@ -1554,7 +1553,7 @@ func (c *Controller) buildPreparedPair(
 	return
 }
 
-func (c *Controller) checkModelRelationships(model *ModelStruct) (err error) {
+func (c *Controller) checkModelRelationships(model *mapping.ModelStruct) (err error) {
 	for _, rel := range model.relationships {
 		val := c.Models.Get(rel.relatedModelType)
 		if val == nil {
@@ -1575,7 +1574,7 @@ func (c *Controller) displaySupportedLanguages() []string {
 	return names
 }
 
-func (c *Controller) getModelStruct(model interface{}) (*ModelStruct, error) {
+func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	if model == nil {
 		return nil, errors.New("No model provided.")
 	}
@@ -1601,8 +1600,8 @@ func (c *Controller) log() unilogger.LeveledLogger {
 
 // func (c *Controller) registerOperators()
 
-func (c *Controller) setIDFilter(req *http.Request, scope *Scope,
-) (errs []*ErrorObject, err error) {
+func (c *Controller) setIDFilter(req *http.Request, scope *query.Scope,
+) (errs []*aerrors.ApiError, err error) {
 	var id string
 	id, err = getID(req, scope.Struct)
 	if err != nil {
@@ -1616,14 +1615,14 @@ func (c *Controller) setIDFilter(req *http.Request, scope *Scope,
 }
 
 func (c *Controller) setFilterValues(
-	f *FilterField,
+	f *query.FilterField,
 	collection string,
 	values []string,
-	op FilterOperator,
-) (errs []*ErrorObject) {
+	op query.Operator,
+) (errs []*aerrors.ApiError) {
 	var (
 		er     error
-		errObj *ErrorObject
+		errObj *aerrors.ApiError
 
 		opInvalid = func() {
 			errObj = ErrUnsupportedQueryParameter.Copy()
@@ -1740,9 +1739,9 @@ func (c *Controller) setFilterValues(
 }
 
 func (c *Controller) setIncludedLangaugeFilters(
-	scope *Scope,
+	scope *query.Scope,
 	languages string,
-) ([]*ErrorObject, error) {
+) ([]*aerrors.ApiError, error) {
 	tags, errObjects := buildLanguageTags(languages)
 	if len(errObjects) > 0 {
 		return errObjects, nil
@@ -1755,13 +1754,13 @@ func (c *Controller) setIncludedLangaugeFilters(
 			languages,
 			strings.Join(c.displaySupportedLanguages(), ","),
 		)
-		return []*ErrorObject{errObj}, nil
+		return []*aerrors.ApiError{errObj}, nil
 	}
 	scope.queryLanguage = tag
 
-	var setLanguage func(scope *Scope) error
+	var setLanguage func(scope *query.Scope) error
 	//setLanguage sets language filter field for all included fields
-	setLanguage = func(scope *Scope) error {
+	setLanguage = func(scope *query.Scope) error {
 		defer func() {
 			scope.ResetIncludedField()
 		}()

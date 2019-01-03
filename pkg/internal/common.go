@@ -2,7 +2,10 @@ package internal
 
 import (
 	"errors"
+	"flag"
 )
+
+var Verbose *bool = flag.Bool("verbose-api", false, "Used to get verbose data")
 
 var (
 	IErrUnexpectedType = errors.
@@ -37,4 +40,6 @@ var (
 	// was not a valid numeric type.
 	IErrBadJSONAPIID = errors.New(
 		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
+
+	IErrModelNotMapped = errors.New("Unmapped model provided.")
 )

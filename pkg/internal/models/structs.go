@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	aerrors "github.com/kucjac/jsonapi/errors"
+	aerrors "github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/pkg/errors"
@@ -36,6 +36,9 @@ type ModelStruct struct {
 
 	// collectionType is jsonapi 'type' for given model
 	collectionType string
+
+	// schemaName is the schema name set for given model
+	schemaName string
 
 	// Primary is a jsonapi primary field
 	primary *StructField
@@ -79,6 +82,54 @@ type ModelStruct struct {
 	flags *flags.Container
 }
 
+// Attribute returns the attribute field for given string
+func (m *ModelStruct) Attribute(field string) (*StructField, bool) {
+	return StructAttr(m, field)
+}
+
+// Fields returns model's fields
+func (m *ModelStruct) Fields() []*StructField {
+	return m.fields
+}
+
+// Flags return model's flags
+func (m *ModelStruct) Flags() *flags.Container {
+	return m.flags
+}
+
+// ForeignKey return model's foreign key
+func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
+	return StructForeignKeyField(m, fk)
+}
+
+// FilterKey return model's fitler key
+func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
+	return StructForeignKeyField(m, fk)
+}
+
+// PrimaryField returns model's primary struct field
+func (m *ModelStruct) PrimaryField() *StructField {
+	return m.primary
+}
+
+// RelationshipField returns the StructField for given raw field
+func (m *ModelStruct) RelationshipField(field string) (*StructField, bool) {
+	return StructRelField(m, field)
+}
+
+// RelationshipFields return structfields that are matched as relatinoships
+func (m *ModelStruct) RelatinoshipFields() (rels []*StructField) {
+	for _, rel := range m.relationships {
+		rels = append(rels, rel)
+	}
+	return rels
+}
+
+// SchemaName returns model's schema name
+func (m *ModelStruct) SchemaName() string {
+	return m.schemaName
+}
+
 func NewModelStruct(tp reflect.Type, collection string, flg *flags.Container) *ModelStruct {
 	m := &ModelStruct{id: ctr.next(), modelType: tp, collectionType: collection, flags: flg}
 	m.attributes = make(map[string]*StructField)
@@ -90,138 +141,28 @@ func NewModelStruct(tp reflect.Type, collection string, flg *flags.Container) *M
 }
 
 // ID returns model structs index number
-func (m *ModelStruct) ID() int {
+func (m ModelStruct) ID() int {
 	return m.id
 }
 
 // Type returns model's reflect.Type
-func (m *ModelStruct) Type() reflect.Type {
+func (m ModelStruct) Type() reflect.Type {
 	return m.modelType
 }
 
 // Collection returns model's collection type
-func (m *ModelStruct) Collection() string {
+func (m ModelStruct) Collection() string {
 	return m.collectionType
 }
 
 // UseI18n returns the bool if the model struct uses i18n.
-func (m *ModelStruct) UseI18n() bool {
+func (m ModelStruct) UseI18n() bool {
 	return m.language != nil
 }
 
-// Flags return preset flags for the given model
-func (m *ModelStruct) Flags() *flags.Container {
-	return m.flags
-}
-
-// StructFieldByName returns field for provided name
-// It matches both name and apiName
-func StructFieldByName(m *ModelStruct, name string) *StructField {
-	for _, field := range m.fields {
-		if field.apiName == name || field.Name() == name {
-			return field
-		}
-	}
-	return nil
-}
-
-// StructAllFields return all model's fields
-func StructAllFields(m *ModelStruct) []*StructField {
-	return m.fields
-}
-
-// StructAppendField appends the field to the fieldset for the given model struct
-func StructAppendField(m *ModelStruct, field *StructField) {
-	m.fields = append(m.fields, field)
-}
-
-// StructSetAttr sets the attribute field for the provided model
-func StructSetAttr(m *ModelStruct, attr *StructField) {
-	m.attributes[attr.apiName] = attr
-}
-
-// StructSetRelField sets the relationship field for the model
-func StructSetRelField(m *ModelStruct, relField *StructField) {
-	m.relationships[relField.apiName] = relField
-}
-
-// StructSetForeignKey sets the foreign key for the model struct
-func StructSetForeignKey(m *ModelStruct, fk *StructField) {
-	m.foreignKeys[fk.apiName] = fk
-}
-
-// StructSetForeignKey sets the filter key for the model struct
-func StructSetFilterKey(m *ModelStruct, fk *StructField) {
-	m.filterKeys[fk.apiName] = fk
-}
-
-// StructSetPrimary
-func StructSetPrimary(m *ModelStruct, primary *StructField) {
-	m.primary = primary
-}
-
-// StructSetType
-func StructSetType(m *ModelStruct, tp reflect.Type) {
-	m.modelType = tp
-}
-
-// StructIsEqual checks if ModelStructs are equal
-func StructIsEqual(first, second *ModelStruct) bool {
-	return first.id == second.id
-}
-
-// StructSetUrl sets the ModelStruct's url value
-func StructSetUrl(m *ModelStruct, url string) error {
-	return m.setModelURL(url)
-}
-
-// StructPrimary gets the primary field for the given model
-func StructPrimary(m *ModelStruct) *StructField {
-	return m.primary
-}
-
-// StructI18n returns i18n struct field for given model.
-func StructAppendI18n(m *ModelStruct, f *StructField) {
-	m.i18n = append(m.i18n, f)
-}
-
-// StructSetLanguage sets the language field for given model
-func StructSetLanguage(m *ModelStruct, f *StructField) {
-	f.fieldFlags = f.fieldFlags | FLanguage
-	m.language = f
-}
-
-func StructSetBelongsToForeigns(m *ModelStruct, v reflect.Value) error {
-	return m.setBelongsToForeigns(v)
-}
-
-// StructAttr returns attribute for the provided structField
-func StructAttr(m *ModelStruct, attr string) (*StructField, bool) {
-	s, ok := m.attributes[attr]
-	return s, ok
-}
-
-// StructRelField returns ModelsStruct relationship field if exists
-func StructRelField(m *ModelStruct, relField string) (*StructField, bool) {
-	s, ok := m.relationships[relField]
-	return s, ok
-}
-
-// StructForeignKeyField returns ModelStruct foreign key field if exists
-func StructForeignKeyField(m *ModelStruct, fk string) (*StructField, bool) {
-	s, ok := m.foreignKeys[fk]
-	return s, ok
-}
-
-// StructFilterKeyField returns ModelStruct filterKey
-func StructFilterKeyField(m *ModelStruct, fk string) (*StructField, bool) {
-	s, ok := m.filterKeys[fk]
-	return s, ok
-}
-
-// StructSetBelongsToRelationWithFields sets the value to the Relationship value
-func StructSetBelongsToRelationWithFields(m *ModelStruct, v reflect.Value, fields ...*StructField) error {
-	return m.setBelongsToRelationWithFields(v, fields...)
+// SetSchemaName sets the schema name for the given model
+func (m *ModelStruct) SetSchemaName(schema string) {
+	m.schemaName = schema
 }
 
 func (m *ModelStruct) setBelongsToForeigns(v reflect.Value) error {
@@ -302,11 +243,6 @@ func (m *ModelStruct) setModelURL(url string) error {
 	m.modelURL = url
 
 	return nil
-}
-
-// StructCollectionUrlIndex returns index for the collectionUrl
-func StructCollectionUrlIndex(m *ModelStruct) int {
-	return m.collectionURLIndex
 }
 
 // // CheckAttribute - checks if given model contains given attributes. The attributes
@@ -430,7 +366,7 @@ func InitComputeThisIncludedCount(m *ModelStruct) {
 	return
 }
 
-func InitComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int) int {
+func initComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int) int {
 	var nestedCount int
 	if level != 0 {
 		nestedCount += m.thisIncludedCount
@@ -438,7 +374,7 @@ func InitComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int
 
 	for _, relationship := range m.relationships {
 		if level < maxNestedRelLevel {
-			nestedCount += InitComputeNestedIncludedCount(relationship.relationship.mStruct, level+1, maxNestedRelLevel)
+			nestedCount += initComputeNestedIncludedCount(relationship.relationship.mStruct, level+1, maxNestedRelLevel)
 		}
 	}
 
@@ -451,6 +387,11 @@ func InitComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int
 
 // 	}
 // }
+
+func (m *ModelStruct) InitComputeNestedIncludedCount(limit int) {
+
+	m.nestedIncludedCount = initComputeNestedIncludedCount(m, 0, limit)
+}
 
 func InitCheckFieldTypes(m *ModelStruct) error {
 	err := m.primary.initCheckFieldType()

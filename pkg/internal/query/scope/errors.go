@@ -1,8 +1,8 @@
-package query
+package scope
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/errors"
+	"github.com/kucjac/jsonapi/pkg/errors"
 	"reflect"
 )
 

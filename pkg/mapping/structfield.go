@@ -56,39 +56,28 @@ func (f FieldKind) String() string {
 
 // StructField represents a field structure with its json api parameters
 // and model relationships.
-type StructField struct {
-	*models.StructField
-}
+type StructField models.StructField
 
 // Nested returns the nested structure
 func (s *StructField) Nested() *NestedStruct {
-	return &NestedStruct{NestedStruct: models.FieldsNested(s.StructField)}
+	return (*NestedStruct)(models.FieldsNested((*models.StructField)(s)))
 }
 
 func (s *StructField) Relationship() *Relationship {
-	r := models.FieldRelationship(s.StructField)
+	r := models.FieldRelationship((*models.StructField)(s))
 	if r == nil {
 		return nil
 	}
-	return &Relationship{r}
+	return (*Relationship)(r)
 }
 
 // ModelStruct returns field's model struct
 func (s *StructField) ModelStruct() *ModelStruct {
-	return &ModelStruct{models.FieldsStruct(s.StructField)}
+	return (*ModelStruct)(models.FieldsStruct((*models.StructField)(s)))
+
 }
 
 // FieldKind returns struct fields kind
 func (s *StructField) FieldKind() FieldKind {
-	return FieldKind(s.StructField.FieldKind())
+	return FieldKind(s.FieldKind())
 }
-
-// func (s *StructField) getRelationshipPrimariyValues(fieldValue reflect.Value,
-// ) (primaries reflect.Value, err error) {
-// 	if s.fieldType == RelationshipSingle || s.fieldType == RelationshipMultiple {
-// 		return s.relatedStruct.getPrimaryValues(fieldValue)
-// 	}
-// 	// error
-// 	err = fmt.Errorf("Provided field: '%v' is not a relationship: '%s'", s.fieldName, s.fieldType.String())
-// 	return
-// }

@@ -117,7 +117,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 
 	// having some included parameter that is valid for given model
 	var included []string
-	var errs []*ErrorObject
+	var errs []*aerrors.ApiError
 
 	included = []string{"favorite-car"}
 	errs = driverRootScope.buildIncludeList(included...)
@@ -185,7 +185,7 @@ func TestBuildIncludedScopes(t *testing.T) {
 
 func TestNewFilterScope(t *testing.T) {
 
-	var errs []*ErrorObject
+	var errs []*aerrors.ApiError
 
 	var correctParams [][]string = [][]string{
 		{"id"},
@@ -344,7 +344,7 @@ func TestScopeGetIncludePrimaryFields(t *testing.T) {
 	assertNotEmpty(t, nestedIncluded.Scope.PrimaryFilters)
 
 	// let's check if empty values are entered.
-	nestedIncluded.Scope.PrimaryFilters = []*FilterField{}
+	nestedIncluded.Scope.PrimaryFilters = []*query.FilterField{}
 
 	assertFalse(t, nestedIncluded.Scope.NextIncludedField())
 	assertFalse(t, includedField.Scope.NextIncludedField())
@@ -593,9 +593,9 @@ func TestScopeSetValueFromAddressable(t *testing.T) {
 }
 
 func BenchmarkEmptyMap(b *testing.B) {
-	var mp map[int]*FilterField
+	var mp map[int]*query.FilterField
 	for i := 0; i < b.N; i++ {
-		mp = make(map[int]*FilterField)
+		mp = make(map[int]*query.FilterField)
 	}
 	if mp != nil {
 	}
@@ -605,7 +605,7 @@ func BenchmarkEmptySlice(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
 
-	var arr []*FilterField
+	var arr []*query.FilterField
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < l; j++ {
@@ -618,16 +618,16 @@ func BenchmarkEmptySlice(b *testing.B) {
 func BenchmarkEmptyArr(b *testing.B) {
 	s := getBlogScope()
 	l := s.Struct.modelType.NumField()
-	var arr []*FilterField
+	var arr []*query.FilterField
 	for i := 0; i < b.N; i++ {
-		arr = make([]*FilterField, l)
+		arr = make([]*query.FilterField, l)
 	}
 	if len(arr) == 0 {
 
 	}
 }
 
-func getBlogScope() *Scope {
+func getBlogScope() *query.Scope {
 	err := c.PrecomputeModels(&Blog{}, &Post{}, &Comment{})
 	if err != nil {
 		panic(err)

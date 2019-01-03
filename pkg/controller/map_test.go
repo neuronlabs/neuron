@@ -65,7 +65,7 @@ func TestGetSliceElemType(t *testing.T) {
 func TestSetRelatedType(t *testing.T) {
 	// Providing type struct
 	var err error
-	var sField *StructField = &StructField{}
+	var sField *mapping.StructField = &StructField{}
 
 	sField.refStruct.Type = reflect.TypeOf(Car{})
 	err = setRelatedType(sField)
@@ -219,7 +219,7 @@ func TestMappingModel(t *testing.T) {
 
 		type maptest struct {
 			model interface{}
-			f     func(t *testing.T, model *ModelStruct, field *StructField, err error)
+			f     func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error)
 		}
 
 		// strCreator := func(tp, attrKey, attrValue string) string {
@@ -229,7 +229,7 @@ func TestMappingModel(t *testing.T) {
 		tests := map[string]maptest{
 			"Int": {
 				model: &MapInt{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -238,7 +238,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"PtrInt": {
 				model: &MapPtrInt{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())
@@ -247,7 +247,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"SliceInt": {
 				model: &MapSliceInt{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -258,7 +258,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"SlicePtrInt": {
 				model: &MapSlicePtrInt{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())
@@ -269,7 +269,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"PtrSliceInt": {
 				model: &MapPtrSliceInt{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -280,7 +280,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"Nested": {
 				model: &MapNested{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isNestedStruct())
@@ -288,7 +288,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"PtrNested": {
 				model: &MapPtrNested{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())
@@ -297,7 +297,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"SliceNested": {
 				model: &MapSliceNested{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -307,7 +307,7 @@ func TestMappingModel(t *testing.T) {
 
 			"PtrSliceNested": {
 				model: &MapPtrSliceNested{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -317,7 +317,7 @@ func TestMappingModel(t *testing.T) {
 
 			"SlicePtrNested": {
 				model: &MapSlicePtrNested{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())
@@ -327,7 +327,7 @@ func TestMappingModel(t *testing.T) {
 
 			"Time": {
 				model: &MapTime{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -337,7 +337,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"PtrTime": {
 				model: &MapPtrTime{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())
@@ -347,7 +347,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"SliceTime": {
 				model: &MapSliceTime{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.False(t, field.isBasePtr())
@@ -357,7 +357,7 @@ func TestMappingModel(t *testing.T) {
 			},
 			"SlicePtrTime": {
 				model: &MapSlicePtrTime{},
-				f: func(t *testing.T, model *ModelStruct, field *StructField, err error) {
+				f: func(t *testing.T, model *mapping.ModelStruct, field *mapping.StructField, err error) {
 					require.NoError(t, err)
 					assert.True(t, field.isMap())
 					assert.True(t, field.isBasePtr())

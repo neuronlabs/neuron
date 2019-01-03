@@ -24,7 +24,7 @@ import (
 //				The operator or subfield are not required.
 func (c *Controller) BuildPresetPair(
 	query, fieldFilter string,
-) *PresetPair {
+) *query.PresetPair {
 	presetScope, filter := c.buildPreparedPair(query, fieldFilter, false)
 	return &PresetPair{Scope: presetScope, Filter: filter, rawPreset: query, rawFilter: fieldFilter}
 }

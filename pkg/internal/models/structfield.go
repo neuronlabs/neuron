@@ -15,44 +15,44 @@ type FieldKind int
 const (
 	UnknownType FieldKind = iota
 	// Primary is a 'primary' field
-	Primary
+	KindPrimary
 
 	// Attribute is an 'attribute' field
-	Attribute
+	KindAttribute
 
 	// ClientID is id set by client
-	ClientID
+	KindClientID
 
 	// RelationshipSingle is a 'relationship' with single object
-	RelationshipSingle
+	KindRelationshipSingle
 
 	// RelationshipMultiple is a 'relationship' with multiple objects
-	RelationshipMultiple
+	KindRelationshipMultiple
 
 	// ForeignKey is the field type that is responsible for the relationships
-	ForeignKey
+	KindForeignKey
 
 	// FilterKey is the field that is used only for special case filtering
-	FilterKey
+	KindFilterKey
 
-	FTNested
+	KindNested
 )
 
 func (f FieldKind) String() string {
 	switch f {
-	case Primary:
+	case KindPrimary:
 		return "Primary"
-	case Attribute:
+	case KindAttribute:
 		return "Attribute"
-	case ClientID:
+	case KindClientID:
 		return "ClientID"
-	case RelationshipSingle, RelationshipMultiple:
+	case KindRelationshipSingle, KindRelationshipMultiple:
 		return "Relationship"
-	case ForeignKey:
+	case KindForeignKey:
 		return "ForeignKey"
-	case FilterKey:
+	case KindFilterKey:
 		return "FilterKey"
-	case FTNested:
+	case KindNested:
 		return "Nested"
 	}
 
@@ -132,14 +132,39 @@ func (s *StructField) FieldKind() FieldKind {
 	return s.fieldKind
 }
 
+// FieldName returns struct fields name
+func (s *StructField) FieldName() string {
+	return s.reflectField.Name
+}
+
 // FieldType returns field's reflect.Type
 func (s *StructField) FieldType() reflect.Type {
 	return s.reflectField.Type
 }
 
+// Nested returns nested field's structure
+func (s *StructField) Nested() *NestedStruct {
+	return s.nested
+}
+
 // ReflectField returns structs reflect.StructField
 func (s *StructField) ReflectField() reflect.StructField {
 	return s.reflectField
+}
+
+// Relationship returns StructField's Relationships
+func (s *StructField) Relationship() *Relationship {
+	return s.relationship
+}
+
+// SetRelationship sets the relationship value for the struct field
+func (s *StructField) SetRelationship(rel *Relationship) {
+	s.relationship = rel
+}
+
+// Struct returns fields modelstruct
+func (s *StructField) Struct() *ModelStruct {
+	return s.mStruct
 }
 
 // FieldRelationship
@@ -199,7 +224,7 @@ func FieldInitCheckFieldType(s *StructField) error {
 
 // IsPrimary checks if the field is the primary field type
 func (s *StructField) IsPrimary() bool {
-	return s.fieldKind == Primary
+	return s.fieldKind == KindPrimary
 }
 
 // FieldBaseType returns the base 'reflect.Type' for the provided field.
@@ -250,7 +275,7 @@ func FieldSetRelatedType(sField *StructField) error {
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
 		if modelType.Kind() == reflect.Slice {
-			sField.fieldKind = RelationshipMultiple
+			sField.fieldKind = KindRelationshipMultiple
 		}
 		modelType = modelType.Elem()
 	}
@@ -261,7 +286,7 @@ func FieldSetRelatedType(sField *StructField) error {
 	}
 
 	if sField.fieldKind == UnknownType {
-		sField.fieldKind = RelationshipSingle
+		sField.fieldKind = KindRelationshipSingle
 	}
 	if sField.relationship == nil {
 		sField.relationship = &Relationship{}
@@ -270,6 +295,16 @@ func FieldSetRelatedType(sField *StructField) error {
 	sField.relationship.modelType = modelType
 
 	return nil
+}
+
+func (s *StructField) SetRelatedModel(relModel *ModelStruct) {
+	if s.relationship == nil {
+		s.relationship = &Relationship{
+			modelType: relModel.Type(),
+		}
+	}
+
+	s.relationship.mStruct = relModel
 }
 
 // // CanBeSorted returns if the struct field can be sorted
@@ -288,7 +323,7 @@ func (s *StructField) TagValues(tag string) (url.Values, error) {
 }
 
 func (s *StructField) isRelationship() bool {
-	return s.fieldKind == RelationshipMultiple || s.fieldKind == RelationshipSingle
+	return s.fieldKind == KindRelationshipMultiple || s.fieldKind == KindRelationshipSingle
 }
 
 // baseFieldType is the field's base dereferenced type
@@ -305,7 +340,7 @@ func (s *StructField) baseFieldType() reflect.Type {
 
 func (s *StructField) canBeSorted() bool {
 	switch s.fieldKind {
-	case RelationshipSingle, RelationshipMultiple, Attribute:
+	case KindRelationshipSingle, KindRelationshipMultiple, KindAttribute:
 		return true
 	}
 	return false
@@ -316,6 +351,11 @@ func (s *StructField) getRelatedModelType() reflect.Type {
 		return nil
 	}
 	return s.relationship.modelType
+}
+
+// GetDereferencedType returns structField dereferenced type
+func (s *StructField) GetDereferencedType() reflect.Type {
+	return s.getDereferencedType()
 }
 
 func (s *StructField) getDereferencedType() reflect.Type {
@@ -351,7 +391,7 @@ func (s *StructField) getTagValues(tag string) (url.Values, error) {
 func (s *StructField) initCheckFieldType() error {
 	fieldType := s.reflectField.Type
 	switch s.fieldKind {
-	case Primary:
+	case KindPrimary:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
@@ -363,7 +403,7 @@ func (s *StructField) initCheckFieldType() error {
 			err := fmt.Errorf("Invalid primary field type: %s for the field: %s in model: %s.", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 			return err
 		}
-	case Attribute:
+	case KindAttribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
@@ -377,7 +417,7 @@ func (s *StructField) initCheckFieldType() error {
 			}
 		}
 
-	case RelationshipSingle, RelationshipMultiple:
+	case KindRelationshipSingle, KindRelationshipMultiple:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
@@ -419,6 +459,11 @@ func FieldIsOmitEmpty(s *StructField) bool {
 	return s.isOmitEmpty()
 }
 
+// IsOmitEmpty checks if the given field has a omitempty flag
+func (s *StructField) IsOmitEmpty() bool {
+	return s.isOmitEmpty()
+}
+
 func (s *StructField) isOmitEmpty() bool {
 	return s.fieldFlags&FOmitempty != 0
 }
@@ -427,12 +472,23 @@ func (s *StructField) isOmitEmpty() bool {
 func FieldIsIso8601(s *StructField) bool {
 	return s.isIso8601()
 }
+
+// IsIso8601 checks wether the field uses FIso8601 flag
+func (s *StructField) IsIso8601() bool {
+	return s.isIso8601()
+}
+
 func (s *StructField) isIso8601() bool {
 	return s.fieldFlags&FIso8601 != 0
 }
 
 // FieldIsTime checks wether the field uses time flag
 func FieldIsTime(s *StructField) bool {
+	return s.isTime()
+}
+
+// IsTime checks wether the field uses time flag
+func (s *StructField) IsTime() bool {
 	return s.isTime()
 }
 
@@ -454,6 +510,11 @@ func FieldIsI18n(s *StructField) bool {
 	return s.isI18n()
 }
 
+// IsI18n returns flag if the struct fields is an i18n field
+func (s *StructField) IsI18n() bool {
+	return s.isI18n()
+}
+
 func (s *StructField) isI18n() bool {
 	return s.fieldFlags&FI18n != 0
 }
@@ -471,6 +532,11 @@ func FieldIsFlag(s *StructField) bool {
 	return s.isLanguage()
 }
 
+// IsLangugage checks wether the field is a language type field
+func (s *StructField) IsLanguage() bool {
+	return s.isLanguage()
+}
+
 func (s *StructField) isLanguage() bool {
 	return s.fieldFlags&FLanguage != 0
 }
@@ -482,6 +548,11 @@ func FieldIsHidden(s *StructField) bool {
 
 func (s *StructField) isHidden() bool {
 	return s.fieldFlags&FHidden != 0
+}
+
+// IsHidden checks if the field has a hidden flag
+func (s *StructField) IsHidden() bool {
+	return s.isHidden()
 }
 
 // FieldIsSortable checks if the field has a sortable flag
@@ -497,12 +568,23 @@ func (s *StructField) isSortable() bool {
 func FieldIsMap(s *StructField) bool {
 	return s.isMap()
 }
+
+// IsMap checks if the field has a fMap flag
+func (s *StructField) IsMap() bool {
+	return s.isMap()
+}
+
 func (s *StructField) isMap() bool {
 	return s.fieldFlags&FMap != 0
 }
 
 // FieldIsSlice checks if the field is a slice based
 func FieldIsSlice(s *StructField) bool {
+	return s.isSlice()
+}
+
+// IsSlice checks if the field is a slice based
+func (s *StructField) IsSlice() bool {
 	return s.isSlice()
 }
 
@@ -515,12 +597,22 @@ func FieldIsArray(s *StructField) bool {
 	return s.isArray()
 }
 
+// IsArray checks if the field is an array
+func (s *StructField) IsArray() bool {
+	return s.isArray()
+}
+
 func (s *StructField) isArray() bool {
 	return s.fieldFlags&FArray != 0
 }
 
 // FieldIsPtr checks if the field is a pointer
 func FieldIsPtr(s *StructField) bool {
+	return s.isPtr()
+}
+
+// IsPtr checks if the field is a pointer
+func (s *StructField) IsPtr() bool {
 	return s.isPtr()
 }
 
@@ -533,6 +625,11 @@ func FieldIsBasePtr(s *StructField) bool {
 	return s.isBasePtr()
 }
 
+// IsBasePtr checks if the field has a pointer type in the base
+func (s *StructField) IsBasePtr() bool {
+	return s.isBasePtr()
+}
+
 func (s *StructField) isBasePtr() bool {
 	return s.fieldFlags&FBasePtr != 0
 }
@@ -541,6 +638,12 @@ func (s *StructField) isBasePtr() bool {
 func FieldIsNestedStruct(s *StructField) bool {
 	return s.isNestedStruct()
 }
+
+//IsNestedStruct checks if the field is a nested structure
+func (s *StructField) IsNestedStruct() bool {
+	return s.nested != nil
+}
+
 func (s *StructField) isNestedStruct() bool {
 	return s.nested != nil
 }
@@ -555,6 +658,6 @@ func (s *StructField) isNestedField() bool {
 	return s.fieldFlags&FNestedField != 0
 }
 
-func (s *StructField) self() *StructField {
+func (s *StructField) Self() *StructField {
 	return s
 }

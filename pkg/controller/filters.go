@@ -1,27 +1,31 @@
 package controller
 
 import (
+	aerrors "github.com/kucjac/jsonapi/pkg/errors"
+	"github.com/kucjac/jsonapi/pkg/flags"
+	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/query"
+	"reflect"
 )
 
-// buildField
+// buildFilterField builds the filter based on the provided query
 func buildField(
-	s *Scope,
+	s *query.Scope,
 	collection string,
 	values []string,
 	c *Controller,
-	m *ModelStruct,
+	m *mapping.ModelStruct,
 	f *flags.Container,
 	splitted ...string,
-) (fField *FilterField, errs []*ErrorObject) {
+) (fField *query.FilterField, errs []*aerrors.ApiError) {
 	var (
-		sField    *StructField
-		op        FilterOperator
+		sField    *mapping.StructField
+		op        query.Operator
 		ok        bool
 		fieldName string
 
-		errObj     *ErrorObject
-		errObjects []*ErrorObject
+		errObj     *aerrors.ApiError
+		errObjects []*aerrors.ApiError
 		// private function for returning ErrObject
 		invalidName = func(fieldName, collection string) {
 			errObj = ErrInvalidQueryParameter.Copy()
@@ -208,15 +212,15 @@ func buildField(
 
 func buildNestedFilter(
 	c *Controller,
-	f *FilterField,
+	f *query.FilterField,
 	values []string,
 	splitted ...string,
-) (errObj *ErrorObject) {
+) (errObj *aerrors.ApiError) {
 
 	// internal variables definitions
 	var (
-		subfield *StructField
-		op       FilterOperator
+		subfield *mapping.StructField
+		op       query.Operator
 		ok       bool
 	)
 
@@ -226,7 +230,7 @@ func buildNestedFilter(
 			errObj.Detail += fmt.Sprintf("Collection: '%s', FilterField: '%s'", f.mStruct.collectionType, f.jsonAPIName)
 		}
 
-		getSubfield = func() (subfield *StructField, eObj *ErrorObject) {
+		getSubfield = func() (subfield *mapping.StructField, eObj *aerrors.ApiError) {
 			var ok bool
 			if splitted[0] == "id" {
 				subfield = f.relatedStruct.primary
@@ -408,15 +412,15 @@ func buildNestedFilter(
 }
 
 func setFilterValues(
-	f *FilterField,
+	f *query.FilterField,
 	c *Controller,
 	collection string,
 	values []string,
-	op FilterOperator,
-) (errs []*ErrorObject) {
+	op query.Operator,
+) (errs []*aerrors.ApiError) {
 	var (
 		er     error
-		errObj *ErrorObject
+		errObj *aerrors.ApiError
 
 		opInvalid = func() {
 			errObj = ErrUnsupportedQueryParameter.Copy()
@@ -675,40 +679,4 @@ func setBoolField(value string, fieldValue reflect.Value) (err error) {
 	}
 	fieldValue.SetBool(boolValue)
 	return nil
-}
-
-func splitBracketParameter(bracketed string) (values []string, err error) {
-	// look for values in
-	doubleOpen := func() error {
-		return fmt.Errorf("Open square bracket '[' found, without closing ']' in: '%s'.",
-			bracketed)
-	}
-
-	var startIndex int = -1
-	var endIndex int = -1
-	for i := 0; i < len(bracketed); i++ {
-		c := bracketed[i]
-		switch c {
-		case annotationOpenedBracket:
-			if startIndex > endIndex {
-				err = doubleOpen()
-				return
-			}
-			startIndex = i
-		case annotationClosedBracket:
-			// if opening bracket not set or in case of more than one brackets
-			// if start was not set before this endIndex
-			if startIndex == -1 || startIndex < endIndex {
-				err = fmt.Errorf("Close square bracket ']' found, without opening '[' in '%s'.", bracketed)
-				return
-			}
-			endIndex = i
-			values = append(values, bracketed[startIndex+1:endIndex])
-		}
-	}
-	if (startIndex != -1 && endIndex == -1) || startIndex > endIndex {
-		err = doubleOpen()
-		return
-	}
-	return
 }

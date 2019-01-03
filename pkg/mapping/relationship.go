@@ -43,30 +43,28 @@ const (
 // The HasOne and HasMany is the relationship that by default is 'synced'
 // The BelongsTo relationship is local by default.
 
-type Relationship struct {
-	*models.Relationship
-}
+type Relationship models.Relationship
 
 // ModelStruct returns relationships model struct - related model structure
 func (r *Relationship) ModelStruct() *ModelStruct {
-	mStruct := models.RelationshipMStruct(r.Relationship)
+	mStruct := models.RelationshipMStruct((*models.Relationship)(r))
 	if mStruct == nil {
 		return nil
 	}
-	return &ModelStruct{mStruct}
+	return (*ModelStruct)(mStruct)
 }
 
 // Kind returns relationship Kind
 func (r *Relationship) Kind() RelationshipKind {
-	k := models.RelationshipGetKind(r.Relationship)
+	k := models.RelationshipGetKind((*models.Relationship)(r))
 	return RelationshipKind(k)
 }
 
 // ForeignKey returns foreign key for given relationship
 func (r *Relationship) ForeignKey() *StructField {
-	fk := models.RelationshipForeignKey(r.Relationship)
+	fk := models.RelationshipForeignKey((*models.Relationship)(r))
 	if fk == nil {
 		return nil
 	}
-	return &StructField{fk}
+	return (*StructField)(fk)
 }

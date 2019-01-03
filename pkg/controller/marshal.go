@@ -2,9 +2,11 @@ package controller
 
 import (
 	"encoding/json"
-	"errors"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+
 	"fmt"
 	"github.com/kucjac/jsonapi/pkg/flags"
+	"github.com/kucjac/jsonapi/pkg/query"
 	"io"
 	"reflect"
 	"strconv"
@@ -67,11 +69,11 @@ func MarshalPayload(w io.Writer, payload Payloader) error {
 	return nil
 }
 
-func MarshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
+func MarshalScope(scope *query.Scope, controller *Controller) (payloader Payloader, err error) {
 	return marshalScope(scope, controller)
 }
 
-func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, err error) {
+func marshalScope(scope *query.Scope, controller *Controller) (payloader Payloader, err error) {
 	if scope.Value == nil && scope.kind >= relationshipKind {
 		/** TO DO:  Build paths */
 
@@ -109,7 +111,7 @@ func marshalScope(scope *Scope, controller *Controller) (payloader Payloader, er
 }
 
 func marshalIncludes(
-	rootScope *Scope,
+	rootScope *query.Scope,
 	included *[]*Node,
 	controller *Controller,
 ) (err error) {
@@ -122,7 +124,7 @@ func marshalIncludes(
 }
 
 func marshalIncludedScope(
-	includedScope *Scope,
+	includedScope *query.Scope,
 	included *[]*Node,
 	controller *Controller,
 ) (err error) {
@@ -139,7 +141,7 @@ func marshalIncludedScope(
 	return
 }
 
-func marshalScopeOne(scope *Scope, controller *Controller) (*OnePayload, error) {
+func marshalScopeOne(scope *query.Scope, controller *Controller) (*OnePayload, error) {
 	node, err := visitScopeNode(scope.Value, scope, controller)
 	if err != nil {
 		return nil, err
@@ -147,7 +149,7 @@ func marshalScopeOne(scope *Scope, controller *Controller) (*OnePayload, error) 
 	return &OnePayload{Data: node}, nil
 }
 
-func marshalScopeMany(scope *Scope, controller *Controller) (*ManyPayload, error) {
+func marshalScopeMany(scope *query.Scope, controller *Controller) (*ManyPayload, error) {
 	nodes, err := visitScopeManyNodes(scope, controller)
 	if err != nil {
 		return nil, err
@@ -155,7 +157,7 @@ func marshalScopeMany(scope *Scope, controller *Controller) (*ManyPayload, error
 	return &ManyPayload{Data: nodes}, nil
 }
 
-func visitScopeManyNodes(scope *Scope, controller *Controller,
+func visitScopeManyNodes(scope *query.Scope, controller *Controller,
 ) ([]*Node, error) {
 	valInterface := reflect.ValueOf(scope.Value).Interface()
 	valSlice, err := convertToSliceInterface(&valInterface)
@@ -175,7 +177,7 @@ func visitScopeManyNodes(scope *Scope, controller *Controller,
 	return nodes, nil
 }
 
-func (c *Controller) visitManyNodes(v reflect.Value, mStruct *ModelStruct) ([]*Node, error) {
+func (c *Controller) visitManyNodes(v reflect.Value, mStruct *mapping.ModelStruct) ([]*Node, error) {
 	nodes := []*Node{}
 
 	for i := 0; i < v.Len(); i++ {
@@ -195,7 +197,7 @@ func (c *Controller) visitManyNodes(v reflect.Value, mStruct *ModelStruct) ([]*N
 
 func (c *Controller) visistNode(
 	value reflect.Value,
-	mStruct *ModelStruct,
+	mStruct *mapping.ModelStruct,
 ) (*Node, error) {
 
 	if reflect.Indirect(value).Kind() != reflect.Struct {
@@ -371,7 +373,7 @@ func (c *Controller) visistNode(
 	return node, nil
 }
 
-func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
+func visitScopeNode(value interface{}, scope *query.Scope, controller *Controller,
 ) (*Node, error) {
 
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
@@ -557,7 +559,7 @@ func visitScopeNode(value interface{}, scope *Scope, controller *Controller,
 
 func visitRelationshipManyNode(
 	manyValue, rootID reflect.Value,
-	field *StructField,
+	field *mapping.StructField,
 	controller *Controller,
 ) (*RelationshipManyNode, error) {
 	nodes := []*Node{}
@@ -578,7 +580,7 @@ func visitRelationshipManyNode(
 
 func visitRelationshipNode(
 	value, rootID reflect.Value,
-	field *StructField,
+	field *mapping.StructField,
 	controller *Controller,
 ) (*Node, error) {
 	mStruct := field.relatedStruct

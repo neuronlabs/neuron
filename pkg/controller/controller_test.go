@@ -29,8 +29,8 @@ func TestBuildScopeList(t *testing.T) {
 	var (
 		err   error
 		req   *http.Request
-		scope *Scope
-		errs  []*ErrorObject
+		scope *query.Scope
+		errs  []*aerrors.ApiError
 		c     *Controller
 	)
 
@@ -555,7 +555,7 @@ func TestPresetScope(t *testing.T) {
 	query := "preset=blogs.posts&filter[blogs][id][$eq]=1&page[limit][posts]=10&sort[posts]=-id&fields[posts]=comments"
 	filter := "filter[comments][id][$eq]"
 	var (
-		presetPair *PresetPair
+		presetPair *query.PresetPair
 	)
 
 	assertNoPanic(t, func() {

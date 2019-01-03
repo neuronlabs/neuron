@@ -22,9 +22,19 @@ type NestedStruct struct {
 	marshalType reflect.Type
 }
 
+// Attr returns nested struct related attribute field
+func (n *NestedStruct) Attr() *StructField {
+	return n.attr()
+}
+
 // Type returns nested struct's reflect.Type
 func (n *NestedStruct) Type() reflect.Type {
 	return n.modelType
+}
+
+// StructField returns nested structs related struct field
+func (n *NestedStruct) StructField() StructFielder {
+	return n.structField
 }
 
 // NewNestedStruct returns new nested structure
@@ -47,9 +57,9 @@ func (n *NestedStruct) attr() *StructField {
 	sFielder := n.structField
 	for {
 		if nested, ok := sFielder.(NestedStructFielder); ok {
-			sFielder = nested.selfNested().root.structField
+			sFielder = nested.SelfNested().root.structField
 		} else {
-			attr = sFielder.self()
+			attr = sFielder.Self()
 			break
 		}
 	}
@@ -101,9 +111,9 @@ func NewNestedField(
 ) *NestedField {
 	nestedField := &NestedField{
 		StructField: &StructField{
-			mStruct:      structFielder.self().mStruct,
+			mStruct:      structFielder.Self().mStruct,
 			reflectField: nField,
-			fieldKind:    FTNested,
+			fieldKind:    KindNested,
 			fieldFlags:   FDefault | FNestedField,
 		},
 		root: root,
@@ -121,7 +131,7 @@ func NestedFieldRoot(n *NestedField) *NestedStruct {
 	return n.root
 }
 
-func (n *NestedField) selfNested() *NestedField {
+func (n *NestedField) SelfNested() *NestedField {
 	return n
 }
 
@@ -130,9 +140,9 @@ func (n *NestedField) attr() *StructField {
 	sFielder := n.root.structField
 	for {
 		if nested, ok := sFielder.(NestedStructFielder); ok {
-			sFielder = nested.selfNested().root.structField
+			sFielder = nested.SelfNested().root.structField
 		} else {
-			attr = sFielder.self()
+			attr = sFielder.Self()
 			break
 		}
 	}
@@ -140,10 +150,10 @@ func (n *NestedField) attr() *StructField {
 }
 
 type StructFielder interface {
-	self() *StructField
+	Self() *StructField
 }
 
 type NestedStructFielder interface {
 	StructFielder
-	selfNested() *NestedField
+	SelfNested() *NestedField
 }

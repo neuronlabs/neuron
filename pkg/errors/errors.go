@@ -35,7 +35,7 @@ func (e ApiError) Copy() *ApiError {
 }
 
 // ApiError implements the `ApiError` interface.
-func (e *ApiError) ApiError() string {
+func (e *ApiError) Error() string {
 	return fmt.Sprintf("ApiError: %s %s\n", e.Title, e.Detail)
 }
 

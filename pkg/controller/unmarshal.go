@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+	"github.com/kucjac/jsonapi/pkg/query"
 	"github.com/pkg/errors"
 	"io"
 	"reflect"
@@ -15,7 +17,7 @@ const (
 	unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
 )
 
-func (c *Controller) UnmarshalScopeMany(in io.Reader, model interface{}) (*Scope, error) {
+func (c *Controller) UnmarshalScopeMany(in io.Reader, model interface{}) (*query.Scope, error) {
 	t := reflect.TypeOf(model)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -38,7 +40,7 @@ func (c *Controller) UnmarshalScopeOne(
 	in io.Reader,
 	model interface{},
 	addSelectedFields bool,
-) (*Scope, error) {
+) (*query.Scope, error) {
 	t := reflect.TypeOf(model)
 	return c.unmarshalScopeOne(in, t, addSelectedFields)
 }
@@ -47,7 +49,7 @@ func (c *Controller) unmarshalScopeOne(
 	in io.Reader,
 	t reflect.Type,
 	addSelectedFields bool,
-) (*Scope, error) {
+) (*query.Scope, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -65,9 +67,9 @@ func (c *Controller) Unmarshal(in io.Reader, v interface{}) error {
 
 func (c *Controller) unmarshalScope(
 	in io.Reader,
-	mStruct *ModelStruct,
+	mStruct *mapping.ModelStruct,
 	useMany, usedFields bool,
-) (*Scope, error) {
+) (*query.Scope, error) {
 
 	var modelValue reflect.Value
 	if useMany {
@@ -104,7 +106,7 @@ func (c *Controller) unmarshal(
 	in io.Reader,
 	model interface{},
 	usedFields bool,
-) ([]*StructField, error) {
+) ([]*mapping.StructField, error) {
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
 		return nil, IErrUnexpectedType
@@ -122,7 +124,7 @@ func (c *Controller) unmarshal(
 		if err != nil {
 			return nil, err
 		}
-		var fields []*StructField
+		var fields []*mapping.StructField
 		if usedFields {
 			if one.Data.ID != "" {
 				fields = append(fields, mStruct.primary)
@@ -455,7 +457,7 @@ func (c *Controller) unmarshalNode(
 }
 
 func (c *Controller) unmarshalAttrFieldValue(
-	modelAttr *StructField,
+	modelAttr *mapping.StructField,
 	fieldValue reflect.Value,
 	attrValue interface{},
 ) (err error) {
@@ -493,7 +495,7 @@ func (c *Controller) unmarshalAttrFieldValue(
 }
 
 func (c *Controller) unmarshalMapValue(
-	modelAttr *StructField,
+	modelAttr *mapping.StructField,
 	v reflect.Value,
 	currentType reflect.Type,
 	baseType reflect.Type,
@@ -568,7 +570,7 @@ func (c *Controller) unmarshalMapValue(
 }
 
 func (c *Controller) unmarshalSliceValue(
-	modelAttr *StructField, // modelAttr is the attribute StructField
+	modelAttr *mapping.StructField, // modelAttr is the attribute StructField
 	v reflect.Value, // v is the current field value
 	currentType reflect.Type,
 	baseType reflect.Type, // baseType is the reflect.Type that is the base of the slice
@@ -688,7 +690,7 @@ func (c *Controller) unmarshalSliceValue(
 
 // unmarshalSingleFieldValue gets the
 func (c *Controller) unmarshalSingleFieldValue(
-	modelAttr *StructField,
+	modelAttr *mapping.StructField,
 	v reflect.Value, // v is the incoming value to unmarshal
 	baseType reflect.Type, // fieldType is the base Type of the model field
 ) (reflect.Value, error) {

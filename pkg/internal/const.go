@@ -18,7 +18,7 @@ const (
 	// relation tag
 	AnnotationManyToMany     = "many2many"
 	AnnotationRelationNoSync = "nosync"
-	annotaitonRelationSync   = "sync"
+	AnnotationRelationSync   = "sync"
 
 	AnnotationRelationRestrict = "restrict"
 	AnnotationRelationNoAction = "no-action"
