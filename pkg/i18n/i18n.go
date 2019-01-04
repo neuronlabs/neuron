@@ -16,7 +16,7 @@ type Support struct {
 
 // New creates new I18n Support
 func New(cfg *config.I18nConfig) (*Support, error) {
-	var tags []*language.Tag
+	var tags []interface{}
 
 	for _, langTag := range cfg.SupportedLanguages {
 		tag, err := language.Parse(langTag)
@@ -29,7 +29,7 @@ func New(cfg *config.I18nConfig) (*Support, error) {
 	s := &Support{
 		Locale: language.NewCoverage(tags...),
 	}
-	s.Matcher = language.NewMatcher(s.Locale.Tags()...)
+	s.Matcher = language.NewMatcher(s.Locale.Tags())
 	return s, nil
 }
 

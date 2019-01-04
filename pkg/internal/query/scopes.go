@@ -231,6 +231,7 @@ func (b *Builder) BuildScopeSingle(
 
 	s = scope.NewRootScope(mStruct)
 	s.WithContext(ctx)
+	s.InitializeIncluded(b.Config.IncludeNestedLimit)
 
 	if id == nil {
 		var stringId string
@@ -457,6 +458,24 @@ func (b *Builder) BuildScopeRelationship(
 	includedField.Scope.SetFields(relStruct.PrimaryField())
 
 	return
+}
+
+// NewRootScope creates new root scope for the given model struct
+func (b *Builder) NewRootScope(mStruct *models.ModelStruct) *scope.Scope {
+	s := scope.NewRootScope(mStruct)
+
+	return s
+}
+
+// NewScope creates new scope for provided model
+func (b *Builder) NewScope(model interface{}) (*scope.Scope, error) {
+	mStruct, err := b.modelStruct(model)
+	if err != nil {
+		return nil, errors.Wrap(err, "modelStruct failed.")
+	}
+
+	s := scope.New(mStruct)
+	return s, nil
 }
 
 func (b *Builder) buildQueryParametersSingle(

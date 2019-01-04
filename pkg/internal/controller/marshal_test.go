@@ -2,10 +2,13 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"github.com/kucjac/jsonapi/pkg/internal"
-	"github.com/kucjac/jsonapi/pkg/internal/query"
+	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -247,152 +250,97 @@ func TestMarshalScope(t *testing.T) {
 
 	buf := bytes.NewBufferString("")
 
+	ctx := context.Background()
 	c := BlogController(t)
 
-	// req := httptest.NewRequest("GET", `/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments`, nil)
-	// scope, errs, err := c.BuildScopeSingle(req, &Endpoint{Type: Get}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
-	// assert.Nil(t, err)
-	// assertEmpty(t, errs)
+	t.Run("Included", func(t *testing.T) {
 
-	t.Log("Creating RootScope")
-	scope, err := c.NewRootScope(&internal.Blog{})
-	require.NoError(t, err)
+		u, err := url.Parse("/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments")
+		require.NoError(t, err)
 
-	c.log().Debugf("Prepared")
+		s, errs, err := c.queryBuilder.BuildScopeSingle(ctx, &internal.Blog{}, u, 3)
 
-	scope.Value = &internal.Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*internal.Post{{ID: 1}}, CurrentPost: &internal.Post{ID: 2}}
+		if assert.NoError(t, err) && assert.Empty(t, errs) && assert.NotNil(t, s) {
 
-	errs := scope.BuildIncludeList("posts", "current_post.latest_comment")
-	require.Empty(t, errs)
+			s.Value = &internal.Blog{ID: 3, Title: "My own title.", CreatedAt: time.Now(), Posts: []*internal.Post{{ID: 1}}, CurrentPost: &internal.Post{ID: 2}}
 
-	c.log().Debugf("Built include list")
+			includes := s.IncludedFields()
 
-	// assertEqual(t, 1, len(scope.IncludedFields))
-	postInclude := scope.IncludedFields()[0]
-	postScope := postInclude.Scope
-	postScope.Value = []*internal.Post{{ID: 1, Title: "Post title", Body: "Post body."}}
+			if assert.Len(t, includes, 2) {
+				// assertEqual(t, 1, len(scope.IncludedFields))
+				postInclude := s.IncludedFields()[0]
+				postScope := postInclude.Scope
+				postScope.Value = []*internal.Post{{ID: 1, Title: "Post title", Body: "Post body."}}
 
-	currentPost := scope.IncludedFields()[1]
-	currentPost.Scope.Value = &internal.Post{ID: 2, Title: "Current One", Body: "This is current post", LatestComment: &internal.Comment{ID: 1}}
+				currentPost := s.IncludedFields()[1]
+				currentPost.Scope.Value = &internal.Post{ID: 2, Title: "Current One", Body: "This is current post", LatestComment: &internal.Comment{ID: 1}}
 
-	latestComment := currentPost.Scope.IncludedFields()[0]
-	latestComment.Scope.Value = &internal.Comment{ID: 1, Body: "This is such a great post", PostID: 2}
+				latestComment := currentPost.Scope.IncludedFields()[0]
+				latestComment.Scope.Value = &internal.Comment{ID: 1, Body: "This is such a great post", PostID: 2}
 
-	c.log().Debugf("SettingCollectionValues")
-	err = scope.SetCollectionValues()
-	assert.Nil(t, err)
+				log.Debugf("SettingCollectionValues")
+				err = s.SetCollectionValues()
+				if assert.Nil(t, err) {
 
-	c.log().Debugf("Setting collection values")
+					log.Debugf("Setting collection values")
 
-	for scope.NextIncludedField() {
-		includedField, err := scope.CurrentIncludedField()
-		assert.Nil(t, err)
-		_, err = includedField.GetMissingPrimaries()
-		assert.Nil(t, err)
-		err = includedField.Scope.SetCollectionValues()
-		assert.Nil(t, err)
+					for s.NextIncludedField() {
+						includedField, err := s.CurrentIncludedField()
+						if assert.Nil(t, err) {
+							_, err = includedField.GetMissingPrimaries()
+							if assert.Nil(t, err) {
+								err = includedField.Scope.SetCollectionValues()
+								if assert.Nil(t, err) {
 
-		c.log().Debugf("Outer")
-		for includedField.Scope.NextIncludedField() {
-			nestedIncluded, err := includedField.Scope.CurrentIncludedField()
-			c.log().Debugf("Inner")
-			assert.Nil(t, err)
-			_, err = nestedIncluded.GetMissingPrimaries()
-			assert.Nil(t, err)
+									log.Debugf("Outer")
+									for includedField.Scope.NextIncludedField() {
+										nestedIncluded, err := includedField.Scope.CurrentIncludedField()
+										log.Debugf("Inner")
+										assert.Nil(t, err)
+										_, err = nestedIncluded.GetMissingPrimaries()
+										assert.Nil(t, err)
 
-			err = nestedIncluded.Scope.SetCollectionValues()
-			assert.Nil(t, err)
+										err = nestedIncluded.Scope.SetCollectionValues()
+										assert.Nil(t, err)
+									}
+								}
+							}
+						}
+
+					}
+				}
+			}
 		}
-	}
 
-	c.log().Debugf("Preparing to marshal")
-	payload, err := marshalScope(scope, c)
-	assert.NoError(t, err)
+		log.Debugf("Preparing to marshal")
+		payload, err := marshalScope(s, c)
+		assert.NoError(t, err)
 
-	err = MarshalPayload(buf, payload)
-	assert.NoError(t, err)
-	// even if included, there is no
+		err = MarshalPayload(buf, payload)
+		assert.NoError(t, err)
+		// even if included, there is no
 
-	assert.True(t, strings.Contains(buf.String(), "{\"type\":\"posts\",\"id\":\"1"))
-	assert.True(t, strings.Contains(buf.String(), "\"title\":\"My own title.\""))
-	assert.True(t, strings.Contains(buf.String(), "{\"type\":\"comments\",\"id\":\"1\",\"attributes\":{\"body\""))
-	// assert.True(t, strings.Contains(buf.String(), "\"relationships\":{\"posts\":{\"data\":[{\"type\":\"posts\",\"id\":\"1\"}]}}"))
-	assert.True(t, strings.Contains(buf.String(), "\"type\":\"blogs\",\"id\":\"3\""))
+		assert.True(t, strings.Contains(buf.String(), "{\"type\":\"posts\",\"id\":\"1"))
+		assert.True(t, strings.Contains(buf.String(), "\"title\":\"My own title.\""))
+		assert.True(t, strings.Contains(buf.String(), "{\"type\":\"comments\",\"id\":\"1\",\"attributes\":{\"body\""))
+		// assert.True(t, strings.Contains(buf.String(), "\"relationships\":{\"posts\":{\"data\":[{\"type\":\"posts\",\"id\":\"1\"}]}}"))
+		assert.True(t, strings.Contains(buf.String(), "\"type\":\"blogs\",\"id\":\"3\""))
 
-	c = BlogController(t)
-	buf.Reset()
-
-	scope = BlogScope(t, c)
-
-	errs = scope.BuildIncludeList("current_post")
-	assert.Empty(t, errs)
-	scope.Value = &internal.Blog{ID: 4, Title: "The title.", CreatedAt: time.Now(), CurrentPost: &internal.Post{ID: 3}}
-	errs = scope.BuildFieldset("title", "created_at", "current_post")
-	assert.Empty(t, errs)
-
-	postScope, ok := scope.IncludeScopeByStruct(c.MustGetModelStruct(&internal.Post{}))
-	if assert.True(t, ok) {
-		postScope.Value = &internal.Post{ID: 3, Title: "Breaking News!", Body: "Some body"}
-	}
-
-	errs = postScope.BuildFieldset("title", "body")
-	assert.Empty(t, errs)
-
-	payload, err = marshalScope(scope, c)
-	assert.Nil(t, err)
-	err = MarshalPayload(buf, payload)
-	assert.Nil(t, err)
-
-	// assert.True(t, strings.Contains(buf.String(),
-	// "\"relationships\":{\"current_post\":{\"data\":{\"type\":\"posts\",\"id\":\"3\"}}}"))
-
-	// t.Log(buf.String())
-	assert.True(t, strings.Contains(buf.String(),
-		"\"type\":\"blogs\",\"id\":\"4\",\"attributes\":{\"created_at\":"))
-	// assert.True(t, strings.Contains(buf.String(),
-	// "\"included\":[{\"type\":\"posts\",\"id\":\"3\",\"attributes\":{\"body\":\"Some body\",\"title\":\"Breaking News!\"}}]"))
-
-	c = BlogController(t)
-	buf.Reset()
-
-	scope = BlogScope(t, c)
-	scope.Value = []*internal.Blog{{ID: 4, Title: "The title one."}, {ID: 5, Title: "The title two"}}
-	errs = scope.BuildFieldset("title")
-	assert.Empty(t, errs)
-
-	payload, err = marshalScope(scope, c)
-	assert.Nil(t, err)
-
-	err = MarshalPayload(buf, payload)
-	assert.Nil(t, err)
-
-	assert.True(t, strings.Contains(buf.String(), `"type":"blogs","id":"4","attributes":{"title":"The title one."}`))
-	assert.True(t, strings.Contains(buf.String(), `"type":"blogs","id":"5","attributes":{"title":"The title two"}`))
-
-	// scope with no value
-	c = BlogController(t)
-	buf.Reset()
-	scope = BlogScope(t, c)
-
-	payload, err = marshalScope(scope, c)
-	assert.Error(t, err)
-
-	err = MarshalPayload(buf, payload)
-	assert.Nil(t, err)
+	})
 
 	t.Run("MarshalToManyRelationship", func(t *testing.T) {
 		c := DefaultTesting()
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		scope, err := c.NewScope(&internal.Pet{})
+		s, err := c.queryBuilder.NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
-		scope.Value = &internal.Pet{ID: 5, Owners: []*internal.User{{ID: 2}, {ID: 3}}}
+		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{{ID: 2}, {ID: 3}}}
 
-		err = scope.SetFields("Owners")
+		err = s.SetFields("Owners")
 		assert.NoError(t, err)
 
-		payload, err := c.MarshalScope(scope)
+		payload, err := c.MarshalScope(s)
 		if assert.NoError(t, err) {
 			single, ok := payload.(*OnePayload)
 			if assert.True(t, ok) {
@@ -425,13 +373,13 @@ func TestMarshalScope(t *testing.T) {
 		c := DefaultTesting()
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		scope, err := c.NewScope(&internal.Pet{})
+		s, err := c.queryBuilder.NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
-		scope.Value = &internal.Pet{ID: 5, Owners: []*internal.User{}}
-		scope.SetFields("Owners")
+		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{}}
+		s.SetFields("Owners")
 
-		payload, err := c.MarshalScope(scope)
+		payload, err := c.MarshalScope(s)
 		if assert.NoError(t, err) {
 			single, ok := payload.(*OnePayload)
 			if assert.True(t, ok) {
@@ -464,8 +412,8 @@ func BlogController(t *testing.T) *Controller {
 	return c
 }
 
-func BlogScope(t *testing.T, c *Controller) *query.Scope {
-	scope, err := c.NewScope(&internal.Blog{})
+func BlogScope(t *testing.T, c *Controller) *scope.Scope {
+	scope, err := c.queryBuilder.NewScope(&internal.Blog{})
 	require.NoError(t, err)
 	return scope
 }
@@ -511,7 +459,7 @@ func TestMarshalHiddenScope(t *testing.T) {
 	c := DefaultTesting()
 	assert.NoError(t, c.RegisterModels(&HiddenModel{}))
 
-	scope, err := c.NewScope(&HiddenModel{})
+	scope, err := c.queryBuilder.NewScope(&HiddenModel{})
 	assert.NoError(t, err)
 
 	scope.Value = &HiddenModel{ID: 1, Visibile: "Visible", HiddenField: "Invisible"}

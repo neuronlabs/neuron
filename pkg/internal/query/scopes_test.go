@@ -352,6 +352,31 @@ func TestBuildScopeSingle(t *testing.T) {
 		}
 	})
 
+	t.Run("WithNestedInclude", func(t *testing.T) {
+		b := DefaultBuilderWithModels(t, &internal.Blog{}, &internal.Comment{}, &internal.Post{})
+
+		u, err := url.Parse("/api/v1/blogs/44?include=posts,current_post.latest_comment&fields[posts]=title")
+		require.NoError(t, err)
+		s, errs, err := b.BuildScopeSingle(ctx, &internal.Blog{}, u, nil)
+		assert.Nil(t, err)
+		assert.Empty(t, errs)
+
+		if assert.NotNil(t, s) {
+			prims := s.PrimaryFilters()
+			if assert.Len(t, prims, 1) {
+				v := prims[0].Values()
+				if assert.Len(t, v, 1) {
+					assert.Equal(t, 44, v[0].Values[0])
+				}
+			}
+
+			includes := s.IncludedScopes()
+			if assert.Len(t, includes, 2) {
+
+			}
+		}
+	})
+
 	t.Run("FilterIncluded", func(t *testing.T) {
 		b := DefaultBuilderWithModels(t, &internal.Blog{}, &internal.Comment{}, &internal.Post{})
 

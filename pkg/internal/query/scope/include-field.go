@@ -217,7 +217,6 @@ func (i *IncludeField) copyScopeBoundaries() {
 	// fieldset is taken by reference - copied if there is nested
 	i.Scope.fieldset = i.Scope.collectionScope.fieldset
 	i.Scope.ctx = i.Scope.collectionScope.ctx
-	i.Scope.logger = i.Scope.collectionScope.logger
 
 	if f, ok := i.Scope.collectionScope.fContainer.Get(flags.UseLinks); ok {
 		i.Scope.fContainer.Set(flags.UseLinks, f)

@@ -7,18 +7,17 @@ import (
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
+	"github.com/kucjac/jsonapi/pkg/log"
 
 	"github.com/kucjac/jsonapi/pkg/internal/namer/dialect"
 	"github.com/kucjac/jsonapi/pkg/internal/query/filters"
 	"github.com/kucjac/jsonapi/pkg/internal/query/paginations"
 	"github.com/kucjac/jsonapi/pkg/internal/query/sorts"
 	"github.com/kucjac/jsonapi/pkg/safemap"
-	"github.com/kucjac/uni-logger"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
-	"log"
+
 	"net/http"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -124,9 +123,6 @@ type Scope struct {
 	queryLanguage language.Tag
 
 	hasFieldNotInFieldset bool
-
-	// unilogger.Logger
-	logger unilogger.LeveledLogger
 
 	ctx context.Context
 }
@@ -302,7 +298,7 @@ func (s *Scope) GetCollection() string {
 
 // Kind returns scope's kind
 func (s *Scope) Kind() ScopeKind {
-	return s.Kind()
+	return s.kind
 }
 
 // IsMany checks if the value is a slice
@@ -493,14 +489,6 @@ func (s *Scope) IsPrimaryFieldSelected() bool {
 		}
 	}
 	return false
-}
-
-// Log gets scope's logger
-func (s *Scope) Log() unilogger.LeveledLogger {
-	if s.logger == nil {
-		s.logger = unilogger.NewBasicLogger(os.Stdout, "SCP - ", log.LstdFlags)
-	}
-	return s.logger
 }
 
 // isRoot checks if given scope is a root scope of the query
@@ -1232,6 +1220,7 @@ func (s *Scope) BuildIncludeList(includedList ...string,
 		// check the nested level of every included
 		annotCount := strings.Count(included, internal.AnnotationNestedSeperator)
 		if annotCount > s.maxNestedLevel {
+			log.Debugf("AnnotCount: %v MaxNestedLevel: %v", annotCount, s.maxNestedLevel)
 			errs = append(errs, aerrors.ErrTooManyNestedRelationships(included))
 			continue
 		}

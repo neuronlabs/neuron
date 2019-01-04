@@ -8,6 +8,7 @@ import (
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"io"
 	"reflect"
@@ -20,7 +21,7 @@ const (
 )
 
 func (c *Controller) UnmarshalScopeMany(in io.Reader, model interface{}) (*scope.Scope, error) {
-	mStruct, err := c.Schemas.GetModelStruct(model)
+	mStruct, err := c.schemas.GetModelStruct(model)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (c *Controller) unmarshalScopeOne(
 	model interface{},
 	addSelectedFields bool,
 ) (*scope.Scope, error) {
-	mStruct, err := c.Schemas.GetModelStruct(model)
+	mStruct, err := c.schemas.GetModelStruct(model)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (c *Controller) unmarshalScope(
 		return nil, err
 	}
 
-	sc := scope.NewRootScope(mStruct, c.Config.IncludeNestedLimit)
+	sc := scope.NewRootScope(mStruct)
 	if useMany {
 
 		sc.Value = reflect.ValueOf(v).Elem().Interface()
@@ -101,7 +102,7 @@ func (c *Controller) unmarshal(
 		return nil, internal.IErrUnexpectedType
 	}
 
-	mStruct, err := c.Schemas.GetModelStruct(model)
+	mStruct, err := c.schemas.GetModelStruct(model)
 	if err != nil {
 		return nil, err
 	}
@@ -137,14 +138,14 @@ func (c *Controller) unmarshal(
 		}
 
 		if one.Data.Type != mStruct.Collection() {
-			c.log().Debugf("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
+			log.Debugf("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
 			errObj := aerrors.ErrInvalidResourceName.Copy()
 			errObj.Detail = fmt.Sprintf("The specified collection: '%s' is not recognized by the server.", one.Data.Type)
 			return nil, errObj
 		}
 
 		if one.Included != nil {
-			c.log().Debug("Payload contains Included values.")
+			log.Debug("Payload contains Included values.")
 			includedMap := make(map[string]*Node)
 			for _, included := range one.Included {
 				key := fmt.Sprintf("%s,%s", included.Type, included.ID)
@@ -176,7 +177,7 @@ func (c *Controller) unmarshal(
 		if t.Kind() != reflect.Ptr {
 			return nil, internal.IErrUnexpectedType
 		}
-		mStruct, err := c.Schemas.ModelByType(t.Elem())
+		mStruct, err := c.schemas.ModelByType(t.Elem())
 		if mStruct == nil {
 			return nil, internal.IErrModelNotMapped
 		}
@@ -271,7 +272,7 @@ func (c *Controller) unmarshalHandleDecodeError(er error) error {
 		errObj.Err = er
 		return errObj
 	} else {
-		c.log().Errorf("Unknown error occured while decoding the payload. %v", er)
+		log.Errorf("Unknown error occured while decoding the payload. %v", er)
 		return er
 	}
 
@@ -284,15 +285,15 @@ func (c *Controller) unmarshalNode(
 	included *map[string]*Node,
 ) (err error) {
 	var schema *models.Schema
-	schema, err = c.Schemas.SchemaByType(modelValue.Type())
+	schema, err = c.schemas.SchemaByType(modelValue.Type())
 	if err != nil {
-		c.log().Debugf("getSchemaByType failed: %v", err)
+		log.Debugf("getSchemaByType failed: %v", err)
 		return
 	}
 
 	mStruct := schema.ModelByCollection(data.Type)
 	if mStruct == nil {
-		c.log().Debugf("Invalid collection type: %s", data.Type)
+		log.Debugf("Invalid collection type: %s", data.Type)
 		errObj := aerrors.ErrInvalidResourceName.Copy()
 		errObj.Detail = fmt.Sprintf("Provided invalid collection name: '%s'", data.Type)
 		err = errObj
@@ -378,7 +379,7 @@ func (c *Controller) unmarshalNode(
 
 				err = json.NewEncoder(buf).Encode(data.Relationships[relName])
 				if err != nil {
-					c.log().Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
+					log.Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
 					errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 					errObj.Detail = fmt.Sprintf("The value for the relationship: '%s' is of invalid form.", relName)
 					errObj.Err = err
@@ -387,7 +388,7 @@ func (c *Controller) unmarshalNode(
 				}
 				err = json.NewDecoder(buf).Decode(relationship)
 				if err != nil {
-					c.log().Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
+					log.Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
 					errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 					errObj.Detail = fmt.Sprintf("The value for the relationship: '%s' is of invalid form.", relName)
 					errObj.Err = err
@@ -406,7 +407,7 @@ func (c *Controller) unmarshalNode(
 						m,
 						included,
 					); err != nil {
-						c.log().Debugf("unmarshalNode.RelationshipMany - unmarshalNode failed. %v", err)
+						log.Debugf("unmarshalNode.RelationshipMany - unmarshalNode failed. %v", err)
 						return
 					}
 
@@ -418,7 +419,7 @@ func (c *Controller) unmarshalNode(
 				buf := bytes.NewBuffer(nil)
 
 				if err = json.NewEncoder(buf).Encode(relValue); err != nil {
-					c.log().Debugf("Controller.UnmarshalNode.relationshipSingle json.Encode failed. %v", err)
+					log.Debugf("Controller.UnmarshalNode.relationshipSingle json.Encode failed. %v", err)
 					errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 					errObj.Detail = fmt.Sprintf("The value for the relationship: '%s' is of invalid form.", relName)
 					errObj.Err = err
@@ -427,7 +428,7 @@ func (c *Controller) unmarshalNode(
 				}
 
 				if err = json.NewDecoder(buf).Decode(relationship); err != nil {
-					c.log().Debugf("Controller.UnmarshalNode.RelationshipSingel json.Decode failed. %v", err)
+					log.Debugf("Controller.UnmarshalNode.RelationshipSingel json.Decode failed. %v", err)
 					errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 					errObj.Detail = fmt.Sprintf("The value for the relationship: '%s' is of invalid form.", relName)
 					errObj.Err = err
@@ -544,24 +545,24 @@ func (c *Controller) unmarshalMapValue(
 			value = value.Elem()
 		}
 
-		c.log().Debugf("Value: %v. Kind: %v", value, value.Kind())
+		log.Debugf("Value: %v. Kind: %v", value, value.Kind())
 
 		var nestedValue reflect.Value
 		switch nestedType.Kind() {
 		case reflect.Slice, reflect.Array:
-			c.log().Debugf("Nested Slice within map field: %v", modelAttr.Name())
+			log.Debugf("Nested Slice within map field: %v", modelAttr.Name())
 			nestedValue, err = c.unmarshalSliceValue(modelAttr, value, mpType.Elem(), baseType)
 			if err != nil {
 				return
 			}
 		default:
-			c.log().Debugf("Map ModelAttr: '%s' has basePtr: '%v'", modelAttr.Name(), modelAttr.IsBasePtr())
+			log.Debugf("Map ModelAttr: '%s' has basePtr: '%v'", modelAttr.Name(), modelAttr.IsBasePtr())
 			nestedValue, err = c.unmarshalSingleFieldValue(modelAttr, value, baseType)
 			if err != nil {
 				return
 			}
 
-			c.log().Debugf("Map ModelAttr: '%s' nestedValue: '%v'", nestedValue.Type().String())
+			log.Debugf("Map ModelAttr: '%s' nestedValue: '%v'", nestedValue.Type().String())
 
 		}
 		mapValue.SetMapIndex(key, nestedValue)
@@ -590,7 +591,7 @@ func (c *Controller) unmarshalSliceValue(
 
 	if slType.Kind() != reflect.Array && slType.Kind() != reflect.Slice {
 		err = errors.Errorf("Invalid currenType provided into 'unmarshalSliceValue' %v", slType.String())
-		c.log().Errorf("Attribute: %v, Err: %v", modelAttr.Name(), err)
+		log.Errorf("Attribute: %v, Err: %v", modelAttr.Name(), err)
 		return
 	}
 
@@ -607,10 +608,10 @@ func (c *Controller) unmarshalSliceValue(
 	// check what is the current value kind
 	// v Kind can't be an array -> the json unmarshaller won't unmarshal it into an array
 	if v.Kind() != reflect.Slice {
-		c.log().Debugf("Value within the slice is not of slice type. %v", v.Kind().String())
+		log.Debugf("Value within the slice is not of slice type. %v", v.Kind().String())
 		if v.Kind() == reflect.Interface {
 			v = v.Elem()
-			c.log().Debugf("Interface value elemed: %v, type: %v", v, v.Type())
+			log.Debugf("Interface value elemed: %v, type: %v", v, v.Type())
 		}
 		errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 		errObj.Detail = fmt.Sprintf("Field: '%s' the slice value is not a slice.", modelAttr.ApiName())
@@ -657,7 +658,7 @@ func (c *Controller) unmarshalSliceValue(
 		if hasNestedSlice {
 			nestedValue, err = c.unmarshalSliceValue(modelAttr, vElem, slType, baseType)
 			if err != nil {
-				c.log().Debug("Nested Slice Value failed: %v", err)
+				log.Debug("Nested Slice Value failed: %v", err)
 				return
 			}
 
@@ -665,7 +666,7 @@ func (c *Controller) unmarshalSliceValue(
 		} else {
 			nestedValue, err = c.unmarshalSingleFieldValue(modelAttr, vElem, baseType)
 			if err != nil {
-				c.log().Debugf("NestedSlice -> unmarshalSingleFieldValue failed. %v. Velem: %v", err)
+				log.Debugf("NestedSlice -> unmarshalSingleFieldValue failed. %v. Velem: %v", err)
 				return
 			}
 		}
@@ -697,25 +698,25 @@ func (c *Controller) unmarshalSingleFieldValue(
 
 	// check if the model attribute field is based with pointer
 	if modelAttr.IsBasePtr() {
-		c.log().Debugf("IsBasePtr: %v", modelAttr.Name())
+		log.Debugf("IsBasePtr: %v", modelAttr.Name())
 		if !v.IsValid() {
 			return reflect.Zero(reflect.PtrTo(baseType)), nil
 		}
 		if v.Interface() == nil {
 			return reflect.Zero(reflect.PtrTo(baseType)), nil
 		}
-		c.log().Debugf("Value: '%v' is valid. ", v)
+		log.Debugf("Value: '%v' is valid. ", v)
 	} else {
-		c.log().Debugf("Is not basePtr: %v", modelAttr.Name())
+		log.Debugf("Is not basePtr: %v", modelAttr.Name())
 		if !v.IsValid() {
 			return reflect.Value{}, aerrors.ErrInvalidJSONFieldValue.Copy().WithDetail(fmt.Sprintf("Field: '%s'", modelAttr.ApiName()))
 		}
-		c.log().Debugf("Is Valid: %v", v)
+		log.Debugf("Is Valid: %v", v)
 
 	}
 
 	if v.Kind() == reflect.Interface && v.IsValid() {
-		c.log().Debugf("Value is interface kind. %v", v)
+		log.Debugf("Value is interface kind. %v", v)
 		v = v.Elem()
 
 		// if the value was an uinitialized interface{} then v.Elem
@@ -758,7 +759,7 @@ func (c *Controller) unmarshalSingleFieldValue(
 			} else if v.Kind() == reflect.Int || v.Kind() == reflect.Int64 {
 				at = v.Int()
 			} else {
-				c.log().Debugf("Invalid time format: %v", v.Kind().String())
+				log.Debugf("Invalid time format: %v", v.Kind().String())
 				return reflect.Value{}, internal.IErrInvalidTime
 			}
 
@@ -821,7 +822,7 @@ func (c *Controller) unmarshalSingleFieldValue(
 			n := floatValue
 			numericValue = reflect.ValueOf(&n)
 		default:
-			c.log().Debugf("Unknown field number type: '%v'", baseType.String())
+			log.Debugf("Unknown field number type: '%v'", baseType.String())
 			return reflect.Value{}, internal.IErrUnknownFieldNumberType
 		}
 
@@ -890,7 +891,7 @@ func (c *Controller) unmarshalSingleFieldValue(
 			n := float64(intValue)
 			numericValue = reflect.ValueOf(&n)
 		default:
-			c.log().Debugf("Unknown field number type: '%v'", baseType.String())
+			log.Debugf("Unknown field number type: '%v'", baseType.String())
 			return reflect.Value{}, internal.IErrUnknownFieldNumberType
 		}
 
@@ -988,18 +989,18 @@ func (c *Controller) unmarshalSingleFieldValue(
 		}
 	default:
 		// As a final catch-all, ensure types line up to avoid a runtime panic.
-		c.log().Debugf("Invalid Value: %v with Kind: %v, should be: '%v' for field %v", v, v.Kind(), baseType.String(), modelAttr.Name())
+		log.Debugf("Invalid Value: %v with Kind: %v, should be: '%v' for field %v", v, v.Kind(), baseType.String(), modelAttr.Name())
 		unmErr := new(json.UnmarshalFieldError)
 		unmErr.Field = modelAttr.ReflectField()
 		unmErr.Type = baseType
 		unmErr.Key = modelAttr.ApiName()
 		if c != nil {
-			c.log().Debugf("Error in unmarshal field: %v\n. Value Type: %v. Value: %v", unmErr, v.Type().String(), value)
+			log.Debugf("Error in unmarshal field: %v\n. Value Type: %v. Value: %v", unmErr, v.Type().String(), value)
 		}
 		return reflect.Value{}, unmErr
 	}
 
-	c.log().Debugf("AttrField: '%s' equal kind: %v", modelAttr.ApiName(), baseType.String())
+	log.Debugf("AttrField: '%s' equal kind: %v", modelAttr.ApiName(), baseType.String())
 
 	if modelAttr.IsBasePtr() {
 		return concreteVal.Addr(), nil

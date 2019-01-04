@@ -6,6 +6,7 @@ import (
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 
 	"fmt"
@@ -47,10 +48,10 @@ func (c *Controller) Marshal(w io.Writer, v interface{}) error {
 	if ok {
 		schemaName = schemaNamer.SchemaName()
 	} else {
-		schemaName = c.Schemas.DefaultSchema().Name
+		schemaName = c.schemas.DefaultSchema().Name
 	}
 
-	schema, ok := c.Schemas.Schema(schemaName)
+	schema, ok := c.schemas.Schema(schemaName)
 	if !ok {
 		return errors.Errorf("Model: %s with schema: '%s' not found:", t.Name(), schemaName)
 	}
@@ -217,10 +218,10 @@ func unmarshalNestedStructValue(c *Controller, n *models.NestedStruct, value int
 	}
 
 	if models.FieldIsBasePtr(n.StructField().Self()) {
-		c.log().Debugf("NestedStruct: '%v' isBasePtr. Attr: '%s'", result.Type(), n.Attr().Name())
+		log.Debugf("NestedStruct: '%v' isBasePtr. Attr: '%s'", result.Type(), n.Attr().Name())
 		return result, nil
 	}
-	c.log().Debugf("NestedStruct: '%v' isNotBasePtr. Attr: '%s'", resElem.Type(), n.Attr().Name())
+	log.Debugf("NestedStruct: '%v' isNotBasePtr. Attr: '%s'", resElem.Type(), n.Attr().Name())
 	return resElem, nil
 }
 

@@ -3,11 +3,11 @@ package controller
 import (
 	"github.com/kucjac/jsonapi/pkg/config"
 	"github.com/kucjac/jsonapi/pkg/flags"
+	"github.com/kucjac/jsonapi/pkg/i18n"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query"
 	"github.com/kucjac/jsonapi/pkg/internal/query/filters"
-	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
-	"io/ioutil"
+	"github.com/kucjac/jsonapi/pkg/log"
 
 	"github.com/pkg/errors"
 
@@ -17,7 +17,6 @@ import (
 	// "golang.org/x/text/language"
 	// "golang.org/x/text/language/display"
 	"gopkg.in/go-playground/validator.v9"
-	"log"
 	// "net/http"
 	// "net/url"
 
@@ -35,15 +34,6 @@ type Controller struct {
 	// Config is the configuration struct for the controller
 	Config *config.ControllerConfig
 
-	// queryBuilder
-	queryBuilder query.Builder
-
-	// Schemas is a mapping for the model schemas
-	Schemas *models.ModelSchemas
-
-	// logger gets the
-	logger unilogger.LeveledLogger
-
 	// Namer defines the function strategy how the model's and it's fields are being named
 	NamerFunc namer.Namer
 
@@ -54,22 +44,30 @@ type Controller struct {
 	// any unknown fields
 	StrictUnmarshalMode bool
 
-	Operators *filters.OperatorContainer
+	// queryBuilderis the controllers query builder
+	queryBuilder *query.Builder
+
+	// i18nSup defines the i18n support for the provided controller
+	i18nSup *i18n.Support
+
+	// schemas is a mapping for the model schemas
+	schemas *models.ModelSchemas
+
+	// operators
+	operators *filters.OperatorContainer
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
-func New(cfg *config.ControllerConfig) (*Controller, error) {
+func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Controller, error) {
 
-	c := &Controller{
-		Operators: filters.NewOpContainer(),
-		Flags:     flags.New(),
-	}
-
-	if err := c.setConfig(cfg); err != nil {
+	c, err := newController(cfg)
+	if err != nil {
 		return nil, err
 	}
 
-	c.createSchemas()
+	if logger != nil {
+		log.SetLogger(logger)
+	}
 
 	return c, nil
 }
@@ -77,23 +75,43 @@ func New(cfg *config.ControllerConfig) (*Controller, error) {
 // Default creates new *jsonapi.Controller with preset limits:
 // Controller has also set the FlagUseLinks flag to true.
 func Default() *Controller {
-	c := &Controller{
-		Operators: filters.NewOpContainer(),
-		Flags:     flags.New(),
-	}
-
-	if err := c.setConfig(DefaultConfig); err != nil {
+	c, err := newController(DefaultConfig)
+	if err != nil {
 		panic(err)
 	}
-
-	c.createSchemas()
 
 	return c
 }
 
+func newController(cfg *config.ControllerConfig) (*Controller, error) {
+	c := &Controller{
+		operators: filters.NewOpContainer(),
+		Flags:     flags.New(),
+	}
+
+	err := c.setConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "setConfig failed.")
+	}
+	if cfg.I18n != nil {
+		c.i18nSup, err = i18n.New(cfg.I18n)
+		if err != nil {
+			return nil, errors.Wrap(err, "i18n.New failed.")
+		}
+	}
+
+	c.schemas = models.NewModelSchemas(c.NamerFunc, c.Config.Builder.IncludeNestedLimit, c.Config.DefaultSchema, c.Flags)
+
+	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.operators, c.i18nSup)
+	if err != nil {
+		return nil, errors.Wrap(err, "query.NewBuilder failed")
+	}
+	return c, nil
+}
+
 // SetLogger sets the logger for the controller operations
 func (c *Controller) SetLogger(logger unilogger.LeveledLogger) {
-	c.logger = logger
+	log.SetLogger(logger)
 }
 
 // MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
@@ -106,33 +124,33 @@ func (c *Controller) MustGetModelStruct(model interface{}) *models.ModelStruct {
 	return mStruct
 }
 
-// NewScope creates new scope for given model
-func (c *Controller) NewScope(model interface{}) (*scope.Scope, error) {
-	mStruct, err := c.GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
+// // NewScope creates new scope for given model
+// func (c *Controller) NewScope(model interface{}) (*scope.Scope, error) {
+// 	mStruct, err := c.GetModelStruct(model)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	sc := scope.New(mStruct, c.Config.IncludeNestedLimit)
+// 	sc := scope.New(mStruct, c.Config.IncludeNestedLimit)
 
-	return sc, nil
-}
+// 	return sc, nil
+// }
 
-func (c *Controller) NewRootScope(model interface{}) (*scope.Scope, error) {
-	mStruct, err := c.GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
+// func (c *Controller) NewRootScope(model interface{}) (*scope.Scope, error) {
+// 	mStruct, err := c.GetModelStruct(model)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	sc := scope.NewRootScope(mStruct, c.Config.IncludeNestedLimit)
+// 	sc := scope.NewRootScope(mStruct, c.Config.IncludeNestedLimit)
 
-	return sc, nil
-}
+// 	return sc, nil
+// }
 
 // RegisterModels precomputes provided models, making it easy to check
 // models relationships and  attributes.
 func (c *Controller) RegisterModels(models ...interface{}) error {
-	return c.Schemas.RegisterModels(models...)
+	return c.schemas.RegisterModels(models...)
 }
 
 // GetModelStruct returns the ModelStruct for provided model
@@ -274,9 +292,9 @@ func (c *Controller) NewFilterField(fieldFilter string, values ...interface{},
 }
 
 func (c *Controller) createSchemas() {
-	ms := models.NewModelSchemas(c.NamerFunc, c.Config.IncludeNestedLimit, c.Config.DefaultSchema, c.Flags)
+	ms := models.NewModelSchemas(c.NamerFunc, c.Config.Builder.IncludeNestedLimit, c.Config.DefaultSchema, c.Flags)
 
-	c.Schemas = ms
+	c.schemas = ms
 }
 
 func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, error) {
@@ -284,20 +302,12 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 		return nil, errors.New("Nil model provided.")
 	}
 
-	mStruct, err := c.Schemas.GetModelStruct(model)
+	mStruct, err := c.schemas.GetModelStruct(model)
 	if err != nil {
 		return nil, err
 	}
 
 	return mStruct, nil
-}
-
-func (c *Controller) log() unilogger.LeveledLogger {
-	if c.logger == nil {
-		basic := unilogger.NewBasicLogger(ioutil.Discard, "", log.Ldate|log.Ltime|log.Lshortfile)
-		c.logger = basic
-	}
-	return c.logger
 }
 
 // setConfig sets and validates provided config
@@ -332,588 +342,6 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 
 	return nil
 }
-
-// build filterfield
-// func (c *Controller) buildFilterField(
-// 	s *scope.Scope,
-// 	collection string,
-// 	values []string,
-// 	m *mapping.ModelStruct,
-// 	splitted ...string,
-// ) (fField *scope.FilterField, errs []*aerrors.ApiError) {
-// 	var (
-// 		sField    *mapping.StructField
-// 		op        query.Operator
-// 		ok        bool
-// 		fieldName string
-
-// 		errObj     *aerrors.ApiError
-// 		errObjects []*aerrors.ApiError
-// 		// private function for returning ErrObject
-// 		invalidName = func(fieldName, collection string) {
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("Provided invalid filter field name: '%s' for the '%s' collection.", fieldName, collection)
-// 			errs = append(errs, errObj)
-// 			return
-// 		}
-// 		invalidOperator = func(operator string) {
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' for the '%s' field.", operator, fieldName)
-// 			errs = append(errs, errObj)
-// 			return
-// 		}
-// 	)
-
-// 	// check if any parameters are set for filtering
-// 	if len(splitted) == 0 {
-// 		errObj = ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.Sprint("Too few filter parameters. Valid format is: filter[collection][field][subfield|operator]([operator])*.")
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	// for all cases first value should be a fieldName
-// 	fieldName = splitted[0]
-
-// 	if len(values) > c.FilterValueLimit {
-// 		errObj = ErrOutOfRangeQueryParameterValue.Copy()
-// 		errObj.Detail = fmt.Sprintf("The number of values for the filter: %s within collection: %s exceeds the permissible length: '%d'", strings.Join(splitted, annotationSeperator), collection, c.FilterValueLimit)
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	switch len(splitted) {
-// 	case 1:
-// 		// if there is only one argument it must be an attribute.
-// 		if fieldName == "id" {
-// 			fField = s.getOrCreateIDFilter()
-// 		} else {
-// 			sField, ok = m.attributes[fieldName]
-// 			if !ok {
-// 				_, ok = m.relationships[fieldName]
-// 				if ok {
-// 					errObj = ErrInvalidQueryParameter.Copy()
-// 					errObj.Detail = fmt.Sprintf("Provided filter field: '%s' is a relationship. In order to filter a relationship specify the relationship's field. i.e. '/%s?filter[%s][id]=123'", fieldName, m.collectionType, fieldName)
-// 					errs = append(errs, errObj)
-// 					return
-// 				}
-
-// 				sField, ok = m.filterKeys[fieldName]
-// 				if !ok {
-// 					invalidName(fieldName, m.collectionType)
-// 					return
-// 				}
-// 				fField = s.getOrCreateFilterKeyFilter(sField)
-// 			} else {
-// 				if sField.isLanguage() {
-// 					fField = s.getOrCreateLangaugeFilter()
-// 				} else if sField.isMap() {
-// 					// Map doesn't allow any default parameters
-// 					// i.e. filter[collection][mapfield]=something
-// 					errObj = ErrInvalidQueryParameter.Copy()
-// 					errObj.Detail = "Cannot filter field of 'Hashmap' type with no operator"
-// 					errs = append(errs, errObj)
-// 					return
-// 				} else {
-// 					fField = s.getOrCreateAttributeFilter(sField)
-// 				}
-// 			}
-// 		}
-
-// 		errObjects = c.setFilterValues(fField, m.collectionType, values, OpEqual)
-// 		errs = append(errs, errObjects...)
-
-// 	case 2:
-// 		if fieldName == "id" {
-// 			fField = s.getOrCreateIDFilter()
-// 		} else {
-// 			sField, ok = m.attributes[fieldName]
-// 			if !ok {
-// 				// jeżeli relacja ->
-// 				sField, ok = m.relationships[fieldName]
-// 				if !ok {
-// 					invalidName(fieldName, m.collectionType)
-// 					return
-// 				}
-
-// 				// if field were already used
-// 				fField = s.getOrCreateRelationshipFilter(sField)
-
-// 				errObj = buildNestedFilter(c, fField, values, splitted[1:]...)
-// 				if errObj != nil {
-// 					errs = append(errs, errObj)
-// 				}
-
-// 				return
-// 			}
-// 			if sField.isLanguage() {
-// 				fField = s.getOrCreateLangaugeFilter()
-// 			} else {
-// 				fField = s.getOrCreateAttributeFilter(sField)
-// 			}
-// 		}
-// 		// it is an attribute filter
-// 		op, ok = operatorsValue[splitted[1]]
-// 		if !ok {
-// 			invalidOperator(splitted[1])
-// 			return
-// 		}
-
-// 		errObjects = c.setFilterValues(fField, m.collectionType, values, op)
-// 		errs = append(errs, errObjects...)
-// 	case 3:
-// 		// musi być relacja
-// 		sField, ok = m.relationships[fieldName]
-// 		if !ok {
-// 			// moze ktos podal attribute
-// 			_, ok = m.attributes[fieldName]
-// 			if !ok {
-// 				invalidName(fieldName, m.collectionType)
-// 				return
-// 			}
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("Too many parameters for the attribute field: '%s'.", fieldName)
-// 			errs = append(errs, errObj)
-// 			return
-// 		}
-// 		fField = s.getOrCreateRelationshipFilter(sField)
-
-// 		errObj = buildNestedFilter(c, fField, values, splitted[1:]...)
-// 		if errObj != nil {
-// 			errs = append(errs, errObj)
-// 		}
-
-// 	default:
-// 		errObj = ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.
-// 			Sprintf("Too many filter parameters for '%s' collection. ", collection)
-// 		errs = append(errs, errObj)
-// 		_, ok = m.attributes[fieldName]
-// 		if !ok {
-// 			_, ok = m.relationships[fieldName]
-// 			if !ok {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.
-// 					Sprintf("Invalid field name: '%s' for '%s' collection.", fieldName, collection)
-// 				errs = append(errs, errObj)
-// 			}
-// 		}
-// 	}
-// 	return
-// }
-
-// func (c *Controller) BuildScopeList(
-// 	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.
-// 		ModelHandler,
-// ) (scope *scope.Scope, errs []*aerrors.ApiError, err error) {
-// 	// Get ModelStruct
-
-// 	mStruct := c.Models.Get(model.ModelType)
-// 	if mStruct == nil {
-// 		err = IErrModelNotMapped
-// 		return
-// 	}
-
-// 	// overloadPreventer - is a warden upon invalid query parameters
-// 	var (
-// 		errObj       *aerrors.ApiError
-// 		errorObjects []*aerrors.ApiError
-// 		addErrors    = func(errObjects ...*aerrors.ApiError) {
-// 			errs = append(errs, errObjects...)
-// 			scope.currentErrorCount += len(errObjects)
-// 		}
-// 	)
-// 	scope = newRootScope(mStruct)
-// 	scope.ctx = req.Context()
-// 	scope.logger = c.log()
-
-// 	scope.IncludedScopes = make(map[*mapping.ModelStruct]*scope.Scope)
-
-// 	scope.maxNestedLevel = c.IncludeNestedLimit
-// 	scope.collectionScope = scope
-// 	scope.IsMany = true
-
-// 	scope.setFlags(endpoint, model, c)
-
-// 	// Get URLQuery
-// 	q := req.URL.Query()
-
-// 	// Check first included in order to create subscopes
-// 	included, ok := q[QueryParamInclude]
-// 	if ok {
-// 		// build included scopes
-// 		includedFields := strings.Split(included[0], annotationSeperator)
-// 		errorObjects = scope.buildIncludeList(includedFields...)
-// 		addErrors(errorObjects...)
-// 		if len(errs) > 0 {
-// 			return
-// 		}
-// 	}
-
-// 	// set included language query parameter
-
-// 	languages, ok := q[QueryParamLanguage]
-// 	if ok {
-// 		errorObjects, err = c.setIncludedLangaugeFilters(scope, languages[0])
-// 		if err != nil {
-// 			return
-// 		}
-// 		if len(errorObjects) > 0 {
-// 			addErrors(errorObjects...)
-// 			return
-// 		}
-// 	}
-
-// 	for key, value := range q {
-// 		if len(value) > 1 {
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
-// 			addErrors(errObj)
-// 			continue
-// 		}
-// 		switch {
-// 		case key == QueryParamInclude, key == QueryParamLanguage:
-// 			continue
-// 		case key == QueryParamPageLimit:
-// 			errObj = scope.preparePaginatedValue(key, value[0], 0)
-// 			if errObj != nil {
-// 				addErrors(errObj)
-// 				break
-// 			}
-// 		case key == QueryParamPageOffset:
-// 			errObj = scope.preparePaginatedValue(key, value[0], 1)
-// 			if errObj != nil {
-// 				addErrors(errObj)
-// 			}
-// 		case key == QueryParamPageNumber:
-// 			errObj = scope.preparePaginatedValue(key, value[0], 2)
-// 			if errObj != nil {
-// 				addErrors(errObj)
-// 			}
-// 		case key == QueryParamPageSize:
-// 			errObj = scope.preparePaginatedValue(key, value[0], 3)
-// 			if errObj != nil {
-// 				addErrors(errObj)
-// 			}
-// 		case strings.HasPrefix(key, QueryParamFilter):
-// 			// filter[field]
-// 			var splitted []string
-// 			// get other operators
-// 			var er error
-// 			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
-// 			if er != nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			collection := splitted[0]
-
-// 			colModel := c.Models.GetByCollection(collection)
-// 			if colModel == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			filterScope := scope.getModelsRootScope(colModel)
-// 			if filterScope == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			splitValues := strings.Split(value[0], annotationSeperator)
-// 			_, errorObjects = buildFilterField(filterScope, collection, splitValues, c, colModel, scope.Flags(), splitted[1:]...)
-// 			addErrors(errorObjects...)
-// 		case key == QueryParamSort:
-// 			splitted := strings.Split(value[0], annotationSeperator)
-// 			errorObjects = scope.buildSortFields(splitted...)
-// 			addErrors(errorObjects...)
-// 		case strings.HasPrefix(key, QueryParamFields):
-// 			// fields[collection]
-// 			var splitted []string
-// 			var er error
-// 			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
-// 			if er != nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			if len(splitted) != 1 {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-// 			collection := splitted[0]
-// 			fieldModel := c.Models.GetByCollection(collection)
-// 			if fieldModel == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
-// 				continue
-// 			}
-
-// 			fieldsScope := scope.getModelsRootScope(fieldModel)
-// 			if fieldsScope == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-// 			splitValues := strings.Split(value[0], annotationSeperator)
-// 			errorObjects = fieldsScope.buildFieldset(splitValues...)
-// 			addErrors(errorObjects...)
-// 		case key == QueryParamPageTotal:
-// 			scope.Flags().Set(flags.AddMetaCountList, true)
-// 		case key == QueryParamLinks:
-// 			var er error
-// 			var links bool
-// 			links, er = strconv.ParseBool(value[0])
-// 			if er != nil {
-// 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
-// 			}
-// 			scope.Flags().Set(flags.UseLinks, links)
-// 		default:
-// 			errObj = ErrUnsupportedQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
-// 			addErrors(errObj)
-// 		}
-
-// 		if scope.currentErrorCount >= c.ErrorLimitMany {
-// 			return
-// 		}
-// 	}
-// 	if scope.Pagination != nil {
-// 		er := scope.Pagination.check()
-// 		if er != nil {
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("Pagination parameters are not valid. %s", er)
-// 			addErrors(errObj)
-// 		}
-// 	}
-
-// 	// Copy the query.for the included fields
-// 	scope.copyIncludedBoundaries()
-
-// 	return
-// }
-
-// func (c *Controller) BuildScopeSingle(
-// 	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
-// ) (scope *scope.Scope, errs []*aerrors.ApiError, err error) {
-// 	return c.buildScopeSingle(req, endpoint, model, nil)
-// }
-
-// // BuildScopeSingle builds the scope for given request and model.
-// // It gets and sets the ID from the 'http' request.
-// func (c *Controller) buildScopeSingle(
-// 	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler, id interface{},
-// ) (scope *scope.Scope, errs []*aerrors.ApiError, err error) {
-// 	// get model type
-// 	// Get ModelStruct
-// 	mStruct := c.Models.Get(model.ModelType)
-// 	if mStruct == nil {
-// 		err = IErrModelNotMapped
-// 		return
-// 	}
-
-// 	q := req.URL.Query()
-
-// 	scope = newRootScope(mStruct)
-// 	scope.ctx = scope.Context()
-// 	scope.logger = c.log()
-
-// 	if id == nil {
-// 		errs, err = c.setIDFilter(req, scope)
-// 		if err != nil {
-// 			return
-// 		}
-// 		if len(errs) > 0 {
-// 			return
-// 		}
-// 	} else {
-// 		scope.SetPrimaryFilters(id)
-// 	}
-
-// 	scope.setFlags(endpoint, model, c)
-
-// 	scope.maxNestedLevel = c.IncludeNestedLimit
-
-// 	errs, err = c.buildQueryParametersSingle(scope, q)
-
-// 	return
-// }
-
-// // BuildScopeRelated builds the scope for the related
-// func (c *Controller) BuildScopeRelated(
-// 	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
-// ) (scope *scope.Scope, errs []*aerrors.ApiError, err error) {
-// 	mStruct := c.Models.Get(model.ModelType)
-// 	if mStruct == nil {
-// 		err = IErrModelNotMapped
-// 		return
-// 	}
-
-// 	id, related, err := getIDAndRelated(req, mStruct)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	scope = &Scope{
-// 		Struct:                    mStruct,
-// 		Fieldset:                  make(map[string]*mapping.StructField),
-// 		currentIncludedFieldIndex: -1,
-// 		kind:   rootKind,
-// 		logger: c.log(),
-// 		ctx:    req.Context(),
-// 	}
-
-// 	scope.newValueSingle()
-
-// 	scopeVal := reflect.ValueOf(scope.Value).Elem()
-// 	prim := scopeVal.FieldByIndex(mStruct.primary.refStruct.Index)
-
-// 	if er := setPrimaryField(id, prim); er != nil {
-// 		errObj := ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.Sprintf("Provided 'id' is of invalid type.")
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	scope.collectionScope = scope
-
-// 	relationField, ok := mStruct.relationships[related]
-// 	if !ok {
-// 		// invalid query parameter
-// 		errObj := ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.Sprintf("Provided invalid related field name: '%s', for the collection: '%s'", related, mStruct.collectionType)
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	errs = scope.setPrimaryFilterfield(c, id)
-// 	if len(errs) > 0 {
-// 		return
-// 	}
-
-// 	scope.Fieldset[related] = relationField
-
-// 	if relationField.relationship.Kind == RelBelongsTo {
-// 		fk := relationField.relationship.ForeignKey
-// 		if fk != nil {
-// 			scope.Fieldset[fk.jsonAPIName] = fk
-// 		}
-// 	}
-
-// 	scope.IncludedScopes = make(map[*mapping.ModelStruct]*scope.Scope)
-
-// 	// preset related scope
-// 	includedField := scope.getOrCreateIncludeField(relationField)
-// 	includedField.Scope.kind = relatedKind
-
-// 	q := req.URL.Query()
-// 	languages, ok := q[QueryParamLanguage]
-// 	if ok {
-// 		errs, err = c.setIncludedLangaugeFilters(includedField.Scope, languages[0])
-// 		if err != nil || len(errs) > 0 {
-// 			return
-// 		}
-// 	}
-
-// 	qLinks, ok := q[QueryParamLinks]
-// 	if ok {
-// 		var er error
-// 		var links bool
-// 		links, er = strconv.ParseBool(qLinks[0])
-// 		if er != nil {
-// 			errs = append(errs, ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
-// 			return
-// 		}
-// 		scope.Flags().Set(flags.UseLinks, links)
-// 	}
-
-// 	scope.copyIncludedBoundaries()
-
-// 	return
-// }
-
-// func (c *Controller) BuildScopeRelationship(
-// 	req *http.Request, endpoint *endpoint.Endpoint, model *modelhandler.ModelHandler,
-// ) (scope *scope.Scope, errs []*aerrors.ApiError, err error) {
-// 	mStruct := c.Models.Get(model.ModelType)
-// 	if mStruct == nil {
-// 		err = IErrModelNotMapped
-// 		return
-// 	}
-
-// 	id, relationship, err := getIDAndRelationship(req, mStruct)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	scope = &Scope{
-// 		Struct:                    mStruct,
-// 		Fieldset:                  make(map[string]*mapping.StructField),
-// 		currentIncludedFieldIndex: -1,
-// 		kind:   rootKind,
-// 		logger: c.log(),
-// 		ctx:    req.Context(),
-// 	}
-// 	scope.collectionScope = scope
-// 	scope.newValueSingle()
-
-// 	scopeVal := reflect.ValueOf(scope.Value).Elem()
-// 	prim := scopeVal.FieldByIndex(mStruct.primary.refStruct.Index)
-
-// 	if er := setPrimaryField(id, prim); er != nil {
-// 		errObj := ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.Sprintf("Provided 'id' is of invalid type.")
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	// set primary field filter
-// 	errs = scope.setPrimaryFilterfield(c, id)
-// 	if len(errs) >= c.ErrorLimitRelated {
-// 		return
-// 	}
-
-// 	relationField, ok := mStruct.relationships[relationship]
-// 	if !ok {
-// 		// invalid query parameter
-// 		errObj := ErrInvalidQueryParameter.Copy()
-// 		errObj.Detail = fmt.Sprintf("Provided invalid relationship name: '%s', for the collection: '%s'", relationship, mStruct.collectionType)
-// 		errs = append(errs, errObj)
-// 		return
-// 	}
-
-// 	// preset root scope
-// 	scope.Fieldset[relationship] = relationField
-
-// 	if relationField.relationship != nil && relationField.relationship.Kind == RelBelongsTo {
-// 		fk := relationField.relationship.ForeignKey
-// 		if fk != nil {
-// 			scope.Fieldset[fk.jsonAPIName] = fk
-// 		}
-// 	}
-// 	scope.IncludedScopes = make(map[*mapping.ModelStruct]*scope.Scope)
-// 	scope.createModelsRootScope(relationField.relatedStruct)
-// 	scope.IncludedScopes[relationField.relatedStruct].Fieldset = nil
-
-// 	// preset relationship scope
-// 	includedField := scope.getOrCreateIncludeField(relationField)
-// 	includedField.Scope.kind = relationshipKind
-
-// 	scope.copyIncludedBoundaries()
-
-// 	return
-// }
 
 // // GetAndSetIDFilter is the method that gets the ID value from the request path, for given scope's
 // // model. Then it sets the id query.for given scope.
@@ -989,10 +417,6 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 // func (c *Controller) GetSetCheckIDFilter(req *http.Request, scope *scope.Scope,
 // ) (errs []*aerrors.ApiError, err error) {
 // 	return c.setIDFilter(req, scope)
-// }
-
-// func (c *Controller) Log() unilogger.LeveledLogger {
-// 	return c.log()
 // }
 
 // func (c *Controller) NewFilterFieldWithForeigns(fieldFilter string, values ...interface{},
@@ -1123,164 +547,6 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 // 		err = fmt.Errorf("The filter argument: '%s' is of invalid form.", fieldFilter)
 // 		return
 // 	}
-// 	return
-// }
-
-// func (c *Controller) displaySupportedLanguages() []string {
-// 	namer := display.Tags(language.English)
-// 	var names []string = make([]string, len(c.Locale.Tags()))
-// 	for i, lang := range c.Locale.Tags() {
-// 		names[i] = fmt.Sprintf("%s - '%s'", namer.Name(lang), lang.String())
-// 	}
-// 	return names
-// }
-
-// func (c *Controller) buildQueryParametersSingle(
-// 	scope *scope.Scope, q url.Values,
-// ) (errs []*aerrors.ApiError, err error) {
-
-// 	var (
-// 		addErrors = func(errObjects ...*aerrors.ApiError) {
-// 			errs = append(errs, errObjects...)
-// 			scope.currentErrorCount += len(errObjects)
-// 		}
-// 		errObj       *aerrors.ApiError
-// 		errorObjects []*aerrors.ApiError
-// 	)
-// 	// Check first included in order to create subscopes
-// 	included, ok := q[QueryParamInclude]
-// 	if ok {
-// 		// build included scopes
-// 		if len(included) != 1 {
-// 			errObj := ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintln("Duplicated 'included' query parameter.")
-// 			addErrors(errObj)
-// 			return
-// 		}
-// 		includedFields := strings.Split(included[0], annotationSeperator)
-// 		errorObjects = scope.buildIncludeList(includedFields...)
-// 		addErrors(errorObjects...)
-// 		if len(errs) > 0 {
-// 			return
-// 		}
-// 	}
-
-// 	languages, ok := q[QueryParamLanguage]
-// 	if ok {
-// 		errorObjects, err = c.setIncludedLangaugeFilters(scope, languages[0])
-// 		if err != nil {
-// 			return
-// 		}
-// 		if len(errorObjects) > 0 {
-// 			addErrors(errorObjects...)
-// 			return
-// 		}
-// 	}
-
-// 	for key, values := range q {
-// 		if len(values) > 1 {
-// 			errObj = ErrInvalidQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' set more than once.", key)
-// 			addErrors(errObj)
-// 			continue
-// 		}
-
-// 		switch {
-// 		case key == QueryParamInclude, key == QueryParamLanguage:
-// 			continue
-// 		case strings.HasPrefix(key, QueryParamFields):
-// 			// fields[collection]
-// 			var splitted []string
-// 			var er error
-// 			splitted, er = splitBracketParameter(key[len(QueryParamFields):])
-// 			if er != nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter is of invalid form. %s", er)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-// 			if len(splitted) != 1 {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter: '%s' is of invalid form. Nested 'fields' is not supported.", key)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-// 			collection := splitted[0]
-
-// 			fieldsetModel := c.Models.GetByCollection(collection)
-// 			if fieldsetModel == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' for the fields query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			fieldsetScope := scope.getModelsRootScope(fieldsetModel)
-// 			if fieldsetScope == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The fields parameter collection: '%s' is not included in the query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-// 			splitValues := strings.Split(values[0], annotationSeperator)
-
-// 			errorObjects = fieldsetScope.buildFieldset(splitValues...)
-// 			addErrors(errorObjects...)
-// 		case strings.HasPrefix(key, QueryParamFilter):
-// 			// filter[field]
-// 			var splitted []string
-// 			// get other operators
-// 			var er error
-// 			splitted, er = splitBracketParameter(key[len(QueryParamFilter):])
-// 			if er != nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The filter paramater is of invalid form. %s", er)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			collection := splitted[0]
-
-// 			colModel := c.Models.GetByCollection(collection)
-// 			if colModel == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("Provided invalid collection: '%s' in the filter query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			filterScope := scope.getModelsRootScope(colModel)
-// 			if filterScope == nil {
-// 				errObj = ErrInvalidQueryParameter.Copy()
-// 				errObj.Detail = fmt.Sprintf("The collection: '%s' is not included in query.", collection)
-// 				addErrors(errObj)
-// 				continue
-// 			}
-
-// 			splitValues := strings.Split(values[0], annotationSeperator)
-
-// 			_, errorObjects = buildFilterField(filterScope, collection, splitValues, c, colModel, filterScope.Flags(), splitted[1:]...)
-
-// 			addErrors(errorObjects...)
-// 		case key == QueryParamLinks:
-// 			var er error
-// 			var links bool
-// 			links, er = strconv.ParseBool(values[0])
-// 			if er != nil {
-// 				addErrors(ErrInvalidQueryParameter.Copy().WithDetail("Provided value for the links parameter is not a valid bool"))
-// 			}
-// 			scope.Flags().Set(flags.UseLinks, links)
-// 		default:
-// 			errObj = ErrUnsupportedQueryParameter.Copy()
-// 			errObj.Detail = fmt.Sprintf("The query parameter: '%s' is unsupported.", key)
-// 			addErrors(errObj)
-// 		}
-
-// 		if scope.currentErrorCount >= c.ErrorLimitSingle {
-// 			return
-// 		}
-// 	}
-// 	scope.copyIncludedBoundaries()
 // 	return
 // }
 

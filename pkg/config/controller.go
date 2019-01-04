@@ -24,5 +24,9 @@ type ControllerConfig struct {
 	// Debug sets the debug mode for the controller.
 	Debug bool
 
+	// Builder defines the builder config
 	Builder *BuilderConfig
+
+	// I18n defines i18n config
+	I18n *I18nConfig
 }
