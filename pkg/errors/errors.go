@@ -26,6 +26,9 @@ type ApiError struct {
 
 	// Err is a non published message container for loggin purpose
 	Err error `json:"-"`
+
+	// status is the integer type status
+	status int
 }
 
 // Copy returns the new object that is a copy of given error object.
@@ -54,6 +57,11 @@ func (e *ApiError) AddMeta(key string, value interface{}) {
 	meta := *e.Meta
 	meta[key] = value
 	return
+}
+
+// IntStatus returns integer status of the error
+func (e *ApiError) IntStatus() int {
+	return e.status
 }
 
 type ErrorCode int

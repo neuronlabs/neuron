@@ -12,6 +12,10 @@ var logger unilogger.LeveledLogger
 
 // SetLevel sets the level if possible for the logger file
 func SetLevel(level unilogger.Level) error {
+	if logger == nil {
+		Default()
+	}
+
 	lvl, ok := logger.(unilogger.LevelSetter)
 	if !ok {
 		return errors.New("logger doesn't implement LevelSetter interface")

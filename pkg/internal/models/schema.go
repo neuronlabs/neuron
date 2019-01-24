@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/kucjac/jsonapi/pkg/config"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/namer"
@@ -11,6 +12,8 @@ import (
 
 // Schema is a container for the given
 type Schema struct {
+	config *config.Schema
+
 	// models contains model definition per single schema
 	models *ModelMap
 
@@ -24,15 +27,23 @@ func (s *Schema) Model(t reflect.Type) *ModelStruct {
 	return s.models.Get(t)
 }
 
+// Models returns all the models saved in the given schema
+func (s *Schema) Models() []*ModelStruct {
+	return s.models.Models()
+}
+
 // ModelByCollection returns ModelStruct on the base of provided collection name
 func (s *Schema) ModelByCollection(collection string) *ModelStruct {
 	return s.models.GetByCollection(collection)
 }
 
 type ModelSchemas struct {
+	cfg map[string]*config.Schema
+
 	schemas map[string]*Schema
 
-	defaultSchema *Schema
+	defaultSchema   *Schema
+	defaultRepoName string
 
 	// Flags contains the config flags for given schema
 	Flags *flags.Container
@@ -48,20 +59,38 @@ type ModelSchemas struct {
 func NewModelSchemas(
 	namerFunc namer.Namer,
 	nestedIncludeLimit int,
+	cfg map[string]*config.Schema,
 	defaultSchema string,
+	defaultRepoName string,
 	flgs *flags.Container,
-) *ModelSchemas {
+) (*ModelSchemas, error) {
 	ms := &ModelSchemas{
 		NestedIncludeLimit: nestedIncludeLimit,
 		Flags:              flgs,
 		NamerFunc:          namerFunc,
+		cfg:                cfg,
+		defaultRepoName:    defaultRepoName,
 	}
 
 	ms.defaultSchema = &Schema{Name: defaultSchema, models: NewModelMap()}
 	ms.schemas = make(map[string]*Schema)
 	ms.schemas[defaultSchema] = ms.defaultSchema
 
-	return ms
+	// set the schema's configs
+	for name, schemaCfg := range cfg {
+
+		if name == defaultSchema {
+			ms.defaultSchema.config = schemaCfg
+		} else {
+			ms.schemas[name] = &Schema{
+				config: schemaCfg,
+				Name:   defaultSchema,
+				models: NewModelMap(),
+			}
+		}
+	}
+
+	return ms, nil
 }
 
 // DefaultSchema returns default schema for give models
@@ -75,7 +104,18 @@ func (m *ModelSchemas) Schema(schemaName string) (*Schema, bool) {
 	return s, ok
 }
 
-// RegisterModel
+// Schemas returns all registered schemas
+func (m *ModelSchemas) Schemas() []*Schema {
+	var schemas []*Schema
+
+	for _, schema := range m.schemas {
+		schemas = append(schemas, schema)
+	}
+
+	return schemas
+}
+
+// RegisterModel registers the model within the schemas container
 func (m *ModelSchemas) RegisterModels(
 	models ...interface{},
 ) error {
@@ -94,7 +134,11 @@ func (m *ModelSchemas) RegisterModels(
 		// check if schema is already created
 		s, ok := m.schemas[schema]
 		if !ok {
-			s = &Schema{Name: schema, models: NewModelMap()}
+			s = &Schema{
+				Name:   schema,
+				models: NewModelMap(),
+			}
+
 			m.schemas[schema] = s
 		}
 
@@ -109,6 +153,27 @@ func (m *ModelSchemas) RegisterModels(
 		if err := s.models.Set(mStruct); err != nil {
 			return err
 		}
+
+		if s.config != nil {
+			modelConfig, ok := s.config.Models[mStruct.collectionType]
+			if ok {
+				if err := mStruct.SetConfig(modelConfig); err != nil {
+					log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())
+					return err
+				}
+			}
+		}
+
+		if mStruct.repositoryName == "" {
+			// if the model implements repository Name
+			repositoryName, ok := model.(namer.RepositoryNamer)
+			if ok {
+				mStruct.repositoryName = repositoryName.RepositoryName()
+			} else {
+				mStruct.repositoryName = m.defaultRepoName
+			}
+		}
+
 	}
 
 	for _, schema := range m.schemas {

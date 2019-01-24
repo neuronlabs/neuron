@@ -45,10 +45,10 @@ func newIncludeField(field *models.StructField, scope *Scope) *IncludeField {
 
 	// Set NewScope for given field
 
-	includeField.Scope = scope.createModelsScope(models.RelationshipMStruct(models.FieldRelationship(field)))
+	includeField.Scope = scope.createModelsScope(field.Relationship().Struct())
 
 	// Set the root collection scope for given scope
-	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(models.RelationshipMStruct(models.FieldRelationship(field)))
+	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(field.Relationship().Struct())
 	if _, ok := includeField.Scope.collectionScope.fieldset[includeField.ApiName()]; !ok {
 		includeField.NotInFieldset = true
 		scope.hasFieldNotInFieldset = true
@@ -125,7 +125,7 @@ func (i *IncludeField) getMissingFromSingle(
 
 				if _, ok := i.Scope.collectionScope.includedValues.Values()[primary]; !ok {
 					// add to collection IDs
-					i.Scope.collectionScope.includedValues.Add(primary, nil)
+					i.Scope.collectionScope.includedValues.UnsafeAdd(primary, nil)
 					if _, ok = uniqueMissing[primary]; !ok {
 						uniqueMissing[primary] = struct{}{}
 					} else {

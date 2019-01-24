@@ -41,7 +41,7 @@ func newSortField(sort string, order sorts.Order, scope *Scope) (invalidField bo
 		// if true then the nested should be an attribute for given
 		var found bool
 		for i := range scope.sortFields {
-			if scope.sortFields[i].FieldIndex() == sField.FieldIndex() {
+			if scope.sortFields[i].StructField().FieldIndex() == sField.FieldIndex() {
 				sortField = scope.sortFields[i]
 				found = true
 				break

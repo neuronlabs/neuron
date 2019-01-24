@@ -9,8 +9,10 @@ import (
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query/paginations"
 	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -47,9 +49,7 @@ func (b *Builder) BuildScopeMany(
 		}
 	)
 
-	s = scope.NewRootScope(mStruct)
-	// Context
-	s.WithContext(ctx)
+	s = scope.NewRootScopeWithCtx(ctx, mStruct)
 
 	// Initialize Includes
 	s.InitializeIncluded(b.schemas.NestedIncludeLimit)
@@ -195,7 +195,7 @@ func (b *Builder) BuildScopeMany(
 			addErrors(errObj)
 		}
 
-		if s.CurrentErrorCount() >= b.Config.QueryErrorLimits {
+		if s.CurrentErrorCount() >= b.Config.ErrorLimits {
 			return
 		}
 	}
@@ -229,8 +229,8 @@ func (b *Builder) BuildScopeSingle(
 
 	q := query.Query()
 
-	s = scope.NewRootScope(mStruct)
-	s.WithContext(ctx)
+	s = scope.NewRootScopeWithCtx(ctx, mStruct)
+	s.NewValueSingle()
 	s.InitializeIncluded(b.Config.IncludeNestedLimit)
 
 	if id == nil {
@@ -286,10 +286,9 @@ func (b *Builder) BuildScopeRelated(
 		return
 	}
 
-	s = scope.New(mStruct)
+	s = scope.NewWithCtx(ctx, mStruct)
 
 	s.SetKind(scope.RootKind)
-	s.WithContext(ctx)
 
 	s.NewValueSingle()
 
@@ -397,10 +396,9 @@ func (b *Builder) BuildScopeRelationship(
 		return
 	}
 
-	s = scope.New(mStruct)
+	s = scope.NewWithCtx(ctx, mStruct)
 
 	s.SetKind(scope.RootKind)
-	s.WithContext(ctx)
 
 	s.NewValueSingle()
 
@@ -604,7 +602,7 @@ func (b *Builder) buildQueryParametersSingle(
 			addErrors(errObj)
 		}
 
-		if s.CurrentErrorCount() >= b.Config.QueryErrorLimits {
+		if s.CurrentErrorCount() >= b.Config.ErrorLimits {
 			return
 		}
 	}
@@ -733,6 +731,7 @@ func getURLVariables(query *url.URL, mStruct *models.ModelStruct, indexFirst, in
 	var invalidURL = func() error {
 		return fmt.Errorf("Provided url is invalid for getting url variables: '%s' with indexes: '%d'/ '%d'", path, indexFirst, indexSecond)
 	}
+
 	pathSplitted := strings.Split(path, "/")
 	if indexFirst > len(pathSplitted)-1 {
 		err = invalidURL()
@@ -769,6 +768,69 @@ func getURLVariables(query *url.URL, mStruct *models.ModelStruct, indexFirst, in
 		valueSecond = pathSplitted[collectionIndex+indexSecond]
 	}
 	return
+}
+
+// GetAndSetID gets the id from the provided request and sets the primary field value to the id
+// If the scope's value is not zero the function returns an error
+func GetAndSetID(
+	req *http.Request,
+	s *scope.Scope,
+) (prim interface{}, err error) {
+	id, err := getID(req.URL, s.Struct())
+	if err != nil {
+		return nil, err
+	}
+
+	if s.Value == nil {
+		return nil, errors.New("Nil value provided")
+	}
+
+	val := reflect.ValueOf(s.Value)
+	if val.IsNil() {
+		return nil, errors.New("Nil value in scope's value")
+	}
+
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	} else {
+		return nil, internal.IErrInvalidType
+	}
+
+	newPrim := reflect.New(s.Struct().PrimaryField().ReflectField().Type).Elem()
+
+	err = setPrimaryField(id, newPrim)
+	if err != nil {
+		errObj := aerrors.ErrInvalidQueryParameter.Copy()
+		errObj.Detail = "Provided invalid id value within the url."
+		return nil, errObj
+	}
+
+	primVal := val.FieldByIndex(s.Struct().PrimaryField().ReflectField().Index)
+
+	if reflect.DeepEqual(
+		primVal.Interface(),
+		reflect.Zero(s.Struct().PrimaryField().ReflectField().Type).Interface(),
+	) {
+		primVal.Set(newPrim)
+	} else {
+		log.Debugf("Checking the values")
+		if newPrim.Interface() != primVal.Interface() {
+			errObj := aerrors.ErrInvalidQueryParameter.Copy()
+			errObj.Detail = "Provided invalid id value within the url. The id value doesn't match the primary field within the root object."
+			return nil, errObj
+		}
+	}
+
+	v := reflect.ValueOf(s.Value)
+	if v.Kind() != reflect.Ptr {
+		return nil, internal.IErrInvalidType
+	}
+	return primVal.Interface(), nil
+}
+
+// GetID from the provided query
+func GetID(query *url.URL, mStruct *models.ModelStruct) (id string, err error) {
+	return getID(query, mStruct)
 }
 
 func getID(query *url.URL, mStruct *models.ModelStruct) (id string, err error) {

@@ -1,11 +1,22 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/pkg/query"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 )
 
-// Repository is an interface that implements all possible
+// RepositoryNamer is the interface used for the repositories to implement
+// that defines it's name
+type RepositoryNamer interface {
+	RepositoryName() string
+}
+
 type Repository interface {
+	RepositoryName() string
+	New() interface{}
+}
+
+// Repository is an interface that implements all possible
+type RepositoryMethoder interface {
 	Creater
 	GetLister
 	Patcher
@@ -14,7 +25,7 @@ type Repository interface {
 
 // Creater is the repository interface that creates the value within the query.Scope
 type Creater interface {
-	Create(scope *query.Scope) error
+	Create(scope *scope.Scope) error
 }
 
 // GetLister is the repository that allows to get and list the query values
@@ -23,24 +34,42 @@ type GetLister interface {
 	Lister
 }
 
+type Transactioner interface {
+	Beginner
+	Committer
+	Rollbacker
+}
+
+type Beginner interface {
+	Begin(s *scope.Scope) error
+}
+
+type Committer interface {
+	Commit(s *scope.Scope) error
+}
+
+type Rollbacker interface {
+	Rollback(s *scope.Scope) error
+}
+
 // Getter is the repository interface that Gets single query value
 type Getter interface {
-	Get(scope *query.Scope) error
+	Get(scope *scope.Scope) error
 }
 
 // Lister is the repository interface that Lists provided query values
 type Lister interface {
-	List(scope *query.Scope) error
+	List(scope *scope.Scope) error
 }
 
 // Patcher is the repository interface that patches given query values
 type Patcher interface {
-	Patch(scope *query.Scope) error
+	Patch(scope *scope.Scope) error
 }
 
 // Deleter is the interface for the repositories that deletes provided query value
 type Deleter interface {
-	Delete(scope *query.Scope) error
+	Delete(scope *scope.Scope) error
 }
 
 // IsRepository is a quick check if the provided interface implements any of the repository

@@ -2,6 +2,7 @@ package paginations
 
 import (
 	"errors"
+	"github.com/kucjac/jsonapi/pkg/config"
 )
 
 // PaginationType is the enum that describes the type of pagination
@@ -34,7 +35,18 @@ type Pagination struct {
 	Total    int
 
 	// Describes which pagination type to use.
-	Type Type
+	tp Type
+}
+
+func NewFromConfig(p *config.Pagination) *Pagination {
+	pg := &Pagination{
+		Limit:      p.Limit,
+		Offset:     p.Offset,
+		PageNumber: p.PageNumber,
+		PageSize:   p.PageSize,
+	}
+
+	return pg
 }
 
 // CheckPagination checks if the given pagination is valid
@@ -42,9 +54,24 @@ func CheckPagination(p *Pagination) error {
 	return p.check()
 }
 
+// Check checks if the given pagination is valid
+func (p *Pagination) Check() error {
+	return p.check()
+}
+
+// SetType sets the pagination type
+func (p *Pagination) SetType(tp Type) {
+	p.tp = tp
+}
+
+// Type gets the pagination type
+func (p *Pagination) Type() Type {
+	return p.tp
+}
+
 // GetLimitOffset gets the limit and offset values from the given pagination
 func (p *Pagination) GetLimitOffset() (limit, offset int) {
-	switch p.Type {
+	switch p.tp {
 	case TpOffset:
 		limit = p.Limit
 		offset = p.Offset

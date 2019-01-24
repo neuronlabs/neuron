@@ -33,16 +33,23 @@ type Builder struct {
 }
 
 var DefaultConfig *config.BuilderConfig = &config.BuilderConfig{
-	QueryErrorLimits:   5,
+	ErrorLimits:        5,
 	IncludeNestedLimit: 2,
 	FilterValueLimit:   30,
 }
 
 // DefaultBuilder returns builder with default config and no i18n support
 func DefaultBuilder() *Builder {
-
+	schemas, _ := models.NewModelSchemas(
+		namer.NamingSnake,
+		DefaultConfig.IncludeNestedLimit,
+		map[string]*config.Schema{},
+		"default",
+		"default",
+		flags.New(),
+	)
 	b, err := NewBuilder(
-		models.NewModelSchemas(namer.NamingSnake, DefaultConfig.IncludeNestedLimit, "default", flags.New()),
+		schemas,
 		DefaultConfig,
 		filters.NewOpContainer(),
 		nil,

@@ -13,8 +13,8 @@ var DefaultConfig *config.ControllerConfig = &config.ControllerConfig{
 	DefaultSchema:    "api",
 	Builder: &config.BuilderConfig{
 		FilterValueLimit:   30,
-		QueryErrorLimits:   5,
-		IncludeNestedLimit: 2,
+		ErrorLimits:        5,
+		IncludeNestedLimit: 1,
 	},
 }
 

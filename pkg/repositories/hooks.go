@@ -1,49 +1,45 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/pkg/query"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 )
 
-// HookBeforeCreator is the Hook interface that allow to change the query before the creation
-type HookBeforeCreator interface {
-	HookBeforeCreate(scope *query.Scope) error
+// BeforeCreator is the interface used for hooks before the creation process
+type BeforeCreator interface {
+	WBeforeCreate(s *scope.Scope) error
 }
 
-// HookAfterCreator is the Hook interface that allows to change the query after the creation
-type HookAfterCreator interface {
-	HookAfterCreate(scope *query.Scope) error
+// AfterCreator is the interface that has a method used as a hook after the creation process
+type AfterCreator interface {
+	WAfterCreate(s *scope.Scope) error
 }
 
-// HookBeforeReader is the Hook interface that allows to change the query before the read operation
-type HookBeforeReader interface {
-	HookBeforeRead(scope *query.Scope) error
+// BeforeGetter is the interface used as a hook before gettin value from api
+type BeforeGetter interface {
+	WBeforeGet(s *scope.Scope) error
 }
 
-// HookAfterReader is the Hook interface that allows to change the query after the read operation
-type HookAfterReader interface {
-	HookAfterRead(scope *query.Scope) error
+// AfterGetterR is the interface used as a hook after getting the value from api
+type AfterGetter interface {
+	WAfterGetter(s *scope.Scope) error
 }
 
-// HookBeforePatcher is the Hook interface that allows to change the query before the patch
-// operation
-type HookBeforePatcher interface {
-	HookBeforePatch(scope *query.Scope) error
+type AfterLister interface {
+	WAfterList(s *scope.Scope) error
 }
 
-// HookAfterPatcher is the Hook interface that allows to change the query after the patch
-// operation
-type HookAfterPatcher interface {
-	HookAfterPatch(scope *query.Scope) error
+type BeforePatcher interface {
+	WBeforePatch(s *scope.Scope) error
 }
 
-// HookBeforeDeleter is the Hook interface that allows to change the query before the delete
-// operation
-type HookBeforeDeleter interface {
-	HookBeforeDelete(scope *query.Scope) error
+type AfterPatcher interface {
+	WAfterPatch(s *scope.Scope) error
 }
 
-// HookAfterDeleter is the Hook interface that allows to change the query after the delete
-// operation
-type HookAfterDeleter interface {
-	HookAfterDelete(scope *query.Scope) error
+type BeforeDeleter interface {
+	WBeforeDelete(s *scope.Scope) error
+}
+
+type AfterDeleter interface {
+	WAfterDelete(s *scope.Scope) error
 }

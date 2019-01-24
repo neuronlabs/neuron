@@ -186,6 +186,11 @@ func (s *Scope) AddSelectedField(field *models.StructField) {
 	s.selectedFields = append(s.selectedFields, field)
 }
 
+// AddFilterField adds the filter to the given scope
+func (s *Scope) AddFilterField(filter *filters.FilterField) error {
+	return s.addFilterField(filter)
+}
+
 // Fieldset returns current scope fieldset
 func (s *Scope) Fieldset() []*models.StructField {
 	var fs []*models.StructField
@@ -209,6 +214,11 @@ func (s *Scope) IsRoot() bool {
 	return s.isRoot()
 }
 
+// SetAllFields sets all fields in the fieldset
+func (s *Scope) SetAllFields() {
+	s.setAllFields()
+}
+
 func (s *Scope) SetFlagsFrom(flgs ...*flags.Container) {
 	for _, f := range internal.ScopeCtxFlags {
 		s.Flags().SetFirst(f, flgs...)
@@ -217,6 +227,12 @@ func (s *Scope) SetFlagsFrom(flgs ...*flags.Container) {
 
 // WithContext sets the query Scope context
 func (s *Scope) WithContext(ctx context.Context) {
+	ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, s.ctx.Value(internal.ScopeIDCtxKey))
+
+	ctrl := s.ctx.Value(internal.ControllerIDCtxKey)
+	if ctrl != nil {
+		ctx = context.WithValue(ctx, internal.ControllerIDCtxKey, ctrl)
+	}
 	s.ctx = ctx
 }
 
@@ -705,21 +721,21 @@ func (s *Scope) SetCollectionValues() error {
 	defer s.collectionScope.includedValues.Unlock()
 
 	var (
-		primIndex            = models.StructPrimary(s.mStruct).FieldIndex()
+		primIndex            = s.mStruct.PrimaryField().FieldIndex()
 		setValueToCollection = func(value reflect.Value) {
 			primaryValue := value.Elem().Field(primIndex)
 			if !primaryValue.IsValid() {
 				return
 			}
 			primary := primaryValue.Interface()
-			insider, ok := s.collectionScope.includedValues.Get(primary)
+			insider, ok := s.collectionScope.includedValues.UnsafeGet(primary)
 			if !ok {
-				s.collectionScope.includedValues.Add(primary, value.Interface())
+				s.collectionScope.includedValues.UnsafeAdd(primary, value.Interface())
 				return
 			}
 
 			if insider == nil {
-				s.collectionScope.includedValues.Add(primary, value.Interface())
+				s.collectionScope.includedValues.UnsafeAdd(primary, value.Interface())
 			} else if s.hasFieldNotInFieldset {
 				// this scopes value should have more fields
 				insideValue := reflect.ValueOf(insider)
@@ -806,6 +822,105 @@ func (s *Scope) SetPrimaryFilters(values ...interface{}) {
 // If the scope's model does not support i18n it does not create language filter, and ends fast.
 func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 	s.setLanguageFilterValues(languages...)
+}
+
+// SetBelongsToForeignKeyFields
+func (s *Scope) SetBelongsToForeignKeyFields() error {
+	if s.Value == nil {
+		return internal.IErrNilValue
+	}
+
+	setField := func(v reflect.Value) ([]*models.StructField, error) {
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
+
+		if v.Type() != s.Struct().Type() {
+			return nil, internal.IErrInvalidType
+		}
+
+		var fks []*models.StructField
+		for _, field := range s.selectedFields {
+			relField, ok := s.mStruct.RelationshipField(field.ApiName())
+			if ok {
+				rel := relField.Relationship()
+				if rel != nil && rel.Kind() == models.RelBelongsTo {
+					relVal := v.FieldByIndex(relField.ReflectField().Index)
+
+					// Check if the value is non zero
+					if reflect.DeepEqual(
+						relVal.Interface(),
+						reflect.Zero(relVal.Type()).Interface(),
+					) {
+						// continue if non zero
+						continue
+					}
+
+					if relVal.Kind() == reflect.Ptr {
+						relVal = relVal.Elem()
+					}
+
+					fkVal := v.FieldByIndex(rel.ForeignKey().ReflectField().Index)
+
+					relPrim := rel.Struct().PrimaryField()
+
+					relPrimVal := relVal.FieldByIndex(relPrim.ReflectField().Index)
+					fkVal.Set(relPrimVal)
+					fks = append(fks, rel.ForeignKey())
+				}
+
+			}
+		}
+		return fks, nil
+	}
+
+	v := reflect.ValueOf(s.Value)
+
+	switch v.Kind() {
+	case reflect.Ptr:
+
+		fks, err := setField(v)
+		if err != nil {
+			return err
+		}
+		for _, fk := range fks {
+			var found bool
+
+		inner:
+			for _, selected := range s.selectedFields {
+				if fk == selected {
+					found = true
+					break inner
+				}
+			}
+			if !found {
+				s.selectedFields = append(s.selectedFields, fk)
+			}
+		}
+
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			elem := v.Index(i)
+			fks, err := setField(v)
+			if err != nil {
+				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+			}
+			for _, fk := range fks {
+				var found bool
+			innerSlice:
+				for _, selected := range s.selectedFields {
+					if fk == selected {
+						found = true
+						break innerSlice
+					}
+				}
+				if !found {
+					s.selectedFields = append(s.selectedFields, fk)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // SelectedFields return fields that were selected during unmarshaling
@@ -1448,16 +1563,16 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	switch index {
 	case 0:
 		s.pagination.Limit = val
-		s.pagination.Type = paginations.TpOffset
+		s.pagination.SetType(paginations.TpOffset)
 	case 1:
 		s.pagination.Offset = val
-		s.pagination.Type = paginations.TpOffset
+		s.pagination.SetType(paginations.TpOffset)
 	case 2:
 		s.pagination.PageNumber = val
-		s.pagination.Type = paginations.TpPage
+		s.pagination.SetType(paginations.TpPage)
 	case 3:
 		s.pagination.PageSize = val
-		s.pagination.Type = paginations.TpPage
+		s.pagination.SetType(paginations.TpPage)
 	}
 	return nil
 }
@@ -1549,6 +1664,16 @@ func (s *Scope) setValueFromAddressable() error {
 		return nil
 	}
 	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.mStruct.Type(), s.valueAddress)
+}
+
+// GetPrimaryFieldValue
+func (s *Scope) GetPrimaryFieldValue() (reflect.Value, error) {
+	return s.getFieldValue(s.Struct().PrimaryField())
+}
+
+// GetFieldValue gets the value of the provided field
+func (s *Scope) GetFieldValue(sField *models.StructField) (reflect.Value, error) {
+	return s.getFieldValue(sField)
 }
 
 func (s *Scope) getFieldValue(sField *models.StructField) (reflect.Value, error) {
@@ -1867,7 +1992,7 @@ func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 	if s.includedValues != nil {
 		scope.includedValues = safemap.New()
 		for k, v := range s.includedValues.Values() {
-			scope.includedValues.Add(k, v)
+			scope.includedValues.UnsafeAdd(k, v)
 		}
 	}
 

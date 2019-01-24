@@ -107,9 +107,9 @@ func TestBuildScopeMany(t *testing.T) {
 				sortFields := s.SortFields()
 				if assert.Equal(t, 2, len(s.SortFields())) {
 					assert.Equal(t, sorts.DescendingOrder, sortFields[0].Order())
-					assert.Equal(t, "title", sortFields[0].ApiName())
+					assert.Equal(t, "title", sortFields[0].StructField().ApiName())
 					assert.Equal(t, sorts.AscendingOrder, sortFields[1].Order())
-					assert.Equal(t, "id", sortFields[1].ApiName())
+					assert.Equal(t, "id", sortFields[1].StructField().ApiName())
 				}
 			}
 		})

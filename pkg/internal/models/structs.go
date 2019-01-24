@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/kucjac/jsonapi/pkg/config"
 	aerrors "github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
@@ -80,6 +81,19 @@ type ModelStruct struct {
 	collectionURLIndex int
 
 	flags *flags.Container
+
+	// repositoryName defines the model's repository name
+	repositoryName string
+
+	isAfterLister  bool
+	isBeforeLister bool
+
+	cfg *config.ModelConfig
+}
+
+// AllowClientID returns boolean if the client settable id is allowed
+func (m *ModelStruct) AllowClientID() bool {
+	return m.primary.allowClientID()
 }
 
 // Attribute returns the attribute field for given string
@@ -97,6 +111,18 @@ func (m *ModelStruct) Flags() *flags.Container {
 	return m.flags
 }
 
+// IsAfterLister returns the boolean if the given model implements
+// AfterListerR interface
+func (m *ModelStruct) IsAfterLister() bool {
+	return m.isAfterLister
+}
+
+// IsBeforeLister returns the boolean if the given model implements
+// BeforeListerR interface
+func (m *ModelStruct) IsBeforeLister() bool {
+	return m.isBeforeLister
+}
+
 // ForeignKey return model's foreign key
 func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 	return StructForeignKeyField(m, fk)
@@ -105,6 +131,19 @@ func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 // FilterKey return model's fitler key
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 	return StructForeignKeyField(m, fk)
+}
+
+// NewValueSingle creates and returns new value for the given model type
+func (m *ModelStruct) NewValueSingle() interface{} {
+	return m.newReflectValueSingle().Interface()
+}
+
+func (m *ModelStruct) NewReflectValueSingle() reflect.Value {
+	return m.newReflectValueSingle()
+}
+
+func (m *ModelStruct) newReflectValueSingle() reflect.Value {
+	return reflect.New(m.Type())
 }
 
 // PrimaryField returns model's primary struct field
@@ -130,6 +169,30 @@ func (m *ModelStruct) SchemaName() string {
 	return m.schemaName
 }
 
+// SetConfig sets the config for given ModelStruct
+func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
+	m.cfg = cfg
+
+	m.repositoryName = cfg.Repository
+	return nil
+}
+
+// Config returns config for the model
+func (m *ModelStruct) Config() *config.ModelConfig {
+	return m.cfg
+}
+
+// SetRepositoryName sets the repositoryName
+func (m *ModelStruct) SetRepositoryName(repo string) {
+	m.repositoryName = repo
+}
+
+// RepositoryName returns the repository name for given model
+func (m *ModelStruct) RepositoryName() string {
+	return m.repositoryName
+}
+
+// NewModelStruct creates new model struct for given type
 func NewModelStruct(tp reflect.Type, collection string, flg *flags.Container) *ModelStruct {
 	m := &ModelStruct{id: ctr.next(), modelType: tp, collectionType: collection, flags: flg}
 	m.attributes = make(map[string]*StructField)

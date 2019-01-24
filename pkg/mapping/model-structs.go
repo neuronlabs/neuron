@@ -2,6 +2,7 @@ package mapping
 
 import (
 	"github.com/kucjac/jsonapi/pkg/internal/models"
+	"reflect"
 )
 
 // import (
@@ -89,4 +90,14 @@ func (m *ModelStruct) LanguageField() *StructField {
 
 func (m *ModelStruct) toModels() *models.ModelStruct {
 	return (*models.ModelStruct)(m)
+}
+
+// Type returns model struct type
+func (m *ModelStruct) Type() reflect.Type {
+	return (*models.ModelStruct)(m).Type()
+}
+
+// Collection returns model's collection
+func (m *ModelStruct) Collection() string {
+	return (*models.ModelStruct)(m).Collection()
 }

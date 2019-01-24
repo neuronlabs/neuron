@@ -7,7 +7,7 @@ import (
 
 // SortField is a field that describes the sorting rules for given
 type SortField struct {
-	*models.StructField
+	structField *models.StructField
 
 	// Order defines if the sorting order (ascending or descending)
 	order Order
@@ -21,13 +21,18 @@ func (s *SortField) Order() Order {
 	return s.order
 }
 
+// StructField returns sortField's structure
+func (s *SortField) StructField() *models.StructField {
+	return s.structField
+}
+
 // Copy copies provided SortField
 func Copy(s *SortField) *SortField {
 	return s.copy()
 }
 
 func (s *SortField) copy() *SortField {
-	sort := &SortField{StructField: s.StructField, order: s.order}
+	sort := &SortField{structField: s.structField, order: s.order}
 	if len(s.subFields) != 0 {
 		sort.subFields = make([]*SortField, len(s.subFields))
 		for i, v := range s.subFields {
@@ -51,7 +56,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 	)
 
 	// Subfields are available only for the relationships
-	if !s.IsRelationship() {
+	if !s.structField.IsRelationship() {
 		invalidField = true
 		return
 	}
@@ -66,21 +71,21 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 		// if len is equal to one then it should be primary or attribute field
 		sort := sortSplitted[0]
 		if sort == internal.AnnotationID {
-			sField = models.StructPrimary(models.FieldsRelatedModelStruct(s.StructField))
+			sField = models.StructPrimary(models.FieldsRelatedModelStruct(s.structField))
 		} else {
 			var ok bool
-			sField, ok = models.StructAttr(models.FieldsRelatedModelStruct(s.StructField), sortSplitted[0])
+			sField, ok = models.StructAttr(models.FieldsRelatedModelStruct(s.structField), sortSplitted[0])
 			if !ok {
 				invalidField = true
 				return
 			}
 		}
 
-		s.subFields = append(s.subFields, &SortField{StructField: sField, order: order})
+		s.subFields = append(s.subFields, &SortField{structField: sField, order: order})
 	default:
 		// if length is more than one -> there is a relationship
 		var ok bool
-		sField, ok := models.StructRelField(models.FieldsRelatedModelStruct(s.StructField), sortSplitted[0])
+		sField, ok := models.StructRelField(models.FieldsRelatedModelStruct(s.structField), sortSplitted[0])
 		if !ok {
 			invalidField = true
 			return
@@ -88,7 +93,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 		// search for the subfields if already created
 		for i := range s.subFields {
-			if s.subFields[i].FieldIndex() == sField.FieldIndex() {
+			if s.subFields[i].structField.FieldIndex() == sField.FieldIndex() {
 				subField = s.subFields[i]
 				break
 			}
@@ -96,7 +101,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 		// if none found create new
 		if subField == nil {
-			subField = &SortField{StructField: sField}
+			subField = &SortField{structField: sField}
 		}
 
 		//

@@ -7,6 +7,15 @@ import (
 
 var Verbose *bool = flag.Bool("verbose-api", false, "Used to get verbose data")
 
+type ScopeIDCtx struct{}
+
+type ControllerIDCtx struct{}
+
+var (
+	ScopeIDCtxKey      ScopeIDCtx      = ScopeIDCtx{}
+	ControllerIDCtxKey ControllerIDCtx = ControllerIDCtx{}
+)
+
 var (
 	IErrUnexpectedType = errors.
 				New("models should be a struct pointer or slice of struct pointers")

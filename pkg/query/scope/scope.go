@@ -1,0 +1,319 @@
+package scope
+
+import (
+	"context"
+	stdErrors "errors"
+	"fmt"
+	"github.com/google/uuid"
+	ctrl "github.com/kucjac/jsonapi/pkg/controller"
+	"github.com/kucjac/jsonapi/pkg/errors"
+	"github.com/kucjac/jsonapi/pkg/internal"
+	"github.com/kucjac/jsonapi/pkg/internal/controller"
+	"github.com/kucjac/jsonapi/pkg/internal/models"
+	iFilters "github.com/kucjac/jsonapi/pkg/internal/query/filters"
+	"github.com/kucjac/jsonapi/pkg/internal/query/paginations"
+	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
+	"github.com/kucjac/jsonapi/pkg/log"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+	"github.com/kucjac/jsonapi/pkg/query/filters"
+	"github.com/kucjac/jsonapi/pkg/query/pagination"
+	"gopkg.in/go-playground/validator.v9"
+	"strings"
+)
+
+var ErrFieldNotFound error = stdErrors.New("Field not found")
+
+// Scope is the Queries heart and soul which keeps all possible information
+// Within it's structure
+type Scope scope.Scope
+
+func MustWithC(c *ctrl.Controller, model interface{}) *Scope {
+	s, err := newScope((*controller.Controller)(c), model)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+// NewWithC creates the scope for the provided model with respect to the provided
+// controller 'c'
+func NewWithC(c *ctrl.Controller, model interface{}) (*Scope, error) {
+	return newScope((*controller.Controller)(c), model)
+}
+
+// NewWithModelC creates new scope on the base of the provided model struct with the new single
+// value
+func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct) *Scope {
+	ctx := context.WithValue(
+		context.Background(),
+		internal.ControllerIDCtxKey,
+		(*ctrl.Controller)(c),
+	)
+
+	s := scope.NewWithCtx(ctx, (*models.ModelStruct)(mStruct))
+	s.Value = (*models.ModelStruct)(mStruct).NewValueSingle()
+	return (*Scope)(s)
+}
+
+// New creates the scope on the base of the given model
+func New(model interface{}) (*Scope, error) {
+	return newScope(controller.Default(), model)
+}
+
+func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
+	mStruct, err := c.GetModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.WithValue(context.Background(), internal.ControllerIDCtxKey, (*ctrl.Controller)(c))
+	s := scope.NewWithCtx(ctx, mStruct)
+
+	s.Value = model
+
+	log.Debugf("Model:%v", model)
+
+	return (*Scope)(s), nil
+}
+
+// AddFilter adds the given scope's filter field
+func (s *Scope) AddFilter(filter *filters.FilterField) error {
+	return scope.AddFilterField((*scope.Scope)(s), (*iFilters.FilterField)(filter))
+}
+
+// AttributeFilters returns scope's attribute iFilters
+func (s *Scope) AttributeFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersAttributes((*scope.Scope)(s)) {
+
+		res = append(res, (*filters.FilterField)(filter))
+	}
+	return res
+}
+
+func (s *Scope) Controller() *ctrl.Controller {
+	c := s.Context().Value(internal.ControllerIDCtxKey).(*ctrl.Controller)
+	return c
+}
+
+// Context return's scope's context
+func (s *Scope) Context() context.Context {
+	return (*scope.Scope)(s).Context()
+}
+
+// Create creates the scope values
+func (s *Scope) Create() error {
+	if err := DefaultQueryProcessor.doCreate(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Delete deletes the values provided in the scope's value
+func (s *Scope) Delete() error {
+	if err := DefaultQueryProcessor.doDelete(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ForeignFilters returns scope's foreign key iFilters
+func (s *Scope) ForeignFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersForeigns((*scope.Scope)(s)) {
+		res = append(res, (*filters.FilterField)(filter))
+	}
+	return res
+}
+
+// FilterKeyFilters returns scope's primary iFilters
+func (s *Scope) FilterKeyFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersKeys((*scope.Scope)(s)) {
+		res = append(res, (*filters.FilterField)(filter))
+	}
+	return res
+}
+
+// Get gets single value from the repository taking into account the scope
+// filters and parameters
+func (s *Scope) Get() error {
+	if err := DefaultQueryProcessor.doGet(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ID returns the scope's identity number represented as
+// github.com/google/uuid
+func (s *Scope) ID() uuid.UUID {
+	return s.Context().Value(internal.ScopeIDCtxKey).(uuid.UUID)
+}
+
+// List gets the values from the repository taking into account the scope
+// filters and parameters
+func (s *Scope) List() error {
+	if err := DefaultQueryProcessor.doList(s); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Patch updates the scope's attribute and relationship values with the restrictions provided
+// in the scope's parameters
+func (s *Scope) Patch() error {
+	if err := DefaultQueryProcessor.doPatch(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// PrimaryFilters returns scope's primary iFilters
+func (s *Scope) PrimaryFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersPrimary((*scope.Scope)(s)) {
+		res = append(res, (*filters.FilterField)(filter))
+	}
+	return res
+}
+
+// RelationFilters returns scope's relation fields iFilters
+func (s *Scope) RelationFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersRelationFields((*scope.Scope)(s)) {
+		res = append(res, (*filters.FilterField)(filter))
+	}
+	return res
+}
+
+// RelatedSubscope
+func (s *Scope) RelatedSubscope(relatedField string) (*Scope, error) {
+	return nil, nil
+}
+
+// SetPagination sets the Pagination for the scope.
+func (s *Scope) SetPagination(p *pagination.Pagination) error {
+	return scope.SetPagination((*scope.Scope)(s), (*paginations.Pagination)(p))
+}
+
+// SelectField selects the field by the name.
+// Selected fields are used in the patching process.
+// By default the selected fields are all non zero valued fields in the struct.
+func (s *Scope) SelectField(name string) error {
+	field, ok := s.Struct().FieldByName(name)
+	if !ok {
+		log.Debug("Field not found: '%s'", name)
+		return ErrFieldNotFound
+	}
+
+	(*scope.Scope)(s).AddSelectedField((*models.StructField)(field))
+
+	return nil
+}
+
+// SelectedFields returns fields selected during
+func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
+	for _, field := range (*scope.Scope)(s).SelectedFields() {
+		selected = append(selected, (*mapping.StructField)(field))
+	}
+	return
+}
+
+// Struct returns scope's ModelStruct
+func (s *Scope) Struct() *mapping.ModelStruct {
+	mStruct := (*scope.Scope)(s).Struct()
+	return (*mapping.ModelStruct)(mStruct)
+}
+
+// ValidateCreate validates the scope's value with respect to the 'create validator' and
+// the 'create' validation tags
+func (s *Scope) ValidateCreate() []*errors.ApiError {
+	v := s.Controller().CreateValidator
+	return s.validate(v, "CreateValidator")
+}
+
+// ValidatePatch validates the scope's value with respect to the 'Patch Validator'
+func (s *Scope) ValidatePatch() []*errors.ApiError {
+	v := s.Controller().PatchValidator
+	return s.validate(v, "PatchValidator")
+}
+
+func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.ApiError {
+	if err := v.Struct(s.Value); err != nil {
+		switch er := err.(type) {
+		case *validator.InvalidValidationError:
+			// Invalid argument passed to validator
+			log.Errorf("[%s] %s-> Invalid Validation Error: %v", s.ID().String(), validatorName, er)
+			e := errors.ErrInternalError.Copy()
+			e.Detail = fmt.Sprintf("%v", er)
+			return []*errors.ApiError{e}
+		case validator.ValidationErrors:
+			var errs []*errors.ApiError
+			for _, verr := range er {
+				tag := verr.Tag()
+
+				var errObj *errors.ApiError
+				if tag == "required" {
+
+					// if field is required and the field tag is empty
+					if verr.Field() == "" {
+						log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+						errObj = errors.ErrInternalError.Copy()
+						errObj.Detail = fmt.Sprintf("[%s] Model: '%v'. '%s' failed. Field is 'required' and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+						return append(errs, errObj)
+					}
+					errObj = errors.ErrMissingRequiredJSONField.Copy()
+					errObj.Detail = fmt.Sprintf("The field: %s, is required.", verr.Field())
+					errs = append(errs, errObj)
+					continue
+				} else if tag == "isdefault" {
+
+					if verr.Field() == "" {
+						if verr.Field() == "" {
+							log.Errorf("[%s] Model: '%v'. %s failed. Field is 'isdefault' and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+							errObj = errors.ErrInternalError.Copy()
+							errObj.Detail = fmt.Sprintf("[%s] Model: '%v'. %s failed. Field is 'isdefault' and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+							return append(errs, errObj)
+						}
+
+						errObj = errors.ErrInvalidJSONFieldValue.Copy()
+						errObj.Detail = fmt.Sprintf("The field: '%s' must be of zero value.", verr.Field())
+						errs = append(errs, errObj)
+						continue
+
+					} else if strings.HasPrefix(tag, "len") {
+						// length
+						if verr.Field() == "" {
+							log.Errorf("[%s] Model: '%v'. %s failed. Field must have specific length and the field tag is empty.", s.ID().String(),
+								validatorName, s.Struct().Type().String())
+							errObj = errors.ErrInternalError.Copy()
+							errObj.Detail = fmt.Sprintf("[%s] Model: '%v'. %s failed. Field must have specific len and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+							return append(errs, errObj)
+						}
+						errObj = errors.ErrInvalidJSONFieldValue.Copy()
+						errObj.Detail = fmt.Sprintf("The value of the field: %s is of invalid length.", verr.Field())
+						errs = append(errs, errObj)
+						continue
+					} else {
+						errObj = errors.ErrInvalidJSONFieldValue.Copy()
+						if verr.Field() != "" {
+							errObj.Detail = fmt.Sprintf("Invalid value for the field: '%s'.", verr.Field())
+						}
+						errs = append(errs, errObj)
+						continue
+					}
+				}
+			}
+			return errs
+		default:
+			return []*errors.ApiError{errors.ErrInternalError.Copy()}
+		}
+	}
+	return nil
+}
+
+func (s *Scope) WithContext(ctx context.Context) {
+	(*scope.Scope)(s).WithContext(ctx)
+	return
+}

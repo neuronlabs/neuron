@@ -9,17 +9,18 @@ type ControllerConfig struct {
 	// - lowercamel
 	// - snake
 	// - kebab
-	NamingConvention string `validate:"oneof=camel lowercamel snake kebab"`
+	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lowercamel snake kebab"`
 
 	// DefaultSchema is the default schema name for the models within given controller
-	DefaultSchema string `validate:"alphanum"`
+	DefaultSchema string `validate:"alphanum" mapstructure:"default_schema"`
+
+	// ModelSchemas defines the model schemas used by api
+	ModelSchemas map[string]*Schema
 
 	// StrictUnmarshalMode is the flag that defines if the unmarshaling should be in a
-	// strict mode that check if incoming values are all known
+	// strict mode that checks if incoming values are all known to the controller
+	// As well as the query builder doesn't allow unknown queries
 	StrictUnmarshalMode bool
-
-	// MarshalLinks defines if the controller should add links while marshaling models
-	MarshalLinks bool
 
 	// Debug sets the debug mode for the controller.
 	Debug bool
@@ -29,4 +30,19 @@ type ControllerConfig struct {
 
 	// I18n defines i18n config
 	I18n *I18nConfig
+
+	// Flags defines the controller default flags
+	Flags *Flags `mapstructure:"flags"`
+
+	// DefaultRepository
+	DefaultRepository string `mapstructure:"default_repository"`
+
+	// CreateValidatorAlias is the alias for the create validators
+	CreateValidatorAlias string
+
+	// PatchValidatorAlias is the alis used for the Patch validator
+	PatchValidatorAlias string
+
+	// DefaultValidatorAlias is the alias used as a default validator alias
+	DefaultValidatorAlias string
 }

@@ -2,15 +2,27 @@ package scope
 
 import (
 	"context"
+	"github.com/google/uuid"
+	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/namer/dialect"
 	"github.com/kucjac/jsonapi/pkg/internal/query/filters"
 	"github.com/kucjac/jsonapi/pkg/internal/query/paginations"
+	"github.com/kucjac/jsonapi/pkg/internal/query/sorts"
 )
 
 // AddFilterField adds the filter field for given scope
 func AddFilterField(s *Scope, filter *filters.FilterField) error {
 	return s.addFilterField(filter)
+}
+
+// AppendSortFields appends the sortfield to the given scope
+func (s *Scope) AppendSortFields(fromStart bool, sortFields ...*sorts.SortField) {
+	if fromStart {
+		s.sortFields = append(sortFields, s.sortFields...)
+	} else {
+		s.sortFields = append(s.sortFields, sortFields...)
+	}
 }
 
 // CopyScope copies provided scope and sets its root
@@ -105,6 +117,27 @@ func IsRoot(s *Scope) bool {
 func New(model *models.ModelStruct) *Scope {
 	scope := newScope(model)
 
+	ctx := context.Background()
+	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
+
+	return scope
+}
+
+func NewWithCtx(ctx context.Context, model *models.ModelStruct) *Scope {
+	scope := newScope(model)
+
+	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
+	return scope
+
+}
+
+func NewRootScopeWithCtx(ctx context.Context, modelStruct *models.ModelStruct) *Scope {
+	scope := newScope(modelStruct)
+	scope.collectionScope = scope
+
+	ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
+	scope.ctx = ctx
+
 	return scope
 }
 
@@ -112,6 +145,9 @@ func New(model *models.ModelStruct) *Scope {
 func NewRootScope(modelStruct *models.ModelStruct) *Scope {
 	scope := newScope(modelStruct)
 	scope.collectionScope = scope
+
+	ctx := context.Background()
+	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
 	return scope
 }
 

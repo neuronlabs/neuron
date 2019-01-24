@@ -34,6 +34,17 @@ func (s *SafeHashMap) Get(key interface{}) (interface{}, bool) {
 	return value, ok
 }
 
+// UnsafeAdd adds the value at given key even if the map is locked
+func (s *SafeHashMap) UnsafeAdd(key, value interface{}) {
+	s.values[key] = value
+}
+
+// UnsafeGet gets the value at given key even if the map is locked
+func (s *SafeHashMap) UnsafeGet(key interface{}) (interface{}, bool) {
+	value, ok := s.values[key]
+	return value, ok
+}
+
 func (s *SafeHashMap) Copy() *SafeHashMap {
 	copied := New()
 	for key, value := range s.values {

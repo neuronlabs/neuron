@@ -93,8 +93,17 @@ func NestedFields(f *FilterField) []*FilterField {
 	return f.nested
 }
 
-// AddsNestedField for given FilterField
+// AddNestedField adds the nested field value
+func (f *FilterField) AddNestedField(nested *FilterField) {
+	addNestedField(f, nested)
+}
+
 func AddNestedField(f, nested *FilterField) {
+	addNestedField(f, nested)
+}
+
+// AddsNestedField for given FilterField
+func addNestedField(f, nested *FilterField) {
 
 	for _, nf := range f.nested {
 		if nf.structField == nested.structField {
