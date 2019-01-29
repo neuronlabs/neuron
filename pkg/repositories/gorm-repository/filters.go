@@ -3,7 +3,9 @@ package gormrepo
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/kucjac/jsonapi"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+	"github.com/kucjac/jsonapi/pkg/query/filters"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 	"github.com/pkg/errors"
 	"reflect"
 )
@@ -25,17 +27,17 @@ type whereQ struct {
 	values []interface{}
 }
 
-func buildWhere(tableName, columnName string, filter *jsonapi.FilterField,
+func buildWhere(tableName, columnName string, filter *filters.FilterField,
 ) ([]*whereQ, error) {
 	var err error
 	wheres := []*whereQ{}
-	for _, fv := range filter.Values {
+	for _, fv := range filter.Values() {
 		if len(fv.Values) == 0 {
 			return wheres, IErrNoValuesProvided
 		}
-		op := sqlizeOperator(fv.Operator)
+		op := sqlizeOperator(fv.Operator())
 		var valueMark string
-		if fv.Operator == jsonapi.OpIn || fv.Operator == jsonapi.OpNotIn {
+		if fv.Operator() == filters.OpIn || fv.Operator() == filters.OpNotIn {
 
 			valueMark = "("
 
@@ -54,7 +56,7 @@ func buildWhere(tableName, columnName string, filter *jsonapi.FilterField,
 				return wheres, err
 			}
 			valueMark = "?"
-			if fv.Operator == jsonapi.OpStartsWith {
+			if fv.Operator() == filters.OpStartsWith {
 				for i, v := range fv.Values {
 					strVal, ok := v.(string)
 					if !ok {
@@ -65,7 +67,7 @@ func buildWhere(tableName, columnName string, filter *jsonapi.FilterField,
 				}
 
 				// fmt.Println(fv.Values)
-			} else if fv.Operator == jsonapi.OpContains {
+			} else if fv.Operator() == filters.OpContains {
 				for i, v := range fv.Values {
 					strVal, ok := v.(string)
 					if !ok {
@@ -74,7 +76,7 @@ func buildWhere(tableName, columnName string, filter *jsonapi.FilterField,
 					}
 					fv.Values[i] = "%" + strVal + "%"
 				}
-			} else if fv.Operator == jsonapi.OpEndsWith {
+			} else if fv.Operator() == filters.OpEndsWith {
 				for i, v := range fv.Values {
 					strVal, ok := v.(string)
 					if !ok {
@@ -93,7 +95,7 @@ func buildWhere(tableName, columnName string, filter *jsonapi.FilterField,
 }
 
 // addWhere adds the where to the scope of the db
-func addWhere(db *gorm.DB, tableName, columnName string, filter *jsonapi.FilterField) error {
+func addWhere(db *gorm.DB, tableName, columnName string, filter *filters.FilterField) error {
 	wheres, err := buildWhere(tableName, columnName, filter)
 	if err != nil {
 		return err
@@ -105,7 +107,7 @@ func addWhere(db *gorm.DB, tableName, columnName string, filter *jsonapi.FilterF
 	return nil
 }
 
-func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, scope *jsonapi.Scope,
+func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, s *scope.Scope,
 ) error {
 
 	var (
@@ -113,8 +115,8 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 		gormField *gorm.StructField
 	)
 
-	for _, primary := range scope.PrimaryFilters {
-		g.log().Debugf("Building filter for field: %s", primary.GetFieldName())
+	for _, primary := range s.PrimaryFilters() {
+		g.log().Debugf("Building filter for field: %s", primary.StructField().Name())
 		// fmt.Printf("Primary field: '%s'\n", primary.GetFieldName())
 		gormField, err = getGormField(primary, mStruct, true)
 		if err != nil {
@@ -128,27 +130,25 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 
 	}
 
-	// if given scope uses i18n check if it contains language filter
-	if scope.UseI18n() {
-		if scope.LanguageFilters != nil {
-			// it should be primary field but it does not have to be primary
-			gormField, err = getGormField(scope.LanguageFilters, mStruct, false)
-			if err != nil {
+	// if given s uses i18n check if it contains language filter
+	if s.LanguageFilter() != nil {
+		// it should be primary field but it does not have to be primary
+		gormField, err = getGormField(s.LanguageFilter(), mStruct, false)
+		if err != nil {
+			return err
+		}
+
+		if !gormField.IsIgnored {
+			if err = addWhere(db, mStruct.TableName(db), gormField.DBName, s.LanguageFilter()); err != nil {
 				return err
 			}
-
-			if !gormField.IsIgnored {
-				if err = addWhere(db, mStruct.TableName(db), gormField.DBName, scope.LanguageFilters); err != nil {
-					return err
-				}
-			}
-
-		} else {
-			// No language filter ?
 		}
+
+	} else {
+		// No language filter ?
 	}
 
-	for _, fkFilter := range scope.ForeignKeyFilters {
+	for _, fkFilter := range s.ForeignFilters() {
 		gormField, err = getGormField(fkFilter, mStruct, false)
 		if err != nil {
 			return errors.Wrapf(err, "getGormField fo ForeignKeyFilter: %#v failed", fkFilter)
@@ -161,7 +161,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 		}
 	}
 
-	for _, attrFilter := range scope.AttributeFilters {
+	for _, attrFilter := range s.AttributeFilters() {
 		// fmt.Printf("Attribute field: '%s'\n", attrFilter.GetFieldName())
 		gormField, err = getGormField(attrFilter, mStruct, false)
 		if err != nil {
@@ -176,15 +176,15 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 
 	}
 
-	for _, relationFilter := range scope.RelationshipFilters {
-		if rel := relationFilter.GetRelationship(); rel != nil {
-			switch rel.Kind {
-			case jsonapi.RelHasMany, jsonapi.RelHasOne:
-				if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
+	for _, relationFilter := range s.RelationFilters() {
+		if rel := relationFilter.StructField().Relationship(); rel != nil {
+			switch rel.Kind() {
+			case mapping.RelHasMany, mapping.RelHasOne:
+				if rel.Sync() == nil || (rel.Sync() != nil && *rel.Sync()) {
 					continue
 				}
-			case jsonapi.RelMany2Many:
-				if rel.Sync != nil && *rel.Sync {
+			case mapping.RelMany2Many:
+				if rel.Sync() != nil && *rel.Sync() {
 					continue
 				}
 			}
@@ -198,14 +198,15 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 				continue
 			}
 
+			nesteds := relationFilter.NestedFilters()
 			// The relationshipfilter
-			if len(relationFilter.Nested) != 1 {
+			if len(nesteds) != 1 {
 				err = IErrBadRelationshipField
 				return err
 			}
 
 			// The subfield of relationfilter must be a primary key
-			if !relationFilter.Nested[0].IsPrimary() {
+			if nesteds[0].StructField().FieldKind() != mapping.KindPrimary {
 				err = IErrBadRelationshipField
 				return err
 			}
@@ -234,18 +235,21 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 					return err
 				}
 
-				err = addWhere(db, mStruct.TableName(db), foreignField.DBName, relationFilter.Nested[0])
+				err = addWhere(db, mStruct.TableName(db), foreignField.DBName, nesteds[0])
 				if err != nil {
 					return err
 				}
 			case associationHasMany:
 				// has many can be found from different table
 				// thus it must be added with included where
-				relScope := db.NewScope(reflect.New(relationFilter.GetRelatedModelType()).Interface())
+				relScope := db.NewScope(reflect.New(
+					relationFilter.StructField().Relationship().ModelStruct().Type(),
+				).Interface())
+
 				relMStruct := relScope.GetModelStruct()
 				relDB := relScope.DB()
 
-				err = buildRelationFilters(relDB, relMStruct, relationFilter.Nested[0])
+				err = buildRelationFilters(relDB, relMStruct, nesteds[0])
 				if err != nil {
 					return err
 				}
@@ -254,7 +258,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 				// the wheres should already be added into relDB
 				expr := relDB.Table(relMStruct.TableName(relDB)).Select(gormField.Relationship.ForeignDBNames[0]).QueryExpr()
 
-				op := sqlizeOperator(jsonapi.OpIn)
+				op := sqlizeOperator(filters.OpIn)
 				valueMark := "(?)"
 				columnName := mStruct.PrimaryFields[0].DBName
 				q := fmt.Sprintf("\"%s\".\"%s\" %s %s", relMStruct.TableName(db), columnName, op, valueMark)
@@ -262,7 +266,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 				*db = *db.Where(q, expr)
 
 			case associationManyToMany:
-				relScope := db.NewScope(reflect.New(relationFilter.GetRelatedModelType()).Interface())
+				relScope := db.NewScope(reflect.New(relationFilter.StructField().Relationship().ModelStruct().Type()).Interface())
 
 				relDB := relScope.DB()
 
@@ -273,14 +277,14 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 					Select(joinTableHandler.SourceForeignKeys()[0].DBName)
 				// fmt.Printf("%v", relDB)
 
-				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Nested[0])
+				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, nesteds[0])
 				if err != nil {
 					g.log().Debugf("Error while createing Many2Many WHERE query: %v", err)
 					return err
 				}
 
 				columnName := mStruct.PrimaryFields[0].DBName
-				op := sqlizeOperator(jsonapi.OpIn)
+				op := sqlizeOperator(filters.OpIn)
 				valueMark := "(?)"
 				q := fmt.Sprintf("%s %s %s", columnName, op, valueMark)
 
@@ -297,7 +301,7 @@ func (g *GORMRepository) buildFilters(db *gorm.DB, mStruct *gorm.ModelStruct, sc
 }
 
 func (g *GORMRepository) getQueryFilters(
-	db *gorm.DB, mStruct *gorm.ModelStruct, scope *jsonapi.Scope,
+	db *gorm.DB, mStruct *gorm.ModelStruct, s *scope.Scope,
 ) ([]*whereQ, error) {
 
 	var (
@@ -307,8 +311,8 @@ func (g *GORMRepository) getQueryFilters(
 
 	wqs := []*whereQ{}
 
-	for _, primary := range scope.PrimaryFilters {
-		g.log().Debugf("Building filter for field: %s", primary.GetFieldName())
+	for _, primary := range s.PrimaryFilters() {
+		g.log().Debugf("Building filter for field: %s", primary.StructField().Name())
 		// fmt.Printf("Primary field: '%s'\n", primary.GetFieldName())
 		gormField, err = getGormField(primary, mStruct, true)
 		if err != nil {
@@ -325,30 +329,26 @@ func (g *GORMRepository) getQueryFilters(
 
 	}
 
-	// if given scope uses i18n check if it contains language filter
-	if scope.UseI18n() {
-		if scope.LanguageFilters != nil {
-			// it should be primary field but it does not have to be primary
-			gormField, err = getGormField(scope.LanguageFilters, mStruct, false)
+	// if given s uses i18n check if it contains language filter
+
+	if s.LanguageFilter() != nil {
+		// it should be primary field but it does not have to be primary
+		gormField, err = getGormField(s.LanguageFilter(), mStruct, false)
+		if err != nil {
+			return nil, err
+		}
+
+		if !gormField.IsIgnored {
+
+			wq, err := buildWhere(mStruct.TableName(db), gormField.DBName, s.LanguageFilter())
 			if err != nil {
 				return nil, err
 			}
-
-			if !gormField.IsIgnored {
-
-				wq, err := buildWhere(mStruct.TableName(db), gormField.DBName, scope.LanguageFilters)
-				if err != nil {
-					return nil, err
-				}
-				wqs = append(wqs, wq...)
-			}
-
-		} else {
-			// No language filter ?
+			wqs = append(wqs, wq...)
 		}
 	}
 
-	for _, fkFilter := range scope.ForeignKeyFilters {
+	for _, fkFilter := range s.ForeignFilters() {
 		gormField, err = getGormField(fkFilter, mStruct, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getGormField fo ForeignKeyFilter: %#v failed", fkFilter)
@@ -364,7 +364,7 @@ func (g *GORMRepository) getQueryFilters(
 		}
 	}
 
-	for _, attrFilter := range scope.AttributeFilters {
+	for _, attrFilter := range s.AttributeFilters() {
 		// fmt.Printf("Attribute field: '%s'\n", attrFilter.GetFieldName())
 		gormField, err = getGormField(attrFilter, mStruct, false)
 		if err != nil {
@@ -382,15 +382,16 @@ func (g *GORMRepository) getQueryFilters(
 
 	}
 
-	for _, relationFilter := range scope.RelationshipFilters {
-		if rel := relationFilter.GetRelationship(); rel != nil && rel.IsManyToMany() {
-			switch rel.Kind {
-			case jsonapi.RelHasMany, jsonapi.RelHasOne:
-				if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
+	// iterate over relationship filter
+	for _, relationFilter := range s.RelationFilters() {
+		if rel := relationFilter.StructField().Relationship(); rel != nil && rel.Kind() == mapping.RelMany2Many {
+			switch rel.Kind() {
+			case mapping.RelHasMany, mapping.RelHasOne:
+				if rel.Sync() == nil || (rel.Sync() != nil && *rel.Sync()) {
 					continue
 				}
-			case jsonapi.RelMany2Many:
-				if rel.Sync != nil && *rel.Sync {
+			case mapping.RelMany2Many:
+				if rel.Sync() != nil && *rel.Sync() {
 					continue
 				}
 			}
@@ -404,14 +405,15 @@ func (g *GORMRepository) getQueryFilters(
 				continue
 			}
 
+			nesteds := relationFilter.NestedFilters()
 			// The relationshipfilter
-			if len(relationFilter.Nested) != 1 {
+			if len(nesteds) != 1 {
 				err = IErrBadRelationshipField
 				return nil, err
 			}
 
 			// The subfield of relationfilter must be a primary key
-			if !relationFilter.Nested[0].IsPrimary() {
+			if nesteds[0].StructField().FieldKind() != mapping.KindPrimary {
 				err = IErrBadRelationshipField
 				return nil, err
 			}
@@ -440,7 +442,7 @@ func (g *GORMRepository) getQueryFilters(
 					return nil, err
 				}
 
-				wq, err := buildWhere(mStruct.TableName(db), foreignField.DBName, relationFilter.Nested[0])
+				wq, err := buildWhere(mStruct.TableName(db), foreignField.DBName, nesteds[0])
 				if err != nil {
 					return nil, err
 				}
@@ -449,11 +451,11 @@ func (g *GORMRepository) getQueryFilters(
 			case associationHasMany:
 				// has many can be found from different table
 				// thus it must be added with included where
-				relScope := db.NewScope(reflect.New(relationFilter.GetRelatedModelType()).Interface())
+				relScope := db.NewScope(reflect.New(relationFilter.StructField().Relationship().ModelStruct().Type()).Interface())
 				relMStruct := relScope.GetModelStruct()
 				relDB := relScope.DB()
 
-				err = buildRelationFilters(relDB, relMStruct, relationFilter.Nested[0])
+				err = buildRelationFilters(relDB, relMStruct, nesteds[0])
 				if err != nil {
 					return nil, err
 				}
@@ -462,7 +464,7 @@ func (g *GORMRepository) getQueryFilters(
 				// the wheres should already be added into relDB
 				expr := relDB.Table(relMStruct.TableName(relDB)).Select(gormField.Relationship.ForeignDBNames[0]).QueryExpr()
 
-				op := sqlizeOperator(jsonapi.OpIn)
+				op := sqlizeOperator(filters.OpIn)
 				valueMark := "(?)"
 				columnName := mStruct.PrimaryFields[0].DBName
 				q := fmt.Sprintf("\"%s\".\"%s\" %s %s", relMStruct.TableName(db), columnName, op, valueMark)
@@ -470,7 +472,7 @@ func (g *GORMRepository) getQueryFilters(
 				wqs = append(wqs, wq)
 
 			case associationManyToMany:
-				relScope := db.NewScope(reflect.New(relationFilter.GetRelatedModelType()).Interface())
+				relScope := db.NewScope(reflect.New(relationFilter.StructField().Relationship().ModelStruct().Type()).Interface())
 
 				relDB := relScope.DB()
 
@@ -481,13 +483,13 @@ func (g *GORMRepository) getQueryFilters(
 					Select(joinTableHandler.SourceForeignKeys()[0].DBName)
 				// fmt.Printf("%v", relDB)
 
-				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, relationFilter.Nested[0])
+				err = addWhere(relDB, joinTableHandler.Table(db), joinTableHandler.DestinationForeignKeys()[0].DBName, nesteds[0])
 				if err != nil {
 					return nil, err
 				}
 
 				columnName := mStruct.PrimaryFields[0].DBName
-				op := sqlizeOperator(jsonapi.OpIn)
+				op := sqlizeOperator(filters.OpIn)
 				valueMark := "(?)"
 				q := fmt.Sprintf("%s %s %s", columnName, op, valueMark)
 
@@ -502,7 +504,7 @@ func (g *GORMRepository) getQueryFilters(
 func buildRelationFilters(
 	db *gorm.DB,
 	gormModel *gorm.ModelStruct,
-	filters ...*jsonapi.FilterField,
+	filters ...*filters.FilterField,
 ) error {
 	var (
 		gormField *gorm.StructField
@@ -512,13 +514,14 @@ func buildRelationFilters(
 	for _, filter := range filters {
 		var isPrimary bool
 		// get gorm structField
-		switch filter.GetFieldKind() {
-		case jsonapi.Primary:
+		switch filter.StructField().FieldKind() {
+		case mapping.KindPrimary:
 			isPrimary = true
-		case jsonapi.Attribute, jsonapi.RelationshipSingle, jsonapi.RelationshipMultiple:
+
+		case mapping.KindAttribute, mapping.KindRelationshipSingle, mapping.KindRelationshipMultiple:
 			isPrimary = false
 		default:
-			err = fmt.Errorf("Unsupported jsonapi field type: '%v' for field: '%s' in model: '%v'.", filter.GetFieldKind(), filter.GetFieldName(), gormModel.ModelType)
+			err = fmt.Errorf("Unsupported jsonapi field type: '%v' for field: '%s' in model: '%v'.", filter.StructField().FieldKind(), filter.StructField().Name(), gormModel.ModelType)
 			return err
 		}
 		gormField, err = getGormField(filter, gormModel, isPrimary)
@@ -526,7 +529,7 @@ func buildRelationFilters(
 			return err
 		}
 
-		if filter.GetFieldKind() == jsonapi.Attribute || filter.GetFieldKind() == jsonapi.Primary {
+		if filter.StructField().FieldKind() == mapping.KindAttribute || filter.StructField().FieldKind() == mapping.KindPrimary {
 
 			err = addWhere(db, gormModel.TableName(db), gormField.DBName, filter)
 			if err != nil {
@@ -551,7 +554,7 @@ func buildRelationFilters(
 }
 
 func getGormField(
-	filterField *jsonapi.FilterField,
+	filterField *filters.FilterField,
 	model *gorm.ModelStruct,
 	isPrimary bool,
 ) (*gorm.StructField, error) {
@@ -562,7 +565,7 @@ func getGormField(
 			return model.PrimaryFields[0], nil
 		} else {
 			for _, prim := range model.PrimaryFields {
-				if prim.Struct.Index[0] == filterField.GetFieldIndex() {
+				if prim.Struct.Index[0] == filterField.StructField().ReflectField().Index[0] {
 					return prim, nil
 				}
 			}
@@ -574,7 +577,7 @@ func getGormField(
 		// }
 	} else {
 		for _, field := range model.StructFields {
-			if field.Struct.Index[0] == filterField.GetFieldIndex() {
+			if field.Struct.Index[0] == filterField.StructField().ReflectField().Index[0] {
 				return field, nil
 			}
 		}
@@ -583,28 +586,28 @@ func getGormField(
 	// fmt.Printf("filterField: '%+v'\n", filterField.GetReflectStructField())
 	// fmt.Printf("ff ID:'%v'\n", filterField.GetReflectStructField().Index)
 
-	return nil, fmt.Errorf("Invalid filtering field: '%v' not found in the gorm ModelStruct: '%v'", filterField.GetFieldName(), model.ModelType)
+	return nil, fmt.Errorf("Invalid filtering field: '%v' not found in the gorm ModelStruct: '%v'", filterField.StructField().Name(), model.ModelType)
 }
 
-func sqlizeOperator(operator jsonapi.FilterOperator) string {
+func sqlizeOperator(operator *filters.Operator) string {
 	switch operator {
-	case jsonapi.OpEqual:
+	case filters.OpEqual:
 		return "="
-	case jsonapi.OpIn:
+	case filters.OpIn:
 		return "IN"
-	case jsonapi.OpNotEqual:
+	case filters.OpNotEqual:
 		return "<>"
-	case jsonapi.OpNotIn:
+	case filters.OpNotIn:
 		return "NOT IN"
-	case jsonapi.OpGreaterEqual:
+	case filters.OpGreaterEqual:
 		return ">="
-	case jsonapi.OpGreaterThan:
+	case filters.OpGreaterThan:
 		return ">"
-	case jsonapi.OpLessEqual:
+	case filters.OpLessEqual:
 		return "<="
-	case jsonapi.OpLessThan:
+	case filters.OpLessThan:
 		return "<"
-	case jsonapi.OpContains, jsonapi.OpStartsWith, jsonapi.OpEndsWith:
+	case filters.OpContains, filters.OpStartsWith, filters.OpEndsWith:
 		return "LIKE"
 
 	}

@@ -2,6 +2,7 @@ package mapping
 
 import (
 	"github.com/kucjac/jsonapi/pkg/internal/models"
+	"reflect"
 )
 
 // FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute')
@@ -58,11 +59,17 @@ func (f FieldKind) String() string {
 // and model relationships.
 type StructField models.StructField
 
+// ApiName returns the field's 'api' name
+func (s *StructField) ApiName() string {
+	return (*models.StructField)(s).Name()
+}
+
 // Nested returns the nested structure
 func (s *StructField) Nested() *NestedStruct {
 	return (*NestedStruct)(models.FieldsNested((*models.StructField)(s)))
 }
 
+// Relationship returns relationship for provided field
 func (s *StructField) Relationship() *Relationship {
 	r := models.FieldRelationship((*models.StructField)(s))
 	if r == nil {
@@ -71,10 +78,19 @@ func (s *StructField) Relationship() *Relationship {
 	return (*Relationship)(r)
 }
 
+// ReflectField returns reflect.StructField related with this StructField
+func (s *StructField) ReflectField() reflect.StructField {
+	return (*models.StructField)(s).ReflectField()
+}
+
 // ModelStruct returns field's model struct
 func (s *StructField) ModelStruct() *ModelStruct {
 	return (*ModelStruct)(models.FieldsStruct((*models.StructField)(s)))
+}
 
+// Name returns field's 'golang' name
+func (s *StructField) Name() string {
+	return (*models.StructField)(s).Name()
 }
 
 // FieldKind returns struct fields kind

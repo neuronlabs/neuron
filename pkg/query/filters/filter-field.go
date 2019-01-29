@@ -24,16 +24,46 @@ func NewFilter(
 	return
 }
 
-// func (f *FilterField) OpValues()
+// NestedFilters returns the nested filters for given filter fields
+// Nested filters are the filters used for relationship filters
+func (f *FilterField) NestedFilters() []*FilterField {
+
+	var nesteds []*FilterField
+	for _, n := range (*filters.FilterField)(f).NestedFields() {
+		nesteds = append(nesteds, (*FilterField)(n))
+	}
+
+	return nesteds
+
+}
 
 // StructField returns the filterfield struct
 func (f *FilterField) StructField() *mapping.StructField {
-
 	return (*mapping.StructField)(f.StructField())
+}
+
+// Values returns OperatorValuesPair for given filterField
+func (f *FilterField) Values() (values []*OperatorValuePair) {
+
+	v := (*filters.FilterField)(f).Values()
+	for _, sv := range v {
+		values = append(values, (*OperatorValuePair)(sv))
+	}
+	return values
 }
 
 // OpValuePair is a struct that holds the Operator information with the
 type OperatorValuePair filters.OpValuePair
+
+// Operator returns the operator for given pair
+func (o *OperatorValuePair) Operator() *Operator {
+	return (*Operator)(o.Operator())
+}
+
+// SetOperator sets the operator
+func (o *OperatorValuePair) SetOperator(op *Operator) {
+	(*filters.OpValuePair)(o).SetOperator((*filters.Operator)(op))
+}
 
 // OperatorContainer is a container for the provided operators.
 // It allows registering new and getting already registered operators.

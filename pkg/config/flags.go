@@ -9,7 +9,7 @@ import (
 
 const (
 	// FlUseLinks is the Flag that allows to return query links
-	FlUseLinks uint = 1 << iota
+	FlUseLinks uint = iota
 
 	FlReturnPatchContent
 	FlAddMetaCountList
@@ -67,7 +67,7 @@ func (f *Flags) Container() (*flags.Container, error) {
 		case "allow_client_id":
 			c.Set(FlAllowClientID, value)
 		case "allow_foreign_key_filters":
-			c.Set(FlAllowClientID, value)
+			c.Set(FlAllowForeignKeyFilter, value)
 		case "use_filter_values_limit":
 			c.Set(FlUseFilterValueLimit, value)
 		case "allow_string_search":

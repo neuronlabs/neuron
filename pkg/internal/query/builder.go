@@ -32,11 +32,7 @@ type Builder struct {
 	opCtr *filters.OperatorContainer
 }
 
-var DefaultConfig *config.BuilderConfig = &config.BuilderConfig{
-	ErrorLimits:        5,
-	IncludeNestedLimit: 2,
-	FilterValueLimit:   30,
-}
+var DefaultConfig *config.BuilderConfig = config.ReadDefaultControllerConfig().Builder
 
 // DefaultBuilder returns builder with default config and no i18n support
 func DefaultBuilder() *Builder {

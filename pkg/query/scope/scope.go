@@ -117,6 +117,15 @@ func (s *Scope) Delete() error {
 	return nil
 }
 
+// Fieldset returns the fields in the scope's Fieldset
+func (s *Scope) Fieldset() (fs []*mapping.StructField) {
+	for _, f := range (*scope.Scope)(s).Fieldset() {
+		fs = append(fs, (*mapping.StructField)(f))
+	}
+
+	return fs
+}
+
 // ForeignFilters returns scope's foreign key iFilters
 func (s *Scope) ForeignFilters() []*filters.FilterField {
 	var res []*filters.FilterField
@@ -150,6 +159,11 @@ func (s *Scope) ID() uuid.UUID {
 	return s.Context().Value(internal.ScopeIDCtxKey).(uuid.UUID)
 }
 
+// LanguageFilter returns language filter for given scope
+func (s *Scope) LanguageFilter() *filters.FilterField {
+	return (*filters.FilterField)((*scope.Scope)(s).LanguageFilter())
+}
+
 // List gets the values from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) List() error {
@@ -167,6 +181,11 @@ func (s *Scope) Patch() error {
 		return err
 	}
 	return nil
+}
+
+// Pagination returns the pagination for given scope
+func (s *Scope) Pagination() *pagination.Pagination {
+	return (*pagination.Pagination)((*scope.Scope)(s).Pagination())
 }
 
 // PrimaryFilters returns scope's primary iFilters

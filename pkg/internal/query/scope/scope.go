@@ -246,6 +246,11 @@ func (s *Scope) QueryLanguage() language.Tag {
 	return s.queryLanguage
 }
 
+// LanguageFilter return language filters for given scope
+func (s *Scope) LanguageFilter() *filters.FilterField {
+	return s.languageFilters
+}
+
 /**
 
 TO DO:
@@ -621,11 +626,11 @@ func (s *Scope) getRelatedScope() (relScope *Scope, err error) {
 	filterValue := &filters.OpValuePair{}
 
 	if relatedField.FieldKind() == models.KindRelationshipSingle {
-		filterValue.Operator = filters.OpEqual
+		filterValue.SetOperator(filters.OpEqual)
 		filterValue.Values = append(filterValue.Values, primaries.Interface())
 		relScope.newValueSingle()
 	} else {
-		filterValue.Operator = filters.OpIn
+		filterValue.SetOperator(filters.OpIn)
 		var values []interface{}
 		for i := 0; i < primaries.Len(); i++ {
 			values = append(values, primaries.Index(i).Interface())
@@ -1117,7 +1122,9 @@ func (s *Scope) setLanguageFilterValues(values ...interface{}) {
 		return
 	}
 
-	fv := &filters.OpValuePair{Operator: filters.OpIn}
+	fv := &filters.OpValuePair{}
+	fv.SetOperator(filters.OpIn)
+
 	fv.Values = append(fv.Values, values...)
 	filters.FilterAppendValues(filter, fv)
 

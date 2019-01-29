@@ -49,6 +49,12 @@ func (c *Controller) unmarshalScopeOne(
 	return c.unmarshalScope(in, mStruct, false, addSelectedFields)
 }
 
+// UnmarshalWithRegister unmarshals the reader with the possibility to register provided model
+// into the schemas
+func (c *Controller) UnmarshalWithRegister(in io.Reader, v interface{}) error {
+	return nil
+}
+
 func (c *Controller) Unmarshal(in io.Reader, v interface{}) error {
 	_, err := c.unmarshal(in, v, false)
 	return err

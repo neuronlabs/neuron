@@ -88,6 +88,9 @@ type Endpoint struct {
 
 	// RelatedField contains constraints for the relationship or related (endpoint) field
 	RelatedField EndpointConstraints `mapstructure:"related"`
+
+	// CustomMiddlewares are the middlewares used for the provided endpoint
+	CustomMiddlewares []string `mapstructure:"custom_middlewares"`
 }
 
 // EndpointConstraints contains constraints for provided endpoints

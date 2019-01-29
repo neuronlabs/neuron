@@ -100,7 +100,7 @@ func (f *Container) set(flag uint, value bool) {
 
 	// set thte 'value' flag at 2*n+1 position
 	if value {
-		*f = *f | 1<<(2*flag+1)
+		*f = *f | (1 << (2*flag + 1))
 	} else {
 		*f = *f &^ (1 << (2*flag + 1))
 	}

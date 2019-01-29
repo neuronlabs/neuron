@@ -68,3 +68,9 @@ func (r *Relationship) ForeignKey() *StructField {
 	}
 	return (*StructField)(fk)
 }
+
+// Sync returns the synced flag
+func (r *Relationship) Sync() *bool {
+	return (*models.Relationship)(r).Sync()
+
+}

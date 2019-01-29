@@ -9,6 +9,14 @@ import (
 
 var DefaultController *Controller
 
+// Default returns the default controller
+func Default() *Controller {
+	if DefaultController == nil {
+		DefaultController = (*Controller)(controller.Default())
+	}
+	return DefaultController
+}
+
 type Controller controller.Controller
 
 func (c *Controller) DBManager() *dbmanager.ErrorManager {

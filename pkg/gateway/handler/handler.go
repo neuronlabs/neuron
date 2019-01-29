@@ -25,6 +25,11 @@ type Handler struct {
 	c *ctrl.Controller
 }
 
+// New creates new route handler for the gateway
+func New(c *ctrl.Controller) *Handler {
+	return &Handler{c: c}
+}
+
 func (h *Handler) getErrorsStatus(errs ...*errors.ApiError) int {
 	if len(errs) > 0 {
 		return errs[0].IntStatus()

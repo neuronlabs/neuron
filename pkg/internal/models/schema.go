@@ -207,6 +207,20 @@ func (m *ModelSchemas) RegisterModels(
 	return nil
 }
 
+// RegisterModelsRecursively registers the models and it's related models into the model schemas
+func (m *ModelSchemas) RegisterModelsRecursively(models ...interface{}) error {
+	/**
+
+	TO DO:
+
+	-iterate over models
+	- register models
+	- if the related models are not registered, recursively check and register related models
+
+	*/
+	return nil
+}
+
 func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
 	schema := m.schemas[model.SchemaName()]
 

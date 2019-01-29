@@ -8,15 +8,7 @@ import (
 )
 
 // DefaultConfig is the controller default config used with the Default function
-var DefaultConfig *config.ControllerConfig = &config.ControllerConfig{
-	NamingConvention: "snake",
-	DefaultSchema:    "api",
-	Builder: &config.BuilderConfig{
-		FilterValueLimit:   30,
-		ErrorLimits:        5,
-		IncludeNestedLimit: 1,
-	},
-}
+var DefaultConfig *config.ControllerConfig = config.ReadDefaultControllerConfig()
 
 func DefaultTesting() *Controller {
 	c := Default()

@@ -49,6 +49,11 @@ func (f *FilterField) StructField() *models.StructField {
 	return f.structField
 }
 
+// NestedFields returns nested fields for given filter
+func (f *FilterField) NestedFields() []*FilterField {
+	return f.nested
+}
+
 // Values return filter values
 func (f *FilterField) Values() []*OpValuePair {
 	return f.values
@@ -137,7 +142,7 @@ func (f *FilterField) SetValues(
 	// create new FilterValue
 	fv := new(OpValuePair)
 
-	fv.Operator = op
+	fv.operator = op
 
 	// Add and check all values for given field type
 	switch f.structField.FieldKind() {

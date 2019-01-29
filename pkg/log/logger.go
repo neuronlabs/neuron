@@ -10,6 +10,11 @@ import (
 
 var logger unilogger.LeveledLogger
 
+// Logger returns default logger
+func Logger() unilogger.LeveledLogger {
+	return logger
+}
+
 // SetLevel sets the level if possible for the logger file
 func SetLevel(level unilogger.Level) error {
 	if logger == nil {

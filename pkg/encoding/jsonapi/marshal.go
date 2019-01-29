@@ -1,15 +1,16 @@
 package jsonapi
 
 import (
-	// ictrl "github.com/kucjac/jsonapi/pkg/internal/controller"
-	// ctrl "github.com/kucjac/jsonapi/pkg/controller"
 	"encoding/json"
+	ctrl "github.com/kucjac/jsonapi/pkg/controller"
 	"github.com/kucjac/jsonapi/pkg/errors"
+	ictrl "github.com/kucjac/jsonapi/pkg/internal/controller"
 	"io"
 )
 
+// Marshal marshals the provided value 'v' into the writer
 func Marshal(w io.Writer, v interface{}) error {
-	return nil
+	return (*ictrl.Controller)(ctrl.Default()).Marshal(w, v)
 }
 
 // MarshalErrors writes a JSON API response using the given `[]error`.

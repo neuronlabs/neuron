@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/kucjac/jsonapi"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 	"reflect"
 	debugStack "runtime/debug"
 )
@@ -47,9 +47,9 @@ type relationshipFieldValue struct {
 }
 
 func (g *GORMRepository) prepareRelationshipScopes(
-	scope *jsonapi.Scope,
+	s *scope.Scope,
 ) (updateRelationships []*relationshipFieldValue, err error) {
-	if scope.Value == nil {
+	if s.Value == nil {
 		err = IErrNoValuesProvided
 		return
 	}
@@ -65,12 +65,12 @@ func (g *GORMRepository) prepareRelationshipScopes(
 			case string:
 				err = errors.New(perr)
 			default:
-				err = fmt.Errorf("Unknown panic occured during getting scope's relationship.")
+				err = fmt.Errorf("Unknown panic occured during getting s's relationship.")
 			}
 		}
 	}()
 
-	gormScope := g.db.NewScope(scope.Value)
+	gormScope := g.db.NewScope(s.Value)
 
 	for _, field := range gormScope.Fields() {
 		if rel := field.Relationship; rel != nil {

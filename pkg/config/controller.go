@@ -15,21 +15,21 @@ type ControllerConfig struct {
 	DefaultSchema string `validate:"alphanum" mapstructure:"default_schema"`
 
 	// ModelSchemas defines the model schemas used by api
-	ModelSchemas map[string]*Schema
+	ModelSchemas map[string]*Schema `mapstructure:"model_schemas"`
 
 	// StrictUnmarshalMode is the flag that defines if the unmarshaling should be in a
 	// strict mode that checks if incoming values are all known to the controller
 	// As well as the query builder doesn't allow unknown queries
-	StrictUnmarshalMode bool
+	StrictUnmarshalMode bool `mapstructure:"strict_unmarshal"`
 
 	// Debug sets the debug mode for the controller.
-	Debug bool
+	Debug bool `mapstructure:"debug"`
 
 	// Builder defines the builder config
-	Builder *BuilderConfig
+	Builder *BuilderConfig `mapstructure:"builder"`
 
 	// I18n defines i18n config
-	I18n *I18nConfig
+	I18n *I18nConfig `mapstructure:"i18n"`
 
 	// Flags defines the controller default flags
 	Flags *Flags `mapstructure:"flags"`
@@ -38,11 +38,11 @@ type ControllerConfig struct {
 	DefaultRepository string `mapstructure:"default_repository"`
 
 	// CreateValidatorAlias is the alias for the create validators
-	CreateValidatorAlias string
+	CreateValidatorAlias string `mapstructure:"create_validator_alias"`
 
 	// PatchValidatorAlias is the alis used for the Patch validator
-	PatchValidatorAlias string
+	PatchValidatorAlias string `mapstructure:"patch_validator_alias"`
 
 	// DefaultValidatorAlias is the alias used as a default validator alias
-	DefaultValidatorAlias string
+	DefaultValidatorAlias string `mapstructure:"default_validator_alias"`
 }

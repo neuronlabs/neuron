@@ -2,26 +2,28 @@ package gormrepo
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/kucjac/jsonapi"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
+
 	"reflect"
 )
 
-var jsIndexKey = "jsonapi.Scope/Index"
+var jsIndexKey = "scope.Scope/Index"
 
-func (g *GORMRepository) setJScope(jScope *jsonapi.Scope, db *gorm.DB) {
+func (g *GORMRepository) setJScope(jScope *scope.Scope, db *gorm.DB) {
 	*db = *db.Set(jsIndexKey, jScope)
 }
 
-func (g *GORMRepository) getJScope(scope *gorm.Scope) (*jsonapi.Scope, bool) {
+func (g *GORMRepository) getJScope(s *gorm.Scope) (*scope.Scope, bool) {
 
-	v, ok := scope.Get(jsIndexKey)
+	v, ok := s.Get(jsIndexKey)
 	if !ok {
-		g.log().Debugf("Getting jsonapi.Scope for db: %p failed.", scope.DB())
+		g.log().Debugf("Getting scope.Scope for db: %p failed.", s.DB())
 		return nil, ok
 	}
-	var jScope *jsonapi.Scope
+	var jScope *scope.Scope
 	if v != nil {
-		jScope, ok = v.(*jsonapi.Scope)
+		jScope, ok = v.(*scope.Scope)
 	}
 
 	return jScope, ok
@@ -29,12 +31,12 @@ func (g *GORMRepository) getJScope(scope *gorm.Scope) (*jsonapi.Scope, bool) {
 
 func (g *GORMRepository) getSelectedGormFieldValues(
 	mStruct *gorm.ModelStruct,
-	fields ...*jsonapi.StructField,
+	fields ...*mapping.StructField,
 ) (names []string) {
 
 outer:
 	for _, jsField := range fields {
-		if jsField.IsRelationship() {
+		if jsField.Relationship() == nil {
 			continue
 		}
 		for _, gField := range mStruct.StructFields {
@@ -53,13 +55,13 @@ outer:
 
 func getUpdatedGormFieldNames(
 	mStruct *gorm.ModelStruct,
-	scope *jsonapi.Scope,
+	s *scope.Scope,
 ) (res []string) {
-	var fields []*jsonapi.StructField
-	if len(scope.SelectedFields) == 0 {
-		fields = scope.Struct.GetFields()
+	var fields []*mapping.StructField
+	if len(s.SelectedFields()) == 0 {
+		fields = s.Struct().Fields()
 	} else {
-		fields = scope.SelectedFields
+		fields = s.SelectedFields()
 	}
 
 outer:
@@ -68,8 +70,8 @@ outer:
 			if gField.IsIgnored {
 				continue
 			}
-			if jsField.GetFieldIndex() == gField.Struct.Index[0] {
-				if jsField.IsRelationship() {
+			if jsField.ReflectField().Index[0] == gField.Struct.Index[0] {
+				if jsField.Relationship() == nil {
 					continue
 				}
 				// 	if gField.Relationship == nil {
@@ -85,7 +87,7 @@ outer:
 				// 	case annotationManyToMany:
 				// 	}
 				// } else {
-				if !jsField.IsPrimary() {
+				if jsField.FieldKind() != mapping.KindPrimary {
 					res = append(res, gField.DBName)
 				}
 				// }
@@ -98,19 +100,19 @@ outer:
 
 func (g *GORMRepository) getUpdatedFieldValues(
 	mStruct *gorm.ModelStruct,
-	scope *jsonapi.Scope,
+	s *scope.Scope,
 ) (values map[string]interface{}) {
 	values = map[string]interface{}{}
-	v := reflect.ValueOf(scope.Value)
+	v := reflect.ValueOf(s.Value)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 outer:
-	for _, jsField := range scope.SelectedFields {
-		if jsField.IsRelationship() {
+	for _, jsField := range s.SelectedFields() {
+		if jsField.Relationship() != nil {
 			continue outer
 		}
-		if jsField.IsPrimary() {
+		if jsField.FieldKind() == mapping.KindPrimary {
 			continue outer
 		}
 	gormFields:
@@ -120,9 +122,9 @@ outer:
 			}
 
 			if isFieldEqual(gField, jsField) {
-				field := v.FieldByIndex(jsField.GetReflectStructField().Index)
+				field := v.FieldByIndex(jsField.ReflectField().Index)
 				fieldVal := field.Interface()
-				if jsField.GetFieldKind() == jsonapi.ForeignKey {
+				if jsField.FieldKind() == mapping.KindForeignKey {
 					if reflect.DeepEqual(fieldVal, reflect.Zero(field.Type()).Interface()) {
 						fieldVal = nil
 					}

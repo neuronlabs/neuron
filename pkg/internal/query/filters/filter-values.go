@@ -12,7 +12,17 @@ import (
 // It contains the Values which is a slice of provided values for given 'Operator'
 type OpValuePair struct {
 	Values   []interface{}
-	Operator *Operator
+	operator *Operator
+}
+
+// Operator gets the operator for OpValuePair
+func (o *OpValuePair) Operator() *Operator {
+	return o.operator
+}
+
+// SetOperator sets the operator for given opvalue pair
+func (o *OpValuePair) SetOperator(op *Operator) {
+	o.operator = op
 }
 
 // CopyOpValuePair copies operator value pair
@@ -22,12 +32,12 @@ func CopyOpValuePair(o *OpValuePair) *OpValuePair {
 
 // NewOpValuePair creates new operator value pair
 func NewOpValuePair(o *Operator, values ...interface{}) *OpValuePair {
-	op := &OpValuePair{Operator: o, Values: values}
+	op := &OpValuePair{operator: o, Values: values}
 	return op
 }
 
 func (f *OpValuePair) copy() *OpValuePair {
-	fv := &OpValuePair{Operator: f.Operator}
+	fv := &OpValuePair{operator: f.operator}
 	fv.Values = make([]interface{}, len(f.Values))
 	copy(fv.Values, f.Values)
 	return fv

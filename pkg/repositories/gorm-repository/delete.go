@@ -1,44 +1,42 @@
 package gormrepo
 
 import (
-	"github.com/kucjac/jsonapi"
-	"github.com/kucjac/jsonapi/repositories"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 	"github.com/kucjac/uni-db"
 )
 
-func (g *GORMRepository) Delete(scope *jsonapi.Scope) error {
-	if scope.Value == nil {
-		scope.NewValueSingle()
-	}
+// Delete implements deleter interface for the whiz repositories
+func (g *GORMRepository) Delete(s *scope.Scope) error {
 
 	/**
 
 	  DELETE: PREPARE GORM SCOPE
 
 	*/
-	gormScope := g.db.NewScope(scope.Value)
-	if err := g.buildFilters(gormScope.DB(), gormScope.GetModelStruct(), scope); err != nil {
+	gormScope := g.db.NewScope(s.Value)
+	if err := g.buildFilters(gormScope.DB(), gormScope.GetModelStruct(), s); err != nil {
 		return g.converter.Convert(err)
 	}
 
-	/**
+	// /**
 
-	  DELETE: HOOK BEFORE DELETE
+	//   DELETE: HOOK BEFORE DELETE
 
-	*/
+	// */
 
-	if beforeDeleter, ok := scope.Value.(repositories.HookRepoBeforeDelete); ok {
-		if err := beforeDeleter.RepoBeforeDelete(g.db.New(), scope); err != nil {
-			return g.converter.Convert(err)
-		}
-	}
+	// if beforeDeleter, ok := s.Value.(repositories.HookRepoBeforeDelete); ok {
+	// 	if err := beforeDeleter.RepoBeforeDelete(g.db.New(), s); err != nil {
+	// 		return g.converter.Convert(err)
+	// 	}
+	// }
 
 	/**
 
 	  DELETE: GORM SCOPE DELETE RECORD
 
 	*/
-	db := gormScope.DB().Delete(scope.GetValueAddress())
+	v := s.Value
+	db := gormScope.DB().Delete(&v)
 	if err := db.Error; err != nil {
 		return g.converter.Convert(err)
 	}
@@ -47,16 +45,16 @@ func (g *GORMRepository) Delete(scope *jsonapi.Scope) error {
 		return unidb.ErrNoResult.New()
 	}
 
-	/**
+	// /**
 
-	  DELETE: HOOK AFTER DELETE
+	//   DELETE: HOOK AFTER DELETE
 
-	*/
-	if afterDeleter, ok := scope.Value.(repositories.HookRepoAfterDelete); ok {
-		if err := afterDeleter.RepoAfterDelete(g.db.New(), scope); err != nil {
-			return g.converter.Convert(err)
-		}
-	}
+	// */
+	// if afterDeleter, ok := s.Value.(repositories.HookRepoAfterDelete); ok {
+	// 	if err := afterDeleter.RepoAfterDelete(g.db.New(), s); err != nil {
+	// 		return g.converter.Convert(err)
+	// 	}
+	// }
 
 	return nil
 }

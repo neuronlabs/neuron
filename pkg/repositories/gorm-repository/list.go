@@ -1,16 +1,16 @@
 package gormrepo
 
 import (
-	"github.com/kucjac/jsonapi"
-	"github.com/kucjac/jsonapi/repositories"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
+
 	"github.com/kucjac/uni-db"
 	"reflect"
 )
 
-func (g *GORMRepository) List(scope *jsonapi.Scope) error {
+func (g *GORMRepository) List(s *scope.Scope) error {
 	g.log().Debug("LIST BEGIN")
 	defer func() { g.log().Debug("LIST FINISHED") }()
-	if scope.Value == nil {
+	if s.Value == nil {
 		return IErrNoValuesProvided
 	}
 
@@ -20,7 +20,7 @@ func (g *GORMRepository) List(scope *jsonapi.Scope) error {
 
 	*/
 
-	gormScope, err := g.buildScopeList(scope)
+	gormScope, err := g.buildScopeList(s)
 	if err != nil {
 		errObj := unidb.ErrInternalError.New()
 		errObj.Message = err.Error()
@@ -35,13 +35,13 @@ func (g *GORMRepository) List(scope *jsonapi.Scope) error {
 
 	*/
 
-	err = db.Find(scope.GetValueAddress()).Error
+	err = db.Find(s.GetValueAddress()).Error
 	if err != nil {
 		return g.converter.Convert(err)
 	}
-	scope.SetValueFromAddressable()
+	s.SetValueFromAddressable()
 
-	if err = g.getListRelationships(db, scope); err != nil {
+	if err = g.getListRelationships(db, s); err != nil {
 		return g.converter.Convert(err)
 	}
 	/**
@@ -50,20 +50,20 @@ func (g *GORMRepository) List(scope *jsonapi.Scope) error {
 
 	*/
 
-	if repositories.ImplementsHookAfterRead(scope) {
-		v := reflect.ValueOf(scope.Value)
+	if repositories.ImplementsHookAfterRead(s) {
+		v := reflect.ValueOf(s.Value)
 		for i := 0; i < v.Len(); i++ {
 			single := v.Index(i).Interface()
 
 			HookAfterRead, ok := single.(repositories.HookRepoAfterRead)
 			if ok {
-				if err := HookAfterRead.RepoAfterRead(g.db.New(), scope); err != nil {
+				if err := HookAfterRead.RepoAfterRead(g.db.New(), s); err != nil {
 					return g.converter.Convert(err)
 				}
 			}
 			v.Index(i).Set(reflect.ValueOf(single))
 		}
-		scope.Value = v.Interface()
+		s.Value = v.Interface()
 	}
 
 	return nil

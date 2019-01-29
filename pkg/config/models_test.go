@@ -1,6 +1,8 @@
 package config
 
 import (
+	"github.com/kucjac/jsonapi/pkg/log"
+	"github.com/kucjac/uni-logger"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,19 +20,21 @@ func readConfigFile(t *testing.T, fileName string) {
 }
 
 func TestModelConfig(t *testing.T) {
+	if testing.Verbose() {
+		log.SetLevel(unilogger.DEBUG)
+	}
 	readConfigFile(t, "model")
 
 	cfg := &ModelConfig{}
 
 	require.NoError(t, viper.Unmarshal(cfg))
 
-	assert.Equal(t, "some_model", cfg.Model)
-	assert.Equal(t, "default", cfg.RepositoryName)
+	assert.Equal(t, "some_model", cfg.Collection)
+	assert.Equal(t, "default", cfg.Repository)
 	// Create
 	e := cfg.Endpoints.Create
 
 	assert.Contains(t, e.PresetFilters, "[collection][field][operator]")
-
 	flContainer, err := e.Flags.Container()
 	if assert.NoError(t, err) {
 		v, ok := flContainer.Get(FlReturnPatchContent)

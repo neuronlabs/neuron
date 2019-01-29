@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/kucjac/jsonapi"
+	"github.com/kucjac/jsonapi/pkg/log"
+	"github.com/kucjac/jsonapi/pkg/mapping"
+	"github.com/kucjac/jsonapi/pkg/query/scope"
 	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-db/gormconv"
 	"github.com/kucjac/uni-logger"
-	"log"
-	"os"
 	"reflect"
 	debugStack "runtime/debug"
 )
@@ -29,6 +29,7 @@ var (
 	IErrBadRelationshipField = errors.New("This repository does not allow relationship filter of field different than primary.")
 )
 
+// GORMRepository is the 'Whiz' repository for the gorm accessed databases.
 type GORMRepository struct {
 	db        *gorm.DB
 	converter *gormconv.GORMConverter
@@ -39,6 +40,13 @@ type GORMRepository struct {
 	logLevel unilogger.Level
 }
 
+// New implements repository interface that returns new GORM Repository
+func (g *GORMRepository) New() interface{} {
+	clone, _ := New(g.db.New())
+	return clone
+}
+
+// New creates new GORM Repository for the provided database connection
 func New(db *gorm.DB) (*GORMRepository, error) {
 	gormRepo := &GORMRepository{}
 	err := gormRepo.initialize(db.New())
@@ -50,6 +58,7 @@ func New(db *gorm.DB) (*GORMRepository, error) {
 	return gormRepo, nil
 }
 
+// NewDB creates new database with the specific associations set to false
 func (g *GORMRepository) NewDB() *gorm.DB {
 	db := g.db.New()
 	db = db.Set("gorm:association_autoupdate", false)
@@ -73,6 +82,7 @@ func (g *GORMRepository) SetLogLevel(level unilogger.Level) {
 	}
 }
 
+// SetLogger sets the logger for the gorm repository
 func (g *GORMRepository) SetLogger(logger unilogger.LeveledLogger) {
 	g.logger = logger
 }
@@ -104,15 +114,14 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 
 func (g *GORMRepository) log() unilogger.LeveledLogger {
 	if g.logger == nil {
-		logger := unilogger.NewBasicLogger(os.Stdout, "GORM Repository ", log.Ldate|log.Ltime|log.Lshortfile)
-		logger.SetLevel(g.logLevel)
+		logger := log.Logger()
 		g.logger = logger
 	}
 	return g.logger
 
 }
 
-func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, error) {
+func (g *GORMRepository) buildScopeGet(jsonScope *scope.Scope) (*gorm.Scope, error) {
 	gormScope := g.db.NewScope(jsonScope.Value)
 	mStruct := gormScope.GetModelStruct()
 	db := gormScope.DB()
@@ -129,9 +138,10 @@ func (g *GORMRepository) buildScopeGet(jsonScope *jsonapi.Scope) (*gorm.Scope, e
 	return gormScope, nil
 }
 
-func (g *GORMRepository) buildScopeList(jsonScope *jsonapi.Scope,
+func (g *GORMRepository) buildScopeList(jsonScope *scope.Scope,
 ) (gormScope *gorm.Scope, err error) {
-	gormScope = g.db.NewScope(jsonScope.GetValueAddress())
+	v := jsonScope.Value
+	gormScope = g.db.NewScope(&v)
 	db := gormScope.DB()
 
 	mStruct := gormScope.GetModelStruct()
@@ -161,8 +171,8 @@ func (g *GORMRepository) buildScopeList(jsonScope *jsonapi.Scope,
 
 // gets relationship from the database
 func (g *GORMRepository) getRelationship(
-	field *jsonapi.StructField,
-	scope *jsonapi.Scope,
+	field *mapping.StructField,
+	s *scope.Scope,
 	gormScope *gorm.Scope,
 ) (err error) {
 	var (
@@ -195,9 +205,9 @@ func (g *GORMRepository) getRelationship(
 		// funcs
 		getRelationshipSingle = func(singleValue reflect.Value) error {
 
-			relationValue := singleValue.Elem().Field(field.GetFieldIndex())
+			relationValue := singleValue.Elem().Field(field.ReflectField().Index[0])
 
-			t := field.GetFieldType()
+			t := field.ReflectField().Type
 			switch t.Kind() {
 			case reflect.Slice:
 				sliceVal := reflect.New(reflect.SliceOf(t.Elem()))
@@ -205,7 +215,7 @@ func (g *GORMRepository) getRelationship(
 				db := g.db.New()
 				assoc := db.Model(singleValue.Interface()).
 					Select(fieldScope.PrimaryField().DBName).
-					Association(field.GetFieldName())
+					Association(field.Name())
 
 				if err := assoc.Error; err != nil {
 					return err
@@ -226,13 +236,13 @@ func (g *GORMRepository) getRelationship(
 					if err != nil {
 						return err
 					}
-					singleValue.Elem().Field(field.GetFieldIndex()).Set(relationValue)
+					singleValue.Elem().Field(field.ReflectField().Index[0]).Set(relationValue)
 					return nil
 				} else {
 					db := g.db.New()
 					assoc := db.Model(singleValue.Interface()).
 						Select(fieldScope.PrimaryField().DBName).
-						Association(field.GetFieldName())
+						Association(field.Name())
 
 					if err := assoc.Error; err != nil {
 						return err
@@ -274,22 +284,22 @@ func (g *GORMRepository) getRelationship(
 		}
 	}()
 
-	fieldScope = g.db.NewScope(reflect.New(field.GetFieldType()).Elem().Interface())
+	fieldScope = g.db.NewScope(reflect.New(field.ReflectField().Type).Elem().Interface())
 	if fieldScope == nil {
-		err := fmt.Errorf("Empty gorm scope for field: '%s' and model: '%v'.", field.GetFieldName(), scope.Struct.GetType())
+		err := fmt.Errorf("Empty gorm scope for field: '%s' and model: '%v'.", field.ApiName(), s.Struct().Type())
 		return err
 	}
 
 	// Get gormField as a gorm.StructField for given relationship field
 	for _, gField := range gormScope.GetModelStruct().StructFields {
-		if gField.Struct.Index[0] == field.GetFieldIndex() {
+		if gField.Struct.Index[0] == field.ReflectField().Index[0] {
 			gormField = gField
 			break
 		}
 	}
 
 	if gormField == nil {
-		err := fmt.Errorf("No gormField for field: '%s'", field.GetFieldName())
+		err := fmt.Errorf("No gormField for field: '%s'", field.Name())
 		return err
 	}
 
@@ -306,7 +316,7 @@ func (g *GORMRepository) getRelationship(
 		}
 	}
 
-	v := reflect.ValueOf(scope.Value)
+	v := reflect.ValueOf(s.Value)
 	if v.Kind() == reflect.Slice {
 
 		length := v.Len()
@@ -345,25 +355,26 @@ func (g *GORMRepository) getRelationship(
 	return nil
 }
 
-func buildPaginate(db *gorm.DB, jsonScope *jsonapi.Scope) {
+func buildPaginate(db *gorm.DB, jsonScope *scope.Scope) {
 	if jsonScope.Pagination != nil {
-		limit, offset := jsonScope.Pagination.GetLimitOffset()
+		limit, offset := jsonScope.Pagination().GetLimitOffset()
 		*db = *db.Limit(limit).Offset(offset)
 	}
 	return
 }
 
 // buildFieldSets helper for building FieldSets
-func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct) error {
+func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *scope.Scope, mStruct *gorm.ModelStruct) error {
 
 	var (
 		fields    string
 		foundPrim bool
 	)
 
-	for _, field := range jsonScope.Fieldset {
-		if !field.IsRelationship() {
-			index := field.GetFieldIndex()
+	for _, field := range jsonScope.Fieldset() {
+		k := field.FieldKind()
+		if k != mapping.KindRelationshipMultiple || k != mapping.KindRelationshipSingle {
+			index := field.ReflectField().Index[0]
 			for _, gField := range mStruct.StructFields {
 				if gField.Struct.Index[0] == index {
 					if gField.IsIgnored {
