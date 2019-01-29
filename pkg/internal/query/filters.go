@@ -10,6 +10,35 @@ import (
 	"strings"
 )
 
+// BuildRawFilter build  the filter from the provided values, with provided string values
+func (b *Builder) BuildRawFilter(
+	s *scope.Scope,
+	raw string,
+	values ...interface{},
+) (fField *filters.FilterField, err error) {
+	if len(values) == 1 {
+		stringValues, ok := values[0].(string)
+		if ok {
+			return b.buildFilterField(s, raw, stringValues)
+		}
+	}
+
+	return b.buildFilterWithValues(s, raw, values...)
+}
+
+func (b *Builder) buildFilterWithValues(
+	s *scope.Scope,
+	raw string,
+	values ...interface{},
+) (fField *filters.FilterField, err error) {
+	/**
+
+	TO IMPLEMENT
+
+	*/
+	return
+}
+
 func (b *Builder) buildFilterField(
 	s *scope.Scope,
 	raw string,

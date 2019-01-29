@@ -81,6 +81,18 @@ func (s *Scope) AddFilter(filter *filters.FilterField) error {
 	return scope.AddFilterField((*scope.Scope)(s), (*iFilters.FilterField)(filter))
 }
 
+// AddStringFilter parses the filter into the FilterField
+// and adds to the provided scope's filters
+func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
+	_, err := (*controller.Controller)(s.Controller()).QueryBuilder().BuildRawFilter((*scope.Scope)(s), rawFilter, values...)
+	if err != nil {
+		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
+		return err
+	}
+	return nil
+
+}
+
 // AttributeFilters returns scope's attribute iFilters
 func (s *Scope) AttributeFilters() []*filters.FilterField {
 	var res []*filters.FilterField

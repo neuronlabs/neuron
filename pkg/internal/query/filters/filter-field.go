@@ -64,15 +64,6 @@ func NewFilter(s *models.StructField, values ...*OpValuePair) *FilterField {
 	return &FilterField{structField: s, values: values}
 }
 
-// // NewRawFilter returns new FilterField for the provided model and raw filter value
-// func NewRawFilter(model *models.ModelStruct, raw string) (*FilterField, error) {
-// 	bracketed, err := internal.SplitBracketParameter(raw)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// }
-
 // FilterAppendvalues adds the values to the given filter field
 func FilterAppendValues(f *FilterField, values ...*OpValuePair) {
 	f.values = append(f.values, values...)
