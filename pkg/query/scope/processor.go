@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"github.com/kucjac/jsonapi/pkg/internal/query/scope"
 	"github.com/kucjac/jsonapi/pkg/log"
 )
 
@@ -96,6 +97,8 @@ func (q *queryProcessor) doCreate(s *Scope) error {
 }
 
 func (q *queryProcessor) doGet(s *Scope) error {
+	(*scope.Scope)(s).FillFieldsetIfNotSet()
+
 	for _, f := range q.gets {
 		if err := f.Func(s); err != nil {
 			return err
@@ -105,6 +108,8 @@ func (q *queryProcessor) doGet(s *Scope) error {
 }
 
 func (q *queryProcessor) doList(s *Scope) error {
+	(*scope.Scope)(s).FillFieldsetIfNotSet()
+
 	for _, f := range q.lists {
 		if err := f.Func(s); err != nil {
 			return err

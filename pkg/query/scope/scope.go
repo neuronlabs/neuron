@@ -17,7 +17,9 @@ import (
 	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/query/filters"
 	"github.com/kucjac/jsonapi/pkg/query/pagination"
+	"github.com/kucjac/jsonapi/pkg/query/sorts"
 	"gopkg.in/go-playground/validator.v9"
+	"reflect"
 	"strings"
 )
 
@@ -43,7 +45,7 @@ func NewWithC(c *ctrl.Controller, model interface{}) (*Scope, error) {
 
 // NewWithModelC creates new scope on the base of the provided model struct with the new single
 // value
-func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct) *Scope {
+func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct, isMany bool) *Scope {
 	ctx := context.WithValue(
 		context.Background(),
 		internal.ControllerIDCtxKey,
@@ -51,7 +53,12 @@ func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct) *Scope {
 	)
 
 	s := scope.NewWithCtx(ctx, (*models.ModelStruct)(mStruct))
-	s.Value = (*models.ModelStruct)(mStruct).NewValueSingle()
+	if isMany {
+		s.NewValueMany()
+	} else {
+		s.NewValueSingle()
+	}
+
 	return (*Scope)(s)
 }
 
@@ -69,9 +76,20 @@ func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
 	ctx := context.WithValue(context.Background(), internal.ControllerIDCtxKey, (*ctrl.Controller)(c))
 	s := scope.NewWithCtx(ctx, mStruct)
 
+	t := reflect.TypeOf(model)
+	if t.Kind() != reflect.Ptr {
+		return nil, internal.IErrInvalidType
+	}
+
 	s.Value = model
 
-	log.Debugf("Model:%v", model)
+	switch t.Elem().Kind() {
+	case reflect.Struct:
+	case reflect.Array, reflect.Slice:
+		s.SetIsMany(true)
+	default:
+		return nil, internal.IErrInvalidType
+	}
 
 	return (*Scope)(s), nil
 }
@@ -249,6 +267,16 @@ func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
 		selected = append(selected, (*mapping.StructField)(field))
 	}
 	return
+}
+
+// SortFields returns the sorts used in the scope
+func (s *Scope) SortFields() []*sorts.SortField {
+	var sortFields []*sorts.SortField
+	sfs := (*scope.Scope)(s).SortFields()
+	for _, sf := range sfs {
+		sortFields = append(sortFields, (*sorts.SortField)(sf))
+	}
+	return sortFields
 }
 
 // Struct returns scope's ModelStruct

@@ -25,6 +25,7 @@ var (
 )
 
 func listFunc(s *Scope) error {
+	log.Debugf("ListFunc")
 	var c *controller.Controller = (*controller.Controller)(s.Controller())
 
 	repo, ok := c.RepositoryByModel(((*scope.Scope)(s).Struct()))
@@ -50,6 +51,7 @@ func listFunc(s *Scope) error {
 }
 
 func afterListFunc(s *Scope) error {
+	log.Debugf("AfterListFunc")
 	if !(*scope.Scope)(s).Struct().IsAfterLister() {
 		return nil
 	}
@@ -65,6 +67,7 @@ func afterListFunc(s *Scope) error {
 }
 
 func beforeListFunc(s *Scope) error {
+	log.Debugf("BeforeListFunc")
 	if !(*scope.Scope)(s).Struct().IsAfterLister() {
 		return nil
 	}

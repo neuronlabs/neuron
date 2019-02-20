@@ -3,6 +3,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	aerrors "github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
@@ -51,8 +52,7 @@ type Scope struct {
 	mStruct *models.ModelStruct
 
 	// Value is the values or / value of the queried object / objects
-	Value        interface{}
-	valueAddress interface{}
+	Value interface{}
 
 	// selectedFields are the fields that were updated
 	selectedFields []*models.StructField
@@ -209,9 +209,21 @@ func (s *Scope) SetFlags(c *flags.Container) {
 	s.fContainer = c
 }
 
+// SetPaginationNoCheck sets the pagination without check
+func (s *Scope) SetPaginationNoCheck(p *paginations.Pagination) {
+	s.pagination = p
+}
+
 // IsRoot checks if the scope is root kind
 func (s *Scope) IsRoot() bool {
 	return s.isRoot()
+}
+
+// FillFieldsetIfNotSet sets the fieldset to full if the fieldset is not set
+func (s *Scope) FillFieldsetIfNotSet() {
+	if s.fieldset == nil || (s.fieldset != nil && len(s.fieldset) == 0) {
+		s.setAllFields()
+	}
 }
 
 // SetAllFields sets all fields in the fieldset
@@ -320,6 +332,11 @@ func (s *Scope) GetCollection() string {
 // Kind returns scope's kind
 func (s *Scope) Kind() ScopeKind {
 	return s.kind
+}
+
+// SetIsMany sets the isMany variable from the provided argument
+func (s *Scope) SetIsMany(isMany bool) {
+	s.isMany = isMany
 }
 
 // IsMany checks if the value is a slice
@@ -569,9 +586,9 @@ func (s *Scope) setLangtagValue(langtag string) (err error) {
 
 // getValueAddress gets the address of the value for given scope
 // in order to set it use the SetValueFromAddressable
-func (s *Scope) getValueAddress() interface{} {
-	return s.valueAddress
-}
+// func (s *Scope) getValueAddress() interface{} {
+// 	return s.valueAddress
+// }
 
 // getTotalIncludeFieldCount gets the count for all included Fields. May be used
 // as a wait group counter.
@@ -726,8 +743,10 @@ func (s *Scope) SetCollectionValues() error {
 	defer s.collectionScope.includedValues.Unlock()
 
 	var (
-		primIndex            = s.mStruct.PrimaryField().FieldIndex()
+		primIndex = s.mStruct.PrimaryField().FieldIndex()
+
 		setValueToCollection = func(value reflect.Value) {
+
 			primaryValue := value.Elem().Field(primIndex)
 			if !primaryValue.IsValid() {
 				return
@@ -740,6 +759,7 @@ func (s *Scope) SetCollectionValues() error {
 			}
 
 			if insider == nil {
+				// in order to prevent the nil values set within given key
 				s.collectionScope.includedValues.UnsafeAdd(primary, value.Interface())
 			} else if s.hasFieldNotInFieldset {
 				// this scopes value should have more fields
@@ -766,25 +786,34 @@ func (s *Scope) SetCollectionValues() error {
 	)
 
 	v := reflect.ValueOf(s.Value)
-	switch v.Kind() {
-	case reflect.Slice:
-		for i := 0; i < v.Len(); i++ {
-			elem := v.Index(i)
-			if elem.Type().Kind() != reflect.Ptr {
-				return internal.IErrUnexpectedType
-			}
-			if !elem.IsNil() {
-				setValueToCollection(elem)
-			}
-		}
-	case reflect.Ptr:
-		if !v.IsNil() {
-			setValueToCollection(v)
-		}
-	default:
-		err := internal.IErrUnexpectedType
-		return err
+	if v.Kind() != reflect.Ptr {
+		return internal.IErrUnexpectedType
 	}
+	if !v.IsNil() {
+		v = v.Elem()
+		switch v.Kind() {
+		case reflect.Slice:
+			for i := 0; i < v.Len(); i++ {
+				elem := v.Index(i)
+				if elem.Type().Kind() != reflect.Ptr {
+					return internal.IErrUnexpectedType
+				}
+				if !elem.IsNil() {
+					setValueToCollection(elem)
+				}
+			}
+		case reflect.Struct:
+			log.Debugf("Struct setValueToCollection")
+			setValueToCollection(v)
+
+		default:
+			err := internal.IErrUnexpectedType
+			return err
+		}
+	} else {
+		log.Debugf("Nil field's value.")
+	}
+
 	return nil
 }
 
@@ -881,8 +910,11 @@ func (s *Scope) SetBelongsToForeignKeyFields() error {
 
 	v := reflect.ValueOf(s.Value)
 
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
 	switch v.Kind() {
-	case reflect.Ptr:
+	case reflect.Struct:
 
 		fks, err := setField(v)
 		if err != nil {
@@ -966,10 +998,10 @@ func (s *Scope) GetScopeValueString() string {
 // SetValueFromAddressable - lack of generic makes it hard for preparing addressable value.
 // While getting the addressable value with GetValueAddress, this function makes use of it
 // by setting the Value from addressable.
-// Returns an error if the addressable is nil.
-func (s *Scope) SetValueFromAddressable() error {
-	return s.setValueFromAddressable()
-}
+// // Returns an error if the addressable is nil.
+// func (s *Scope) SetValueFromAddressable() error {
+// 	return s.setValueFromAddressable()
+// }
 
 // SetCollectionScope sets the collection scope for given scope
 func (s *Scope) SetCollectionScope(cs *Scope) {
@@ -1431,7 +1463,7 @@ func (s *Scope) copyIncludedBoundaries() {
 // Used for collection unique root scopes
 // (filters, fieldsets etc. for given collection scope)
 func (s *Scope) CreateModelsRootScope(mStruct *models.ModelStruct) *Scope {
-	return s.createModelsScope(mStruct)
+	return s.createModelsRootScope(mStruct)
 }
 
 // createModelsRootScope creates scope for given model (mStruct) and
@@ -1485,6 +1517,8 @@ func (s *Scope) createModelsScope(mStruct *models.ModelStruct) *Scope {
 	} else {
 		scope.rootScope = s.rootScope
 	}
+
+	scope.ctx = context.WithValue(s.Context(), internal.ScopeIDCtxKey, uuid.New())
 
 	return scope
 }
@@ -1655,23 +1689,20 @@ func (s *Scope) buildSortFields(sortFields ...string) (errs []*aerrors.ApiError)
 
 func (s *Scope) newValueSingle() {
 	s.Value = reflect.New(s.mStruct.Type()).Interface()
-	s.valueAddress = s.Value
 }
 
 func (s *Scope) newValueMany() {
-	val := reflect.New(reflect.SliceOf(reflect.New(s.mStruct.Type()).Type()))
-
-	s.Value = val.Elem().Interface()
-	s.valueAddress = val.Interface()
+	s.Value = reflect.New(reflect.SliceOf(reflect.New(s.mStruct.Type()).Type())).Interface()
+	s.isMany = true
 }
 
-func (s *Scope) setValueFromAddressable() error {
-	if s.valueAddress != nil && reflect.TypeOf(s.valueAddress).Kind() == reflect.Ptr {
-		s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
-		return nil
-	}
-	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.mStruct.Type(), s.valueAddress)
-}
+// func (s *Scope) setValueFromAddressable() error {
+// 	if s.valueAddress != nil && reflect.TypeOf(s.valueAddress).Kind() == reflect.Ptr {
+// 		s.Value = reflect.ValueOf(s.valueAddress).Elem().Interface()
+// 		return nil
+// 	}
+// 	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.mStruct.Type(), s.valueAddress)
+// }
 
 // GetPrimaryFieldValue
 func (s *Scope) GetPrimaryFieldValue() (reflect.Value, error) {
@@ -1692,14 +1723,20 @@ func (s *Scope) setBelongsToForeignKey() error {
 		return errors.Errorf("Nil value provided. %#v", s)
 	}
 	v := reflect.ValueOf(s.Value)
-	switch v.Kind() {
-	case reflect.Ptr:
+
+	if v.Kind() != reflect.Ptr {
+		return errors.Errorf("Provided Scope Value is not addressable.")
+	}
+
+	switch v.Elem().Kind() {
+	case reflect.Struct:
 		err := models.StructSetBelongsToForeigns(s.mStruct, v)
 		if err != nil {
 			return err
 		}
 
 	case reflect.Slice:
+		v = v.Elem()
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
 			err := models.StructSetBelongsToForeigns(s.mStruct, elem)
@@ -1758,14 +1795,19 @@ func (s *Scope) setBelongsToRelationWithFields(fields ...*models.StructField) er
 	}
 
 	v := reflect.ValueOf(s.Value)
-	switch v.Kind() {
-	case reflect.Ptr:
+	if v.Kind() != reflect.Ptr {
+		return errors.Errorf("Provided scope value is not a pointer.")
+	}
+
+	switch v.Elem().Kind() {
+	case reflect.Struct:
 		err := models.StructSetBelongsToRelationWithFields(s.mStruct, v, fields...)
 		if err != nil {
 			return err
 		}
 
 	case reflect.Slice:
+		v = v.Elem()
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
 			err := models.StructSetBelongsToRelationWithFields(s.mStruct, elem, fields...)

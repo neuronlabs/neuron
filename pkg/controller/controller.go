@@ -4,6 +4,8 @@ import (
 	"github.com/kucjac/jsonapi/pkg/config"
 	"github.com/kucjac/jsonapi/pkg/db-manager"
 	"github.com/kucjac/jsonapi/pkg/internal/controller"
+	"github.com/kucjac/jsonapi/pkg/internal/repositories"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/kucjac/uni-logger"
 )
 
@@ -15,6 +17,13 @@ func Default() *Controller {
 		DefaultController = (*Controller)(controller.Default())
 	}
 	return DefaultController
+}
+
+// SetDefault sets the default Controller to the provided
+func SetDefault(c *Controller) {
+	d := Default()
+
+	*d = *c
 }
 
 type Controller controller.Controller
@@ -42,6 +51,27 @@ func New(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*Cont
 	}
 
 	return (*Controller)(c), nil
+}
+
+// RegisterModels registers provided models within the context of the provided Controller
+func (c *Controller) RegisterModels(models ...interface{}) error {
+	return (*controller.Controller)(c).RegisterModels(models...)
+}
+
+func (c *Controller) RegisterRepositories(repos ...interface{}) error {
+	for _, repo := range repos {
+		r, ok := repo.(repositories.Repository)
+		if !ok {
+			log.Errorf("Cannot register repository: %T. It doesn't implement repository interface.", repo)
+			return repositories.ErrNewNotRepository
+		}
+		if err := (*controller.Controller)(c).RegisterRepository(r); err != nil {
+			log.Debugf("Registering Repository: '%s' failed. %v", r.RepositoryName(), err)
+			return err
+		}
+		log.Debugf("Repository: '%s' registered succesfully.", r.RepositoryName())
+	}
+	return nil
 }
 
 func new(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {

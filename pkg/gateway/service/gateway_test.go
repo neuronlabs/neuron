@@ -8,10 +8,9 @@ import (
 	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/kucjac/uni-logger"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
 	"net/http"
-	"os"
-	"runtime"
+
 	"testing"
 	"time"
 )

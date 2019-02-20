@@ -15,7 +15,7 @@ type ControllerConfig struct {
 	DefaultSchema string `validate:"alphanum" mapstructure:"default_schema"`
 
 	// ModelSchemas defines the model schemas used by api
-	ModelSchemas map[string]*Schema `mapstructure:"model_schemas"`
+	ModelSchemas map[string]*Schema `mapstructure:"schemas"`
 
 	// StrictUnmarshalMode is the flag that defines if the unmarshaling should be in a
 	// strict mode that checks if incoming values are all known to the controller

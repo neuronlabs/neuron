@@ -2,6 +2,7 @@ package paginations
 
 import (
 	"errors"
+	"fmt"
 	"github.com/kucjac/jsonapi/pkg/config"
 )
 
@@ -13,6 +14,19 @@ const (
 	TpPage
 	TpCursor
 )
+
+func (t Type) String() string {
+	switch t {
+	case TpOffset:
+		return "Offset"
+	case TpPage:
+		return "Page"
+	case TpCursor:
+		return "Cursor"
+	default:
+		return "Unknown"
+	}
+}
 
 // Parameter Defines the given paginate paramater type
 type Parameter int
@@ -67,6 +81,20 @@ func (p *Pagination) SetType(tp Type) {
 // Type gets the pagination type
 func (p *Pagination) Type() Type {
 	return p.tp
+}
+
+// String implements Stringer interface
+func (p *Pagination) String() string {
+	switch p.tp {
+	case TpOffset:
+		return fmt.Sprintf("Offset Pagination. Limit: %d, Offset: %d", p.Limit, p.Offset)
+	case TpPage:
+		return fmt.Sprintf("PageType Pagination. PageSize: %d, PageNumber: %d", p.PageSize, p.PageNumber)
+	case TpCursor:
+		return fmt.Sprintf("Cursor Pagination. Limit: %d, Offset: %d", p.Limit, p.Offset)
+	default:
+		return "Unknown Pagination"
+	}
 }
 
 // GetLimitOffset gets the limit and offset values from the given pagination

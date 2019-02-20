@@ -47,3 +47,8 @@ func (p *Pagination) GetLimitOffset() (int, int) {
 func (p *Pagination) Check() error {
 	return (*paginations.Pagination)(p).Check()
 }
+
+// String implements Stringer interface
+func (p *Pagination) String() string {
+	return (*paginations.Pagination)(p).String()
+}

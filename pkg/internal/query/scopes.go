@@ -50,6 +50,7 @@ func (b *Builder) BuildScopeMany(
 	)
 
 	s = scope.NewRootScopeWithCtx(ctx, mStruct)
+	s.NewValueMany()
 
 	// Initialize Includes
 	s.InitializeIncluded(b.schemas.NestedIncludeLimit)

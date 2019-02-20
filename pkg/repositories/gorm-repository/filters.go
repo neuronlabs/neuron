@@ -3,6 +3,7 @@ package gormrepo
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/query/filters"
 	"github.com/kucjac/jsonapi/pkg/query/scope"
@@ -33,6 +34,7 @@ func buildWhere(tableName, columnName string, filter *filters.FilterField,
 	wheres := []*whereQ{}
 	for _, fv := range filter.Values() {
 		if len(fv.Values) == 0 {
+			log.Debugf("No values provided for the filter: %s", filter)
 			return wheres, IErrNoValuesProvided
 		}
 		op := sqlizeOperator(fv.Operator())

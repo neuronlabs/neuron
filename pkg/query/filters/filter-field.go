@@ -39,7 +39,7 @@ func (f *FilterField) NestedFilters() []*FilterField {
 
 // StructField returns the filterfield struct
 func (f *FilterField) StructField() *mapping.StructField {
-	return (*mapping.StructField)(f.StructField())
+	return (*mapping.StructField)((*filters.FilterField)(f).StructField())
 }
 
 // Values returns OperatorValuesPair for given filterField
@@ -57,7 +57,7 @@ type OperatorValuePair filters.OpValuePair
 
 // Operator returns the operator for given pair
 func (o *OperatorValuePair) Operator() *Operator {
-	return (*Operator)(o.Operator())
+	return (*Operator)((*filters.OpValuePair)(o).Operator())
 }
 
 // SetOperator sets the operator

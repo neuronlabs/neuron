@@ -49,5 +49,6 @@ func (c *container) registerMiddleware(name string, mid MiddlewareFunc) error {
 		return ErrMiddlewareAlreadyRegistered
 	}
 	c.middlewares[name] = mid
+	log.Debugf("Registered: '%s' middleware successfully.", name)
 	return nil
 }

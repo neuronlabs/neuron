@@ -6,6 +6,7 @@ import (
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/namer"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"net/url"
 	"time"

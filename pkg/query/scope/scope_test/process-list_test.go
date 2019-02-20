@@ -59,7 +59,7 @@ func TestList(t *testing.T) {
 
 	t.Run("NoHooks", func(t *testing.T) {
 		v := []*lister{}
-		s, err := scope.NewWithC((*ctrl.Controller)(c), v)
+		s, err := scope.NewWithC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
 		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
@@ -77,7 +77,7 @@ func TestList(t *testing.T) {
 
 	t.Run("HookBefore", func(t *testing.T) {
 		v := []*beforeLister{}
-		s, err := scope.NewWithC((*ctrl.Controller)(c), v)
+		s, err := scope.NewWithC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
 		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
@@ -95,7 +95,7 @@ func TestList(t *testing.T) {
 
 	t.Run("HookAfter", func(t *testing.T) {
 		v := []*afterLister{}
-		s, err := scope.NewWithC((*ctrl.Controller)(c), v)
+		s, err := scope.NewWithC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
 		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))

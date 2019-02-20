@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+	"github.com/kucjac/jsonapi/pkg/internal"
 	ictrl "github.com/kucjac/jsonapi/pkg/internal/controller"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query/paginations"
@@ -13,12 +15,21 @@ import (
 	"net/http"
 )
 
+// HandleList returns the handler function that handles 'List' operation for the 'm' model.
 func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-
+		log.Debugf("[LIST][%s] Begins", m.Collection())
+		defer func() { log.Debugf("[LIST][%s] Finished", m.Collection()) }()
 		// Add Flags to the scope setter
-		s, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeMany(
+
+		ctx := context.WithValue(
 			req.Context(),
+			internal.ControllerIDCtxKey,
+			h.c,
+		)
+
+		s, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeMany(
+			ctx,
 			(*models.ModelStruct)(m),
 			req.URL,
 			h.c.Flags,
@@ -29,6 +40,8 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			h.internalError(rw)
 			return
 		}
+
+		log.Debugf("Controller ptr: %p", s.Context().Value(internal.ControllerIDCtxKey))
 
 		// handle client side errors
 		if len(errs) > 0 {
@@ -43,6 +56,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 		- set language filters
 
 		*/
+
 		if cfg := (*models.ModelStruct)(m).Config(); cfg != nil {
 			eCfg := cfg.Endpoints.List
 			if s.Pagination() == nil {
@@ -78,7 +92,15 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			}
 		}
 
-		// List the valus for the scope
+		if s.Pagination() == nil && h.ListPagination != nil {
+			if err := iscope.SetPagination(s, (*paginations.Pagination)(h.ListPagination)); err != nil {
+				log.Errorf("Handler contains invalid default list pagination. %v", err)
+				h.internalError(rw)
+				return
+			}
+		}
+
+		// List the values for the scope
 		if err := (*scope.Scope)(s).List(); err != nil {
 			var isNoResult bool
 			if dbErr, ok := err.(*unidb.Error); ok {

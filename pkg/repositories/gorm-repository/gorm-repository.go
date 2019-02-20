@@ -7,6 +7,7 @@ import (
 	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/query/scope"
+	"github.com/kucjac/jsonapi/pkg/query/sorts"
 	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-db/gormconv"
 	"github.com/kucjac/uni-logger"
@@ -112,6 +113,12 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 	return nil
 }
 
+// RepositoryName implements Repository interface method.
+// Gets the GORMRepository name
+func (g *GORMRepository) RepositoryName() string {
+	return "gorm"
+}
+
 func (g *GORMRepository) log() unilogger.LeveledLogger {
 	if g.logger == nil {
 		logger := log.Logger()
@@ -141,7 +148,7 @@ func (g *GORMRepository) buildScopeGet(jsonScope *scope.Scope) (*gorm.Scope, err
 func (g *GORMRepository) buildScopeList(jsonScope *scope.Scope,
 ) (gormScope *gorm.Scope, err error) {
 	v := jsonScope.Value
-	gormScope = g.db.NewScope(&v)
+	gormScope = g.db.NewScope(v)
 	db := gormScope.DB()
 
 	mStruct := gormScope.GetModelStruct()
@@ -356,7 +363,7 @@ func (g *GORMRepository) getRelationship(
 }
 
 func buildPaginate(db *gorm.DB, jsonScope *scope.Scope) {
-	if jsonScope.Pagination != nil {
+	if jsonScope.Pagination() != nil {
 		limit, offset := jsonScope.Pagination().GetLimitOffset()
 		*db = *db.Limit(limit).Offset(offset)
 	}
@@ -373,15 +380,17 @@ func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *scope.Scope, mSt
 
 	for _, field := range jsonScope.Fieldset() {
 		k := field.FieldKind()
-		if k != mapping.KindRelationshipMultiple || k != mapping.KindRelationshipSingle {
+
+		if k != mapping.KindRelationshipMultiple && k != mapping.KindRelationshipSingle {
 			index := field.ReflectField().Index[0]
+
 			for _, gField := range mStruct.StructFields {
 				if gField.Struct.Index[0] == index {
 					if gField.IsIgnored {
 						continue
 					}
 
-					if field.IsPrimary() {
+					if field.FieldKind() == mapping.KindPrimary {
 						foundPrim = true
 					}
 					// this is the field
@@ -393,7 +402,8 @@ func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *scope.Scope, mSt
 
 	if !foundPrim {
 		for _, primField := range mStruct.PrimaryFields {
-			if isFieldEqual(primField, jsonScope.Struct.GetPrimaryField()) {
+			if isFieldEqual(primField, jsonScope.Struct().Primary()) {
+				log.Debugf("Primary")
 				fields = primField.DBName + ", " + fields
 			}
 		}
@@ -406,11 +416,11 @@ func (g *GORMRepository) buildFieldSets(db *gorm.DB, jsonScope *scope.Scope, mSt
 	return nil
 }
 
-func buildSorts(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct) error {
-
-	for _, sort := range jsonScope.Sorts {
-		if !sort.IsRelationship() {
-			index := sort.GetFieldIndex()
+func buildSorts(db *gorm.DB, jsonScope *scope.Scope, mStruct *gorm.ModelStruct) error {
+	sortFields := jsonScope.SortFields()
+	for _, sort := range sortFields {
+		if sort.StructField().Relationship() == nil {
+			index := sort.StructField().ReflectField().Index[0]
 			var sField *gorm.StructField
 			if index == mStruct.PrimaryFields[0].Struct.Index[0] {
 				sField = mStruct.PrimaryFields[0]
@@ -422,14 +432,14 @@ func buildSorts(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct
 				}
 			}
 			if sField == nil {
-				err := fmt.Errorf("Sort field: '%s' not found within model: '%s'", sort.GetFieldName(), mStruct.ModelType)
-
+				err := fmt.Errorf("Sort field: '%s' not found within model: '%s'", sort.StructField().Name(), mStruct.ModelType)
+				log.Error("Sortfields doesn't match: %v", err)
 				return err
 			}
 
 			order := sField.DBName
 
-			if sort.Order == jsonapi.DescendingOrder {
+			if sort.Order() == sorts.DescendingOrder {
 				order += " DESC"
 			}
 			*db = *db.Order(order)
@@ -446,9 +456,13 @@ func buildSorts(db *gorm.DB, jsonScope *jsonapi.Scope, mStruct *gorm.ModelStruct
 
 func (g *GORMRepository) getListRelationships(
 	db *gorm.DB,
-	scope *jsonapi.Scope,
+	s *scope.Scope,
 ) error {
-	v := reflect.ValueOf(scope.Value)
+	v := reflect.ValueOf(s.Value)
+	if v.Kind() != reflect.Ptr {
+		return errors.New("The value is not a pointer")
+	}
+	v = v.Elem()
 	if v.Kind() != reflect.Slice {
 		return errors.New("Provided value is not a slice")
 	}
@@ -463,7 +477,7 @@ func (g *GORMRepository) getListRelationships(
 			continue
 		}
 		elemVal := elem.Interface()
-		if err := g.getRelationships(db, scope, elemVal); err != nil {
+		if err := g.getRelationships(db, s, elemVal); err != nil {
 			return err
 		}
 
@@ -474,23 +488,23 @@ func (g *GORMRepository) getListRelationships(
 
 func (g *GORMRepository) getRelationships(
 	db *gorm.DB,
-	scope *jsonapi.Scope,
+	s *scope.Scope,
 	value interface{},
 ) error {
 
 	gScope := db.New().NewScope(value)
 
-	for _, field := range scope.Fieldset {
-		if rel := field.GetRelationship(); rel != nil {
-			switch rel.Kind {
-			case jsonapi.RelBelongsTo:
+	for _, field := range s.Fieldset() {
+		if rel := field.Relationship(); rel != nil {
+			switch rel.Kind() {
+			case mapping.RelBelongsTo:
 				continue
-			case jsonapi.RelHasMany, jsonapi.RelHasOne:
-				if rel.Sync == nil || (rel.Sync != nil && *rel.Sync) {
+			case mapping.RelHasMany, mapping.RelHasOne:
+				if rel.Sync() == nil || (rel.Sync() != nil && *rel.Sync()) {
 					continue
 				}
-			case jsonapi.RelMany2Many:
-				if rel.Sync != nil && *rel.Sync {
+			case mapping.RelMany2Many:
+				if rel.Sync() != nil && *rel.Sync() {
 					continue
 				}
 			default:
@@ -505,7 +519,7 @@ func (g *GORMRepository) getRelationships(
 				}
 			}
 			if gField == nil {
-				g.log().Debug("Gorm field not found for: '%s'", field.GetFieldName())
+				g.log().Debug("Gorm field not found for: '%s'", field.Name())
 				continue
 			}
 
@@ -538,7 +552,7 @@ func (g *GORMRepository) getRelationships(
 					if err != nil {
 						dbErr := g.converter.Convert(err)
 						if !dbErr.Compare(unidb.ErrNoResult) {
-							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.Name(), s.Struct().Type().Name(), err)
 							return dbErr
 						}
 					}
@@ -564,7 +578,7 @@ func (g *GORMRepository) getRelationships(
 					if err != nil {
 						dbErr := g.converter.Convert(err)
 						if !dbErr.Compare(unidb.ErrNoResult) {
-							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							g.log().Errorf("Error while getting the relationship field: %s for model: %s. Err: %v", field.Name(), s.Struct().Type().Name(), err)
 							return dbErr
 						}
 					}
@@ -579,7 +593,7 @@ func (g *GORMRepository) getRelationships(
 					if err != nil {
 						dbErr := g.converter.Convert(err)
 						if !dbErr.Compare(unidb.ErrNoResult) {
-							g.log().Errorf("Error while getting relation many2many: %s for model: %s. Err: %v", field.GetFieldName(), scope.Struct.GetType().Name(), err)
+							g.log().Errorf("Error while getting relation many2many: %s for model: %s. Err: %v", field.Name(), s.Struct().Type().Name(), err)
 							return dbErr
 						}
 					}

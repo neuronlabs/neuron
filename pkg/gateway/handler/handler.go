@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"github.com/kucjac/jsonapi/pkg/config"
 	ctrl "github.com/kucjac/jsonapi/pkg/controller"
 	"github.com/kucjac/jsonapi/pkg/encoding/jsonapi"
 	"github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	ictrl "github.com/kucjac/jsonapi/pkg/internal/controller"
+	ipagination "github.com/kucjac/jsonapi/pkg/internal/query/paginations"
 	iscope "github.com/kucjac/jsonapi/pkg/internal/query/scope"
 	"github.com/kucjac/jsonapi/pkg/log"
+	"github.com/kucjac/jsonapi/pkg/query/pagination"
 	"github.com/kucjac/jsonapi/pkg/query/scope"
 	"github.com/kucjac/uni-db"
 	"strings"
@@ -22,12 +25,23 @@ const (
 
 // GatewayHandler is the structure that allows the Gateway service to handle API CRUD operations
 type Handler struct {
-	c *ctrl.Controller
+	c              *ctrl.Controller
+	ListPagination *pagination.Pagination
 }
 
 // New creates new route handler for the gateway
-func New(c *ctrl.Controller) *Handler {
-	return &Handler{c: c}
+func New(c *ctrl.Controller, defaultPagination *config.Pagination) *Handler {
+	h := &Handler{c: c}
+	if defaultPagination != nil {
+		p := ipagination.NewFromConfig(defaultPagination)
+		if err := p.Check(); err != nil {
+			log.Errorf("Invalid default pagination provided for the handler.")
+		} else {
+			h.ListPagination = (*pagination.Pagination)(p)
+			log.Debugf("Handler set default Pagination to: %s", h.ListPagination)
+		}
+	}
+	return h
 }
 
 func (h *Handler) getErrorsStatus(errs ...*errors.ApiError) int {
@@ -78,7 +92,7 @@ func (h *Handler) handleDBError(err error, rw http.ResponseWriter) {
 		log.Debugf("Create failed: %v", e)
 		h.marshalErrors(rw, unsetStatus, e)
 	default:
-		log.Errorf("Unspecified error after create: %v", e)
+		log.Errorf("Unspecified Repository error: %v", e)
 		h.internalError(rw)
 	}
 }

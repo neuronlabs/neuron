@@ -18,7 +18,7 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		log.Debugf("[DELETE] Begins for model: '%s'", m.Type().String())
 		defer func() { log.Debugf("[DELETE] Finished for model: '%s'", m.Type().String()) }()
-		s := scope.NewWithModelC(h.c, m)
+		s := scope.NewWithModelC(h.c, m, false)
 
 		// Get the ID from the query
 		id, err := query.GetID(req.URL, (*models.ModelStruct)(m))

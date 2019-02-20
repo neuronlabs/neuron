@@ -12,12 +12,24 @@ var (
 	defaultConfig *Config
 )
 
-// func ReadRemoteConfig()
+// ViperSetDefaults sets the default values for the viper config
+func ViperSetDefaults(v *viper.Viper) {
+	setDefaults(v)
+}
+
+// ReadNamedConfig reads the config with the provided name
+func ReadNamedConfig(name string) (*Config, error) {
+	return readNamedConfig(name)
+}
 
 // ReadConfig reads the config for given path
 func ReadConfig() (*Config, error) {
+	return readNamedConfig("config")
+}
+func readNamedConfig(name string) (*Config, error) {
+
 	v := viper.New()
-	v.SetConfigName("config")
+	v.SetConfigName(name)
 
 	v.AddConfigPath(".")
 	v.AddConfigPath("configs")

@@ -3,6 +3,7 @@ package gormrepo
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/kucjac/jsonapi/pkg/query/scope"
 
 	"github.com/kucjac/uni-db"
@@ -51,14 +52,14 @@ func (g *GORMRepository) Patch(s *scope.Scope) error {
 	  PATCH: HOOK BEFORE PATCH
 
 	*/
-	if beforePatcher, ok := s.Value.(repositories.HookRepoBeforePatch); ok {
-		if err := beforePatcher.RepoBeforePatch(db, s); err != nil {
-			g.log().Debugf("RepoBeforePatch failed. %v", err)
-			db.Rollback()
-			g.log().Debugf("Rollback err: %v", db.Error)
-			return g.converter.Convert(err)
-		}
-	}
+	// if beforePatcher, ok := s.Value.(repositories.HookRepoBeforePatch); ok {
+	// 	if err := beforePatcher.RepoBeforePatch(db, s); err != nil {
+	// 		g.log().Debugf("RepoBeforePatch failed. %v", err)
+	// 		db.Rollback()
+	// 		g.log().Debugf("Rollback err: %v", db.Error)
+	// 		return g.converter.Convert(err)
+	// 	}
+	// }
 
 	/**
 
@@ -93,19 +94,19 @@ func (g *GORMRepository) Patch(s *scope.Scope) error {
 	  PATCH: HOOK AFTER PATCH
 
 	*/
-	if afterPatcher, ok := s.Value.(repositories.HookRepoAfterPatch); ok {
-		if err := afterPatcher.RepoAfterPatch(db, s); err != nil {
-			db.Rollback()
-			return g.converter.Convert(err)
-		}
-	}
+	// if afterPatcher, ok := s.Value.(repositories.HookRepoAfterPatch); ok {
+	// 	if err := afterPatcher.RepoAfterPatch(db, s); err != nil {
+	// 		db.Rollback()
+	// 		return g.converter.Convert(err)
+	// 	}
+	// }
 
 	db.Commit()
 	return nil
 }
 
 func (g *GORMRepository) patchNonSyncedRelations(
-	s *jsonapi.Scope,
+	s *scope.Scope,
 	mStruct *gorm.ModelStruct,
 	rootDB *gorm.DB,
 ) (err error) {
@@ -131,7 +132,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 			return nil
 		}
 
-		primaryFieldNames := g.getSelectedGormFieldValues(mStruct, s.Struct.GetPrimaryField())
+		primaryFieldNames := g.getSelectedGormFieldValues(mStruct, s.Struct().Primary())
 		q := fmt.Sprintf("SELECT \"%s\" FROM \"%s\" WHERE (%s)", primaryFieldNames[0], mStruct.TableName(rootDB), wheres)
 
 		g.log().Debugf("Query: %s", q)
@@ -154,7 +155,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					tps += tp.Name() + ", "
 				}
 				g.log().Debugf("ColumnTypes: %+v", tps)
-				switch s.Struct.GetPrimaryField().GetReflectStructField().Type.Kind() {
+				switch s.Struct().Primary().ReflectField().Type.Kind() {
 				case reflect.Int:
 					var i int
 					err := rows.Scan(&i)
@@ -233,7 +234,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					}
 					primaries = append(primaries, i)
 				default:
-					return errors.Errorf("Unknown primary field type: %v", s.Struct.GetPrimaryField().GetReflectStructField().Type)
+					return errors.Errorf("Unknown primary field type: %v", s.Struct().Primary().ReflectField().Type)
 				}
 			}
 			return nil
@@ -245,17 +246,16 @@ func (g *GORMRepository) patchNonSyncedRelations(
 		return nil
 	}
 
-	for _, field := range s.SelectedFields {
-		g.log().Debugf("Field: %v", field.GetFieldName())
-		if field.IsRelationship() {
+	for _, field := range s.SelectedFields() {
+		g.log().Debugf("Field: %v", field.Name())
+		if rel := field.Relationship(); rel != nil {
 
-			rel := field.GetRelationship()
-			switch rel.Kind {
-			case jsonapi.RelBelongsTo:
+			switch rel.Kind() {
+			case mapping.RelBelongsTo:
 				continue
-			case jsonapi.RelHasOne:
+			case mapping.RelHasOne:
 				// if has one is non synced get the value
-				if rel.Sync != nil && !*rel.Sync {
+				if rel.Sync() != nil && !*rel.Sync() {
 					if !primsTaken {
 						err := getPrimaries()
 						if err != nil {
@@ -263,24 +263,24 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						}
 					}
 					if len(primaries) == 0 {
-						g.log().Debugf("Relation HasOne NonSynced:'%s' for Model: '%s' not patched. No matched primaries found.", field.GetFieldName(), s.Struct.GetType().Name())
+						g.log().Debugf("Relation HasOne NonSynced:'%s' for Model: '%s' not patched. No matched primaries found.", field.Name(), s.Struct().Type().Name())
 						return nil
 					}
 
 					if len(primaries) > 1 {
-						return errors.Errorf("Invalid update relation operation for model: %s relation: %s. Too many primary filter values for HasOne relationship", s.Struct.GetType().Name(), field.GetFieldName())
+						return errors.Errorf("Invalid update relation operation for model: %s relation: %s. Too many primary filter values for HasOne relationship", s.Struct().Type().Name(), field.Name())
 					}
 					// get primary value
 					v := reflect.ValueOf(s.Value)
 					if v.Kind() == reflect.Ptr {
 						v = v.Elem()
 					}
-					vField := v.FieldByIndex(field.GetReflectStructField().Index)
+					vField := v.FieldByIndex(field.ReflectField().Index)
 					primVal := reflect.ValueOf(primaries[0])
 
 					relScope := db.NewScope(reflect.New(vField.Type()).Interface())
 					g.log().Debugf("Rel TableName: %v", relScope.GetModelStruct().TableName(db))
-					relPrim := field.GetRelatedModelStruct().GetPrimaryField()
+					relPrim := field.Relationship().ModelStruct().Primary()
 
 					// Get GORM DBNames for the relation.id and relation.foreign fields
 					var gPrimField, gForeignField *gorm.StructField
@@ -293,7 +293,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							}
 						}
 						if gForeignField == nil {
-							if isFieldEqual(gField, rel.ForeignKey) {
+							if isFieldEqual(gField, rel.ForeignKey()) {
 								gForeignField = gField
 								g.log().Debugf("FkField found: %s", gField.Name)
 							}
@@ -306,10 +306,11 @@ func (g *GORMRepository) patchNonSyncedRelations(
 
 					// Both Primary and Foreign should not be nil
 					if gPrimField == nil {
-						return errors.Errorf("Primary Key Field: %s for the relation: '%s' in model: %s not found within the model s.", relPrim.GetFieldName(), field.GetFieldName(), relScope.GetModelStruct().ModelType.Name())
+						return errors.Errorf("Primary Key Field: %s for the relation: '%s' in model: %s not found within the model s.", relPrim.Name(), field.Name(), relScope.GetModelStruct().ModelType.Name())
 					}
 					if gForeignField == nil {
-						return errors.Errorf("Foreign Key Field: %s for the relation: '%s' in model: %s not found within the model s.", rel.ForeignKey.GetFieldName(), field.GetFieldName(), relScope.GetModelStruct().ModelType.Name())
+						return errors.Errorf("Foreign Key Field: %s for the relation: '%s' in model: %s not found within the model s.", rel.ForeignKey().Name(),
+							field.Name(), relScope.GetModelStruct().ModelType.Name())
 					}
 
 					// If FieldValue is not nil set the values of the foreign key to the
@@ -319,7 +320,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							vField = vField.Elem()
 						}
 
-						relPrimVal := vField.FieldByIndex(relPrim.GetReflectStructField().Index)
+						relPrimVal := vField.FieldByIndex(relPrim.ReflectField().Index)
 
 						setForeignSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?",
 							relScope.GetModelStruct().TableName(db),
@@ -334,7 +335,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 
 						err := db.Exec(setForeignSQL, primaryValue, relPrimVal.Interface()).Error
 						if err != nil {
-							errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct.GetType(), field.GetFieldName())
+							errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct().Type(), field.Name())
 						}
 					} else {
 						// If fieldValue is nil erease the relationship (set the foreign key to
@@ -354,7 +355,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							dbErr := g.converter.Convert(err)
 							dbErr.Message = err.Error()
 							if dbErr.Compare(unidb.ErrNoResult) {
-								dbErr = unidb.ErrForeignKeyViolation.NewWithMessage(fmt.Sprintf("Relation: %s", field.GetFieldName()))
+								dbErr = unidb.ErrForeignKeyViolation.NewWithMessage(fmt.Sprintf("Relation: %s", field.Name()))
 							}
 							return dbErr
 
@@ -363,8 +364,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				} else {
 					continue
 				}
-			case jsonapi.RelHasMany:
-				if rel.Sync != nil && !*rel.Sync {
+			case mapping.RelHasMany:
+				if rel.Sync() != nil && !*rel.Sync() {
 					if !primsTaken {
 						err := getPrimaries()
 						if err != nil {
@@ -372,7 +373,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						}
 					}
 					if len(primaries) == 0 {
-						g.log().Debugf("Relation HasMany NonSynced:'%s' for Model: '%s' not patched. No matched primaries found.", field.GetFieldName(), s.Struct.GetType().Name())
+						g.log().Debugf("Relation HasMany NonSynced:'%s' for Model: '%s' not patched. No matched primaries found.", field.Name(), s.Struct().Type().Name())
 						return nil
 					}
 					// if len(primaries) > 1 {
@@ -383,17 +384,17 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					if v.Kind() == reflect.Ptr {
 						v = v.Elem()
 					}
-					vField := v.FieldByIndex(field.GetReflectStructField().Index)
+					vField := v.FieldByIndex(field.ReflectField().Index)
 					if vField.Kind() != reflect.Slice {
-						return errors.Errorf("Invalid HasMany field value. Model: %s, Field: %s. Type: %v", s.Struct.GetType().Name(), field.GetFieldName(), field.GetFieldType().Name())
+						return errors.Errorf("Invalid HasMany field value. Model: %s, Field: %s. Type: %v", s.Struct().Type().Name(), field.Name(), field.ReflectField().Type.Name())
 					}
 
 					relScope := g.db.NewScope(reflect.New(vField.Type().Elem().Elem()).Interface())
-					relPrim := field.GetRelatedModelStruct().GetPrimaryField()
+					relPrim := field.Relationship().ModelStruct().Primary()
 					var primField, fkField *gorm.StructField
 
 					for _, gField := range relScope.GetModelStruct().StructFields {
-						if isFieldEqual(gField, rel.ForeignKey) {
+						if isFieldEqual(gField, rel.ForeignKey()) {
 							fkField = gField
 							if primField != nil && fkField != nil {
 								break
@@ -413,7 +414,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					}
 
 					if fkField == nil {
-						return errors.Errorf("No foreign key field: '%s' found for model: %s", rel.ForeignKey.GetFieldName(), relScope.GetModelStruct().ModelType.Name())
+						return errors.Errorf("No foreign key field: '%s' found for model: %s",
+							rel.ForeignKey().Name(), relScope.GetModelStruct().ModelType.Name())
 					}
 
 					if vField.Len() != 0 {
@@ -443,7 +445,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 								elem = elem.Elem()
 							}
 
-							relPrimVal := elem.FieldByIndex(relPrim.GetReflectStructField().Index)
+							relPrimVal := elem.FieldByIndex(relPrim.ReflectField().Index)
 							relPrimValue := relPrimVal.Interface()
 
 							// if the primary value is zero continue to next
@@ -491,7 +493,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							if !dbErr.Compare(unidb.ErrNoResult) {
 								return dbErr
 							}
-							g.log().Debug(errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct.GetType(), field.GetFieldName()))
+							g.log().Debug(errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct().Type(),
+								field.Name()))
 						}
 
 						updateSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s IN (%s)",
@@ -505,7 +508,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						updateValues := append([]interface{}{primaries[0]}, relPrimValues...)
 						err = db.Exec(updateSQL, updateValues...).Error
 						if err != nil {
-							err = errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct.GetType(), field.GetFieldName())
+							err = errors.Wrapf(err, "Update HasOne NonSynced relationship failed. Model: %s, Relationship: %s", s.Struct().Type(), field.Name())
 							dbErr := unidb.ErrForeignKeyViolation.NewWithMessage(err.Error())
 							return dbErr
 						}
@@ -524,7 +527,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 						if err := db.Exec(clearSQL, clearValues...).Error; err != nil {
 							dbErr := g.converter.Convert(err)
 							if !dbErr.Compare(unidb.ErrNoResult) {
-								g.log().Error(errors.Wrapf(err, "Clearing relation values failed for model: %s relation: %s.", s.Struct.GetType().Name(), field.GetFieldName()))
+								g.log().Error(errors.Wrapf(err, "Clearing relation values failed for model: %s relation: %s.", s.Struct().Type().Name(), field.Name()))
 								return dbErr
 							}
 						}
@@ -532,8 +535,8 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				} else {
 					continue
 				}
-			case jsonapi.RelMany2Many:
-				if rel.Sync != nil && *rel.Sync {
+			case mapping.RelMany2Many:
+				if rel.Sync() != nil && *rel.Sync() {
 					continue
 				}
 				if !primsTaken {
@@ -558,7 +561,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					primaryQuotationMarks = primaryQuotationMarks[:len(primaryQuotationMarks)-1]
 				}
 
-				relScope := db.NewScope(reflect.New(field.GetFieldType()).Interface())
+				relScope := db.NewScope(reflect.New(field.ReflectField().Type).Interface())
 
 				var gRelationField *gorm.StructField
 				for _, gField := range mStruct.StructFields {
@@ -569,15 +572,17 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				}
 
 				if gRelationField == nil {
-					return errors.Errorf("Relation field '%s' not found within gorm.Structure for model: '%s'", field.GetFieldName(), field.GetRelatedModelStruct().GetType().Name())
+					return errors.Errorf("Relation field '%s' not found within gorm.Structure for model: '%s'", field.Name(),
+						field.Relationship().ModelStruct().Type().Name(),
+					)
 				}
 
 				if gRelationField.Relationship == nil {
-					return errors.Errorf("GormRelation field: %s does not contain relationship struct for model: '%s'", field.GetFieldName(), field.GetRelatedModelStruct().GetType().Name())
+					return errors.Errorf("GormRelation field: %s does not contain relationship struct for model: '%s'", field.Name(), field.Relationship().ModelStruct().Type().Name())
 				}
 
 				if gRelationField.Relationship.Kind != "many_to_many" {
-					return errors.Errorf("GORM Relationship for field: '%s' is not of many2many type. Model: '%s'", field.GetFieldName(), field.GetRelatedModelStruct().GetType().Name())
+					return errors.Errorf("GORM Relationship for field: '%s' is not of many2many type. Model: '%s'", field.Name(), field.Relationship().ModelStruct().Type().Name())
 				}
 
 				// DELETE FROM jointable WHERE associated_root.id IN ( primaries)
@@ -604,7 +609,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 					v = v.Elem()
 				}
 
-				vField := v.FieldByIndex(field.GetReflectStructField().Index)
+				vField := v.FieldByIndex(field.ReflectField().Index)
 				insertSQL := fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES(?, ?)",
 					relScope.Quote(gRelationField.Relationship.JoinTableHandler.Table(db)),
 					relScope.Quote(gRelationField.Relationship.AssociationForeignDBNames[0]),
@@ -612,7 +617,7 @@ func (g *GORMRepository) patchNonSyncedRelations(
 				)
 
 				g.log().Debugf("SQL Inserting new many2many relationships: %s", insertSQL)
-				relPrim := field.GetRelatedModelStruct().GetPrimaryField()
+				relPrim := field.Relationship().ModelStruct().Primary()
 				for _, primary := range primaries {
 					for i := 0; i < vField.Len(); i++ {
 						elem := vField.Index(i)
@@ -624,10 +629,10 @@ func (g *GORMRepository) patchNonSyncedRelations(
 							elem = elem.Elem()
 						}
 
-						elemPrimFieldValue := elem.FieldByIndex(relPrim.GetReflectStructField().Index)
+						elemPrimFieldValue := elem.FieldByIndex(relPrim.ReflectField().Index)
 						elemPrimValue := elemPrimFieldValue.Interface()
 
-						if reflect.DeepEqual(elemPrimValue, reflect.Zero(relPrim.GetFieldType()).Interface()) {
+						if reflect.DeepEqual(elemPrimValue, reflect.Zero(relPrim.ReflectField().Type).Interface()) {
 							continue
 						}
 						err = relScope.DB().Exec(insertSQL, elemPrimValue, primary).Error

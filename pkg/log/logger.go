@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"github.com/kucjac/uni-logger"
 	"github.com/pkg/errors"
 	"io"
@@ -89,6 +90,9 @@ func Errorf(format string, args ...interface{}) {
 func Fatalf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Fatalf(format, args...)
+	} else {
+		fmt.Printf(format, args...)
+		os.Exit(1)
 	}
 }
 
@@ -96,6 +100,8 @@ func Fatalf(format string, args ...interface{}) {
 func Panicf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Panicf(format, args...)
+	} else {
+		panic(fmt.Sprintf(format, args...))
 	}
 }
 
@@ -138,5 +144,7 @@ func Fatal(args ...interface{}) {
 func Panic(args ...interface{}) {
 	if logger != nil {
 		logger.Panic(args...)
+	} else {
+		panic(fmt.Sprint(args...))
 	}
 }

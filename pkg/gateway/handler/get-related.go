@@ -16,6 +16,7 @@ import (
 func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		log.Debugf("[GET-RELATED] Begins for model: %s", m.Type())
+
 		defer func() { log.Debugf("[GET-RELATED] Finished for model: %s", m.Type()) }()
 
 		ctx := context.WithValue(req.Context(), internal.ControllerIDCtxKey, h.c)

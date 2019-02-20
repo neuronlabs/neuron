@@ -1,12 +1,12 @@
 package scope
 
 import (
-	"fmt"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/internal/query/filters"
 	"github.com/kucjac/jsonapi/pkg/internal/query/sorts"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"reflect"
 )
 
@@ -73,27 +73,42 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 	// Get the value from the RelatedScope
 	v := reflect.ValueOf(i.RelatedScope.Value)
 
-	switch v.Kind() {
-	case reflect.Slice:
-		for j := 0; j < v.Len(); j++ {
-			elem := v.Index(j)
-			if elem.IsNil() {
-				continue
-			}
+	// RelatedScope Value must be a pointer type
+	if v.Kind() != reflect.Ptr {
+		return nil, internal.IErrUnexpectedType
+	}
 
-			if err := i.getMissingFromSingle(elem, uniqueMissing); err != nil {
+	// Check if is nil
+	if !v.IsNil() {
+		v = v.Elem()
+		switch v.Kind() {
+		case reflect.Slice:
+			log.Debugf("Getting from slice")
+			for j := 0; j < v.Len(); j++ {
+				elem := v.Index(j)
+				if elem.Kind() == reflect.Ptr {
+					if elem.IsNil() {
+						continue
+					}
+					elem = elem.Elem()
+				}
+				log.Debugf("i'th: %d element", j)
+				if err := i.getMissingFromSingle(elem, uniqueMissing); err != nil {
+					return nil, err
+				}
+
+			}
+		case reflect.Struct:
+			log.Debugf("Getting from single")
+			if err := i.getMissingFromSingle(v, uniqueMissing); err != nil {
 				return nil, err
 			}
 
-		}
-	case reflect.Ptr:
-		if err := i.getMissingFromSingle(v, uniqueMissing); err != nil {
+		default:
+			err := internal.IErrUnexpectedType
+			log.Errorf("Unexpected Included Scope Value type: %s", v.Type())
 			return nil, err
 		}
-	default:
-		err := internal.IErrUnexpectedType
-		fmt.Println(v)
-		return nil, err
 	}
 
 	// Copy the notUsed map into array
@@ -114,11 +129,14 @@ func (i *IncludeField) getMissingFromSingle(
 ) error {
 
 	var (
-		fieldValue = value.Elem().Field(i.FieldIndex())
-		primIndex  = models.StructPrimary(models.FieldsRelatedModelStruct(i.StructField)).FieldIndex()
+		fieldValue = value.Field(i.FieldIndex())
 
-		setCollectionValues = func(ptr reflect.Value) {
-			primValue := ptr.Elem().Field(primIndex)
+		// get related model's primary index
+		primIndex = models.FieldsRelatedModelStruct(i.StructField).PrimaryField().FieldIndex()
+
+		// setCollectionValues sets the relationship field primary index into the uniqueMissing map
+		setCollectionValues = func(model reflect.Value) {
+			primValue := model.Field(primIndex)
 
 			if primValue.IsValid() {
 				primary := primValue.Interface()
@@ -129,32 +147,46 @@ func (i *IncludeField) getMissingFromSingle(
 					if _, ok = uniqueMissing[primary]; !ok {
 						uniqueMissing[primary] = struct{}{}
 					} else {
-						fmt.Println("Already exists")
+						log.Debugf("Primary: '%v' already exists", primary)
 					}
 				}
+			} else {
+				log.Debugf("Primary value is not valid")
 			}
 		}
 	)
 
+	if fieldValue.Kind() == reflect.Ptr {
+		if fieldValue.IsNil() {
+			return nil
+		}
+		fieldValue = fieldValue.Elem()
+	}
+
 	// Get the type of the value
 	switch fieldValue.Kind() {
 	case reflect.Slice:
+		log.Debugf("Field is Slice")
 		for j := 0; j < fieldValue.Len(); j++ {
 			// set primary field within scope for given model struct
-			elem := fieldValue.Index(j)
-			if !elem.IsNil() {
-				setCollectionValues(elem)
-			}
-		}
-	case reflect.Ptr:
-		if !fieldValue.IsNil() {
 
-			primValue := fieldValue.Elem().Field(primIndex)
-			if primValue.IsValid() {
-				setCollectionValues(fieldValue)
+			// elem is the model at j'th index in the slice
+			elem := fieldValue.Index(j)
+
+			// it may be a pointer to struct
+			if elem.Kind() == reflect.Ptr {
+				if elem.IsNil() {
+					continue
+				}
+				elem = elem.Elem()
 			}
+			setCollectionValues(elem)
 		}
+	case reflect.Struct:
+		log.Debugf("Field is Struct")
+		setCollectionValues(fieldValue)
 	default:
+		log.Debugf("Unexpect type: '%s' in the relationship field's value.", fieldValue.Type())
 		err := internal.IErrUnexpectedType
 		return err
 	}

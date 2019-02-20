@@ -95,5 +95,5 @@ func (s *StructField) Name() string {
 
 // FieldKind returns struct fields kind
 func (s *StructField) FieldKind() FieldKind {
-	return FieldKind(s.FieldKind())
+	return FieldKind((*models.StructField)(s).FieldKind())
 }

@@ -106,7 +106,7 @@ func (g *GORMRepository) saveAssociationCheck(
 	}
 	changeable := g.changeableField(gScope, field, jScope)
 	// gScope.Log(fmt.Sprintf("Field %s, changeable: %v. JSONAPI: %v", field.Name, changeable, jScope != nil))
-	g.log().Debugf("Field: %s changeable: %v", field.Name, changeable)
+	// g.log().Debugf("Field: %s changeable: %v", field.Name, changeable)
 	if changeable && !field.IsBlank && !field.IsIgnored {
 		if r = field.Relationship; r != nil {
 
@@ -252,7 +252,7 @@ func (g *GORMRepository) saveAfterAssociationsCallback(gScope *gorm.Scope) {
 			}
 
 		} else {
-			g.log().Debugf("Don't go: %v", field.Name)
+			// g.log().Debugf("Don't go: %v", field.Name)
 		}
 	}
 }

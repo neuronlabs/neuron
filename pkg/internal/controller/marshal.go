@@ -27,8 +27,10 @@ func (c *Controller) Marshal(w io.Writer, v interface{}) error {
 	refVal := reflect.ValueOf(v)
 	t := refVal.Type()
 
-	for t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
+	} else {
+		return internal.IErrUnsupportedPtrType
 	}
 
 	if t.Kind() == reflect.Slice {
@@ -63,8 +65,9 @@ func (c *Controller) Marshal(w io.Writer, v interface{}) error {
 
 	var payload Payloader
 	if isMany {
-		nodes, err := c.visitManyNodes(refVal, mStruct)
+		nodes, err := c.visitManyNodes(refVal.Elem(), mStruct)
 		if err != nil {
+			log.Debugf("visitManyNodes failed: %v", err)
 			return err
 		}
 		payload = &ManyPayload{Data: nodes}
@@ -110,10 +113,16 @@ func marshalScope(sc *scope.Scope, controller *Controller) (payloader Payloader,
 	}
 
 	scopeValue := reflect.ValueOf(sc.Value)
-	switch scopeValue.Kind() {
+	t := scopeValue.Type()
+	if t.Kind() != reflect.Ptr {
+		log.Debugf("Not a pointer")
+		err = internal.IErrUnexpectedType
+		return
+	}
+	switch t.Elem().Kind() {
 	case reflect.Slice:
 		payloader, err = marshalScopeMany(sc, controller)
-	case reflect.Ptr:
+	case reflect.Struct:
 		payloader, err = marshalScopeOne(sc, controller)
 	default:
 		err = internal.IErrUnexpectedType
@@ -243,7 +252,7 @@ func marshalScopeMany(scope *scope.Scope, controller *Controller) (*ManyPayload,
 
 func visitScopeManyNodes(scope *scope.Scope, controller *Controller,
 ) ([]*Node, error) {
-	valInterface := reflect.ValueOf(scope.Value).Interface()
+	valInterface := reflect.ValueOf(scope.Value).Elem().Interface()
 	valSlice, err := convertToSliceInterface(&valInterface)
 	if err != nil {
 		return nil, err

@@ -60,4 +60,7 @@ type RouterConfig struct {
 
 	// Prefix is the url prefix for the API
 	Prefix string `mapstructure:"prefix"`
+
+	// DefaultPagination defines default ListPagination for the gateway
+	DefaultPagination *Pagination `mapstructure:"default_pagination"`
 }

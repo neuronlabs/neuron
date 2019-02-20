@@ -76,13 +76,13 @@ type Controller struct {
 // New Creates raw *jsonapi.Controller with no limits and links.
 func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Controller, error) {
 
+	if logger != nil {
+		log.SetLogger(logger)
+	}
+	log.Debugf("New Controller creating...")
 	c, err := newController(cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	if logger != nil {
-		log.SetLogger(logger)
 	}
 
 	return c, nil
@@ -96,6 +96,7 @@ func SetDefault(c *Controller) {
 // Controller has also set the FlagUseLinks flag to true.
 func Default() *Controller {
 	if defaultController == nil {
+
 		c, err := newController(DefaultConfig)
 		if err != nil {
 			panic(err)
@@ -114,6 +115,8 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 		CreateValidator: validator.New(),
 		PatchValidator:  validator.New(),
 	}
+
+	log.Debugf("Creating Controller with config: %+v", cfg)
 
 	err := c.setConfig(cfg)
 	if err != nil {
@@ -214,10 +217,14 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	return nil
 }
 
+// RegisterSchemaModels registers the model for the provided schema
+func (c *Controller) RegisterSchemaModels(schemaName string, models ...interface{}) error {
+	return c.ModelSchemas().RegisterSchemaModels(schemaName, models...)
+}
+
 // RegisterModelRecursively registers provided models and it's realtionship fields recursively
 func (c *Controller) RegisterModelRecursively(models ...interface{}) error {
-
-	return nil
+	return c.ModelSchemas().RegisterModelsRecursively(models...)
 }
 
 // RepositoryByName returns the repository by the provided name.
@@ -276,6 +283,7 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 	case "snake":
 		c.NamerFunc = namer.NamingSnake
 	}
+	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
 
 	if cfg.DefaultSchema == "" {
 		cfg.DefaultSchema = "api"
@@ -284,6 +292,7 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 	if cfg.CreateValidatorAlias == "" {
 		cfg.CreateValidatorAlias = "create"
 	}
+
 	c.CreateValidator.SetTagName(cfg.CreateValidatorAlias)
 
 	if cfg.PatchValidatorAlias == "" {

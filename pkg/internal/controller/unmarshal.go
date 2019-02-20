@@ -42,10 +42,15 @@ func (c *Controller) unmarshalScopeOne(
 	model interface{},
 	addSelectedFields bool,
 ) (*scope.Scope, error) {
-	mStruct, err := c.schemas.GetModelStruct(model)
-	if err != nil {
-		return nil, err
+	mStruct, ok := model.(*models.ModelStruct)
+	if !ok {
+		var err error
+		mStruct, err = c.schemas.GetModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return c.unmarshalScope(in, mStruct, false, addSelectedFields)
 }
 
@@ -81,8 +86,7 @@ func (c *Controller) unmarshalScope(
 
 	sc := scope.NewRootScope(mStruct)
 	if useMany {
-
-		sc.Value = reflect.ValueOf(v).Elem().Interface()
+		sc.Value = v
 	} else {
 		sc.Value = v
 	}

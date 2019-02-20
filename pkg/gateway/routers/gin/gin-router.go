@@ -39,7 +39,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 	) (http.Handler, error) {
 
 		// get the handler for the routes
-		h := handler.New(c)
+		h := handler.New(c, rCfg.DefaultPagination)
 
 		for _, schema := range (*ictrl.Controller)(c).ModelSchemas().Schemas() {
 			for _, model := range schema.Models() {

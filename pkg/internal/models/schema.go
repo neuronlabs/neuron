@@ -6,6 +6,7 @@ import (
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
 	"github.com/kucjac/jsonapi/pkg/internal/namer"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"reflect"
 )
@@ -40,7 +41,8 @@ func (s *Schema) ModelByCollection(collection string) *ModelStruct {
 type ModelSchemas struct {
 	cfg map[string]*config.Schema
 
-	schemas map[string]*Schema
+	schemas      map[string]*Schema
+	schemaByType map[reflect.Type]*Schema
 
 	defaultSchema   *Schema
 	defaultRepoName string
@@ -64,6 +66,7 @@ func NewModelSchemas(
 	defaultRepoName string,
 	flgs *flags.Container,
 ) (*ModelSchemas, error) {
+	log.Debugf("Createing New ModelSchemas...")
 	ms := &ModelSchemas{
 		NestedIncludeLimit: nestedIncludeLimit,
 		Flags:              flgs,
@@ -84,10 +87,11 @@ func NewModelSchemas(
 		} else {
 			ms.schemas[name] = &Schema{
 				config: schemaCfg,
-				Name:   defaultSchema,
+				Name:   name,
 				models: NewModelMap(),
 			}
 		}
+		log.Debugf("Schema %s created with config", name)
 	}
 
 	return ms, nil
@@ -122,6 +126,7 @@ func (m *ModelSchemas) RegisterModels(
 
 	// iterate over models and register one by one
 	for _, model := range models {
+
 		var schema string
 
 		// set model's schema
@@ -134,6 +139,7 @@ func (m *ModelSchemas) RegisterModels(
 		// check if schema is already created
 		s, ok := m.schemas[schema]
 		if !ok {
+			log.Debugf("Schema: %s not found for the model. Creating new schema.", schema)
 			s = &Schema{
 				Name:   schema,
 				models: NewModelMap(),
@@ -155,6 +161,7 @@ func (m *ModelSchemas) RegisterModels(
 		}
 
 		if s.config != nil {
+			log.Debugf("Getting model config from schema: '%s'", schema)
 			modelConfig, ok := s.config.Models[mStruct.collectionType]
 			if ok {
 				if err := mStruct.SetConfig(modelConfig); err != nil {
@@ -204,6 +211,20 @@ func (m *ModelSchemas) RegisterModels(
 		return err
 	}
 
+	return nil
+}
+
+// RegisterSchemaModels registers models for provided schema
+func (m *ModelSchemas) RegisterSchemaModels(schemaName string, models ...interface{}) error {
+	/**
+
+	TO DO:
+
+	- Get Schema from name
+	- register models just for this single schema
+
+
+	*/
 	return nil
 }
 
@@ -396,6 +417,7 @@ func (m *ModelSchemas) getByType(t reflect.Type) (*ModelStruct, error) {
 	schemaNamer, ok := reflect.New(t).Interface().(SchemaNamer)
 	if ok {
 		schemaName = schemaNamer.SchemaName()
+		log.Debugf("Schema Namer: %T", schemaNamer)
 	} else {
 		schemaName = m.defaultSchema.Name
 	}

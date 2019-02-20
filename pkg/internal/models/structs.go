@@ -6,6 +6,7 @@ import (
 	aerrors "github.com/kucjac/jsonapi/pkg/errors"
 	"github.com/kucjac/jsonapi/pkg/flags"
 	"github.com/kucjac/jsonapi/pkg/internal"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"
@@ -171,6 +172,7 @@ func (m *ModelStruct) SchemaName() string {
 
 // SetConfig sets the config for given ModelStruct
 func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
+	log.Debugf("Setting Config: %v for model: %s", cfg, m.Collection())
 	m.cfg = cfg
 
 	m.repositoryName = cfg.Repository

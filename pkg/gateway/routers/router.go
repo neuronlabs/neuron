@@ -3,6 +3,7 @@ package routers
 import (
 	"github.com/kucjac/jsonapi/pkg/config"
 	"github.com/kucjac/jsonapi/pkg/controller"
+	"github.com/kucjac/jsonapi/pkg/log"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -29,6 +30,7 @@ func RegisterRouter(name string, f RouterSetterFunc) {
 	}
 
 	routers.RegisteredRouters[name] = f
+	log.Debugf("Router: '%s' registered with success.", name)
 }
 
 // GetSettedRouter gets the registered router for the provided controller, middlewares

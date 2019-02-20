@@ -57,30 +57,35 @@ func Default(routerName string) *GatewayService {
 	}
 
 	return g
-
 }
 
-func newGatewayService(c *controller.Controller, cfg *config.GatewayConfig) (*GatewayService, error) {
-	g := &GatewayService{
-		c:      c,
-		Config: cfg,
-		Server: &http.Server{},
-	}
-	// set the config
-	err := g.setConfig()
-	if err != nil {
-		log.Errorf("Setting Config failed: %v", err)
-		return nil, err
-	}
+// Controller returns the gateway controller
+func (g *GatewayService) Controller() *controller.Controller {
+	return g.c
+}
 
+// RegisterModels registers the model within the provided gateway's controller
+func (g *GatewayService) RegisterModels(models ...interface{}) error {
+	return g.Controller().RegisterModels(models...)
+}
+
+// RegisterRepositories registers the repositories within given gateway service controller
+func (g *GatewayService) RegisterRepositories(repos ...interface{}) error {
+	return g.Controller().RegisterRepositories(repos...)
+}
+
+// SetHandlerAndRoutes sets the routes for the gateway service
+// This step should be done as the last step before running the service
+// It is based on the registered models and repositories
+func (g *GatewayService) SetHandlerAndRoutes() (err error) {
 	// set the routes and the router
 	g.Server.Handler, err = routers.GetSettedRouter(g.c, g.Config.Router)
 	if err != nil {
 		log.Debugf("Getting Setted Router failed for the router named: '%s'. %v", g.Config.Router.Name, err)
-		return nil, err
+		return err
 	}
-
-	return g, nil
+	log.Debugf("Registered router: %s with following default middlewares: '%v'", g.Config.Router.Name, g.Config.Router.DefaultMiddlewares)
+	return nil
 }
 
 // Run starts the GatewayService service and starts listening and serving
@@ -106,21 +111,14 @@ func (g *GatewayService) Run(ctx context.Context) {
 
 	}()
 
-	quit := make(chan os.Signal)
-
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
 
-Outer:
-	for {
-		select {
-		case <-ctx.Done():
-			log.Infof("Shutting Down the server with context: %v", ctx.Err())
-			break Outer
-		case <-quit:
-			log.Info("Shutdown Server...")
-			break Outer
-		default:
-		}
+	select {
+	case <-ctx.Done():
+		log.Infof("Shutting Down the server with context: %v", ctx.Err())
+	case s := <-quit:
+		log.Infof("Received Signal: '%s'. Shutdown Server begins...", s)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, g.Config.ShutdownTimeout)
@@ -141,4 +139,20 @@ func (g *GatewayService) setConfig() error {
 
 	g.Server.Addr = fmt.Sprintf("%s:%d", g.Config.Hostname, g.Config.Port)
 	return nil
+}
+
+func newGatewayService(c *controller.Controller, cfg *config.GatewayConfig) (*GatewayService, error) {
+	g := &GatewayService{
+		c:      c,
+		Config: cfg,
+		Server: &http.Server{},
+	}
+	// set the config
+	err := g.setConfig()
+	if err != nil {
+		log.Errorf("Setting Config failed: %v", err)
+		return nil, err
+	}
+
+	return g, nil
 }

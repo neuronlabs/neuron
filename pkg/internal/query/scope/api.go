@@ -104,9 +104,9 @@ func GetTotalIncludeFieldCount(s *Scope) int {
 
 // GetValueAddress gets the address of the value for given scope
 // in order to set it use the SetValueFromAddressable
-func GetValueAddress(s *Scope) interface{} {
-	return s.getValueAddress()
-}
+// func GetValueAddress(s *Scope) interface{} {
+// 	return s.getValueAddress()
+// }
 
 // IsRoot checks if given scope is a root scope of the query
 func IsRoot(s *Scope) bool {
