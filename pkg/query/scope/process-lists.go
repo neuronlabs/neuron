@@ -58,7 +58,7 @@ func afterListFunc(s *Scope) error {
 
 	afterLister := reflect.New(s.Struct().Type()).Interface().(wAfterLister)
 
-	if err := afterLister.WAfterList(s); err != nil {
+	if err := afterLister.HAfterList(s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}
@@ -74,7 +74,7 @@ func beforeListFunc(s *Scope) error {
 
 	beforeLister := reflect.New(s.Struct().Type()).Interface().(wBeforeLister)
 
-	if err := beforeLister.WBeforeList(s); err != nil {
+	if err := beforeLister.HBeforeList(s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}

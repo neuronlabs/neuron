@@ -64,6 +64,11 @@ func (s *StructField) ApiName() string {
 	return (*models.StructField)(s).Name()
 }
 
+// FieldIndex gets the field's index
+func (s *StructField) FieldIndex() []int {
+	return (*models.StructField)(s).FieldIndex()
+}
+
 // Nested returns the nested structure
 func (s *StructField) Nested() *NestedStruct {
 	return (*NestedStruct)(models.FieldsNested((*models.StructField)(s)))

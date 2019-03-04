@@ -72,11 +72,27 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	return (*StructField)(field), true
 }
 
+// Field
 func (m *ModelStruct) Fields() (fields []*StructField) {
 	for _, field := range models.StructAllFields((*models.ModelStruct)(m)) {
 		fields = append(fields, (*StructField)(field))
 	}
 	return
+}
+
+// StructFields return all struct fields used by the model
+func (m *ModelStruct) StructFields() []*StructField {
+
+	// init StructField
+	var mFields []*StructField
+
+	fields := (*models.ModelStruct)(m).StructFields()
+	for _, f := range fields {
+		mFields = append(mFields, (*StructField)(f))
+	}
+
+	return mFields
+
 }
 
 // LanguageField returns model's language field

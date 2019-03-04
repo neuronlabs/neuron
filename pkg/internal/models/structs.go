@@ -107,6 +107,42 @@ func (m *ModelStruct) Fields() []*StructField {
 	return m.fields
 }
 
+// StructFields return all the StructFields used in the ModelStruct
+func (m *ModelStruct) StructFields() (fields []*StructField) {
+	// add primary
+	fields = append(fields, m.PrimaryField())
+
+	// add attributes
+	for _, f := range m.attributes {
+		fields = append(fields, f)
+	}
+
+	// add relationships
+	for _, f := range m.relationships {
+		fields = append(fields, f)
+	}
+
+	// add foreignkeys
+	for _, f := range m.foreignKeys {
+		fields = append(fields, f)
+	}
+
+	// add i18n fields
+	for _, f := range m.i18n {
+		fields = append(fields, f)
+	}
+
+	// add language field
+	fields = append(fields, m.language)
+
+	// add filterKey fields
+	for _, f := range m.filterKeys {
+		fields = append(fields, f)
+	}
+
+	return
+}
+
 // Flags return model's flags
 func (m *ModelStruct) Flags() *flags.Container {
 	return m.flags
@@ -395,13 +431,13 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 				continue
 			}
 			single = single.Elem()
-			primaryValue := single.Field(primaryIndex)
+			primaryValue := single.FieldByIndex(primaryIndex)
 			if primaryValue.IsValid() {
 				primaries = reflect.Append(primaries, primaryValue)
 			}
 		}
 	case reflect.Ptr:
-		primaryValue := value.Elem().Field(primaryIndex)
+		primaryValue := value.Elem().FieldByIndex(primaryIndex)
 		if primaryValue.IsValid() {
 			primaries = primaryValue
 		} else {

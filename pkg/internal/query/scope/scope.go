@@ -182,6 +182,66 @@ ScopeFields:
 	return nil
 }
 
+// AddToSelectedFields adds the fields to the scope's selected fields
+func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
+	return s.addToSelectedFields(fields...)
+}
+
+func (s *Scope) addToSelectedFields(fields ...interface{}) error {
+	var selectedFields map[*models.StructField]struct{} = make(map[*models.StructField]struct{})
+
+	for _, field := range fields {
+		var found bool
+		switch f := field.(type) {
+		case string:
+
+			for _, sField := range models.StructAllFields(s.mStruct) {
+				if sField.ApiName() == f || sField.Name() == f {
+					selectedFields[sField] = struct{}{}
+					found = true
+					break
+				}
+			}
+			if !found {
+				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+				return internal.IErrFieldNotFound
+			}
+
+		case *models.StructField:
+			for _, sField := range models.StructAllFields(s.mStruct) {
+				if sField == f {
+					found = true
+					selectedFields[sField] = struct{}{}
+					break
+				}
+			}
+			if !found {
+				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				return internal.IErrFieldNotFound
+			}
+		default:
+			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
+			return internal.IErrInvalidType
+		}
+	}
+
+	// check if fields were not already selected
+	for _, alreadySelected := range s.selectedFields {
+		_, ok := selectedFields[alreadySelected]
+		if ok {
+			log.Errorf("Field: %s already set for the given scope.", alreadySelected.Name())
+			return internal.IErrFieldAlreadySelected
+		}
+	}
+
+	// add all fields to scope's selected fields
+	for f := range selectedFields {
+		s.selectedFields = append(s.selectedFields, f)
+	}
+
+	return nil
+}
+
 func (s *Scope) AddSelectedField(field *models.StructField) {
 	s.selectedFields = append(s.selectedFields, field)
 }
@@ -198,6 +258,11 @@ func (s *Scope) Fieldset() []*models.StructField {
 		fs = append(fs, field)
 	}
 	return fs
+}
+
+func (s *Scope) InFieldset(field string) (*models.StructField, bool) {
+	f, ok := s.fieldset[field]
+	return f, ok
 }
 
 func (s *Scope) Flags() *flags.Container {
@@ -239,12 +304,14 @@ func (s *Scope) SetFlagsFrom(flgs ...*flags.Container) {
 
 // WithContext sets the query Scope context
 func (s *Scope) WithContext(ctx context.Context) {
+	// overwrite the scopIDCtx with it's own value
 	ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, s.ctx.Value(internal.ScopeIDCtxKey))
 
 	ctrl := s.ctx.Value(internal.ControllerIDCtxKey)
 	if ctrl != nil {
 		ctx = context.WithValue(ctx, internal.ControllerIDCtxKey, ctrl)
 	}
+
 	s.ctx = ctx
 }
 
@@ -447,8 +514,23 @@ func (s *Scope) SetNilFieldset() {
 	s.fieldset = nil
 }
 
+// AddToFieldset adds the fields into the fieldset
+func (s *Scope) AddToFieldset(fields ...interface{}) error {
+	if s.fieldset == nil {
+		s.fieldset = map[string]*models.StructField{}
+	}
+
+	return s.addToFieldset(fields...)
+}
+
+// SetFields sets the fieldset from the provided fields
 func (s *Scope) SetFields(fields ...interface{}) error {
-	fieldset := map[string]*models.StructField{}
+	s.fieldset = map[string]*models.StructField{}
+	s.addToFieldset(fields...)
+	return nil
+}
+
+func (s *Scope) addToFieldset(fields ...interface{}) error {
 	for _, field := range fields {
 		var found bool
 		switch f := field.(type) {
@@ -456,31 +538,33 @@ func (s *Scope) SetFields(fields ...interface{}) error {
 
 			for _, sField := range models.StructAllFields(s.mStruct) {
 				if sField.ApiName() == f || sField.Name() == f {
-					fieldset[sField.ApiName()] = sField
+					s.fieldset[sField.ApiName()] = sField
 					found = true
 					break
 				}
 			}
 			if !found {
-				return errors.Errorf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+				return internal.IErrFieldNotFound
 			}
 
 		case *models.StructField:
 			for _, sField := range models.StructAllFields(s.mStruct) {
 				if sField == f {
-					fieldset[sField.ApiName()] = f
+					s.fieldset[sField.ApiName()] = f
 					found = true
 					break
 				}
 			}
 			if !found {
-				return errors.Errorf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				return internal.IErrFieldNotFound
 			}
 		default:
-			return errors.Errorf("Unknown field type: %v", reflect.TypeOf(f))
+			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
+			return internal.IErrInvalidType
 		}
 	}
-	s.fieldset = fieldset
 	return nil
 }
 
@@ -490,7 +574,7 @@ func (s *Scope) SetFields(fields ...interface{}) error {
 //		- provided nil Value for the scope
 //		- the scope's Value is of invalid type
 func (s *Scope) getLangtagValue() (langtag string, err error) {
-	var index int
+	var index []int
 	if index, err = s.getLangtagIndex(); err != nil {
 		return
 	}
@@ -508,7 +592,7 @@ func (s *Scope) getLangtagValue() (langtag string, err error) {
 			return
 		}
 
-		langField := v.Elem().Field(index)
+		langField := v.Elem().FieldByIndex(index)
 		langtag = langField.String()
 		return
 	case reflect.Invalid:
@@ -522,7 +606,7 @@ func (s *Scope) getLangtagValue() (langtag string, err error) {
 // IsPrimaryFieldSelected checks if the Scopes primary field is selected
 func (s *Scope) IsPrimaryFieldSelected() bool {
 	for _, field := range s.selectedFields {
-		if field.FieldIndex() == models.StructPrimary(s.mStruct).FieldIndex() {
+		if field == models.StructPrimary(s.mStruct) {
 			return true
 		}
 	}
@@ -540,7 +624,7 @@ func (s *Scope) isRoot() bool {
 //		- if the model does not support i18n
 //		- if the scope's Value is nil pointer
 func (s *Scope) setLangtagValue(langtag string) (err error) {
-	var index int
+	var index []int
 	if index, err = s.getLangtagIndex(); err != nil {
 		return
 	}
@@ -555,7 +639,7 @@ func (s *Scope) setLangtagValue(langtag string) (err error) {
 		if v.Elem().Type() != s.mStruct.Type() {
 			return s.errValueTypeDoesNotMatch(v.Type())
 		}
-		v.Elem().Field(index).SetString(langtag)
+		v.Elem().FieldByIndex(index).SetString(langtag)
 	case reflect.Slice:
 
 		if v.Type().Elem().Kind() != reflect.Ptr {
@@ -570,7 +654,7 @@ func (s *Scope) setLangtagValue(langtag string) (err error) {
 			if elem.IsNil() {
 				continue
 			}
-			elem.Elem().Field(index).SetString(langtag)
+			elem.Elem().FieldByIndex(index).SetString(langtag)
 		}
 
 	case reflect.Invalid:
@@ -617,7 +701,7 @@ func (s *Scope) getRelatedScope() (relScope *Scope, err error) {
 		return
 	}
 
-	fieldValue := scopeValue.Elem().Field(relatedField.FieldIndex())
+	fieldValue := scopeValue.Elem().FieldByIndex(relatedField.FieldIndex())
 	var primaries reflect.Value
 
 	// if no values are present within given field
@@ -687,7 +771,7 @@ func (s *Scope) getPrimaryFieldValues() (values []interface{}, err error) {
 	primaryIndex := models.StructPrimary(s.mStruct).FieldIndex()
 
 	addPrimaryValue := func(single reflect.Value) {
-		primaryValue := single.Elem().Field(primaryIndex)
+		primaryValue := single.Elem().FieldByIndex(primaryIndex)
 		values = append(values, primaryValue.Interface())
 	}
 
@@ -747,7 +831,7 @@ func (s *Scope) SetCollectionValues() error {
 
 		setValueToCollection = func(value reflect.Value) {
 
-			primaryValue := value.Elem().Field(primIndex)
+			primaryValue := value.Elem().FieldByIndex(primIndex)
 			if !primaryValue.IsValid() {
 				return
 			}
@@ -773,8 +857,8 @@ func (s *Scope) SetCollectionValues() error {
 						index := included.FieldIndex()
 
 						// check if included field in the collection Values has this field
-						if insideField := insideValue.Elem().Field(index); !insideField.IsNil() {
-							thisField := value.Elem().Field(index)
+						if insideField := insideValue.Elem().FieldByIndex(index); !insideField.IsNil() {
+							thisField := value.Elem().FieldByIndex(index)
 							if thisField.IsNil() {
 								thisField.Set(insideField)
 							}
@@ -1176,7 +1260,7 @@ func (s *Scope) getOrCreatePrimaryFilter(primField *models.StructField) (filter 
 
 	for _, pf := range s.primaryFilters {
 
-		if pf.StructField().FieldIndex() == primField.FieldIndex() {
+		if pf.StructField() == primField {
 			filter = pf
 			return
 		}
@@ -1234,7 +1318,7 @@ func (s *Scope) getOrCreateAttributeFilter(
 	}
 
 	for _, attrFilter := range s.attributeFilters {
-		if attrFilter.StructField().FieldIndex() == sField.FieldIndex() {
+		if attrFilter.StructField() == sField {
 			filter = attrFilter
 			return
 		}
@@ -1298,7 +1382,7 @@ func (s *Scope) getOrCreateRelationshipFilter(sField *models.StructField) (filte
 
 	// Check if no relationship filter already exists
 	for _, relFilter := range s.relationshipFilters {
-		if relFilter.StructField().FieldIndex() == sField.FieldIndex() {
+		if relFilter.StructField() == sField {
 			filter = relFilter
 
 			return
@@ -1538,7 +1622,7 @@ func (s *Scope) getOrCreateIncludeField(
 	field *models.StructField,
 ) (includeField *IncludeField) {
 	for _, included := range s.includedFields {
-		if included.FieldIndex() == field.FieldIndex() {
+		if included.StructField == field {
 			return included
 		}
 	}
@@ -1953,7 +2037,7 @@ func getIDAndRelated(req *http.Request, mStruct *models.ModelStruct,
 Language
 */
 
-func (s *Scope) getLangtagIndex() (index int, err error) {
+func (s *Scope) getLangtagIndex() (index []int, err error) {
 	if models.StructLanguage(s.mStruct) == nil {
 		err = fmt.Errorf("Model: '%v' does not support i18n langtags.", s.mStruct.Type())
 		return

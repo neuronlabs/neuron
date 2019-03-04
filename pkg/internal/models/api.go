@@ -111,6 +111,14 @@ func StructRelField(m *ModelStruct, relField string) (*StructField, bool) {
 // StructForeignKeyField returns ModelStruct foreign key field if exists
 func StructForeignKeyField(m *ModelStruct, fk string) (*StructField, bool) {
 	s, ok := m.foreignKeys[fk]
+	if !ok {
+		// If no APIname provided, check if this isn't the struct field name
+		for _, field := range m.foreignKeys {
+			if field.Name() == fk {
+				return field, true
+			}
+		}
+	}
 	return s, ok
 }
 

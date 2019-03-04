@@ -22,7 +22,7 @@ type testBeforePatcher struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (b *testBeforePatcher) WBeforePatch(s *scope.Scope) error {
+func (b *testBeforePatcher) HBeforePatch(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -35,7 +35,7 @@ type testAfterPatcher struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (a *testAfterPatcher) WAfterPatch(s *scope.Scope) error {
+func (a *testAfterPatcher) HAfterPatch(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled

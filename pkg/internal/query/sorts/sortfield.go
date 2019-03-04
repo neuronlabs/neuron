@@ -93,7 +93,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 		// search for the subfields if already created
 		for i := range s.subFields {
-			if s.subFields[i].structField.FieldIndex() == sField.FieldIndex() {
+			if s.subFields[i].structField == sField {
 				subField = s.subFields[i]
 				break
 			}

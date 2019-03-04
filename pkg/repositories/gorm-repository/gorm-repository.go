@@ -1,7 +1,6 @@
 package gormrepo
 
 import (
-	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/kucjac/jsonapi/pkg/log"
@@ -11,6 +10,7 @@ import (
 	"github.com/kucjac/uni-db"
 	"github.com/kucjac/uni-db/gormconv"
 	"github.com/kucjac/uni-logger"
+	"github.com/pkg/errors"
 	"reflect"
 	debugStack "runtime/debug"
 )
@@ -35,16 +35,16 @@ type GORMRepository struct {
 	db        *gorm.DB
 	converter *gormconv.GORMConverter
 
+	// Model is the predefined model for given repository
+	Model *mapping.ModelStruct
+
+	// fieldMapping maps the StructFields of API and GORM
+	fieldMapping map[interface{}]interface{}
+
 	ptrSize int
 
 	logger   unilogger.LeveledLogger
 	logLevel unilogger.Level
-}
-
-// New implements repository interface that returns new GORM Repository
-func (g *GORMRepository) New() interface{} {
-	clone, _ := New(g.db.New())
-	return clone
 }
 
 // New creates new GORM Repository for the provided database connection
@@ -59,13 +59,89 @@ func New(db *gorm.DB) (*GORMRepository, error) {
 	return gormRepo, nil
 }
 
+// New implements repository interface that returns new GORM Repository
+func (g *GORMRepository) New(model *mapping.ModelStruct) interface{} {
+
+	clone, _ := New(g.db.New())
+	clone.mapFields(model)
+
+	return clone
+}
+
+func (g *GORMRepository) mapFields(model *mapping.ModelStruct) {
+	g.Model = model
+	mv := reflect.New(model.Type())
+
+	// Get Gorm ModelStruct
+	ms := g.db.NewScope(mv).GetModelStruct()
+
+	// get model's StructField
+	modelFields := model.StructFields()
+
+	g.fieldMapping = make(map[interface{}]interface{})
+
+	// map the gField with the mField
+	for _, gField := range ms.StructFields {
+		for i := 0; i < len(modelFields); i++ {
+
+			mField := modelFields[i]
+
+			// Match if the field offset matches
+			if mField.ReflectField().Offset == gField.Struct.Offset {
+				g.fieldMapping[gField] = mField
+				g.fieldMapping[mField] = gField
+
+				// delete from modelFields
+				modelFields = modelFields[:i+copy(modelFields[i:], modelFields[i+1:])]
+				i -= 1
+			}
+
+		}
+	}
+}
+
+var (
+	ErrFieldNotMapped = errors.New("Field not mapped")
+)
+
+func (g *GORMRepository) getGormField(sField *mapping.StructField) (*gorm.StructField, error) {
+	f, ok := g.fieldMapping[sField]
+	if !ok {
+		return nil, ErrFieldNotMapped
+	}
+
+	gField, ok := f.(*gorm.StructField)
+	if !ok {
+		return nil, errors.New("Not a gorm.StructField")
+	}
+
+	return gField, nil
+}
+
+func (g *GORMRepository) getApiField(gField *gorm.Field) (*mapping.StructField, error) {
+	f, ok := g.fieldMapping[gField]
+	if !ok {
+		return nil, ErrFieldNotMapped
+	}
+
+	mField, ok := f.(*mapping.StructField)
+	if !ok {
+		return nil, errors.New("Not a *mapping.StructField.")
+	}
+	return mField, nil
+
+}
+
 // NewDB creates new database with the specific associations set to false
 func (g *GORMRepository) NewDB() *gorm.DB {
 	db := g.db.New()
+
+	db.LogMode(false)
 	db = db.Set("gorm:association_autoupdate", false)
 	db = db.Set("gorm:association_autocreate", false)
 	db = db.Set("gorm:association_save_reference", false)
 	db = db.Set("gorm:save_associations", false)
+	db.LogMode(true)
 	return db
 }
 
@@ -98,7 +174,6 @@ func (g *GORMRepository) initialize(db *gorm.DB) (err error) {
 
 	db.Callback().Create().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
 	db.Callback().Update().Replace("gorm:save_after_associations", g.saveAfterAssociationsCallback)
-
 	db.Callback().Create().Replace("gorm:save_before_associations", g.saveBeforeAssociationsCallback)
 	db.Callback().Update().Replace("gorm:save_before_associations", g.saveBeforeAssociationsCallback)
 
@@ -121,8 +196,7 @@ func (g *GORMRepository) RepositoryName() string {
 
 func (g *GORMRepository) log() unilogger.LeveledLogger {
 	if g.logger == nil {
-		logger := log.Logger()
-		g.logger = logger
+		g.logger = log.Logger()
 	}
 	return g.logger
 

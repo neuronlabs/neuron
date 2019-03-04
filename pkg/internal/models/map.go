@@ -174,169 +174,176 @@ func BuildModelStruct(
 
 	modelStruct := NewModelStruct(modelType, collection, flgs)
 
-	var assignedFields int
-	for i := 0; i < modelType.NumField(); i++ {
-		// don't use private fields
-		if !modelValue.Field(i).CanSet() {
-			continue
-		}
+	// Define the function definition
+	var mapFields func(modelType reflect.Type, modelValue reflect.Value, index []int) error
 
-		tag, ok := modelType.Field(i).Tag.Lookup(internal.AnnotationJSONAPI)
-		if !ok {
-			continue
-		}
+	var (
+		assignedFields int
+		init           bool = true
+	)
 
-		if tag == "-" {
-			continue
-		}
+	// assign the function to it
+	mapFields = func(modelType reflect.Type, modelValue reflect.Value, index []int) error {
 
-		var tagValues url.Values
-		tField := modelType.Field(i)
+		for i := 0; i < modelType.NumField(); i++ {
 
-		structField := NewStructField(tField, modelStruct)
-		tagValues, err = FieldTagValues(structField, tag)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Getting tag values failed. Model: %s, SField: %s", modelStruct.modelType.Name(), tField.Name)
-		}
+			var fieldIndex []int
 
-		assignedFields++
+			// check if field is embedded
+			tField := modelType.Field(i)
 
-		// Check if field contains the name
-		var apiName string
-		name := tagValues.Get(internal.AnnotationName)
-		if name != "" {
-			apiName = name
-		} else {
-			apiName = namerFunc(tField.Name)
-		}
+			if init {
+				fieldIndex = []int{i}
+				init = false
+			} else {
+				fieldIndex = append(index, i)
+			}
 
-		FieldsSetApiName(structField, apiName)
+			if tField.Anonymous {
+				// the field is embedded struct or ptr to struct
+				nestedModelType := tField.Type
+				var nestedModelValue reflect.Value
 
-		// Set field type
-		values := tagValues[internal.AnnotationFieldType]
-		if len(values) == 0 {
-			return nil, errors.Errorf("StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
-		} else {
+				if nestedModelType.Kind() == reflect.Ptr {
+					nestedModelType = nestedModelType.Elem()
+				}
+
+				nestedModelValue = reflect.New(nestedModelType).Elem()
+
+				if err := mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
+					log.Debugf("Mapping embedded field: %s failed: %v", tField.Name, err)
+					return err
+				}
+				continue
+			}
+
+			// don't use private fields
+			if !modelValue.Field(i).CanSet() {
+				log.Debugf("Field not settable: %s", modelType.Field(i).Name)
+				continue
+			}
+
+			tag, ok := tField.Tag.Lookup(internal.AnnotationJSONAPI)
+			if !ok {
+				continue
+			}
+
+			if tag == "-" {
+				continue
+			}
+
+			var tagValues url.Values
+
+			structField := NewStructField(tField, modelStruct)
+			tagValues, err = FieldTagValues(structField, tag)
+			if err != nil {
+				return errors.Wrapf(err, "Getting tag values failed. Model: %s, SField: %s", modelStruct.modelType.Name(), tField.Name)
+			}
+			structField.fieldIndex = make([]int, len(fieldIndex))
+			copy(structField.fieldIndex, fieldIndex)
+
+			assignedFields++
+
+			// Check if field contains the name
+			var apiName string
+			name := tagValues.Get(internal.AnnotationName)
+			if name != "" {
+				apiName = name
+			} else {
+				apiName = namerFunc(tField.Name)
+			}
+
+			FieldsSetApiName(structField, apiName)
+
 			// Set field type
-			value := values[0]
-			switch value {
-			case internal.AnnotationPrimary:
-				FieldSetFieldKind(structField, KindPrimary)
-				StructSetPrimary(modelStruct, structField)
-				StructAppendField(modelStruct, structField)
+			values := tagValues[internal.AnnotationFieldType]
+			if len(values) == 0 {
+				return errors.Errorf("StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+			} else {
+				// Set field type
+				value := values[0]
+				switch value {
+				case internal.AnnotationPrimary:
+					FieldSetFieldKind(structField, KindPrimary)
+					StructSetPrimary(modelStruct, structField)
+					StructAppendField(modelStruct, structField)
 
-			case internal.AnnotationRelation:
-				// add relationField to fields
-				StructAppendField(modelStruct, structField)
+				case internal.AnnotationRelation:
+					// add relationField to fields
+					StructAppendField(modelStruct, structField)
 
-				// set related type
-				err = FieldSetRelatedType(structField)
-				if err != nil {
-					return nil, errors.Wrap(err, "FieldSetRelatedType failed")
-				}
-
-				// check duplicates
-				_, ok := StructRelField(modelStruct, apiName)
-				if ok {
-					err = errors.Errorf("Duplicated jsonapi relationship field name: '%s' for model: '%v'.", apiName, modelType.Name())
-					return nil, err
-				}
-
-				// set relationship field
-				StructSetRelField(modelStruct, structField)
-			case internal.AnnotationAttribute:
-				FieldSetFieldKind(structField, KindAttribute)
-				// check if no duplicates
-				_, ok := StructAttr(modelStruct, apiName)
-				if ok {
-					err = errors.Errorf("Duplicated jsonapi attribute name: '%s' for model: '%v'.",
-						structField.apiName, modelStruct.modelType.Name())
-					return nil, err
-				}
-
-				StructAppendField(modelStruct, structField)
-
-				t := structField.ReflectField().Type
-				if t.Kind() == reflect.Ptr {
-					FieldSetFlag(structField, FPtr)
-					t = t.Elem()
-				}
-
-				switch t.Kind() {
-				case reflect.Struct:
-					if t == reflect.TypeOf(time.Time{}) {
-						FieldSetFlag(structField, FTime)
-					} else {
-						// this case it must be a nested struct field
-						FieldSetFlag(structField, FNestedStruct)
-
-						nStruct, err := getNestedStruct(t, structField, namerFunc)
-						if err != nil {
-							log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
-							return nil, err
-						}
-						FieldSetNested(structField, nStruct)
+					// set related type
+					err = FieldSetRelatedType(structField)
+					if err != nil {
+						return errors.Wrap(err, "FieldSetRelatedType failed")
 					}
 
-					if FieldIsPtr(structField) {
-						FieldSetFlag(structField, FBasePtr)
+					// check duplicates
+					_, ok := StructRelField(modelStruct, apiName)
+					if ok {
+						err = errors.Errorf("Duplicated jsonapi relationship field name: '%s' for model: '%v'.", apiName, modelType.Name())
+						return err
 					}
 
-				case reflect.Map:
-					FieldSetFlag(structField, FMap)
-
-					mapElem := t.Elem()
-
-					// isPtr is a bool that defines if the given slice Elem is a pointer type
-					// flags are not set now due to the slice sliceElem possiblities
-					var isPtr bool
-
-					// map type must have a key of type string and value of basic type
-					if mapElem.Kind() == reflect.Ptr {
-						isPtr = true
-
-						mapElem = mapElem.Elem()
+					// set relationship field
+					StructSetRelField(modelStruct, structField)
+				case internal.AnnotationAttribute:
+					FieldSetFieldKind(structField, KindAttribute)
+					// check if no duplicates
+					_, ok := StructAttr(modelStruct, apiName)
+					if ok {
+						err = errors.Errorf("Duplicated jsonapi attribute name: '%s' for model: '%v'.",
+							structField.apiName, modelStruct.modelType.Name())
+						return err
 					}
 
-					// Check the map 'value' kind
-					switch mapElem.Kind() {
-					// struct may be time or nested struct
+					StructAppendField(modelStruct, structField)
+
+					t := structField.ReflectField().Type
+					if t.Kind() == reflect.Ptr {
+						FieldSetFlag(structField, FPtr)
+						t = t.Elem()
+					}
+
+					switch t.Kind() {
 					case reflect.Struct:
-						// check if it is time
-						if mapElem == reflect.TypeOf(time.Time{}) {
+						if t == reflect.TypeOf(time.Time{}) {
 							FieldSetFlag(structField, FTime)
-							// otherwise it must be a nested struct
 						} else {
+							// this case it must be a nested struct field
 							FieldSetFlag(structField, FNestedStruct)
 
-							nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+							nStruct, err := getNestedStruct(t, structField, namerFunc)
 							if err != nil {
-								log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
-								return nil, err
+								log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
+								return err
 							}
 							FieldSetNested(structField, nStruct)
 						}
-						// if the value is pointer add the base flag
-						if isPtr {
+
+						if FieldIsPtr(structField) {
 							FieldSetFlag(structField, FBasePtr)
 						}
 
-						// map 'value' may be a slice or array
-					case reflect.Slice, reflect.Array:
-						// TO DO:
-						// Support map of slices
-						// add flag is slice?
-						mapElem = mapElem.Elem()
-						for mapElem.Kind() == reflect.Slice || mapElem.Kind() == reflect.Array {
-							mapElem = mapElem.Elem()
-						}
+					case reflect.Map:
+						FieldSetFlag(structField, FMap)
 
+						mapElem := t.Elem()
+
+						// isPtr is a bool that defines if the given slice Elem is a pointer type
+						// flags are not set now due to the slice sliceElem possiblities
+						var isPtr bool
+
+						// map type must have a key of type string and value of basic type
 						if mapElem.Kind() == reflect.Ptr {
-							FieldSetFlag(structField, FBasePtr)
+							isPtr = true
+
 							mapElem = mapElem.Elem()
 						}
 
+						// Check the map 'value' kind
 						switch mapElem.Kind() {
+						// struct may be time or nested struct
 						case reflect.Struct:
 							// check if it is time
 							if mapElem == reflect.TypeOf(time.Time{}) {
@@ -344,162 +351,204 @@ func BuildModelStruct(
 								// otherwise it must be a nested struct
 							} else {
 								FieldSetFlag(structField, FNestedStruct)
+
 								nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
 								if err != nil {
 									log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
-									return nil, err
+									return err
 								}
 								FieldSetNested(structField, nStruct)
 							}
-						case reflect.Slice, reflect.Array, reflect.Map:
-							// disallow nested map, arrs, maps in ptr type slices
-							err = errors.Errorf("StructField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map.", structField.Name())
-							return nil, err
+							// if the value is pointer add the base flag
+							if isPtr {
+								FieldSetFlag(structField, FBasePtr)
+							}
+
+							// map 'value' may be a slice or array
+						case reflect.Slice, reflect.Array:
+							// TO DO:
+							// Support map of slices
+							// add flag is slice?
+							mapElem = mapElem.Elem()
+							for mapElem.Kind() == reflect.Slice || mapElem.Kind() == reflect.Array {
+								mapElem = mapElem.Elem()
+							}
+
+							if mapElem.Kind() == reflect.Ptr {
+								FieldSetFlag(structField, FBasePtr)
+								mapElem = mapElem.Elem()
+							}
+
+							switch mapElem.Kind() {
+							case reflect.Struct:
+								// check if it is time
+								if mapElem == reflect.TypeOf(time.Time{}) {
+									FieldSetFlag(structField, FTime)
+									// otherwise it must be a nested struct
+								} else {
+									FieldSetFlag(structField, FNestedStruct)
+									nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+									if err != nil {
+										log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
+										return err
+									}
+									FieldSetNested(structField, nStruct)
+								}
+							case reflect.Slice, reflect.Array, reflect.Map:
+								// disallow nested map, arrs, maps in ptr type slices
+								err = errors.Errorf("StructField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map.", structField.Name())
+								return err
+							default:
+							}
+						default:
+							if isPtr {
+								FieldSetFlag(structField, FBasePtr)
+							}
+
+						}
+					case reflect.Slice, reflect.Array:
+						if t.Kind() == reflect.Slice {
+							FieldSetFlag(structField, FSlice)
+						} else {
+							FieldSetFlag(structField, FArray)
+						}
+
+						// dereference the slice
+						// check the field base type
+						sliceElem := t
+						for sliceElem.Kind() == reflect.Slice || sliceElem.Kind() == reflect.Array {
+							sliceElem = sliceElem.Elem()
+						}
+
+						if sliceElem.Kind() == reflect.Ptr {
+							// add maybe slice Field Ptr
+							FieldSetFlag(structField, FBasePtr)
+							sliceElem = sliceElem.Elem()
+						}
+
+						switch sliceElem.Kind() {
+						case reflect.Struct:
+							// check if time
+							if sliceElem == reflect.TypeOf(time.Time{}) {
+								FieldSetFlag(structField, FTime)
+							} else {
+								// this should be the nested struct
+								FieldSetFlag(structField, FNestedStruct)
+								nStruct, err := getNestedStruct(sliceElem, structField, namerFunc)
+								if err != nil {
+									log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
+									return err
+								}
+								structField.nested = nStruct
+							}
+						case reflect.Map:
+							// map should not be allow as slice nested field
+							err = errors.Errorf("Map can't be a base of the slice. Field: '%s'", structField.Name())
+							return err
+						case reflect.Array, reflect.Slice:
+							// cannot use slice of ptr slices
+							err = errors.Errorf("Ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
+							return err
 						default:
 						}
 					default:
-						if isPtr {
+						if FieldIsPtr(structField) {
 							FieldSetFlag(structField, FBasePtr)
 						}
 
 					}
-				case reflect.Slice, reflect.Array:
-					if t.Kind() == reflect.Slice {
-						FieldSetFlag(structField, FSlice)
-					} else {
-						FieldSetFlag(structField, FArray)
+					StructSetAttr(modelStruct, structField)
+				case internal.AnnotationForeignKey:
+					FieldSetFieldKind(structField, KindForeignKey)
+					// Check if already exists
+					_, ok := StructForeignKeyField(modelStruct, structField.ApiName())
+					if ok {
+						err = errors.Errorf("Duplicated jsonapi foreign key name: '%s' for model: '%v'", structField.ApiName(), modelStruct.Type().Name())
+						return err
 					}
+					StructAppendField(modelStruct, structField)
+					StructSetForeignKey(modelStruct, structField)
 
-					// dereference the slice
-					// check the field base type
-					sliceElem := t
-					for sliceElem.Kind() == reflect.Slice || sliceElem.Kind() == reflect.Array {
-						sliceElem = sliceElem.Elem()
+				case internal.AnnotationFilterKey:
+					FieldSetFieldKind(structField, KindFilterKey)
+					_, ok := StructFilterKeyField(modelStruct, structField.ApiName())
+					if ok {
+						err = errors.Errorf("Duplicated jsonapi filter key name: '%s' for model: '%v'", structField.ApiName(), modelStruct.Type().Name())
+						return err
 					}
-
-					if sliceElem.Kind() == reflect.Ptr {
-						// add maybe slice Field Ptr
-						FieldSetFlag(structField, FBasePtr)
-						sliceElem = sliceElem.Elem()
-					}
-
-					switch sliceElem.Kind() {
-					case reflect.Struct:
-						// check if time
-						if sliceElem == reflect.TypeOf(time.Time{}) {
-							FieldSetFlag(structField, FTime)
-						} else {
-							// this should be the nested struct
-							FieldSetFlag(structField, FNestedStruct)
-							nStruct, err := getNestedStruct(sliceElem, structField, namerFunc)
-							if err != nil {
-								log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
-								return nil, err
-							}
-							structField.nested = nStruct
-						}
-					case reflect.Map:
-						// map should not be allow as slice nested field
-						err = errors.Errorf("Map can't be a base of the slice. Field: '%s'", structField.Name())
-						return nil, err
-					case reflect.Array, reflect.Slice:
-						// cannot use slice of ptr slices
-						err = errors.Errorf("Ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
-						return nil, err
-					default:
-					}
+					// modelStruct.fields = append(modelStruct.fields, structField)
+					StructSetFilterKey(modelStruct, structField)
 				default:
-					if FieldIsPtr(structField) {
-						FieldSetFlag(structField, FBasePtr)
+					return errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.Type().Name(), tField.Name)
+				}
+			}
+
+			// iterate over structfield tags
+			for key, values := range tagValues {
+				switch key {
+				case internal.AnnotationFieldType, internal.AnnotationName:
+					continue
+				case internal.AnnotationFlags:
+					for _, value := range values {
+
+						switch value {
+						case internal.AnnotationClientID:
+							FieldSetFlag(structField, FClientID)
+						case internal.AnnotationNoFilter:
+							FieldSetFlag(structField, FNoFilter)
+						case internal.AnnotationHidden:
+							FieldSetFlag(structField, FHidden)
+						case internal.AnnotationNotSortable:
+							FieldSetFlag(structField, FSortable)
+						case internal.AnnotationISO8601:
+							FieldSetFlag(structField, FIso8601)
+						case internal.AnnotationOmitEmpty:
+							FieldSetFlag(structField, FOmitempty)
+						case internal.AnnotationI18n:
+							FieldSetFlag(structField, FI18n)
+							StructAppendI18n(modelStruct, structField)
+						case internal.AnnotationLanguage:
+							StructSetLanguage(modelStruct, structField)
+
+						}
+					}
+				case internal.AnnotationRelation:
+					// if relationship match the type e.t.c
+
+					r := FieldRelationship(structField)
+					if r == nil {
+						r := &Relationship{}
+						FieldSetRelationship(structField, r)
 					}
 
-				}
-				StructSetAttr(modelStruct, structField)
-			case internal.AnnotationForeignKey:
-				FieldSetFieldKind(structField, KindForeignKey)
-				// Check if already exists
-				_, ok := StructForeignKeyField(modelStruct, structField.ApiName())
-				if ok {
-					err = errors.Errorf("Duplicated jsonapi foreign key name: '%s' for model: '%v'", structField.ApiName(), modelStruct.Type().Name())
-					return nil, err
-				}
-				StructAppendField(modelStruct, structField)
-				StructSetForeignKey(modelStruct, structField)
+					for _, value := range values {
+						switch value {
+						case internal.AnnotationRelationNoSync:
+							b := false
+							r.SetSync(&b)
+						case internal.AnnotationManyToMany:
+							r.SetKind(RelMany2Many)
+						case internal.AnnotationRelationSync:
+							b := true
+							r.SetSync(&b)
+						default:
+							log.Debugf("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.Type().Name(), structField.Name(), value)
+							RelationshipSetBackrefFieldName(r, value)
+						}
+					}
+					// if field is foreign key match with relationship
+				case internal.AnnotationForeignKey:
 
-			case internal.AnnotationFilterKey:
-				FieldSetFieldKind(structField, KindFilterKey)
-				_, ok := StructFilterKeyField(modelStruct, structField.ApiName())
-				if ok {
-					err = errors.Errorf("Duplicated jsonapi filter key name: '%s' for model: '%v'", structField.ApiName(), modelStruct.Type().Name())
-					return nil, err
 				}
-				// modelStruct.fields = append(modelStruct.fields, structField)
-				StructSetFilterKey(modelStruct, structField)
-			default:
-				return nil, errors.Errorf("Unknown field type: %s. Model: %s, field: %s", value, modelStruct.Type().Name(), tField.Name)
 			}
 		}
-
-		// iterate over structfield tags
-		for key, values := range tagValues {
-			switch key {
-			case internal.AnnotationFieldType, internal.AnnotationName:
-				continue
-			case internal.AnnotationFlags:
-				for _, value := range values {
-
-					switch value {
-					case internal.AnnotationClientID:
-						FieldSetFlag(structField, FClientID)
-					case internal.AnnotationNoFilter:
-						FieldSetFlag(structField, FNoFilter)
-					case internal.AnnotationHidden:
-						FieldSetFlag(structField, FHidden)
-					case internal.AnnotationNotSortable:
-						FieldSetFlag(structField, FSortable)
-					case internal.AnnotationISO8601:
-						FieldSetFlag(structField, FIso8601)
-					case internal.AnnotationOmitEmpty:
-						FieldSetFlag(structField, FOmitempty)
-					case internal.AnnotationI18n:
-						FieldSetFlag(structField, FI18n)
-						StructAppendI18n(modelStruct, structField)
-					case internal.AnnotationLanguage:
-						StructSetLanguage(modelStruct, structField)
-
-					}
-				}
-			case internal.AnnotationRelation:
-				// if relationship match the type e.t.c
-
-				r := FieldRelationship(structField)
-				if r == nil {
-					r := &Relationship{}
-					FieldSetRelationship(structField, r)
-				}
-
-				for _, value := range values {
-					switch value {
-					case internal.AnnotationRelationNoSync:
-						b := false
-						r.SetSync(&b)
-					case internal.AnnotationManyToMany:
-						r.SetKind(RelMany2Many)
-					case internal.AnnotationRelationSync:
-						b := true
-						r.SetSync(&b)
-					default:
-						log.Debugf("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.Type().Name(), structField.Name(), value)
-						RelationshipSetBackrefFieldName(r, value)
-					}
-				}
-				// if field is foreign key match with relationship
-			case internal.AnnotationForeignKey:
-
-			}
-		}
+		return nil
 	}
 
+	// map fields
+	if err := mapFields(modelType, modelValue, nil); err != nil {
+		return nil, err
+	}
 	if assignedFields == 0 {
 		err = fmt.Errorf("Model has no correct jsonapi fields: %v", modelType)
 		return nil, err

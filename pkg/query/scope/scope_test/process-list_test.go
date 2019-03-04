@@ -18,7 +18,7 @@ type beforeLister struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (b *beforeLister) WBeforeList(s *scope.Scope) error {
+func (b *beforeLister) HBeforeList(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -31,7 +31,7 @@ type afterLister struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (a *afterLister) WAfterList(s *scope.Scope) error {
+func (a *afterLister) HAfterList(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled

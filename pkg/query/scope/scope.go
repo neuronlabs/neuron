@@ -108,7 +108,28 @@ func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
 		return err
 	}
 	return nil
+}
 
+// AddToFieldset adds the fields to the scope's fieldset.
+// The fields may be a mapping.StructField as well as the string - which might be
+// the 'api name' or structFields name.
+func (s *Scope) AddToFieldset(fields ...interface{}) error {
+	return (*scope.Scope)(s).AddToFieldset(fields...)
+}
+
+// AddToSelectedFields adds provided fields into the scope's selected fields
+// This would affect the Create or Patch processes where the SelectedFields are taken
+// as the unmarshaled fields.
+func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
+	for i, f := range fields {
+		// cast all *mapping.StructFields into models.StructField
+		field, ok := f.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(field)
+		}
+	}
+
+	return (*scope.Scope)(s).AddToSelectedFields(fields...)
 }
 
 // AttributeFilters returns scope's attribute iFilters
@@ -154,6 +175,15 @@ func (s *Scope) Fieldset() (fs []*mapping.StructField) {
 	}
 
 	return fs
+}
+
+// InFieldset checks if the provided field is in the fieldset
+func (s *Scope) InFieldset(field string) (*mapping.StructField, bool) {
+	f, ok := (*scope.Scope)(s).InFieldset(field)
+	if ok {
+		return (*mapping.StructField)(f), true
+	}
+	return nil, false
 }
 
 // ForeignFilters returns scope's foreign key iFilters
@@ -372,6 +402,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 	return nil
 }
 
+// WithContext sets the context for given scope
 func (s *Scope) WithContext(ctx context.Context) {
 	(*scope.Scope)(s).WithContext(ctx)
 	return

@@ -15,44 +15,44 @@ var (
 
 // BeforeCreator is the interface used for hooks before the creation process
 type wBeforeCreator interface {
-	WBeforeCreate(s *Scope) error
+	HBeforeCreate(s *Scope) error
 }
 
 // AfterCreatorR is the interface that has a method used as a hook after the creation process
 type wAfterCreator interface {
-	WAfterCreate(s *Scope) error
+	HAfterCreate(s *Scope) error
 }
 
 type wBeforeGetter interface {
-	WBeforeGet(s *Scope) error
+	HBeforeGet(s *Scope) error
 }
 
 type wAfterGetter interface {
-	WAfterGet(s *Scope) error
+	HAfterGet(s *Scope) error
 }
 
 type wBeforeLister interface {
-	WBeforeList(s *Scope) error
+	HBeforeList(s *Scope) error
 }
 
 type wAfterLister interface {
-	WAfterList(s *Scope) error
+	HAfterList(s *Scope) error
 }
 
 type wBeforePatcher interface {
-	WBeforePatch(s *Scope) error
+	HBeforePatch(s *Scope) error
 }
 
 type wAfterPatcher interface {
-	WAfterPatch(s *Scope) error
+	HAfterPatch(s *Scope) error
 }
 
 type wBeforeDeleter interface {
-	WBeforeDelete(s *Scope) error
+	HBeforeDelete(s *Scope) error
 }
 
 type wAfterDeleter interface {
-	WAfterDeleter(s *Scope) error
+	HAfterDeleter(s *Scope) error
 }
 
 // Repository is an interface that implements all possible

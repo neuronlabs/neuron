@@ -66,7 +66,7 @@ func beforeDeleteFunc(s *Scope) error {
 		return nil
 	}
 
-	if err := beforeDeleter.WBeforeDelete(s); err != nil {
+	if err := beforeDeleter.HBeforeDelete(s); err != nil {
 		return err
 	}
 	return nil
@@ -78,7 +78,7 @@ func afterDeleteFunc(s *Scope) error {
 		return nil
 	}
 
-	if err := afterDeleter.WAfterDeleter(s); err != nil {
+	if err := afterDeleter.HAfterDeleter(s); err != nil {
 		return err
 	}
 	return nil

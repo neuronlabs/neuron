@@ -22,7 +22,7 @@ type testBeforeDeleter struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (b *testBeforeDeleter) WBeforeDelete(s *scope.Scope) error {
+func (b *testBeforeDeleter) HBeforeDelete(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -35,7 +35,7 @@ type testAfterDeleter struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (a *testAfterDeleter) WAfterDelete(s *scope.Scope) error {
+func (a *testAfterDeleter) HAfterDelete(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled

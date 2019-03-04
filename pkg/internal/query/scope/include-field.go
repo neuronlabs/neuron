@@ -129,14 +129,14 @@ func (i *IncludeField) getMissingFromSingle(
 ) error {
 
 	var (
-		fieldValue = value.Field(i.FieldIndex())
+		fieldValue = value.FieldByIndex(i.FieldIndex())
 
 		// get related model's primary index
 		primIndex = models.FieldsRelatedModelStruct(i.StructField).PrimaryField().FieldIndex()
 
 		// setCollectionValues sets the relationship field primary index into the uniqueMissing map
 		setCollectionValues = func(model reflect.Value) {
-			primValue := model.Field(primIndex)
+			primValue := model.FieldByIndex(primIndex)
 
 			if primValue.IsValid() {
 				primary := primValue.Interface()
@@ -196,7 +196,7 @@ func (i *IncludeField) getMissingFromSingle(
 
 func (i *IncludeField) setRelationshipValue(relatedValue reflect.Value) {
 	var includedScopeValue reflect.Value
-	fieldValue := relatedValue.Field(i.FieldIndex())
+	fieldValue := relatedValue.FieldByIndex(i.FieldIndex())
 
 	switch i.FieldType().Kind() {
 	case reflect.Slice:

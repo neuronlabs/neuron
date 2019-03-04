@@ -51,4 +51,7 @@ var (
 		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
 
 	IErrModelNotMapped = errors.New("Unmapped model provided.")
+
+	IErrFieldNotFound        = errors.New("Field not found")
+	IErrFieldAlreadySelected = errors.New("Field already selected.")
 )

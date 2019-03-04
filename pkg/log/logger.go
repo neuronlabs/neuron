@@ -9,10 +9,23 @@ import (
 	"os"
 )
 
+var (
+	LDEBUG    = unilogger.DEBUG
+	LINFO     = unilogger.INFO
+	LWARNING  = unilogger.WARNING
+	LERROR    = unilogger.ERROR
+	LCRITICAL = unilogger.CRITICAL
+	LPRINT    = unilogger.PRINT
+	LUNKNOWN  = unilogger.UNKNOWN
+)
+
 var logger unilogger.LeveledLogger
 
 // Logger returns default logger
 func Logger() unilogger.LeveledLogger {
+	if logger == nil {
+		Default()
+	}
 	return logger
 }
 

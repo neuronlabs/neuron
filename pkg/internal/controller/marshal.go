@@ -305,7 +305,7 @@ func (c *Controller) visistNode(
 	primStruct := mStruct.PrimaryField()
 
 	primIndex := primStruct.FieldIndex()
-	primaryVal := modelVal.Field(primIndex)
+	primaryVal := modelVal.FieldByIndex(primIndex)
 
 	var err error
 
@@ -482,7 +482,7 @@ func visitScopeNode(value interface{}, sc *scope.Scope, controller *Controller,
 	primStruct := sc.Struct().PrimaryField()
 
 	primIndex := primStruct.FieldIndex()
-	primaryVal := modelVal.Field(primIndex)
+	primaryVal := modelVal.FieldByIndex(primIndex)
 
 	var err error
 	if !primStruct.IsHidden() && !models.FieldIsZeroValue(primStruct, primaryVal.Interface()) {
@@ -497,7 +497,7 @@ func visitScopeNode(value interface{}, sc *scope.Scope, controller *Controller,
 			continue
 		}
 
-		fieldValue := modelVal.Field(field.FieldIndex())
+		fieldValue := modelVal.FieldByIndex(field.FieldIndex())
 		switch field.FieldKind() {
 		case models.KindAttribute:
 			if node.Attributes == nil {
@@ -691,7 +691,7 @@ func visitRelationshipNode(
 		value = value.Elem()
 	}
 
-	nodeValue := value.Field(index)
+	nodeValue := value.FieldByIndex(index)
 	err := setNodePrimary(nodeValue, node)
 	if err != nil {
 		return nil, err

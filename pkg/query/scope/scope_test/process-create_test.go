@@ -36,7 +36,7 @@ type afterCreateTestModel struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (c *beforeCreateTestModel) WBeforeCreate(s *scope.Scope) error {
+func (c *beforeCreateTestModel) HBeforeCreate(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -45,7 +45,7 @@ func (c *beforeCreateTestModel) WBeforeCreate(s *scope.Scope) error {
 	return nil
 }
 
-func (c *afterCreateTestModel) WAfterCreate(s *scope.Scope) error {
+func (c *afterCreateTestModel) HAfterCreate(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errors.New("Not called")

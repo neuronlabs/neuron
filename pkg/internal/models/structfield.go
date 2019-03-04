@@ -107,6 +107,8 @@ type StructField struct {
 	nested *NestedStruct
 
 	fieldFlags fieldFlag
+
+	fieldIndex []int
 }
 
 func NewStructField(
@@ -123,7 +125,7 @@ func (s *StructField) ApiName() string {
 }
 
 // GetFieldIndex - gets the field index in the given model
-func (s *StructField) FieldIndex() int {
+func (s *StructField) FieldIndex() []int {
 	return s.getFieldIndex()
 }
 
@@ -366,8 +368,8 @@ func (s *StructField) getDereferencedType() reflect.Type {
 	return t
 }
 
-func (s *StructField) getFieldIndex() int {
-	return s.reflectField.Index[0]
+func (s *StructField) getFieldIndex() []int {
+	return s.fieldIndex
 }
 
 func (s *StructField) getTagValues(tag string) (url.Values, error) {

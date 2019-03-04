@@ -56,7 +56,7 @@ func beforeGetFunc(s *Scope) error {
 
 	log.Debugf("hookBeforeGetter: %T", hookBeforeGetter)
 
-	if err := hookBeforeGetter.WBeforeGet(s); err != nil {
+	if err := hookBeforeGetter.HBeforeGet(s); err != nil {
 		return err
 	}
 
@@ -69,7 +69,7 @@ func afterGetFunc(s *Scope) error {
 		return nil
 	}
 
-	if err := hookAfterGetter.WAfterGet(s); err != nil {
+	if err := hookAfterGetter.HAfterGet(s); err != nil {
 		return err
 	}
 

@@ -3,12 +3,13 @@ package repositories
 import (
 	"github.com/kucjac/jsonapi/pkg/internal/models"
 	"github.com/kucjac/jsonapi/pkg/log"
+	"github.com/kucjac/jsonapi/pkg/mapping"
 	"github.com/pkg/errors"
 )
 
 var (
 	ErrRepoAlreadyRegistered error = errors.New("Repository already registered.")
-	ErrNoRepoForModel        error = errors.New("Model have no repository name")
+	ErrNoRepoForModel        error = errors.New("Model doesn't have defined repository name")
 	ErrRepositoryNotFound    error = errors.New("Repository not found")
 	ErrNewNotRepository      error = errors.New("New method doesn't return Repository")
 )
@@ -43,6 +44,7 @@ func (r *RepositoryContainer) MapModel(model *models.ModelStruct) error {
 	repoName := model.RepositoryName()
 
 	if repoName == "" {
+		log.Debugf("Model: %s", model.Type().Name())
 		return ErrNoRepoForModel
 	}
 
@@ -57,7 +59,7 @@ func (r *RepositoryContainer) MapModel(model *models.ModelStruct) error {
 		return ErrRepositoryNotFound
 	}
 
-	repoCopy := repo.New()
+	repoCopy := repo.New((*mapping.ModelStruct)(model))
 	r.models[model] = repoCopy.(Repository)
 
 	log.Debugf("Model %s mapped, to repository: %s", model.Collection(), repoName)
@@ -71,7 +73,7 @@ func (r *RepositoryContainer) RegisterRepository(repo Repository) error {
 	repoName := repo.RepositoryName()
 
 	// check if New function creates a repository
-	_, isNewRepo := repo.New().(Repository)
+	_, isNewRepo := repo.New(&mapping.ModelStruct{}).(Repository)
 	if !isNewRepo {
 		return ErrNewNotRepository
 	}

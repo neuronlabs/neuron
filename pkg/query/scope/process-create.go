@@ -66,7 +66,7 @@ func beforeCreateFunc(s *Scope) error {
 	}
 
 	// Use the hook function before create
-	err := beforeCreator.WBeforeCreate(s)
+	err := beforeCreator.HBeforeCreate(s)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func afterCreateFunc(s *Scope) error {
 		return nil
 	}
 
-	err := afterCreator.WAfterCreate(s)
+	err := afterCreator.HAfterCreate(s)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ type beforeGetter struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (b *beforeGetter) WBeforeGet(s *scope.Scope) error {
+func (b *beforeGetter) HBeforeGet(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -31,7 +31,7 @@ type afterGetter struct {
 	ID int `jsonapi:"type=primary"`
 }
 
-func (a *afterGetter) WAfterGet(s *scope.Scope) error {
+func (a *afterGetter) HAfterGet(s *scope.Scope) error {
 	v := s.Context().Value(testCtxKey)
 	if v == nil {
 		return errNotCalled

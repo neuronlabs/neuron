@@ -65,7 +65,7 @@ func beforePatchFunc(s *Scope) error {
 	if !ok {
 		return nil
 	}
-	if err := beforePatcher.WBeforePatch(s); err != nil {
+	if err := beforePatcher.HBeforePatch(s); err != nil {
 		log.Debugf("AfterPatcher failed for scope value: %v", s.Value)
 		return err
 	}
@@ -79,7 +79,7 @@ func afterPatchFunc(s *Scope) error {
 		return nil
 	}
 
-	if err := afterPatcher.WAfterPatch(s); err != nil {
+	if err := afterPatcher.HAfterPatch(s); err != nil {
 		log.Debugf("AfterPatcher failed for scope value: %v", s.Value)
 		return err
 	}
