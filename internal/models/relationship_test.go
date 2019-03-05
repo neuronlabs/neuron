@@ -1,102 +1,139 @@
 package models
 
 import (
-// "github.com/stretchr/testify/assert"
-// "github.com/stretchr/testify/require"
-// "testing"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
-// func TestMappedRelationships(t *testing.T) {
-// 	clearMap()
+type model1WithMany2Many struct {
+	ID     int                    `jsonapi:"type=primary"`
+	Synced []*model2WithMany2Many `jsonapi:"type=relation;relation=many2many,sync,Synced"`
+}
 
-// 	require.NoError(t, c.PrecomputeModels(&User{}, &Pet{}, &Driver{}, &Car{}))
+type model2WithMany2Many struct {
+	ID     int                    `jsonapi:"type=primary"`
+	Synced []*model1WithMany2Many `jsonapi:"type=relation;relation=many2many,sync,Synced"`
+}
 
-// 	t.Run("many2many", func(t *testing.T) {
-// 		t.Run("sync", func(t *testing.T) {
-// 			model, err := c.GetModelStruct(&User{})
-// 			require.NoError(t, err)
+type modelWithHasMany struct {
+	ID      int                    `jsonapi:"type=primary"`
+	HasMany []*modelWithForeignKey `jsonapi:"type=relation;foreign=ForeignKey"`
+}
 
-// 			pets, ok := model.relationships[c.NamerFunc("Pets")]
-// 			require.True(t, ok)
+type modelWithForeignKey struct {
+	ID         int `jsonapi:"type=primary"`
+	ForeignKey int `jsonapi:"type=foreign"`
+}
 
-// 			require.NotNil(t, pets.relationship)
-// 			assert.Equal(t, RelMany2Many, pets.relationship.Kind)
-// 			if assert.NotNil(t, pets.relationship.Sync) {
-// 				assert.True(t, *pets.relationship.Sync)
-// 			}
+type modelWithBelongsTo struct {
+	ID         int              `jsonapi:"type=primary"`
+	ForeignKey int              `jsonapi:"type=foreign"`
+	BelongsTo  *modelWithHasOne `jsonapi:"type=relation;foreign=ForeignKey"`
+}
 
-// 			petModel, err := c.GetModelStruct(&Pet{})
-// 			require.NoError(t, err)
+type modelWithHasOne struct {
+	ID     int                 `jsonapi:"type=primary"`
+	HasOne *modelWithBelongsTo `jsonapi:"type=relation;foreign=ForeignKey"`
+}
 
-// 			owners, ok := petModel.relationships[c.NamerFunc("Owners")]
-// 			require.True(t, ok)
+func TestMappedRelationships(t *testing.T) {
 
-// 			assert.Equal(t, owners, pets.relationship.BackReferenceField)
-// 			assert.Equal(t, pets, owners.relationship.BackReferenceField)
-// 		})
-// 		t.Run("nosync", func(t *testing.T) {
+	t.Run("many2many", func(t *testing.T) {
+		t.Run("sync", func(t *testing.T) {
+			s := testingSchemas(t)
+			err := s.RegisterModels(model1WithMany2Many{}, model2WithMany2Many{})
+			require.NoError(t, err)
 
-// 		})
-// 	})
+			model, err := s.GetModelStruct(model1WithMany2Many{})
+			require.NoError(t, err)
 
-// 	t.Run("hasMany", func(t *testing.T) {
-// 		t.Run("synced", func(t *testing.T) {
-// 			driverModel, err := c.getModelStruct(&Driver{})
-// 			require.NoError(t, err)
+			m2m2, ok := model.relationships["synced"]
+			require.True(t, ok)
 
-// 			cars, ok := driverModel.relationships["cars"]
-// 			require.True(t, ok)
+			require.NotNil(t, m2m2.relationship)
+			assert.Equal(t, RelMany2Many, m2m2.relationship.kind)
+			if assert.NotNil(t, m2m2.relationship.sync) {
+				assert.True(t, *m2m2.relationship.sync)
+			}
 
-// 			carModel, err := c.getModelStruct(&Car{})
-// 			require.NoError(t, err)
+			// check the other direction
+			model2, err := s.GetModelStruct(model2WithMany2Many{})
+			require.NoError(t, err)
 
-// 			fk, ok := carModel.foreignKeys["driver_id"]
-// 			require.True(t, ok)
-// 			if assert.NotNil(t, cars.relationship) {
-// 				assert.Equal(t, fk, cars.relationship.ForeignKey)
-// 				assert.Equal(t, RelHasMany, cars.relationship.Kind)
-// 				if assert.NotNil(t, cars.relationship.Sync) {
-// 					assert.True(t, *cars.relationship.Sync)
-// 				}
-// 			}
-// 		})
-// 	})
+			m2m1, ok := model2.relationships["synced"]
+			require.True(t, ok)
 
-// 	t.Run("belongsTo", func(t *testing.T) {
-// 		driverModel, err := c.getModelStruct(&Driver{})
-// 		require.NoError(t, err)
+			assert.Equal(t, m2m2, m2m1.relationship.backReferenceField)
+			assert.Equal(t, m2m1, m2m2.relationship.backReferenceField)
+		})
 
-// 		favoriteCar, ok := driverModel.relationships["favorite-car"]
-// 		require.True(t, ok)
+	})
 
-// 		if assert.NotNil(t, favoriteCar.relationship) {
-// 			assert.Equal(t, RelBelongsTo, favoriteCar.relationship.Kind)
-// 			assert.Nil(t, favoriteCar.relationship.Sync)
-// 		}
+	t.Run("hasMany", func(t *testing.T) {
+		t.Run("synced", func(t *testing.T) {
+			s := testingSchemas(t)
 
-// 	})
+			// get the models
+			require.NoError(t, s.RegisterModels(modelWithHasMany{}, modelWithForeignKey{}))
 
-// 	t.Run("hasOne", func(t *testing.T) {
-// 		clearMap()
+			// get hasMany model
+			hasManyModel, err := s.getModelStruct(modelWithHasMany{})
+			require.NoError(t, err)
 
-// 		require.NoError(t, c.PrecomputeModels(&Post{}, &Comment{}))
+			hasManyField, ok := hasManyModel.relationships["has_many"]
+			require.True(t, ok)
 
-// 		postModel, err := c.getModelStruct(&Post{})
-// 		require.NoError(t, err)
+			fkModel, err := s.getModelStruct(modelWithForeignKey{})
+			require.NoError(t, err)
 
-// 		lc, ok := postModel.relationships["latest_comment"]
-// 		require.True(t, ok)
+			fk, ok := fkModel.foreignKeys["foreign_key"]
+			require.True(t, ok)
 
-// 		commentModel, err := c.getModelStruct(&Comment{})
-// 		require.NoError(t, err)
+			if assert.NotNil(t, hasManyField.relationship) {
+				assert.Equal(t, fk, hasManyField.relationship.foreignKey)
+				assert.Equal(t, RelHasMany, hasManyField.relationship.kind)
+				if assert.NotNil(t, hasManyField.relationship.sync) {
+					assert.True(t, *hasManyField.relationship.sync)
+				}
+			}
+		})
+	})
 
-// 		postID, ok := commentModel.foreignKeys["post_id"]
-// 		require.True(t, ok)
+	s := testingSchemas(t)
 
-// 		if assert.NotNil(t, lc.relationship) {
-// 			assert.Equal(t, RelHasOne, lc.relationship.Kind)
-// 			assert.Equal(t, postID, lc.relationship.ForeignKey)
-// 		}
+	require.NoError(t, s.RegisterModels(modelWithBelongsTo{}, modelWithHasOne{}))
 
-// 	})
-// }
+	t.Run("belongsTo", func(t *testing.T) {
+		model, err := s.getModelStruct(modelWithBelongsTo{})
+		require.NoError(t, err)
+
+		belongsToField, ok := model.relationships["belongs_to"]
+		require.True(t, ok)
+
+		if assert.NotNil(t, belongsToField.relationship) {
+			assert.Equal(t, RelBelongsTo, belongsToField.relationship.kind)
+			assert.Nil(t, belongsToField.relationship.sync)
+		}
+	})
+
+	t.Run("hasOne", func(t *testing.T) {
+
+		model, err := s.getModelStruct(modelWithHasOne{})
+		require.NoError(t, err)
+
+		hasOneField, ok := model.relationships["has_one"]
+		require.True(t, ok)
+
+		belongsToModel, err := s.getModelStruct(modelWithBelongsTo{})
+		require.NoError(t, err)
+
+		fk, ok := belongsToModel.foreignKeys["foreign_key"]
+		require.True(t, ok)
+
+		if assert.NotNil(t, hasOneField.relationship) {
+			assert.Equal(t, RelHasOne, hasOneField.relationship.kind)
+			assert.Equal(t, fk, hasOneField.relationship.foreignKey)
+		}
+	})
+}

@@ -1,5 +1,10 @@
 package models
 
+import (
+	"github.com/kucjac/jsonapi/log"
+	"testing"
+)
+
 type baseModel struct {
 	ID         int    `jsonapi:"type=primary"`
 	StringAttr string `jsonapi:"type=attr"`
@@ -24,4 +29,10 @@ func (m *embeddedModel) RepositoryName() string {
 // Implements SchemaNamer interface.
 func (m *embeddedModel) SchemaName() string {
 	return defaultSchema
+}
+
+func checkLogger() {
+	if testing.Verbose() {
+		log.SetLevel(log.LDEBUG)
+	}
 }

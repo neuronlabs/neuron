@@ -5,14 +5,27 @@ const (
 	AnnotationJSONAPI = "jsonapi"
 
 	// type tag
-	AnnotationPrimary     = "primary"
-	AnnotationID          = "id"
-	AnnotationClientID    = "client-id"
-	AnnotationLanguage    = "langtag"
-	AnnotationAttribute   = "attr"
-	AnnotationRelation    = "relation"
-	AnnotationFilterKey   = "filterkey"
-	AnnotationForeignKey  = "foreign"
+	AnnotationPrimary      = "primary"
+	AnnotationPrimaryFull  = "primary_key"
+	AnnotationPrimaryFullS = "primarykey"
+	AnnotationID           = "id"
+
+	AnnotationClientID = "client-id"
+	AnnotationLanguage = "langtag"
+
+	// attributes
+	AnnotationAttribute     = "attr"
+	AnnotationAttributeFull = "attribute"
+
+	AnnotationRelation     = "relation"
+	AnnotationRelationFull = "relationship"
+
+	AnnotationFilterKey = "filterkey"
+
+	AnnotationForeignKey      = "foreign"
+	AnnotationForeignKeyFull  = "foreign_key"
+	AnnotationForeignKeyFullS = "foreignkey"
+
 	AnnotationNestedField = "nested"
 
 	// relation tag

@@ -147,21 +147,25 @@ func BuildModelStruct(
 ) (*ModelStruct, error) {
 	var err error
 
-	modelValue := reflect.ValueOf(model)
-	modelType := modelValue.Type()
+	// modelValue := reflect.ValueOf(model)
 
+	// if modelValue.Kind() == reflect.Ptr {
+	// 	modelValue = modelValue.Elem()
+	// }
+	// } else {
+	// 	return nil, fmt.Errorf("Provide addressable models i.e.: &Model{} in order to precompute it. Invalid model: %v", modelType)
+	// }
+	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
-		modelValue = reflect.ValueOf(model).Elem()
-		modelType = modelValue.Type()
-	} else {
-		return nil, fmt.Errorf("Provide addressable models i.e.: &Model{} in order to precompute it. Invalid model: %v", modelType)
+		modelType = modelType.Elem()
 	}
-
 	if modelType.Kind() != reflect.Struct {
 		err = fmt.Errorf(`Provided model in invalid format. 
 			The model must be of struct or ptr type, but is: %v`, modelType)
 		return nil, err
 	}
+
+	modelValue := reflect.New(modelType).Elem()
 
 	var collection string
 
@@ -198,6 +202,8 @@ func BuildModelStruct(
 			} else {
 				fieldIndex = append(index, i)
 			}
+
+			log.Debugf("Field: %v", tField.Name)
 
 			if tField.Anonymous {
 				// the field is embedded struct or ptr to struct
@@ -263,12 +269,13 @@ func BuildModelStruct(
 				// Set field type
 				value := values[0]
 				switch value {
-				case internal.AnnotationPrimary:
+				case internal.AnnotationPrimary, internal.AnnotationID,
+					internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
 					FieldSetFieldKind(structField, KindPrimary)
 					StructSetPrimary(modelStruct, structField)
 					StructAppendField(modelStruct, structField)
 
-				case internal.AnnotationRelation:
+				case internal.AnnotationRelation, internal.AnnotationRelationFull:
 					// add relationField to fields
 					StructAppendField(modelStruct, structField)
 
@@ -287,7 +294,7 @@ func BuildModelStruct(
 
 					// set relationship field
 					StructSetRelField(modelStruct, structField)
-				case internal.AnnotationAttribute:
+				case internal.AnnotationAttribute, internal.AnnotationAttributeFull:
 					FieldSetFieldKind(structField, KindAttribute)
 					// check if no duplicates
 					_, ok := StructAttr(modelStruct, apiName)
@@ -458,7 +465,8 @@ func BuildModelStruct(
 
 					}
 					StructSetAttr(modelStruct, structField)
-				case internal.AnnotationForeignKey:
+				case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull,
+					internal.AnnotationForeignKeyFullS:
 					FieldSetFieldKind(structField, KindForeignKey)
 					// Check if already exists
 					_, ok := StructForeignKeyField(modelStruct, structField.ApiName())
@@ -549,8 +557,9 @@ func BuildModelStruct(
 	if err := mapFields(modelType, modelValue, nil); err != nil {
 		return nil, err
 	}
+
 	if assignedFields == 0 {
-		err = fmt.Errorf("Model has no correct jsonapi fields: %v", modelType)
+		err = fmt.Errorf("Model doesn't have correct fields: %v", modelType)
 		return nil, err
 	}
 

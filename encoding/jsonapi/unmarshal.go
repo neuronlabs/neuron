@@ -15,11 +15,12 @@ func UnmarshalRegistered(r io.Reader, v interface{}) error {
 // UnmarshalRegisteredC unmarshals the incoming reader stream 'r' into provided model
 // 'v' assuming that it is already registered within the controller 'c'
 func UnmarshalRegisteredC(c *ctrl.Controller, r io.Reader, v interface{}) error {
-	return nil
+	return (*ictrl.Controller)(c).Unmarshal(r, v)
 }
 
 // Unmarshal incoming read input
 func Unmarshal(r io.Reader, v interface{}) error {
+	// TODO unmarshal non registered models
 	return nil
 }
 

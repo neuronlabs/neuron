@@ -3,6 +3,7 @@
 package mocks
 
 import (
+	"github.com/kucjac/jsonapi/mapping"
 	mock "github.com/stretchr/testify/mock"
 )
 import scope "github.com/kucjac/jsonapi/query/scope"
@@ -86,6 +87,6 @@ func (r *Repository) RepositoryName() string {
 	return "scope-mock"
 }
 
-func (r *Repository) New() interface{} {
+func (r *Repository) New(*mapping.ModelStruct) interface{} {
 	return &Repository{}
 }
