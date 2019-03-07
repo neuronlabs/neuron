@@ -192,7 +192,7 @@ func (b *Builder) buildFilterField(
 			}
 		}
 		// it is an attribute filter
-		op, ok = b.opCtr.Get(splitted[1])
+		op, ok = filters.Operators.Get(splitted[1])
 		if !ok {
 			invalidOperator(splitted[1])
 			return
@@ -313,7 +313,7 @@ func (b *Builder) buildNestedFilter(
 			} else {
 
 				// otherwise check if the filter contains map->key or the operator
-				_, ok := b.opCtr.Get(splitted[1])
+				_, ok := filters.Operators.Get(splitted[1])
 				if ok {
 
 					// filter[colleciton][relationship][map][$eq]
@@ -363,7 +363,7 @@ func (b *Builder) buildNestedFilter(
 				// otherwise get it from the splitted[1]
 			} else {
 				operator := splitted[1]
-				op, ok = b.opCtr.Get(operator)
+				op, ok = filters.Operators.Get(operator)
 				if !ok {
 					// invalid operator is provided or nested structure.
 					errObj = aerrors.ErrInvalidQueryParameter.Copy()
@@ -384,7 +384,7 @@ func (b *Builder) buildNestedFilter(
 		// if the filter contains single parameter over the map
 		if len(splitted) == 1 {
 			// otherwise check if the filter contains map->key or the operator
-			_, ok = b.opCtr.Get(splitted[0])
+			_, ok = filters.Operators.Get(splitted[0])
 			if ok {
 
 				// the filter to the map must be a
@@ -422,7 +422,7 @@ func (b *Builder) buildNestedFilter(
 			// splitted[1] is a map -> key
 			key := splitted[0]
 
-			op, ok := b.opCtr.Get(splitted[1])
+			op, ok := filters.Operators.Get(splitted[1])
 			if !ok {
 				errObj := aerrors.ErrInvalidQueryParameter.Copy()
 				errObj.Detail = fmt.Sprintf("Provided invalid filter operator: '%s' on collection:'%s, field: %v, and key: %s.'.", splitted[1], f.StructField().Struct().Collection(), f.StructField().ApiName(), key)

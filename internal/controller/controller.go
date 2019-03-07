@@ -7,7 +7,6 @@ import (
 	"github.com/kucjac/jsonapi/i18n"
 	"github.com/kucjac/jsonapi/internal/models"
 	"github.com/kucjac/jsonapi/internal/query"
-	"github.com/kucjac/jsonapi/internal/query/filters"
 	"github.com/kucjac/jsonapi/internal/repositories"
 	"github.com/kucjac/jsonapi/log"
 
@@ -59,9 +58,6 @@ type Controller struct {
 	// repositories contains mapping between the model's and it's repositories
 	repositories *repositories.RepositoryContainer
 
-	// operators
-	operators *filters.OperatorContainer
-
 	// errMgr error manager for the repositories
 	errMgr *dbmanager.ErrorManager
 
@@ -110,7 +106,6 @@ func Default() *Controller {
 
 func newController(cfg *config.ControllerConfig) (*Controller, error) {
 	c := &Controller{
-		operators:       filters.NewOpContainer(),
 		Flags:           flags.New(),
 		CreateValidator: validator.New(),
 		PatchValidator:  validator.New(),
@@ -145,7 +140,7 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 	// create repository container
 	c.repositories = repositories.NewRepoContainer()
 
-	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.operators, c.i18nSup)
+	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.i18nSup)
 	if err != nil {
 		return nil, errors.Wrap(err, "query.NewBuilder failed")
 	}

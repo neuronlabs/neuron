@@ -71,7 +71,11 @@ func (s *StructField) FieldIndex() []int {
 
 // Nested returns the nested structure
 func (s *StructField) Nested() *NestedStruct {
-	return (*NestedStruct)(models.FieldsNested((*models.StructField)(s)))
+	nested := models.FieldsNested((*models.StructField)(s))
+	if nested == nil {
+		return nil
+	}
+	return (*NestedStruct)(nested)
 }
 
 // Relationship returns relationship for provided field
@@ -91,6 +95,16 @@ func (s *StructField) ReflectField() reflect.StructField {
 // ModelStruct returns field's model struct
 func (s *StructField) ModelStruct() *ModelStruct {
 	return (*ModelStruct)(models.FieldsStruct((*models.StructField)(s)))
+}
+
+// StoreSet sets into the store the value 'value' for given 'key'
+func (s *StructField) StoreSet(key string, value interface{}) {
+	(*models.StructField)(s).StoreSet(key, value)
+}
+
+// StoreGet gets the value from the store at the key: 'key'.
+func (s *StructField) StoreGet(key string) (interface{}, bool) {
+	return (*models.StructField)(s).StoreGet(key)
 }
 
 // Name returns field's 'golang' name

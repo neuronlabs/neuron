@@ -55,7 +55,7 @@ func (r *RepositoryContainer) MapModel(model *models.ModelStruct) error {
 		}
 	}
 	if repo == nil {
-		log.Errorf("Repository: '%s' not registered.", repo.RepositoryName())
+		log.Errorf("Repository: '%s' not registered.", repoName)
 		return ErrRepositoryNotFound
 	}
 
@@ -71,12 +71,6 @@ func (r *RepositoryContainer) RegisterRepository(repo Repository) error {
 	// if names are zero
 	// get the default repository name
 	repoName := repo.RepositoryName()
-
-	// check if New function creates a repository
-	_, isNewRepo := repo.New(&mapping.ModelStruct{}).(Repository)
-	if !isNewRepo {
-		return ErrNewNotRepository
-	}
 
 	for _, repo := range r.reposiotries {
 		if repo.RepositoryName() == repoName {

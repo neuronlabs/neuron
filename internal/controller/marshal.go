@@ -184,10 +184,10 @@ func marshalNestedStructValue(n *models.NestedStruct, v reflect.Value) reflect.V
 	marshalValue := result.Elem()
 
 	for _, nestedField := range models.NestedStructFields(n) {
-		vField := v.FieldByIndex(nestedField.ReflectField().Index)
-		mField := marshalValue.FieldByIndex(nestedField.ReflectField().Index)
-		if models.FieldIsNestedStruct(nestedField.StructField) {
-			mField.Set(marshalNestedStructValue(nestedField.Nested(), vField))
+		vField := v.FieldByIndex(nestedField.StructField().ReflectField().Index)
+		mField := marshalValue.FieldByIndex(nestedField.StructField().ReflectField().Index)
+		if models.FieldIsNestedStruct(nestedField.StructField()) {
+			mField.Set(marshalNestedStructValue(nestedField.StructField().Nested(), vField))
 		} else {
 			mField.Set(vField)
 		}
@@ -218,9 +218,9 @@ func unmarshalNestedStructValue(c *Controller, n *models.NestedStruct, value int
 			return reflect.Value{}, err
 		}
 
-		fieldValue := resElem.FieldByIndex(nestedField.ReflectField().Index)
+		fieldValue := resElem.FieldByIndex(nestedField.StructField().ReflectField().Index)
 
-		err := c.unmarshalAttrFieldValue(nestedField.StructField, fieldValue, mpVal)
+		err := c.unmarshalAttrFieldValue(nestedField.StructField(), fieldValue, mpVal)
 		if err != nil {
 			return reflect.Value{}, err
 		}

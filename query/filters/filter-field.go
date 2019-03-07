@@ -96,7 +96,3 @@ func (c *OperatorContainer) Get(raw string) (*Operator, bool) {
 	}
 	return nil, ok
 }
-
-// Operator is a query filter operator.
-// It is an alias to a pointer so it can be comparable with equal sign
-type Operator filters.Operator

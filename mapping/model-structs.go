@@ -80,6 +80,16 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 	return
 }
 
+// StoreSet sets into the store the value 'value' for given 'key'
+func (s *ModelStruct) StoreSet(key string, value interface{}) {
+	(*models.ModelStruct)(s).StoreSet(key, value)
+}
+
+// StoreGet gets the value from the store at the key: 'key'.
+func (s *ModelStruct) StoreGet(key string) (interface{}, bool) {
+	return (*models.ModelStruct)(s).StoreGet(key)
+}
+
 // StructFields return all struct fields used by the model
 func (m *ModelStruct) StructFields() []*StructField {
 

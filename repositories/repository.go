@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"github.com/kucjac/jsonapi/mapping"
 	"github.com/kucjac/jsonapi/query/scope"
 )
 
@@ -10,9 +11,11 @@ type RepositoryNamer interface {
 	RepositoryName() string
 }
 
+// Repository defines the repository
 type Repository interface {
-	RepositoryName() string
-	New() interface{}
+	New(model *mapping.ModelStruct) interface{}
+	RepositoryNamer
+	RepositoryMethoder
 }
 
 // Repository is an interface that implements all possible

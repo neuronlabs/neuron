@@ -5,7 +5,6 @@ import (
 	"github.com/kucjac/jsonapi/flags"
 	"github.com/kucjac/jsonapi/i18n"
 	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
 	"github.com/kucjac/jsonapi/namer"
 	"github.com/pkg/errors"
 	"gopkg.in/go-playground/validator.v9"
@@ -27,9 +26,6 @@ type Builder struct {
 
 	// schemas are the given model schemas
 	schemas *models.ModelSchemas
-
-	// opCtr is the  operator container for the builder
-	opCtr *filters.OperatorContainer
 }
 
 var DefaultConfig *config.BuilderConfig = config.ReadDefaultControllerConfig().Builder
@@ -47,7 +43,6 @@ func DefaultBuilder() *Builder {
 	b, err := NewBuilder(
 		schemas,
 		DefaultConfig,
-		filters.NewOpContainer(),
 		nil,
 	)
 	if err != nil {
@@ -60,10 +55,9 @@ func DefaultBuilder() *Builder {
 func NewBuilder(
 	schemas *models.ModelSchemas,
 	cfg *config.BuilderConfig,
-	opCtr *filters.OperatorContainer,
 	i18nSupport *i18n.Support,
 ) (*Builder, error) {
-	b := &Builder{schemas: schemas, I18n: i18nSupport, Config: cfg, opCtr: opCtr}
+	b := &Builder{schemas: schemas, I18n: i18nSupport, Config: cfg}
 
 	if err := b.validateConfig(); err != nil {
 		return nil, err

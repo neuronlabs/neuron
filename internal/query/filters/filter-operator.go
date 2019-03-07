@@ -2,12 +2,16 @@ package filters
 
 import (
 	"github.com/pkg/errors"
+	"sync"
 )
+
+// Operators contains all the registered operators
+var Operators *OperatorContainer = NewOpContainer()
 
 // Operator is the operator used while filtering the query
 type Operator struct {
 	// Id is the filter operator id used for comparing the operator type
-	Id int
+	Id uint16
 
 	// Raw is the raw value of the current operator
 	Raw string
@@ -19,22 +23,45 @@ type Operator struct {
 // OperatorContainer is the container for the filter operators
 // It registers new operators and checks if no operator with provided Raw value already
 // exists inside.
-type OperatorContainer map[string]*Operator
+type OperatorContainer struct {
+	operators map[string]*Operator
+	*sync.Mutex
+	lastID uint16
+
+	lastStandardID uint16
+}
 
 // NewOpContainer creates new container operator
 func NewOpContainer() *OperatorContainer {
-	o := &OperatorContainer{}
+	o := &OperatorContainer{
+		operators: make(map[string]*Operator),
+		Mutex:     &sync.Mutex{},
+	}
+
 	err := o.registerManyOperators(defaultOperators...)
 	if err != nil {
 		panic(err)
 	}
 
+	o.lastStandardID = o.lastID
+
 	return o
 }
 
+// Get gets the operator on the base of the raw value
 func (c *OperatorContainer) Get(raw string) (*Operator, bool) {
-	op, ok := (*c)[raw]
+	op, ok := c.operators[raw]
 	return op, ok
+}
+
+// GetByName gets the operator by the name
+func (c *OperatorContainer) GetByName(name string) (*Operator, bool) {
+	for _, o := range c.operators {
+		if o.Name == name {
+			return o, true
+		}
+	}
+	return nil, false
 }
 
 // RegisterOperators registers multiple operators
@@ -42,16 +69,21 @@ func (c *OperatorContainer) RegisterOperators(ops ...*Operator) error {
 	return c.registerManyOperators(ops...)
 }
 
-func (c OperatorContainer) nextID() int {
-	var nextId int
+// nextID generates next operator ID
+func (c *OperatorContainer) nextID() uint16 {
+	c.Lock()
+	defer c.Unlock()
 
-	// get the highest value
-	for _, v := range c {
-		if v.Id > nextId {
-			nextId = v.Id
-		}
-	}
-	return nextId
+	c.lastID += 1
+
+	return c.lastID
+}
+
+// RegisterOperator registers single operator
+func (c *OperatorContainer) RegisterOperator(op *Operator) error {
+	id := c.nextID()
+
+	return c.registerOperator(op, id)
 }
 
 func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
@@ -66,14 +98,19 @@ func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
 	return nil
 }
 
-func (c *OperatorContainer) registerOperator(op *Operator, nextID int) error {
-	if _, ok := (*c)[op.Raw]; ok {
-		return errors.Errorf("Operator already registered. %+v", op)
+func (c *OperatorContainer) registerOperator(op *Operator, nextID uint16) error {
+	for _, o := range c.operators {
+		if o.Name == op.Name {
+			return errors.Errorf("Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
+		}
+		if o.Raw == op.Raw {
+			return errors.Errorf("Operator already registered. %+v", op)
+		}
 	}
 
 	op.Id = nextID
-	// fmt.Printf("Registered operator: %v with id: %v\n", op.Raw, op.Id)
-	(*c)[op.Raw] = op
+
+	c.operators[op.Raw] = op
 	return nil
 }
 
@@ -119,6 +156,11 @@ var defaultOperators []*Operator = []*Operator{
 // String implements Stringer interface
 func (f Operator) String() string {
 	return f.Name
+}
+
+// IsStandard checks if the operator is standard
+func (f Operator) IsStandard() bool {
+	return f.Id <= Operators.lastStandardID
 }
 
 func (f Operator) isBasic() bool {

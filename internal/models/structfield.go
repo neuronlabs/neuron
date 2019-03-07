@@ -109,6 +109,9 @@ type StructField struct {
 	fieldFlags fieldFlag
 
 	fieldIndex []int
+
+	// store is the key value store used for the local usage
+	store map[string]interface{}
 }
 
 func NewStructField(
@@ -117,6 +120,23 @@ func NewStructField(
 ) *StructField {
 	return &StructField{reflectField: refField, mStruct: mStruct}
 
+}
+
+// StoreSet sets into the store the value 'value' for given 'key'
+func (s *StructField) StoreSet(key string, value interface{}) {
+	if s.store == nil {
+		s.store = make(map[string]interface{})
+	}
+	s.store[key] = value
+}
+
+// StoreGet gets the value from the store at the key: 'key'.
+func (s *StructField) StoreGet(key string) (interface{}, bool) {
+	if s.store == nil {
+		s.store = make(map[string]interface{})
+	}
+	v, ok := s.store[key]
+	return v, ok
 }
 
 // ApiName returns the structFields ApiName

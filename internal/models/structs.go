@@ -90,6 +90,8 @@ type ModelStruct struct {
 	isBeforeLister bool
 
 	cfg *config.ModelConfig
+
+	store map[string]interface{}
 }
 
 // AllowClientID returns boolean if the client settable id is allowed
@@ -105,6 +107,23 @@ func (m *ModelStruct) Attribute(field string) (*StructField, bool) {
 // Fields returns model's fields
 func (m *ModelStruct) Fields() []*StructField {
 	return m.fields
+}
+
+// StoreSet sets into the store the value 'value' for given 'key'
+func (s *ModelStruct) StoreSet(key string, value interface{}) {
+	if s.store == nil {
+		s.store = make(map[string]interface{})
+	}
+	s.store[key] = value
+}
+
+// StoreGet gets the value from the store at the key: 'key'.
+func (s *ModelStruct) StoreGet(key string) (interface{}, bool) {
+	if s.store == nil {
+		s.store = make(map[string]interface{})
+	}
+	v, ok := s.store[key]
+	return v, ok
 }
 
 // StructFields return all the StructFields used in the ModelStruct
@@ -132,8 +151,10 @@ func (m *ModelStruct) StructFields() (fields []*StructField) {
 		fields = append(fields, f)
 	}
 
-	// add language field
-	fields = append(fields, m.language)
+	if m.language != nil {
+		// add language field
+		fields = append(fields, m.language)
+	}
 
 	// add filterKey fields
 	for _, f := range m.filterKeys {
@@ -345,30 +366,6 @@ func (m *ModelStruct) setModelURL(url string) error {
 
 	return nil
 }
-
-// // CheckAttribute - checks if given model contains given attributes. The attributes
-// // are checked for jsonapi manner.
-// func (m *ModelStruct) checkAttribute(attr string) *apiErrors.ApiError {
-// 	_, ok := m.Attributes[attr]
-// 	if !ok {
-// 		err := apiErrors.ErrInvalidQueryParameter.Copy()
-// 		err.Detail = fmt.Sprintf("Object: '%v' does not have attribute: '%v'", m.collectionType, attr)
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// // CheckAttributesMultiErr checks if provided attributes exists in provided model.
-// // The attributes are checked as 'attr' tags in model structure.
-// // Returns multiple errors if occurs.
-// func (m *ModelStruct) checkAttributes(attrs ...string) (errs []*apiErrors.ApiError) {
-// 	for _, attr := range attrs {
-// 		if err := m.checkAttribute(attr); err != nil {
-// 			errs = append(errs, err)
-// 		}
-// 	}
-// 	return
-// }
 
 func (m *ModelStruct) checkField(field string) (sField *StructField, err *aerrors.ApiError) {
 	var hasAttribute, hasRelationship bool

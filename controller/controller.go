@@ -6,6 +6,7 @@ import (
 	"github.com/kucjac/jsonapi/internal/controller"
 	"github.com/kucjac/jsonapi/internal/repositories"
 	"github.com/kucjac/jsonapi/log"
+	"github.com/kucjac/jsonapi/mapping"
 	"github.com/kucjac/uni-logger"
 )
 
@@ -72,6 +73,15 @@ func (c *Controller) RegisterRepositories(repos ...interface{}) error {
 		log.Debugf("Repository: '%s' registered succesfully.", r.RepositoryName())
 	}
 	return nil
+}
+
+// ModelStruct gets the model struct on the base of the provided model
+func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+	m, err := (*controller.Controller)(c).GetModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+	return (*mapping.ModelStruct)(m), nil
 }
 
 func new(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {

@@ -32,6 +32,11 @@ func (n *NestedStruct) Type() reflect.Type {
 	return n.modelType
 }
 
+// Fields return nested fields for the given structure
+func (n *NestedStruct) Fields() map[string]*NestedField {
+	return n.fields
+}
+
 // StructField returns nested structs related struct field
 func (n *NestedStruct) StructField() StructFielder {
 	return n.structField
@@ -49,7 +54,7 @@ func NestedStructAttr(n *NestedStruct) *StructField {
 
 // NestedStructSetSubfield sets the subfield for the nestedStructr
 func NestedStructSetSubfield(s *NestedStruct, n *NestedField) {
-	s.fields[n.apiName] = n
+	s.fields[n.structField.apiName] = n
 }
 
 func (n *NestedStruct) attr() *StructField {
@@ -97,7 +102,7 @@ func NestedStructMarshalType(n *NestedStruct) reflect.Type {
 
 // NestedField is the field within the NestedStruct
 type NestedField struct {
-	*StructField
+	structField *StructField
 
 	// root defines the NestedField Struct Model
 	root *NestedStruct
@@ -110,7 +115,7 @@ func NewNestedField(
 	nField reflect.StructField,
 ) *NestedField {
 	nestedField := &NestedField{
-		StructField: &StructField{
+		structField: &StructField{
 			mStruct:      structFielder.Self().mStruct,
 			reflectField: nField,
 			fieldKind:    KindNested,
@@ -129,6 +134,15 @@ func NestedFieldAttr(n *NestedField) *StructField {
 // NestedFieldRoot returns the root of the NestedField
 func NestedFieldRoot(n *NestedField) *NestedStruct {
 	return n.root
+}
+
+// StructField returns the structField
+func (n *NestedField) StructField() *StructField {
+	return n.structField
+}
+
+func (n *NestedField) Self() *StructField {
+	return n.structField.Self()
 }
 
 func (n *NestedField) SelfNested() *NestedField {
