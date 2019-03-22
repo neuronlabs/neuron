@@ -84,6 +84,11 @@ func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Control
 	return c, nil
 }
 
+func NewDefault() *Controller {
+	c, _ := newController(DefaultConfig)
+	return c
+}
+
 func SetDefault(c *Controller) {
 	defaultController = c
 }

@@ -20,6 +20,11 @@ func Default() *Controller {
 	return DefaultController
 }
 
+// NewDefault returns new default controller
+func NewDefault() *Controller {
+	return (*Controller)(controller.NewDefault())
+}
+
 // SetDefault sets the default Controller to the provided
 func SetDefault(c *Controller) {
 	d := Default()

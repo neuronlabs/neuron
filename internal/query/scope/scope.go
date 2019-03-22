@@ -190,6 +190,8 @@ func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
 func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 	var selectedFields map[*models.StructField]struct{} = make(map[*models.StructField]struct{})
 
+	var sfields []*models.StructField
+
 	for _, field := range fields {
 		var found bool
 		switch f := field.(type) {
@@ -198,6 +200,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 			for _, sField := range models.StructAllFields(s.mStruct) {
 				if sField.ApiName() == f || sField.Name() == f {
 					selectedFields[sField] = struct{}{}
+					sfields = append(sfields, sField)
 					found = true
 					break
 				}
@@ -212,6 +215,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 				if sField == f {
 					found = true
 					selectedFields[sField] = struct{}{}
+					sfields = append(sfields, sField)
 					break
 				}
 			}
@@ -235,9 +239,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 	}
 
 	// add all fields to scope's selected fields
-	for f := range selectedFields {
-		s.selectedFields = append(s.selectedFields, f)
-	}
+	s.selectedFields = append(s.selectedFields, sfields...)
 
 	return nil
 }

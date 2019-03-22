@@ -132,6 +132,14 @@ func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
 	return (*scope.Scope)(s).AddToSelectedFields(fields...)
 }
 
+func (s *Scope) AddStringSortFields(fields ...string) error {
+	errs := (*scope.Scope)(s).BuildSortFields(fields...)
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
+}
+
 // AttributeFilters returns scope's attribute iFilters
 func (s *Scope) AttributeFilters() []*filters.FilterField {
 	var res []*filters.FilterField

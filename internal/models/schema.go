@@ -157,7 +157,7 @@ func (m *ModelSchemas) RegisterModels(
 		mStruct.SetSchemaName(schema)
 
 		if err := s.models.Set(mStruct); err != nil {
-			return err
+			continue
 		}
 
 		if s.config != nil {

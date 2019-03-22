@@ -114,6 +114,8 @@ func (s *ModelStruct) StoreSet(key string, value interface{}) {
 	if s.store == nil {
 		s.store = make(map[string]interface{})
 	}
+
+	log.Debugf("[STORE][%s] Set Key: %s, Value: %v", s.collectionType, key, value)
 	s.store[key] = value
 }
 
