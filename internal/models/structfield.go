@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"github.com/kucjac/jsonapi/internal"
+	"github.com/kucjac/jsonapi/log"
 	"github.com/pkg/errors"
 	"net/url"
 	"reflect"
@@ -128,6 +129,7 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 		s.store = make(map[string]interface{})
 	}
 	s.store[key] = value
+	log.Debugf("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.ApiName(), key, value)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.

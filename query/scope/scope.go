@@ -29,6 +29,7 @@ var ErrFieldNotFound error = stdErrors.New("Field not found")
 // Within it's structure
 type Scope scope.Scope
 
+// MustWithC creates the scope's model for the provided controller
 func MustWithC(c *ctrl.Controller, model interface{}) *Scope {
 	s, err := newScope((*controller.Controller)(c), model)
 	if err != nil {
@@ -274,11 +275,6 @@ func (s *Scope) RelationFilters() []*filters.FilterField {
 	return res
 }
 
-// RelatedSubscope
-func (s *Scope) RelatedSubscope(relatedField string) (*Scope, error) {
-	return nil, nil
-}
-
 // SetPagination sets the Pagination for the scope.
 func (s *Scope) SetPagination(p *pagination.Pagination) error {
 	return scope.SetPagination((*scope.Scope)(s), (*paginations.Pagination)(p))
@@ -305,6 +301,12 @@ func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
 		selected = append(selected, (*mapping.StructField)(field))
 	}
 	return
+}
+
+// SetContext sets the context for the provided scope
+// Logic is the same as in the WithContext
+func (s *Scope) SetContext(ctx context.Context) {
+	s.WithContext(ctx)
 }
 
 // SortFields returns the sorts used in the scope

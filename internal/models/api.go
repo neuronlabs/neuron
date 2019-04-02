@@ -125,6 +125,14 @@ func StructForeignKeyField(m *ModelStruct, fk string) (*StructField, bool) {
 // StructFilterKeyField returns ModelStruct filterKey
 func StructFilterKeyField(m *ModelStruct, fk string) (*StructField, bool) {
 	s, ok := m.filterKeys[fk]
+	if !ok {
+		for _, field := range m.filterKeys {
+			if field.Name() == fk {
+				return field, true
+			}
+		}
+		return nil, false
+	}
 	return s, ok
 }
 

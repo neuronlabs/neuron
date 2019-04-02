@@ -572,19 +572,21 @@ func getNestedStruct(
 	t reflect.Type, sFielder StructFielder, namerFunc namer.Namer,
 ) (*NestedStruct, error) {
 	nestedStruct := NewNestedStruct(t, sFielder)
-
+	v := reflect.New(t).Elem()
 	var marshalFields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		nField := t.Field(i)
+		vField := v.Field(i)
 
 		marshalField := reflect.StructField{
 			Name: nField.Name,
 			Type: nField.Type,
 		}
 
-		if unicode.IsLower(rune(nField.Name[0])) {
+		// should get the field's name
+		if unicode.IsLower(rune(nField.Name[0])) || !vField.CanSet() {
 			marshalField.Tag = `json:"-"`
-			marshalFields = append(marshalFields, marshalField)
+			// marshalFields = append(marshalFields, marshalField)
 			continue
 		}
 

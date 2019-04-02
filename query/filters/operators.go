@@ -2,6 +2,7 @@ package filters
 
 import (
 	"github.com/kucjac/jsonapi/internal/query/filters"
+	"github.com/kucjac/jsonapi/log"
 )
 
 // Standard filter operators
@@ -56,7 +57,9 @@ func NewOperator(queryRaw, name string) *Operator {
 
 // RegisterOperator registers the operator in the provided container
 func RegisterOperator(o *Operator) error {
-	return filters.Operators.RegisterOperator((*filters.Operator)(o))
+	err := filters.Operators.RegisterOperator((*filters.Operator)(o))
+	log.Infof("Registered operator: %s with id: %d", o.Id)
+	return err
 }
 
 // RegisterMultipleOperators registers multiple operators at once

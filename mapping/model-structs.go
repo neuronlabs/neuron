@@ -5,15 +5,7 @@ import (
 	"reflect"
 )
 
-// import (
-// 	"fmt"
-// 	apiErrors "github.com/kucjac/jsonapi/errors"
-// 	"github.com/kucjac/jsonapi/internal"
-// 	"github.com/pkg/errors"
-// 	"reflect"
-// 	"strings"
-// )
-
+// ModelStruct is the struct definition for the imported models
 type ModelStruct models.ModelStruct
 
 // Attr returns the attribute for the provided ModelStruct
@@ -24,6 +16,7 @@ func (m *ModelStruct) Attr(attr string) (*StructField, bool) {
 	if !ok {
 		return nil, ok
 	}
+
 	return (*StructField)(s), true
 }
 
@@ -64,6 +57,8 @@ func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 	return (*StructField)(s), ok
 }
 
+// FieldByName gets the StructField by the 'name' argument.
+// The 'name' may be a StructField's Name or ApiName
 func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	field := models.StructFieldByName((*models.ModelStruct)(m), name)
 	if field == nil {
@@ -72,7 +67,7 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	return (*StructField)(field), true
 }
 
-// Field
+// Fields gets all attributes and relationships StructFields for the Model
 func (m *ModelStruct) Fields() (fields []*StructField) {
 	for _, field := range models.StructAllFields((*models.ModelStruct)(m)) {
 		fields = append(fields, (*StructField)(field))
@@ -81,13 +76,13 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'
-func (s *ModelStruct) StoreSet(key string, value interface{}) {
-	(*models.ModelStruct)(s).StoreSet(key, value)
+func (m *ModelStruct) StoreSet(key string, value interface{}) {
+	(*models.ModelStruct)(m).StoreSet(key, value)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
-func (s *ModelStruct) StoreGet(key string) (interface{}, bool) {
-	return (*models.ModelStruct)(s).StoreGet(key)
+func (m *ModelStruct) StoreGet(key string) (interface{}, bool) {
+	return (*models.ModelStruct)(m).StoreGet(key)
 }
 
 // StructFields return all struct fields used by the model
@@ -96,7 +91,7 @@ func (m *ModelStruct) StructFields() []*StructField {
 	// init StructField
 	var mFields []*StructField
 
-	fields := (*models.ModelStruct)(m).StructFields()
+	fields := models.StructAllFields((*models.ModelStruct)(m))
 	for _, f := range fields {
 		mFields = append(mFields, (*StructField)(f))
 	}

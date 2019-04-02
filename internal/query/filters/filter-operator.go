@@ -71,29 +71,29 @@ func (c *OperatorContainer) RegisterOperators(ops ...*Operator) error {
 
 // nextID generates next operator ID
 func (c *OperatorContainer) nextID() uint16 {
-	c.Lock()
-	defer c.Unlock()
-
 	c.lastID += 1
-
 	return c.lastID
 }
 
 // RegisterOperator registers single operator
 func (c *OperatorContainer) RegisterOperator(op *Operator) error {
+	c.Lock()
+	defer c.Unlock()
 	id := c.nextID()
 
 	return c.registerOperator(op, id)
 }
 
 func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
-	nextID := c.nextID()
+	c.Lock()
+	defer c.Unlock()
+
 	for _, op := range ops {
+		nextID := c.nextID()
 		err := c.registerOperator(op, nextID)
 		if err != nil {
 			return err
 		}
-		nextID += 1
 	}
 	return nil
 }
