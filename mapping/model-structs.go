@@ -69,7 +69,7 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 
 // Fields gets all attributes and relationships StructFields for the Model
 func (m *ModelStruct) Fields() (fields []*StructField) {
-	for _, field := range models.StructAllFields((*models.ModelStruct)(m)) {
+	for _, field := range (*models.ModelStruct)(m).Fields() {
 		fields = append(fields, (*StructField)(field))
 	}
 	return
@@ -83,6 +83,11 @@ func (m *ModelStruct) StoreSet(key string, value interface{}) {
 // StoreGet gets the value from the store at the key: 'key'.
 func (m *ModelStruct) StoreGet(key string) (interface{}, bool) {
 	return (*models.ModelStruct)(m).StoreGet(key)
+}
+
+// StoreDelete deletes the store's value at key
+func (m *ModelStruct) StoreDelete(key string) {
+	(*models.ModelStruct)(m).StoreDelete(key)
 }
 
 // StructFields return all struct fields used by the model

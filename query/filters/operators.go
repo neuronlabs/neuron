@@ -31,6 +31,8 @@ var (
 	OpEndsWith *Operator = (*Operator)(filters.OpEndsWith)
 	// OpIsNull is the standard filter operator
 	OpIsNull *Operator = (*Operator)(filters.OpIsNull)
+	// OpNotNull is the standard filter operator
+	OpNotNull *Operator = (*Operator)(filters.OpNotNull)
 	// OpExists is the standard filter operator
 	OpExists *Operator = (*Operator)(filters.OpExists)
 	// OpNotExists is the standard filter operator

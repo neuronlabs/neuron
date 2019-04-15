@@ -136,9 +136,18 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 func (s *StructField) StoreGet(key string) (interface{}, bool) {
 	if s.store == nil {
 		s.store = make(map[string]interface{})
+		return nil, false
 	}
 	v, ok := s.store[key]
 	return v, ok
+}
+
+// StoreDelete deletes the store value at 'key'
+func (s *StructField) StoreDelete(key string) {
+	if s.store == nil {
+		return
+	}
+	delete(s.store, key)
 }
 
 // ApiName returns the structFields ApiName

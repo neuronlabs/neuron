@@ -332,6 +332,32 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 	return s.languageFilters
 }
 
+// NotSelectedFields lists all the fields that are not selected within the scope
+func (s *Scope) NotSelectedFields(foreignKeys ...bool) []*models.StructField {
+	var notSelected []*models.StructField
+
+	fields := s.Struct().Fields()
+
+	if len(foreignKeys) > 0 && foreignKeys[0] {
+		fields = append(fields, s.Struct().ForeignKeys()...)
+	}
+
+	for _, sf := range fields {
+		var found bool
+	inner:
+		for _, selected := range s.selectedFields {
+			if sf == selected {
+				found = true
+				break inner
+			}
+		}
+		if !found {
+			notSelected = append(notSelected, sf)
+		}
+	}
+	return notSelected
+}
+
 /**
 
 TO DO:

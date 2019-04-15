@@ -23,6 +23,7 @@ import (
 	"strings"
 )
 
+// ErrFieldNotFound is an error thrown when the provided Field is not found wihtin the scope
 var ErrFieldNotFound error = stdErrors.New("Field not found")
 
 // Scope is the Queries heart and soul which keeps all possible information
@@ -133,6 +134,8 @@ func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
 	return (*scope.Scope)(s).AddToSelectedFields(fields...)
 }
 
+// AddStringSortFields adds the sort fields in a string form
+// i.e. [-field_1, field_2] -> Descending Field1 and Ascending Field2
 func (s *Scope) AddStringSortFields(fields ...string) error {
 	errs := (*scope.Scope)(s).BuildSortFields(fields...)
 	if len(errs) > 0 {
@@ -151,6 +154,7 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return res
 }
 
+// Controller getsthe scope's predefined controller
 func (s *Scope) Controller() *ctrl.Controller {
 	c := s.Context().Value(internal.ControllerIDCtxKey).(*ctrl.Controller)
 	return c
@@ -299,6 +303,14 @@ func (s *Scope) SelectField(name string) error {
 func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
 	for _, field := range (*scope.Scope)(s).SelectedFields() {
 		selected = append(selected, (*mapping.StructField)(field))
+	}
+	return
+}
+
+// NotSelectedFields returns all the fields that are not selected
+func (s *Scope) NotSelectedFields(withForeigns ...bool) (notSelected []*mapping.StructField) {
+	for _, field := range (*scope.Scope)(s).NotSelectedFields(withForeigns...) {
+		notSelected = append(notSelected, (*mapping.StructField)(field))
 	}
 	return
 }

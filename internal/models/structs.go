@@ -110,22 +110,30 @@ func (m *ModelStruct) Fields() []*StructField {
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'
-func (s *ModelStruct) StoreSet(key string, value interface{}) {
-	if s.store == nil {
-		s.store = make(map[string]interface{})
+func (m *ModelStruct) StoreSet(key string, value interface{}) {
+	if m.store == nil {
+		m.store = make(map[string]interface{})
 	}
 
-	log.Debugf("[STORE][%s] Set Key: %s, Value: %v", s.collectionType, key, value)
-	s.store[key] = value
+	log.Debugf("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
+	m.store[key] = value
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
-func (s *ModelStruct) StoreGet(key string) (interface{}, bool) {
-	if s.store == nil {
-		s.store = make(map[string]interface{})
+func (m *ModelStruct) StoreGet(key string) (interface{}, bool) {
+	if m.store == nil {
+		m.store = make(map[string]interface{})
 	}
-	v, ok := s.store[key]
+	v, ok := m.store[key]
 	return v, ok
+}
+
+// StoreDelete deletes the store's value at key
+func (m *ModelStruct) StoreDelete(key string) {
+	if m.store == nil {
+		return
+	}
+	delete(m.store, key)
 }
 
 // StructFields return all the StructFields used in the ModelStruct
@@ -186,6 +194,14 @@ func (m *ModelStruct) IsBeforeLister() bool {
 // ForeignKey return model's foreign key
 func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 	return StructForeignKeyField(m, fk)
+}
+
+// ForeignKeys return ForeignKey Structfields for the given model
+func (m *ModelStruct) ForeignKeys() (fks []*StructField) {
+	for _, f := range m.foreignKeys {
+		fks = append(fks, f)
+	}
+	return
 }
 
 // FilterKey return model's fitler key

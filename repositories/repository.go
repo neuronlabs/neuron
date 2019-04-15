@@ -43,6 +43,12 @@ type Transactioner interface {
 	Rollbacker
 }
 
+// OptionsSetter is the interface used to set the options from the field's StructField
+// Used in repositories to prepare custom structures for the repository defined options.
+type OptionsSetter interface {
+	SetOptions(field *mapping.StructField)
+}
+
 type Beginner interface {
 	Begin(s *scope.Scope) error
 }

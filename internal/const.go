@@ -150,4 +150,6 @@ const (
 
 	// QueryParamLinks is a JSONAPI query parameter used in displaying the links of the relationships
 	QueryParamLinks = "links"
+
+	IsPointerTime = "jsonapi:is-ptr-time"
 )

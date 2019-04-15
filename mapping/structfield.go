@@ -9,28 +9,31 @@ import (
 type FieldKind models.FieldKind
 
 const (
+	// UnknownType is the undefined field kind
 	UnknownType FieldKind = iota
-	// Primary is a 'primary' field
+
+	// KindPrimary is a 'primary' field
 	KindPrimary
 
-	// Attribute is an 'attribute' field
+	// KindAttribute is an 'attribute' field
 	KindAttribute
 
-	// ClientID is id set by client
+	// KindClientID is id set by client
 	KindClientID
 
-	// RelationshipSingle is a 'relationship' with single object
+	// KindRelationshipSingle is a 'relationship' with single object
 	KindRelationshipSingle
 
-	// RelationshipMultiple is a 'relationship' with multiple objects
+	// KindRelationshipMultiple is a 'relationship' with multiple objects
 	KindRelationshipMultiple
 
-	// ForeignKey is the field type that is responsible for the relationships
+	// KindForeignKey is the field type that is responsible for the relationships
 	KindForeignKey
 
-	// FilterKey is the field that is used only for special case filtering
+	// KindFilterKey is the field that is used only for special case filtering
 	KindFilterKey
 
+	// KindNested is the field's type that is signed as Nested
 	KindNested
 )
 
@@ -107,6 +110,11 @@ func (s *StructField) StoreGet(key string) (interface{}, bool) {
 	return (*models.StructField)(s).StoreGet(key)
 }
 
+// StoreDelete deletes the store value at 'key'
+func (s *StructField) StoreDelete(key string) {
+	(*models.StructField)(s).StoreDelete(key)
+}
+
 // Name returns field's 'golang' name
 func (s *StructField) Name() string {
 	return (*models.StructField)(s).Name()
@@ -115,4 +123,9 @@ func (s *StructField) Name() string {
 // FieldKind returns struct fields kind
 func (s *StructField) FieldKind() FieldKind {
 	return FieldKind((*models.StructField)(s).FieldKind())
+}
+
+// IsTimePointer checks if the field's type is a *time.time
+func (s *StructField) IsTimePointer() bool {
+	return models.FieldIsPtrTime((*models.StructField)(s))
 }
