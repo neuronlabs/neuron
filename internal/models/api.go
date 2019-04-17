@@ -34,6 +34,12 @@ func StructFieldByName(m *ModelStruct, name string) *StructField {
 			return field
 		}
 	}
+
+	for _, fk := range m.filterKeys {
+		if fk.apiName == name || fk.Name() == name {
+			return fk
+		}
+	}
 	return nil
 }
 

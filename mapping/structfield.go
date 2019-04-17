@@ -64,7 +64,7 @@ type StructField models.StructField
 
 // ApiName returns the field's 'api' name
 func (s *StructField) ApiName() string {
-	return (*models.StructField)(s).Name()
+	return (*models.StructField)(s).ApiName()
 }
 
 // FieldIndex gets the field's index

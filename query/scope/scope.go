@@ -19,12 +19,18 @@ import (
 	"github.com/kucjac/jsonapi/query/pagination"
 	"github.com/kucjac/jsonapi/query/sorts"
 	"gopkg.in/go-playground/validator.v9"
+	"net/url"
 	"reflect"
 	"strings"
 )
 
-// ErrFieldNotFound is an error thrown when the provided Field is not found wihtin the scope
-var ErrFieldNotFound error = stdErrors.New("Field not found")
+var (
+	// ErrFieldNotFound is an error thrown when the provided Field is not found wihtin the scope
+	ErrFieldNotFound error = stdErrors.New("Field not found")
+
+	// ErrModelNotIncluded is an error that is thrown when the provided model is not included into given scope
+	ErrModelNotIncluded error = stdErrors.New("Model were not included into scope")
+)
 
 // Scope is the Queries heart and soul which keeps all possible information
 // Within it's structure
@@ -232,6 +238,43 @@ func (s *Scope) ID() uuid.UUID {
 	return s.Context().Value(internal.ScopeIDCtxKey).(uuid.UUID)
 }
 
+// IncludeFields adds the included fields into the root scope
+func (s *Scope) IncludeFields(fields ...string) error {
+	iscope := (*scope.Scope)(s)
+	iscope.InitializeIncluded((*controller.Controller)(s.Controller()).QueryBuilder().Config.IncludeNestedLimit)
+	if errs := iscope.BuildIncludeList(fields...); len(errs) > 0 {
+		return errors.MultipleErrors(errs)
+	}
+	return nil
+}
+
+// IncludedValue getst the scope's included values for provided model's
+// the returning value would be pointer to slice of pointer to models
+// i.e.: type Model struct {}, the result would be returned as a *[]*Model{}
+func (s *Scope) IncludedValue(model interface{}) (interface{}, error) {
+	var (
+		mStruct *mapping.ModelStruct
+		ok      bool
+		err     error
+	)
+
+	if mStruct, ok = model.(*mapping.ModelStruct); !ok {
+		mStruct, err = s.Controller().ModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	iscope := (*scope.Scope)(s)
+	included, ok := iscope.IncludeScopeByStruct((*models.ModelStruct)(mStruct))
+	if !ok {
+		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
+		return nil, ErrModelNotIncluded
+	}
+
+	return included.Value, nil
+}
+
 // LanguageFilter returns language filter for given scope
 func (s *Scope) LanguageFilter() *filters.FilterField {
 	return (*filters.FilterField)((*scope.Scope)(s).LanguageFilter())
@@ -254,6 +297,11 @@ func (s *Scope) Patch() error {
 		return err
 	}
 	return nil
+}
+
+// FormatQuery formats the scope's query into the url.Values
+func (s *Scope) FormatQuery() url.Values {
+	return s.formatQuery()
 }
 
 // Pagination returns the pagination for given scope
@@ -319,6 +367,15 @@ func (s *Scope) NotSelectedFields(withForeigns ...bool) (notSelected []*mapping.
 // Logic is the same as in the WithContext
 func (s *Scope) SetContext(ctx context.Context) {
 	s.WithContext(ctx)
+}
+
+// SortBy adds the sort fields into given scope
+func (s *Scope) SortBy(fields ...string) error {
+	errs := (*scope.Scope)(s).BuildSortFields(fields...)
+	if len(errs) > 0 {
+		return errors.MultipleErrors(errs)
+	}
+	return nil
 }
 
 // SortFields returns the sorts used in the scope
@@ -428,4 +485,44 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 func (s *Scope) WithContext(ctx context.Context) {
 	(*scope.Scope)(s).WithContext(ctx)
 	return
+}
+
+func (s *Scope) formatQuery() url.Values {
+	q := url.Values{}
+
+	for _, prim := range s.PrimaryFilters() {
+		prim.FormatQuery(q)
+	}
+
+	for _, fk := range s.ForeignFilters() {
+		fk.FormatQuery(q)
+	}
+
+	for _, attr := range s.AttributeFilters() {
+		attr.FormatQuery(q)
+	}
+
+	for _, rel := range s.RelationFilters() {
+		rel.FormatQuery(q)
+	}
+
+	if s.LanguageFilter() != nil {
+		s.LanguageFilter().FormatQuery(q)
+	}
+
+	for _, fk := range s.FilterKeyFilters() {
+		fk.FormatQuery(q)
+	}
+
+	for _, sort := range s.SortFields() {
+		sort.FormatQuery(q)
+	}
+
+	if s.Pagination() != nil {
+		s.Pagination().FormatQuery(q)
+	}
+
+	// TODO: add included fields into query formatting
+
+	return q
 }

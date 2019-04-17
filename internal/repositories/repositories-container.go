@@ -24,10 +24,12 @@ type RepositoryGetter interface {
 // It contains mapping between repository name as well as the repository mapped to
 // the given ModelStruct
 type RepositoryContainer struct {
-	reposiotries []Repository
+	repositories []Repository
 
 	// models are the mapping for the model's defined
 	models map[*models.ModelStruct]Repository
+
+	defaultRepo Repository
 }
 
 // NewRepoContainer creates the repository container
@@ -43,15 +45,14 @@ func NewRepoContainer() *RepositoryContainer {
 func (r *RepositoryContainer) MapModel(model *models.ModelStruct) error {
 	repoName := model.RepositoryName()
 
-	if repoName == "" {
-		log.Debugf("Model: %s", model.Type().Name())
-		return ErrNoRepoForModel
-	}
-
 	var repo Repository
-	for _, repo = range r.reposiotries {
-		if repoName == repo.RepositoryName() {
-			break
+	if repoName == "" {
+		repo = r.defaultRepo
+	} else {
+		for _, repo = range r.repositories {
+			if repoName == repo.RepositoryName() {
+				break
+			}
 		}
 	}
 	if repo == nil {
@@ -72,13 +73,18 @@ func (r *RepositoryContainer) RegisterRepository(repo Repository) error {
 	// get the default repository name
 	repoName := repo.RepositoryName()
 
-	for _, repo := range r.reposiotries {
+	for _, repo := range r.repositories {
 		if repo.RepositoryName() == repoName {
 			return ErrRepoAlreadyRegistered
 		}
 	}
 
-	r.reposiotries = append(r.reposiotries, repo)
+	// set defaultRepo
+	if r.defaultRepo == nil {
+		r.defaultRepo = repo
+	}
+
+	r.repositories = append(r.repositories, repo)
 
 	log.Debugf("Repository: '%s' registered succesfully.", repoName)
 	return nil
@@ -86,7 +92,7 @@ func (r *RepositoryContainer) RegisterRepository(repo Repository) error {
 
 // RepositoryByName returns repository by it's name
 func (r *RepositoryContainer) RepositoryByName(name string) (Repository, bool) {
-	for _, repo := range r.reposiotries {
+	for _, repo := range r.repositories {
 		if repo.RepositoryName() == name {
 			return repo, true
 		}
@@ -101,4 +107,20 @@ func (r *RepositoryContainer) RepositoryByModel(model *models.ModelStruct) (Repo
 		return nil, false
 	}
 	return repo, ok
+}
+
+// SetDefault sets the default repository
+func (r *RepositoryContainer) SetDefault(repo Repository) {
+	var found bool
+	for _, registered := range r.repositories {
+		if repo == registered {
+			found = true
+			break
+		}
+	}
+	if !found {
+		r.repositories = append(r.repositories, repo)
+	}
+
+	r.defaultRepo = repo
 }

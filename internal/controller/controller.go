@@ -239,6 +239,11 @@ func (c *Controller) RepositoryByModel(model *models.ModelStruct) (repositories.
 	return c.repositories.RepositoryByModel(model)
 }
 
+// SetDefaultRepository sets the default repository for the controller
+func (c *Controller) SetDefaultRepository(repo repositories.Repository) {
+	c.repositories.SetDefault(repo)
+}
+
 // GetModelStruct returns the ModelStruct for provided model
 // Returns error if provided model does not exists in the PrecomputedMap
 func (c *Controller) GetModelStruct(model interface{}) (*models.ModelStruct, error) {

@@ -399,7 +399,15 @@ func (s *Scope) addFilterField(filter *filters.FilterField) error {
 	case models.KindPrimary:
 		s.primaryFilters = append(s.primaryFilters, filter)
 	case models.KindAttribute:
-		s.attributeFilters = append(s.attributeFilters, filter)
+		if filter.StructField().IsLanguage() {
+			if s.languageFilters == nil {
+				s.languageFilters = filter
+			} else {
+				s.languageFilters.AddValues(filter.Values()...)
+			}
+		} else {
+			s.attributeFilters = append(s.attributeFilters, filter)
+		}
 	case models.KindForeignKey:
 		s.foreignFilters = append(s.foreignFilters, filter)
 	case models.KindRelationshipMultiple, models.KindRelationshipSingle:

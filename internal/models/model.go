@@ -206,7 +206,7 @@ func (m *ModelStruct) ForeignKeys() (fks []*StructField) {
 
 // FilterKey return model's fitler key
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
-	return StructForeignKeyField(m, fk)
+	return StructFilterKeyField(m, fk)
 }
 
 // NewValueSingle creates and returns new value for the given model type

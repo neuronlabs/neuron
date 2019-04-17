@@ -94,6 +94,7 @@ func (f *FilterField) AddNestedField(nested *FilterField) {
 	addNestedField(f, nested)
 }
 
+// AddNestedField adds nested filterfield for the filter 'f'
 func AddNestedField(f, nested *FilterField) {
 	addNestedField(f, nested)
 }
@@ -101,7 +102,9 @@ func AddNestedField(f, nested *FilterField) {
 // AddsNestedField for given FilterField
 func addNestedField(f, nested *FilterField) {
 
+	// check if there already exists a nested filter
 	for _, nf := range f.nested {
+
 		if nf.structField == nested.structField {
 			// Append the values to the given filter
 			nf.values = append(nf.values, nested.values...)
@@ -137,7 +140,7 @@ func (f *FilterField) SetValues(
 
 	// Add and check all values for given field type
 	switch f.structField.FieldKind() {
-	case models.KindPrimary:
+	case models.KindPrimary, models.KindForeignKey:
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -227,6 +230,7 @@ func (f *FilterField) SetValues(
 		}
 
 		f.values = append(f.values, fv)
+	default:
 
 	}
 	return

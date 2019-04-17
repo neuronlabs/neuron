@@ -2,7 +2,26 @@ package errors
 
 import (
 	"fmt"
+	"strings"
 )
+
+// MultipleErrors is the wrapper over error slice
+// implement error interface
+type MultipleErrors []*ApiError
+
+// Error implements error interface
+func (m MultipleErrors) Error() string {
+	sb := &strings.Builder{}
+
+	for i, e := range m {
+		sb.WriteString(e.Error())
+		if i != len(m)-1 {
+			sb.WriteString(",")
+		}
+	}
+
+	return sb.String()
+}
 
 // ApiError is an struct representing a JSON API error
 type ApiError struct {

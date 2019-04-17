@@ -200,6 +200,12 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 			}
 		}
+		// add the health check
+		g.GET("health", func(g *gin.Context) {
+			g.JSON(200, gin.H{
+				"status": "pass",
+			})
+		})
 		return g, nil
 	})
 }

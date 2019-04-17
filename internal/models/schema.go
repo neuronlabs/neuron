@@ -119,7 +119,7 @@ func (m *ModelSchemas) Schemas() []*Schema {
 	return schemas
 }
 
-// RegisterModel registers the model within the schemas container
+// RegisterModels registers the model within the schemas container
 func (m *ModelSchemas) RegisterModels(
 	models ...interface{},
 ) error {

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/kucjac/jsonapi/config"
 	"github.com/kucjac/jsonapi/db-manager"
 	"github.com/kucjac/jsonapi/internal/controller"
@@ -10,6 +11,7 @@ import (
 	"github.com/kucjac/uni-logger"
 )
 
+// DefaultController is the Default controller used if no 'controller' is provided for operations
 var DefaultController *Controller
 
 // Default returns the default controller
@@ -32,8 +34,11 @@ func SetDefault(c *Controller) {
 	*d = *c
 }
 
+// Controller is the structure that controls whole jsonapi behavior.
+// It contains repositories, model definitions, query builders and it's own config
 type Controller controller.Controller
 
+// DBManager returns the database error manager
 func (c *Controller) DBManager() *dbmanager.ErrorManager {
 	return (*controller.Controller)(c).DBManager()
 }
@@ -64,6 +69,7 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	return (*controller.Controller)(c).RegisterModels(models...)
 }
 
+// RegisterRepositories registers provided repositories
 func (c *Controller) RegisterRepositories(repos ...interface{}) error {
 	for _, repo := range repos {
 		r, ok := repo.(repositories.Repository)
@@ -77,6 +83,19 @@ func (c *Controller) RegisterRepositories(repos ...interface{}) error {
 		}
 		log.Debugf("Repository: '%s' registered succesfully.", r.RepositoryName())
 	}
+	return nil
+}
+
+// SetDefaultRepository sets the default repository.
+// By default the first registered repository is set to default.
+// This method allows to change the behaviour
+func (c *Controller) SetDefaultRepository(repo interface{}) error {
+	r, ok := repo.(repositories.Repository)
+	if !ok {
+		return fmt.Errorf("Provided 'repo' struct is not a Repository: %T", repo)
+	}
+
+	(*controller.Controller)(c).SetDefaultRepository(r)
 	return nil
 }
 

@@ -138,7 +138,7 @@ const (
 	// QueryParamFilter
 	QueryParamFilter = "filter"
 
-	// QueryParamFields
+	// QueryParamFields is the const for the query fieldset key
 	QueryParamFields = "fields"
 
 	// Preset query Annotation
@@ -146,7 +146,7 @@ const (
 
 	// QueryParamLanguage is a JSONAPI query parameter used in selecting a language tag for the
 	// model.
-	QueryParamLanguage = "language"
+	QueryParamLanguage = "lang"
 
 	// QueryParamLinks is a JSONAPI query parameter used in displaying the links of the relationships
 	QueryParamLinks = "links"
