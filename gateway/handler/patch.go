@@ -30,10 +30,10 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		if err != nil {
 			switch e := err.(type) {
 			case *errors.ApiError:
-				h.marshalErrors(rw, unsetStatus, e)
+				h.marshalErrors(req, rw, unsetStatus, e)
 			default:
 				log.Errorf("Unmarshaling Scope one failed. %v", err)
-				h.internalError(rw)
+				h.internalError(req, rw)
 
 			}
 			return
@@ -49,7 +49,7 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		if err != nil {
 			if err == internal.IErrInvalidType {
 				log.Errorf("Invalid type provided for the GetAndSetID and model: %v", m.Type().String())
-				h.internalError(rw)
+				h.internalError(req, rw)
 				return
 			}
 
@@ -63,7 +63,7 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 				errObj.Detail = "Provided invalid 'id' in the query."
 			}
 
-			h.marshalErrors(rw, unsetStatus, errObj)
+			h.marshalErrors(req, rw, unsetStatus, errObj)
 			return
 		}
 
@@ -79,20 +79,20 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		)
 		if err != nil {
 			log.Errorf("Adding primary filter field for model: '%s' failed: '%v'", m.Type().String(), err)
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
 		// Validate the Patch model
 		if errs := (*scope.Scope)(s).ValidatePatch(); len(errs) > 0 {
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
 		// Patch the values
 		if err := (*scope.Scope)(s).Patch(); err != nil {
 			log.Debugf("Patching the scope: '%s' failed. %v", (*scope.Scope)(s).ID().String(), err)
-			h.handleDBError(err, rw)
+			h.handleDBError(req, err, rw)
 			return
 		}
 
@@ -102,10 +102,10 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 			s.SetAllFields()
 			if err := (*scope.Scope)(s).Get(); err != nil {
 				log.Debugf("Getting the Patched scope: '%s' failed. %v", (*scope.Scope)(s).ID().String(), err)
-				h.handleDBError(err, rw)
+				h.handleDBError(req, err, rw)
 				return
 			}
-			h.marshalScope(s, rw)
+			h.marshalScope(s, req, rw)
 		} else {
 			rw.WriteHeader(http.StatusNoContent)
 		}

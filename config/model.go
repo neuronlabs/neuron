@@ -46,6 +46,9 @@ type ModelConfig struct {
 
 	// Endpoints defines model's api endpoints configuration
 	Endpoints ModelEndpoints `mapstructure:"endpoints"`
+
+	// Map sets the model's Store values
+	Map map[string]interface{} `mapstructure:"map"`
 }
 
 // ModelEndpoints is the api endpoint's configuration for the given model

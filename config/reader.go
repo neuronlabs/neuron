@@ -155,4 +155,5 @@ func setDefaultGatewayConfig(v *viper.Viper) {
 	v.SetDefault("gateway.shutdown_timeout", time.Second*10)
 
 	v.SetDefault("gateway.router.prefix", "v1")
+	v.SetDefault("gateway.router.compression_level", -1)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+// Namer is the function that change the name with some prepared formatting
 type Namer func(string) string
 
 // NamingSnake is a Namer function
@@ -24,7 +25,7 @@ func NamingCamel(raw string) string {
 	return strcase.ToCamel(raw)
 }
 
-// NamingKebab is a Namer function
+// NamingLowerCamel is a Namer function
 // it convert the name into the 'camelCaseModel'
 func NamingLowerCamel(raw string) string {
 	return strcase.ToLowerCamel(raw)

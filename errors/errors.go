@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -67,6 +68,13 @@ func (e *ApiError) WithDetail(detail string) *ApiError {
 	return e
 }
 
+// WithStatus sets the ApiError status
+func (e *ApiError) WithStatus(status int) *ApiError {
+	e.status = status
+	e.Status = strconv.Itoa(status)
+	return e
+}
+
 // AddMeta adds the meta data for given error. Checks if an object has inited meta field.
 func (e *ApiError) AddMeta(key string, value interface{}) {
 	if e.Meta == nil {
@@ -82,15 +90,3 @@ func (e *ApiError) AddMeta(key string, value interface{}) {
 func (e *ApiError) IntStatus() int {
 	return e.status
 }
-
-type ErrorCode int
-
-const (
-	HErrBadValues ErrorCode = iota
-	HErrNoValues
-	HErrNoModel
-	HErrAlreadyWritten
-	HErrInternal
-	HErrValuePreset
-	HErrWarning
-)

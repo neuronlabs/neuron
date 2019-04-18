@@ -63,4 +63,7 @@ type RouterConfig struct {
 
 	// DefaultPagination defines default ListPagination for the gateway
 	DefaultPagination *Pagination `mapstructure:"default_pagination"`
+
+	// CompressionLevel defines the compression level for the handler function writers
+	CompressionLevel int `mapstructure:"compression_level" validate:"max=9,min=-2"`
 }

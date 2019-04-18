@@ -24,7 +24,7 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 		id, err := query.GetID(req.URL, (*models.ModelStruct)(m))
 		if err != nil {
 			log.Errorf("HandleDelete->GetID for model: '%s' failed. %v", m.Type(), err)
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
@@ -39,7 +39,7 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 		)
 		if errObj != nil {
 			log.Debugf("ClientSide Error. Adding primary filter failed. %v", errObj)
-			h.marshalErrors(rw, errObj.IntStatus(), errObj)
+			h.marshalErrors(req, rw, errObj.IntStatus(), errObj)
 			return
 		}
 
@@ -52,12 +52,12 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 					errObj.Detail = "Provided object not found"
 
 					log.Debugf("Deleting model: '%s' with id:'%s' failed. Provided object is not found or not accesable. %v", m.Type(), id, errObj)
-					h.marshalErrors(rw, errObj.IntStatus(), errObj)
+					h.marshalErrors(req, rw, errObj.IntStatus(), errObj)
 					return
 				}
 			}
 			log.Debugf("Deleting model: '%s' with id: '%s' failed. %v", m.Type(), id)
-			h.handleDBError(err, rw)
+			h.handleDBError(req, err, rw)
 			return
 		}
 

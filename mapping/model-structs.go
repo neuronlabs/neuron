@@ -75,6 +75,11 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 	return
 }
 
+// SchemaName gets the model's schema
+func (m *ModelStruct) SchemaName() string {
+	return (*models.ModelStruct)(m).SchemaName()
+}
+
 // StoreSet sets into the store the value 'value' for given 'key'
 func (m *ModelStruct) StoreSet(key string, value interface{}) {
 	(*models.ModelStruct)(m).StoreSet(key, value)

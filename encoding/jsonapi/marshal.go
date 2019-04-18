@@ -13,6 +13,11 @@ func Marshal(w io.Writer, v interface{}) error {
 	return (*ictrl.Controller)(ctrl.Default()).Marshal(w, v)
 }
 
+// MarshalC marshals the provided value 'v' into the writer. It uses the 'c' controller
+func MarshalC(c *ctrl.Controller, w io.Writer, v interface{}) error {
+	return (*ictrl.Controller)(c).Marshal(w, v)
+}
+
 // MarshalErrors writes a JSON API response using the given `[]error`.
 //
 // For more information on JSON API error payloads, see the spec here:

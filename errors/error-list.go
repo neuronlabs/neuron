@@ -13,8 +13,16 @@ var (
 	}
 
 	// STATUS 400 - CODE: 'BRQXXX'
+
+	ErrBadRequest = ApiError{
+		Code:   "BRQ001",
+		Title:  "The server cannot or will not process the request due to something that is perceived to be a client error",
+		Status: "400",
+		status: 400,
+	}
+
 	ErrHeadersNotSupported = ApiError{
-		Code: "BRQ001",
+		Code: "BRQ002",
 		Title: `The conditional headers provided in the request are not supported, 
 		by the server.`,
 		Status: "400",
@@ -22,7 +30,7 @@ var (
 	}
 
 	ErrInvalidAuthenticationInfo = ApiError{
-		Code: "BRQ002",
+		Code: "BRQ003",
 		Title: `The authentication information was not provided in the correct format. 
 			Verify the value of Authorization header.`,
 		Status: "400",
@@ -30,132 +38,139 @@ var (
 	}
 
 	ErrInvalidHeaderValue = ApiError{
-		Code:   "BRQ003",
+		Code:   "BRQ004",
 		Title:  "The value provided in one of the HTTP headers was not in the correct format.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidInput = ApiError{
-		Code:   "BRQ004",
+		Code:   "BRQ005",
 		Title:  "One of the request inputs is not valid.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidQueryParameter = ApiError{
-		Code:   "BRQ005",
+		Code:   "BRQ006",
 		Title:  "An invalid value was specified for one of the query parameters in the request URI.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidResourceName = ApiError{
-		Code:   "BRQ006",
+		Code:   "BRQ007",
 		Title:  "The specified resource name is not valid.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidURI = ApiError{
-		Code:   "BRQ007",
+		Code:   "BRQ008",
 		Title:  "The requested URI does not represent any resource on the server.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidJSONDocument = ApiError{
-		Code:   "BRQ008",
+		Code:   "BRQ009",
 		Title:  "The specified JSON is not syntatically valid.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrInvalidJSONFieldValue = ApiError{
-		Code:   "BRQ009",
+		Code:   "BRQ010",
 		Title:  "The value provided for one of the JSON fields in the requested body was not in the correct format.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrMD5Mismatch = ApiError{
-		Code:   "BRQ010",
+		Code:   "BRQ011",
 		Title:  "The MD5 value specified in the request did not match the MD5 value calculated by the server.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrMetadataTooLarge = ApiError{
-		Code:   "BRQ011",
+		Code:   "BRQ012",
 		Title:  "The size of the specified metada exceeds the maximum size permitted.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrMissingRequiredQueryParam = ApiError{
-		Code:   "BRQ012",
+		Code:   "BRQ013",
 		Title:  "A required query parameter was not specified for this request.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrMissingRequiredHeader = ApiError{
-		Code:   "BRQ013",
+		Code:   "BRQ014",
 		Title:  "A required HTTP header was not specified.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrMissingRequiredJSONField = ApiError{
-		Code:   "BRQ014",
+		Code:   "BRQ015",
 		Title:  "A required JSON field was not specified in the request body.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrOutOfRangeInput = ApiError{
-		Code:   "BRQ015",
+		Code:   "BRQ016",
 		Title:  "One of the request inputs is out of range.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrOutOfRangeQueryParameterValue = ApiError{
-		Code:   "BRQ016",
+		Code:   "BRQ017",
 		Title:  "A query parameter specified in the request URI is outside the permissible range.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrUnsupportedHeader = ApiError{
-		Code:   "BRQ017",
+		Code:   "BRQ018",
 		Title:  "One of the HTTP headers specified in the request is not supported.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrUnsupportedJSONField = ApiError{
-		Code:   "BRQ018",
+		Code:   "BRQ019",
 		Title:  "One of the JSON fields specified in the request body is not supported.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrUnsupportedQueryParameter = ApiError{
-		Code:   "BRQ019",
+		Code:   "BRQ020",
 		Title:  "One of the query parameters in the request URI is not supported.",
 		Status: "400",
 		status: 400,
 	}
 
 	ErrUnsupportedFilterOperator = ApiError{
-		Code:   "BRQ020",
+		Code:   "BRQ021",
 		Title:  "One of the filter operators is not supported.",
 		Status: "400",
 		status: 400,
 	}
 
 	// STATUS 403, CODE: 'AUTHXX'
+	ErrForbidden = ApiError{
+		Code:   "FORB1",
+		Title:  "client error status response code indicates that the server understood the request but refuses to authorize it",
+		Status: "403",
+		status: 403,
+	}
+
 	ErrAccountDisabled = ApiError{
 		Code:   "AUTH01",
 		Title:  "The specified account is disabled.",
@@ -208,6 +223,13 @@ var (
 	}
 
 	// STATUS 406, CODE: "NALXXX"
+	ErrNotAcceptable = ApiError{
+		Code:   "NA001",
+		Title:  "lient error response code indicates that the server cannot produce a response matching the list of acceptable values defined in the request's proactive content negotiation headers",
+		Status: "406",
+		status: 406,
+	}
+
 	ErrLanguageNotAcceptable = ApiError{
 		Code:   "NAL001",
 		Title:  "The language provided within the json document is not supported.",

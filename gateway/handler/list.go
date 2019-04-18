@@ -37,7 +37,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 		// handle internal error
 		if err != nil {
 			log.Errorf("Building Scope List failed: %v", err)
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
@@ -46,7 +46,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 		// handle client side errors
 		if len(errs) > 0 {
 			log.Debugf("BuildScopeList - ClientSide Errors: %v", errs)
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
@@ -67,7 +67,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 					err := iscope.SetPagination(s, p)
 					if err != nil {
 						log.Errorf("Preset Pagination for the model: '%v' has invalid config.", m.Type().String())
-						h.internalError(rw)
+						h.internalError(req, rw)
 						return
 					}
 
@@ -81,7 +81,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 					sortField, err := sorts.NewRawSortField((*models.ModelStruct)(m), sort)
 					if err != nil {
 						log.Errorf("Preset sort creation failed. Err: %v", err)
-						h.internalError(rw)
+						h.internalError(req, rw)
 						return
 					}
 					sortFields = append(sortFields, sortField)
@@ -95,7 +95,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 		if s.Pagination() == nil && h.ListPagination != nil {
 			if err := iscope.SetPagination(s, (*paginations.Pagination)(h.ListPagination)); err != nil {
 				log.Errorf("Handler contains invalid default list pagination. %v", err)
-				h.internalError(rw)
+				h.internalError(req, rw)
 				return
 			}
 		}
@@ -107,12 +107,12 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 				isNoResult = dbErr.Compare(unidb.ErrNoResult)
 			}
 			if !isNoResult {
-				h.handleDBError(err, rw)
+				h.handleDBError(req, err, rw)
 				return
 			}
 		}
 
-		h.marshalScope(s, rw)
+		h.marshalScope(s, req, rw)
 		return
 
 	})

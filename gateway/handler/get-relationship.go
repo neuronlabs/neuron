@@ -30,37 +30,37 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 		if err != nil {
 			log.Errorf("BuildScopeRelationship for model: '%s' failed: %v", m.Type(), err)
 			log.Debugf("URL: '%s'", req.URL.String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
 		// Check ClientSide errors
 		if len(errs) > 0 {
 			log.Debugf("ClientSide Errors. URL: %s. %v", req.URL.String(), errs)
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
 		// check if the related field is included into the scope's value
 		if len(rootScope.IncludedFields()) != 1 {
 			log.Errorf("GetRelated: RootScope doesn't have any included fields. Model: '%s', Query: '%s'", m.Type(), req.URL.String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
 		if err := (*scope.Scope)(rootScope).Get(); err != nil {
 			log.Debugf("Getting the RootScope failed: %v", err)
-			h.handleDBError(err, rw)
+			h.handleDBError(req, err, rw)
 			return
 		}
 
 		relScope, err := rootScope.GetRelationshipScope()
 		if err != nil {
 			log.Errorf("Error while Getting RelatinoshipScope for model: %v", m.Type())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
-		h.marshalScope(relScope, rw)
+		h.marshalScope(relScope, req, rw)
 	})
 }

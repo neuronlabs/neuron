@@ -21,12 +21,12 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 		s, errs, err := ic.QueryBuilder().BuildScopeSingle(req.Context(), (*models.ModelStruct)(m), req.URL, nil)
 		if err != nil {
 			log.Errorf("[GET] Building Scope for the request failed: %v", err)
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 		if len(errs) > 0 {
 			log.Debugf("Building Get Scope failed. ClientSide Error: %v", errs)
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
@@ -45,10 +45,10 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 		*/
 
 		if err := (*scope.Scope)(s).Get(); err != nil {
-			h.handleDBError(err, rw)
+			h.handleDBError(req, err, rw)
 			return
 		}
 
-		h.marshalScope(s, rw)
+		h.marshalScope(s, req, rw)
 	})
 }

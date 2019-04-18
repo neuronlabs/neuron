@@ -250,6 +250,15 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 	log.Debugf("Setting Config: %v for model: %s", cfg, m.Collection())
 	m.cfg = cfg
 
+	if m.store == nil {
+		m.store = make(map[string]interface{})
+	}
+
+	// copy the key value from the config
+	for k, v := range m.cfg.Map {
+		m.store[k] = v
+	}
+
 	m.repositoryName = cfg.Repository
 	return nil
 }

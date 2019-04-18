@@ -36,21 +36,21 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 		if err != nil {
 			log.Errorf("BuildScopeRelated for model: '%s' failed: %v", m.Type(), err)
 			log.Debugf("URL: '%s'", req.URL.String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
 		// Check ClientSide errors
 		if len(errs) > 0 {
 			log.Debugf("ClientSide Errors. URL: %s. %v", req.URL.String(), errs)
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
 		// check if the related field is included into the scope's value
 		if len(rootScope.IncludedFields()) != 1 {
 			log.Errorf("GetRelated: RootScope doesn't have any included fields. Model: '%s', Query: '%s'", m.Type(), req.URL.String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
@@ -58,20 +58,20 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 
 		//	Get the root scope values
 		if err := (*scope.Scope)(rootScope).Get(); err != nil {
-			h.handleDBError(err, rw)
+			h.handleDBError(req, err, rw)
 			return
 		}
 
 		includedScopes := rootScope.IncludedScopes()
 		if len(includedScopes) != 1 {
 			log.Errorf("GetRelated query for model: '%s'. The rootScope doesn't have any included scopes. Query: %s", m.Type(), req.URL.String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
 		relatedScope := includedScopes[0]
 		log.Debugf("Marshaling relatedScope.")
 
-		h.marshalScope(relatedScope, rw)
+		h.marshalScope(relatedScope, req, rw)
 	})
 }

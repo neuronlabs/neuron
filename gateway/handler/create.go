@@ -30,10 +30,10 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 			switch e := err.(type) {
 			case *errors.ApiError:
 				log.Debugf("UnmarshalScope One failed: %v", e)
-				h.marshalErrors(rw, unsetStatus, e)
+				h.marshalErrors(req, rw, unsetStatus, e)
 			default:
 				log.Errorf("HandlerCreate UnmarshalScope for model: '%v' internal error: %v", m.Type().String(), e)
-				h.internalError(rw)
+				h.internalError(req, rw)
 			}
 			return
 		}
@@ -50,7 +50,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		primVal, err := s.GetFieldValue(im.PrimaryField())
 		if err != nil {
 			log.Errorf("Getting PrimaryField value failed for the model: '%s'", m.Type().String())
-			h.internalError(rw)
+			h.internalError(req, rw)
 			return
 		}
 
@@ -64,14 +64,14 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 					log.Debugf("Client Generated PrimaryValue is not a valid UUID. %v", err)
 					e := errors.ErrInvalidJSONFieldValue.Copy()
 					e.Detail = "Client-Generated ID must be a valid UUID"
-					h.marshalErrors(rw, unsetStatus, e)
+					h.marshalErrors(req, rw, unsetStatus, e)
 					return
 				}
 			} else {
 				log.Debugf("Client Generated ID not allowed for the model: '%s'", im.Type().String())
 				e := errors.ErrInvalidJSONFieldValue.Copy()
 				e.Detail = "Client-Generated ID is not allowed for this model."
-				h.marshalErrors(rw, unsetStatus, e)
+				h.marshalErrors(req, rw, unsetStatus, e)
 				return
 			}
 		}
@@ -79,7 +79,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		// Validate the input entry
 		errs := (*scope.Scope)(s).ValidateCreate()
 		if len(errs) > 0 {
-			h.marshalErrors(rw, unsetStatus, errs...)
+			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
@@ -93,14 +93,14 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 				proto, er := e.GetPrototype()
 				if er != nil {
 					log.Errorf("*unidb.Error.GetPrototype (%#v) failed. %v", e, err)
-					h.internalError(rw)
+					h.internalError(req, rw)
 					return
 				}
 
 				// if the error is unspecified or it is internal error marshal as internal error
 				if proto == unidb.ErrUnspecifiedError || proto == unidb.ErrInternalError {
 					log.Errorf("*unidb.ErrUnspecified. Message: %v", e.Message)
-					h.internalError(rw)
+					h.internalError(req, rw)
 					return
 				}
 
@@ -108,23 +108,23 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 				errObj, err := h.c.DBManager().Handle(e)
 				if err != nil {
 					log.Errorf("DBManager Handle failed for error: %v. Err: %v", e, err)
-					h.internalError(rw)
+					h.internalError(req, rw)
 					return
 				}
 
-				h.marshalErrors(rw, errObj.IntStatus(), errObj)
+				h.marshalErrors(req, rw, errObj.IntStatus(), errObj)
 			case *errors.ApiError:
 				log.Debugf("Create failed: %v", e)
-				h.marshalErrors(rw, unsetStatus, e)
+				h.marshalErrors(req, rw, unsetStatus, e)
 			default:
 				log.Errorf("Unspecified error after create: %v", e)
-				h.internalError(rw)
+				h.internalError(req, rw)
 			}
 			return
 		}
 
 		rw.WriteHeader(http.StatusCreated)
 		h.setContentType(rw)
-		h.marshalScope(s, rw)
+		h.marshalScope(s, req, rw)
 	})
 }
