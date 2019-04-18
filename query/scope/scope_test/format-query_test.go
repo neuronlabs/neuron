@@ -2,28 +2,28 @@ package scope_test
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/query/filters"
-	"github.com/kucjac/jsonapi/query/pagination"
-	"github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/query/scope/mocks"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/query/filters"
+	"github.com/neuronlabs/neuron/query/pagination"
+	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type formatter struct {
-	ID     int                `jsonapi:"type=primary"`
-	Attr   string             `jsonapi:"type=attr"`
-	Rel    *formatterRelation `jsonapi:"type=relation;foreign=FK"`
-	FK     int                `jsonapi:"type=foreign"`
-	Filter string             `jsonapi:"type=filterkey"`
-	Lang   string             `jsonapi:"type=attr;flags=langtag"`
+	ID     int                `neuron:"type=primary"`
+	Attr   string             `neuron:"type=attr"`
+	Rel    *formatterRelation `neuron:"type=relation;foreign=FK"`
+	FK     int                `neuron:"type=foreign"`
+	Filter string             `neuron:"type=filterkey"`
+	Lang   string             `neuron:"type=attr;flags=langtag"`
 }
 
 type formatterRelation struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 // TestFormatQuery tests the format query methods

@@ -2,10 +2,10 @@ package filters
 
 import (
 	"fmt"
-	aerrors "github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/i18n"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
+	aerrors "github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/i18n"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
 	"golang.org/x/text/language"
 	"reflect"
 	"strings"

@@ -2,7 +2,7 @@ package dbmanager
 
 import (
 	"errors"
-	aerrors "github.com/kucjac/jsonapi/errors"
+	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/kucjac/uni-db"
 	"sync"
 )

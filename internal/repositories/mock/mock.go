@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
-	"github.com/kucjac/jsonapi/query/scope"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/scope"
 )
 
 // Repository is the testing testing repository

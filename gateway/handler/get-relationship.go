@@ -2,12 +2,12 @@ package handler
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/internal"
-	ictrl "github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/mapping"
-	"github.com/kucjac/jsonapi/query/scope"
+	"github.com/neuronlabs/neuron/internal"
+	ictrl "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/scope"
 	"net/http"
 )
 

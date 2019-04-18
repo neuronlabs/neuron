@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/kucjac/jsonapi/flags"
+	"github.com/neuronlabs/neuron/internal/flags"
 	"reflect"
 )
 

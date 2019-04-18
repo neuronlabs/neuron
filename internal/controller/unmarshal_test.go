@@ -2,9 +2,9 @@ package controller
 
 import (
 	"bytes"
-	aerrors "github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/query/scope"
+	aerrors "github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -308,8 +308,8 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 	t.Run("Array", func(t *testing.T) {
 		type ArrModel struct {
-			ID  int        `jsonapi:"type=primary"`
-			Arr [2]float64 `jsonapi:"type=attr"`
+			ID  int        `neuron:"type=primary"`
+			Arr [2]float64 `neuron:"type=attr"`
 		}
 
 		t.Run("TooManyValues", func(t *testing.T) {
@@ -341,56 +341,56 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		t.Helper()
 
 		type MpString struct {
-			ID  int               `jsonapi:"type=primary"`
-			Map map[string]string `jsonapi:"type=attr"`
+			ID  int               `neuron:"type=primary"`
+			Map map[string]string `neuron:"type=attr"`
 		}
 		type MpPtrString struct {
-			ID  int                `jsonapi:"type=primary"`
-			Map map[string]*string `jsonapi:"type=attr"`
+			ID  int                `neuron:"type=primary"`
+			Map map[string]*string `neuron:"type=attr"`
 		}
 		type MpInt struct {
-			ID  int            `jsonapi:"type=primary"`
-			Map map[string]int `jsonapi:"type=attr"`
+			ID  int            `neuron:"type=primary"`
+			Map map[string]int `neuron:"type=attr"`
 		}
 		type MpPtrInt struct {
-			ID  int             `jsonapi:"type=primary"`
-			Map map[string]*int `jsonapi:"type=attr"`
+			ID  int             `neuron:"type=primary"`
+			Map map[string]*int `neuron:"type=attr"`
 		}
 		type MpFloat struct {
-			ID  int                `jsonapi:"type=primary"`
-			Map map[string]float64 `jsonapi:"type=attr"`
+			ID  int                `neuron:"type=primary"`
+			Map map[string]float64 `neuron:"type=attr"`
 		}
 
 		type MpPtrFloat struct {
-			ID  int                 `jsonapi:"type=primary"`
-			Map map[string]*float64 `jsonapi:"type=attr"`
+			ID  int                 `neuron:"type=primary"`
+			Map map[string]*float64 `neuron:"type=attr"`
 		}
 
 		type MpSliceInt struct {
-			ID  int              `jsonapi:"type=primary"`
-			Map map[string][]int `jsonapi:"type=attr"`
+			ID  int              `neuron:"type=primary"`
+			Map map[string][]int `neuron:"type=attr"`
 		}
 
 		type MpSlicePtrInt struct {
-			ID  int               `jsonapi:"type=primary"`
-			Map map[string][]*int `jsonapi:"type=attr"`
+			ID  int               `neuron:"type=primary"`
+			Map map[string][]*int `neuron:"type=attr"`
 		}
 
 		type MpSliceTime struct {
-			ID  int                    `jsonapi:"type=primary"`
-			Map map[string][]time.Time `jsonapi:"type=attr"`
+			ID  int                    `neuron:"type=primary"`
+			Map map[string][]time.Time `neuron:"type=attr"`
 		}
 		type MpSlicePtrTime struct {
-			ID  int                     `jsonapi:"type=primary"`
-			Map map[string][]*time.Time `jsonapi:"type=attr"`
+			ID  int                     `neuron:"type=primary"`
+			Map map[string][]*time.Time `neuron:"type=attr"`
 		}
 		type MpPtrSliceTime struct {
-			ID  int                     `jsonapi:"type=primary"`
-			Map map[string]*[]time.Time `jsonapi:"type=attr"`
+			ID  int                     `neuron:"type=primary"`
+			Map map[string]*[]time.Time `neuron:"type=attr"`
 		}
 		type MpArrayFloat struct {
-			ID  int                   `jsonapi:"type=primary"`
-			Map map[string][2]float64 `jsonapi:"type=attr"`
+			ID  int                   `neuron:"type=primary"`
+			Map map[string][2]float64 `neuron:"type=attr"`
 		}
 
 		tests := map[string]maptest{
@@ -744,22 +744,22 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	t.Run("NestedStruct", func(t *testing.T) {
 
 		type NestedModel struct {
-			ValueFirst  int `jsonapi:"name=first"`
-			ValueSecond int `jsonapi:"name=second"`
+			ValueFirst  int `neuron:"name=first"`
+			ValueSecond int `neuron:"name=second"`
 		}
 
 		type Simple struct {
-			ID     int          `jsonapi:"type=primary"`
-			Nested *NestedModel `jsonapi:"type=attr"`
+			ID     int          `neuron:"type=primary"`
+			Nested *NestedModel `neuron:"type=attr"`
 		}
 
 		type DoubleNested struct {
-			Nested *NestedModel `jsonapi:"name=nested"`
+			Nested *NestedModel `neuron:"name=nested"`
 		}
 
 		type SimpleDouble struct {
-			ID           int           `jsonapi:"type=primary"`
-			DoubleNested *DoubleNested `jsonapi:"type=attr;name=double"`
+			ID           int           `neuron:"type=primary"`
+			DoubleNested *DoubleNested `neuron:"type=attr;name=double"`
 		}
 
 		tests := map[string]maptest{
@@ -813,23 +813,23 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	t.Run("Slices", func(t *testing.T) {
 
 		type AttrArrStruct struct {
-			ID  int       `jsonapi:"type=primary"`
-			Arr []*string `jsonapi:"type=attr"`
+			ID  int       `neuron:"type=primary"`
+			Arr []*string `neuron:"type=attr"`
 		}
 
 		type ArrayModel struct {
-			ID  int       `jsonapi:"type=primary"`
-			Arr [2]string `jsonapi:"type=attr"`
+			ID  int       `neuron:"type=primary"`
+			Arr [2]string `neuron:"type=attr"`
 		}
 
 		type SliceInt struct {
-			ID int   `jsonapi:"type=primary"`
-			Sl []int `jsonapi:"type=attr"`
+			ID int   `neuron:"type=primary"`
+			Sl []int `neuron:"type=attr"`
 		}
 
 		type ArrInt struct {
-			ID  int    `jsonapi:"type=primary"`
-			Arr [2]int `jsonapi:"type=attr"`
+			ID  int    `neuron:"type=primary"`
+			Arr [2]int `neuron:"type=attr"`
 		}
 
 		type NestedStruct struct {
@@ -837,8 +837,8 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		}
 
 		type SliceStruct struct {
-			ID int             `jsonapi:"type=primary"`
-			Sl []*NestedStruct `jsonapi:"type=attr"`
+			ID int             `neuron:"type=primary"`
+			Sl []*NestedStruct `neuron:"type=attr"`
 		}
 
 		tests := map[string]maptest{

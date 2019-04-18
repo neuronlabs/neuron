@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/kucjac/uni-logger"
 )
 

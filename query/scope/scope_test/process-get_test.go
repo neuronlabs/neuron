@@ -2,12 +2,12 @@ package scope_test
 
 import (
 	"context"
-	ctrl "github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/query/scope/mocks"
 	"github.com/kucjac/uni-logger"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 )
 
 type beforeGetter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func (b *beforeGetter) HBeforeGet(s *scope.Scope) error {
@@ -28,7 +28,7 @@ func (b *beforeGetter) HBeforeGet(s *scope.Scope) error {
 }
 
 type afterGetter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func (a *afterGetter) HAfterGet(s *scope.Scope) error {
@@ -41,7 +41,7 @@ func (a *afterGetter) HAfterGet(s *scope.Scope) error {
 }
 
 type getter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func TestGet(t *testing.T) {

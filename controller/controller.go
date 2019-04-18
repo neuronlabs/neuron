@@ -2,12 +2,12 @@ package controller
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/db-manager"
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/repositories"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/db-manager"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/repositories"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 	"github.com/kucjac/uni-logger"
 )
 

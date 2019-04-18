@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
-	"github.com/kucjac/jsonapi/query/scope"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/scope"
 )
 
 // RepositoryNamer is the interface used for the repositories to implement

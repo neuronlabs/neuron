@@ -2,7 +2,7 @@ package filters
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/internal"
+	"github.com/neuronlabs/neuron/internal"
 	"reflect"
 	"strconv"
 	"time"

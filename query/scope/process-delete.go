@@ -2,32 +2,32 @@ package scope
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
 	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 )
 
 var (
 	deleteProcess Process = Process{
-		Name: "whiz:delete",
+		Name: "neuron:delete",
 		Func: deleteFunc,
 	}
 
 	beforeDelete Process = Process{
-		Name: "whiz:hook_before_delete",
+		Name: "neuron:hook_before_delete",
 		Func: beforeDeleteFunc,
 	}
 
 	afterDelete Process = Process{
-		Name: "whiz:hook_after_delete",
+		Name: "neuron:hook_after_delete",
 		Func: afterDeleteFunc,
 	}
 
 	deleteForeignRelationships Process = Process{
-		Name: "whiz:delete_foreign_relationships",
+		Name: "neuron:delete_foreign_relationships",
 		Func: deleteForeignRelationshipsFunc,
 	}
 )

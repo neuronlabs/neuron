@@ -10,7 +10,7 @@ import (
 func TestNestedFields(t *testing.T) {
 	type SubNested struct {
 		InceptionFirst  int
-		InceptionSecond float64 `jsonapi:"name=second;flags=omitempty"`
+		InceptionSecond float64 `neuron:"name=second;flags=omitempty"`
 	}
 
 	type NestedAttribute struct {
@@ -20,13 +20,13 @@ func TestNestedFields(t *testing.T) {
 		Slice     []int
 		Inception SubNested
 
-		FloatTagged float64 `jsonapi:"name=float-tag"`
-		IntTagged   int     `jsonapi:"name=int-tag"`
+		FloatTagged float64 `neuron:"name=float-tag"`
+		IntTagged   int     `neuron:"name=int-tag"`
 	}
 
 	type ModelWithNested struct {
-		ID          int              `jsonapi:"type=primary"`
-		PtrComposed *NestedAttribute `jsonapi:"type=attr;name=ptr-composed"`
+		ID          int              `neuron:"type=primary"`
+		PtrComposed *NestedAttribute `neuron:"type=attr;name=ptr-composed"`
 	}
 
 	clearMap()

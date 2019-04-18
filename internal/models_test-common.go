@@ -5,7 +5,7 @@ import (
 )
 
 type BadModel struct {
-	ID int `jsonapi:"typeprimary"`
+	ID int `neuron:"typeprimary"`
 }
 
 type ModelNonTagged struct {
@@ -13,67 +13,67 @@ type ModelNonTagged struct {
 }
 
 type UnmarshalModel struct {
-	ID          string     `jsonapi:"type=primary"`
-	PtrString   *string    `jsonapi:"type=attr"`
-	PtrTime     *time.Time `jsonapi:"type=attr"`
-	StringSlice []string   `jsonapi:"type=attr"`
+	ID          string     `neuron:"type=primary"`
+	PtrString   *string    `neuron:"type=attr"`
+	PtrTime     *time.Time `neuron:"type=attr"`
+	StringSlice []string   `neuron:"type=attr"`
 }
 
 type ModelBadTypes struct {
-	ID           string     `jsonapi:"type=primary"`
-	StringField  string     `jsonapi:"type=attr;name=string_field"`
-	FloatField   float64    `jsonapi:"type=attr;name=float_field"`
-	TimeField    time.Time  `jsonapi:"type=attr;name=time_field"`
-	TimePtrField *time.Time `jsonapi:"type=attr;name=time_ptr_field"`
+	ID           string     `neuron:"type=primary"`
+	StringField  string     `neuron:"type=attr;name=string_field"`
+	FloatField   float64    `neuron:"type=attr;name=float_field"`
+	TimeField    time.Time  `neuron:"type=attr;name=time_field"`
+	TimePtrField *time.Time `neuron:"type=attr;name=time_ptr_field"`
 }
 
 type WithPointer struct {
-	ID       *uint64  `jsonapi:"type=primary"`
-	Name     *string  `jsonapi:"type=attr;name=name"`
-	IsActive *bool    `jsonapi:"type=attr;name=is-active"`
-	IntVal   *int     `jsonapi:"type=attr;name=int-val"`
-	FloatVal *float32 `jsonapi:"type=attr;name=float-val"`
+	ID       *uint64  `neuron:"type=primary"`
+	Name     *string  `neuron:"type=attr;name=name"`
+	IsActive *bool    `neuron:"type=attr;name=is-active"`
+	IntVal   *int     `neuron:"type=attr;name=int-val"`
+	FloatVal *float32 `neuron:"type=attr;name=float-val"`
 }
 
 type Timestamp struct {
-	ID   int        `jsonapi:"type=primary"`
-	Time time.Time  `jsonapi:"type=attr;name=timestamp;flags=iso8601"`
-	Next *time.Time `jsonapi:"type=attr;name=next;flags=iso8601"`
+	ID   int        `neuron:"type=primary"`
+	Time time.Time  `neuron:"type=attr;name=timestamp;flags=iso8601"`
+	Next *time.Time `neuron:"type=attr;name=next;flags=iso8601"`
 }
 
 type NonRelatedModel struct {
-	ID   int    `jsonapi:"type=primary"`
-	Name string `jsonapi:"type=attr;name=name"`
+	ID   int    `neuron:"type=primary"`
+	Name string `neuron:"type=attr;name=name"`
 }
 
 type NoPrimaryModel struct {
 	ID   int
-	Name string `jsonapi:"type=attr;name=name"`
+	Name string `neuron:"type=attr;name=name"`
 }
 
 type User struct {
 	privateField int
-	ID           int    `jsonapi:"type=primary"`
-	Lang         string `jsonapi:"type=attr;name=lang;flags=langtag"`
-	Name         string `jsonapi:"type=attr;name=name"`
-	Pets         []*Pet `jsonapi:"type=relation;name=pets;relation=many2many,sync,Owners"`
+	ID           int    `neuron:"type=primary"`
+	Lang         string `neuron:"type=attr;name=lang;flags=langtag"`
+	Name         string `neuron:"type=attr;name=name"`
+	Pets         []*Pet `neuron:"type=relation;name=pets;relation=many2many,sync,Owners"`
 }
 
 type Pet struct {
-	ID     int     `jsonapi:"type=primary"`
-	Name   string  `jsonapi:"type=attr;name=name"`
-	Owners []*User `jsonapi:"type=relation;name=owners;relation=many2many,sync,Pets"`
+	ID     int     `neuron:"type=primary"`
+	Name   string  `neuron:"type=attr;name=name"`
+	Owners []*User `neuron:"type=relation;name=owners;relation=many2many,sync,Pets"`
 }
 
 /* HasMany Example */
 
 type Driver struct {
-	ID            int     `jsonapi:"type=primary"`
-	Name          string  `jsonapi:"type=attr;flags=omitempty"`
-	Age           int     `jsonapi:"type=attr;flags=omitempty"`
-	Cars          []*Car  `jsonapi:"type=relation"`
-	FavoriteCar   Car     `jsonapi:"type=relation;name=favorite-car;foreign=FavoriteCarID"`
-	FavoriteCarID *string `jsonapi:"type=foreign;name=favorite_car_id"`
+	ID            int     `neuron:"type=primary"`
+	Name          string  `neuron:"type=attr;flags=omitempty"`
+	Age           int     `neuron:"type=attr;flags=omitempty"`
+	Cars          []*Car  `neuron:"type=relation"`
+	FavoriteCar   Car     `neuron:"type=relation;name=favorite-car;foreign=FavoriteCarID"`
+	FavoriteCarID *string `neuron:"type=foreign;name=favorite_car_id"`
 }
 
 // at first check if FieldWithID does exists
@@ -81,53 +81,53 @@ type Driver struct {
 // the relation would be
 
 type Car struct {
-	ID               *string `jsonapi:"type=primary"`
-	Make             *string `jsonapi:"type=attr;name=make;flags=omitempty"`
-	Model            *string `jsonapi:"type=attr;name=model;flags=omitempty"`
-	Year             *uint   `jsonapi:"type=attr;name=year;flags=omitempty"`
-	DriverID         int     `jsonapi:"type=foreign;name=driver_id"`
+	ID               *string `neuron:"type=primary"`
+	Make             *string `neuron:"type=attr;name=make;flags=omitempty"`
+	Model            *string `neuron:"type=attr;name=model;flags=omitempty"`
+	Year             *uint   `neuron:"type=attr;name=year;flags=omitempty"`
+	DriverID         int     `neuron:"type=foreign;name=driver_id"`
 	somePrivateField *uint
 }
 
 type Blog struct {
-	ID            int       `jsonapi:"type=primary"`
-	Title         string    `jsonapi:"type=attr;name=title"`
-	Posts         []*Post   `jsonapi:"type=relation;name=posts"`
-	CurrentPost   *Post     `jsonapi:"type=relation;name=current_post"`
-	CurrentPostID uint64    `jsonapi:"type=foreign;name=current_post_id"`
-	CreatedAt     time.Time `jsonapi:"type=attr;name=created_at;flags=iso8601"`
-	ViewCount     int       `jsonapi:"type=attr;name=view_count;flags=omitempty"`
+	ID            int       `neuron:"type=primary"`
+	Title         string    `neuron:"type=attr;name=title"`
+	Posts         []*Post   `neuron:"type=relation;name=posts"`
+	CurrentPost   *Post     `neuron:"type=relation;name=current_post"`
+	CurrentPostID uint64    `neuron:"type=foreign;name=current_post_id"`
+	CreatedAt     time.Time `neuron:"type=attr;name=created_at;flags=iso8601"`
+	ViewCount     int       `neuron:"type=attr;name=view_count;flags=omitempty"`
 }
 
 type Post struct {
-	ID            uint64     `jsonapi:"type=primary"`
-	BlogID        int        `jsonapi:"type=foreign;name=blog_id"`
-	Title         string     `jsonapi:"type=attr;name=title"`
-	Body          string     `jsonapi:"type=attr;name=body"`
-	Comments      []*Comment `jsonapi:"type=relation;name=comments;foreign=PostID"`
-	LatestComment *Comment   `jsonapi:"type=relation;name=latest_comment;foreign=PostID"`
+	ID            uint64     `neuron:"type=primary"`
+	BlogID        int        `neuron:"type=foreign;name=blog_id"`
+	Title         string     `neuron:"type=attr;name=title"`
+	Body          string     `neuron:"type=attr;name=body"`
+	Comments      []*Comment `neuron:"type=relation;name=comments;foreign=PostID"`
+	LatestComment *Comment   `neuron:"type=relation;name=latest_comment;foreign=PostID"`
 }
 
 type Comment struct {
-	ID     int    `jsonapi:"type=primary"`
-	PostID uint64 `jsonapi:"type=foreign;name=post_id"`
-	Body   string `jsonapi:"type=attr;name=body"`
+	ID     int    `neuron:"type=primary"`
+	PostID uint64 `neuron:"type=foreign;name=post_id"`
+	Body   string `neuron:"type=attr;name=body"`
 }
 
 type Book struct {
-	ID          uint64  `jsonapi:"type=primary"`
-	Author      string  `jsonapi:"type=attr;name=author"`
-	ISBN        string  `jsonapi:"type=attr;name=isbn"`
-	Title       string  `jsonapi:"type=attr;name=title;flags=omitempty"`
-	Description *string `jsonapi:"type=attr;name=description"`
-	Pages       *uint   `jsonapi:"type=attr;name=pages;flags=omitempty"`
+	ID          uint64  `neuron:"type=primary"`
+	Author      string  `neuron:"type=attr;name=author"`
+	ISBN        string  `neuron:"type=attr;name=isbn"`
+	Title       string  `neuron:"type=attr;name=title;flags=omitempty"`
+	Description *string `neuron:"type=attr;name=description"`
+	Pages       *uint   `neuron:"type=attr;name=pages;flags=omitempty"`
 	PublishedAt time.Time
-	Tags        []string `jsonapi:"type=attr;name=tags"`
+	Tags        []string `neuron:"type=attr;name=tags"`
 }
 
 type RelationOnBasic struct {
-	ID            int    `jsonapi:"type=primary"`
-	BasicRelation string `jsonapi:"type=relation;name=basicrelation"`
+	ID            int    `neuron:"type=primary"`
+	BasicRelation string `neuron:"type=relation;name=basicrelation"`
 }
 
 func (c *RelationOnBasic) CollectionName() string {
@@ -135,8 +135,8 @@ func (c *RelationOnBasic) CollectionName() string {
 }
 
 type RelationBasicOnPtr struct {
-	ID               int     `jsonapi:"type=primary"`
-	BasicPtrRelation *string `jsonapi:"type=relation;name=basicptrrelation"`
+	ID               int     `neuron:"type=primary"`
+	BasicPtrRelation *string `neuron:"type=relation;name=basicptrrelation"`
 }
 
 func (c *RelationBasicOnPtr) CollectionName() string {
@@ -144,9 +144,9 @@ func (c *RelationBasicOnPtr) CollectionName() string {
 }
 
 type Modeli18n struct {
-	ID   int    `jsonapi:"type=primary"`
-	Name string `jsonapi:"type=attr;name=name;flags=i18n"`
-	Lang string `jsonapi:"type=attr;name=langcode;flags=langtag"`
+	ID   int    `neuron:"type=primary"`
+	Name string `neuron:"type=attr;name=name;flags=i18n"`
+	Lang string `neuron:"type=attr;name=langcode;flags=langtag"`
 }
 
 func (m *Modeli18n) CollectionName() string {
@@ -221,8 +221,8 @@ func (m *Modeli18n) CollectionName() string {
 // }
 
 // type BadComment struct {
-// 	ID   uint64 `jsonapi:"primary,bad-comment"`
-// 	Body string `jsonapi:"attr,body"`
+// 	ID   uint64 `neuron:"primary,bad-comment"`
+// 	Body string `neuron:"attr,body"`
 // }
 
 // func (bc *BadComment) JSONAPILinks() *Links {
@@ -232,8 +232,8 @@ func (m *Modeli18n) CollectionName() string {
 // }
 
 type ModelI18nSDK struct {
-	ID   int    `jsonapi:"type=primary"`
-	Lang string `jsonapi:"type=attr;name=language;flags=langtag"`
+	ID   int    `neuron:"type=primary"`
+	Lang string `neuron:"type=attr;name=language;flags=langtag"`
 }
 
 func (m *ModelI18nSDK) CollectionName() string {
@@ -241,8 +241,8 @@ func (m *ModelI18nSDK) CollectionName() string {
 }
 
 type ModelSDK struct {
-	ID   int    `jsonapi:"type=primary"`
-	Name string `jsonapi:"type=attr"`
+	ID   int    `neuron:"type=primary"`
+	Name string `neuron:"type=attr"`
 }
 
 func (c ModelSDK) CollectionName() string {
@@ -250,9 +250,9 @@ func (c ModelSDK) CollectionName() string {
 }
 
 type AuthorSDK struct {
-	ID    int        `jsonapi:"type=primary"`
-	Name  string     `jsonapi:"type=attr"`
-	Blogs []*BlogSDK `jsonapi:"type=relation;foreign=AuthorID"`
+	ID    int        `neuron:"type=primary"`
+	Name  string     `neuron:"type=attr"`
+	Blogs []*BlogSDK `neuron:"type=relation;foreign=AuthorID"`
 }
 
 func (c AuthorSDK) CollectionName() string {
@@ -260,12 +260,12 @@ func (c AuthorSDK) CollectionName() string {
 }
 
 type BlogSDK struct {
-	ID                int      `jsonapi:"type=primary"`
-	Lang              string   `jsonapi:"type=attr;flags=langtag"`
-	SomeAttr          string   `jsonapi:"type=attr"`
-	AuthorID          int      `jsonapi:"type=foreign"`
-	CurrentPost       *PostSDK `jsonapi:"type=relation;foreign=BlogID"`
-	CurrentPostNoSync *PostSDK `jsonapi:"type=relation;foreign=BlogIDNoSync;relation=nosync"`
+	ID                int      `neuron:"type=primary"`
+	Lang              string   `neuron:"type=attr;flags=langtag"`
+	SomeAttr          string   `neuron:"type=attr"`
+	AuthorID          int      `neuron:"type=foreign"`
+	CurrentPost       *PostSDK `neuron:"type=relation;foreign=BlogID"`
+	CurrentPostNoSync *PostSDK `neuron:"type=relation;foreign=BlogIDNoSync;relation=nosync"`
 }
 
 func (c BlogSDK) CollectionName() string {
@@ -273,13 +273,13 @@ func (c BlogSDK) CollectionName() string {
 }
 
 type PostSDK struct {
-	ID             int           `jsonapi:"type=primary"`
-	Title          string        `jsonapi:"type=attr"`
-	BlogID         int           `jsonapi:"type=foreign"`
-	BlogIDNoSync   int           `jsonapi:"type=foreign"`
-	CreatedAt      time.Time     `jsonapi:"type=attr"`
-	Comments       []*CommentSDK `jsonapi:"type=relation;foreign=PostID"`
-	CommentsNoSync []*CommentSDK `jsonapi:"type=relation;foreign=PostIDNoSync;relation=nosync"`
+	ID             int           `neuron:"type=primary"`
+	Title          string        `neuron:"type=attr"`
+	BlogID         int           `neuron:"type=foreign"`
+	BlogIDNoSync   int           `neuron:"type=foreign"`
+	CreatedAt      time.Time     `neuron:"type=attr"`
+	Comments       []*CommentSDK `neuron:"type=relation;foreign=PostID"`
+	CommentsNoSync []*CommentSDK `neuron:"type=relation;foreign=PostIDNoSync;relation=nosync"`
 }
 
 func (c PostSDK) CollectionName() string {
@@ -287,11 +287,11 @@ func (c PostSDK) CollectionName() string {
 }
 
 type CommentSDK struct {
-	ID           int      `jsonapi:"type=primary"`
-	Body         string   `jsonapi:"type=attr"`
-	Post         *PostSDK `jsonapi:"type=relation;foreign=PostID"`
-	PostID       int      `jsonapi:"type=foreign"`
-	PostIDNoSync int      `jsonapi:"type=foreign"`
+	ID           int      `neuron:"type=primary"`
+	Body         string   `neuron:"type=attr"`
+	Post         *PostSDK `neuron:"type=relation;foreign=PostID"`
+	PostID       int      `neuron:"type=foreign"`
+	PostIDNoSync int      `neuron:"type=foreign"`
 }
 
 func (c CommentSDK) CollectionName() string {
@@ -299,11 +299,11 @@ func (c CommentSDK) CollectionName() string {
 }
 
 type PetSDK struct {
-	ID         int         `jsonapi:"type=primary"`
-	Name       string      `jsonapi:"type=attr"`
-	Humans     []*HumanSDK `jsonapi:"type=relation;relation=many2many"`
-	HumansSync []*HumanSDK `jsonapi:"type=relation;relation=many2many,sync,Pets"`
-	Legs       int         `jsonapi:"type=attr"`
+	ID         int         `neuron:"type=primary"`
+	Name       string      `neuron:"type=attr"`
+	Humans     []*HumanSDK `neuron:"type=relation;relation=many2many"`
+	HumansSync []*HumanSDK `neuron:"type=relation;relation=many2many,sync,Pets"`
+	Legs       int         `neuron:"type=attr"`
 }
 
 func (c PetSDK) CollectionName() string {
@@ -311,9 +311,9 @@ func (c PetSDK) CollectionName() string {
 }
 
 type HumanSDK struct {
-	ID   int       `jsonapi:"type=primary"`
-	Name string    `jsonapi:"type=attr"`
-	Pets []*PetSDK `jsonapi:"type=relation;relation=many2many"`
+	ID   int       `neuron:"type=primary"`
+	Name string    `neuron:"type=attr"`
+	Pets []*PetSDK `neuron:"type=relation;relation=many2many"`
 }
 
 func (c HumanSDK) CollectionName() string {
@@ -321,7 +321,7 @@ func (c HumanSDK) CollectionName() string {
 }
 
 type ModCliGenID struct {
-	ID string `jsonapi:"type=primary;flags=client-id"`
+	ID string `neuron:"type=primary;flags=client-id"`
 }
 
 func (m *ModCliGenID) CollectionName() string {

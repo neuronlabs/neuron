@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/gateway/routers"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/gateway/routers"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/kucjac/uni-logger"
 	"github.com/stretchr/testify/assert"
 

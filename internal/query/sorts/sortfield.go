@@ -1,8 +1,8 @@
 package sorts
 
 import (
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
 // SortField is a field that describes the sorting rules for given

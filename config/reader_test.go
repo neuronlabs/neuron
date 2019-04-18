@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/kucjac/uni-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

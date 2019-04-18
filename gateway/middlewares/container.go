@@ -1,10 +1,10 @@
 package middlewares
 
 import (
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/log"
 )
 
-var c *container = newcontainer()
+var c = newcontainer()
 
 // container is the middleware container for the middleware functions
 type container struct {

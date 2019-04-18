@@ -1,8 +1,8 @@
 package filters
 
 import (
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/log"
 )
 
 // Standard filter operators

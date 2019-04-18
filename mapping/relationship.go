@@ -1,7 +1,7 @@
 package mapping
 
 import (
-	"github.com/kucjac/jsonapi/internal/models"
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
 type RelationshipKind models.RelationshipKind

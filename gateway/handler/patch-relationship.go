@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/mapping"
 	"net/http"
 )
 

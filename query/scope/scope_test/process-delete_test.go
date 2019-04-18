@@ -2,12 +2,12 @@ package scope_test
 
 import (
 	"context"
-	ctrl "github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/query/scope/mocks"
 	"github.com/kucjac/uni-logger"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,11 +15,11 @@ import (
 )
 
 type testDeleter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 type testBeforeDeleter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func (b *testBeforeDeleter) HBeforeDelete(s *scope.Scope) error {
@@ -32,7 +32,7 @@ func (b *testBeforeDeleter) HBeforeDelete(s *scope.Scope) error {
 }
 
 type testAfterDeleter struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func (a *testAfterDeleter) HAfterDelete(s *scope.Scope) error {

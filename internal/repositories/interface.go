@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // Repository is the interface used for the repositories

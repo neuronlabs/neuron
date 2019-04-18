@@ -1,19 +1,19 @@
 package controller
 
 import (
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/db-manager"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/i18n"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query"
-	"github.com/kucjac/jsonapi/internal/repositories"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/db-manager"
+	"github.com/neuronlabs/neuron/i18n"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query"
+	"github.com/neuronlabs/neuron/internal/repositories"
+	"github.com/neuronlabs/neuron/log"
 
 	"github.com/pkg/errors"
 
-	"github.com/kucjac/jsonapi/internal/namer"
 	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/neuron/internal/namer"
 
 	// "golang.org/x/text/language"
 	// "golang.org/x/text/language/display"

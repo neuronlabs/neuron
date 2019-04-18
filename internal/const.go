@@ -2,7 +2,7 @@ package internal
 
 const (
 	// StructTag Annotation strings
-	AnnotationJSONAPI = "jsonapi"
+	AnnotationNeuron = "neuron"
 
 	// type tag
 	AnnotationPrimary      = "primary"

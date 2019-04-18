@@ -3,7 +3,7 @@ package paginations
 import (
 	"errors"
 	"fmt"
-	"github.com/kucjac/jsonapi/config"
+	"github.com/neuronlabs/neuron/config"
 )
 
 // PaginationType is the enum that describes the type of pagination

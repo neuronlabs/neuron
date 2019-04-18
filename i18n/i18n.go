@@ -2,7 +2,7 @@ package i18n
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/config"
+	"github.com/neuronlabs/neuron/config"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"

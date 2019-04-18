@@ -1,9 +1,9 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 	"github.com/pkg/errors"
 )
 

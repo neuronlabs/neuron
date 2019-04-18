@@ -2,16 +2,16 @@ package handler
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/internal"
-	ictrl "github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/mapping"
-	"github.com/kucjac/jsonapi/query/scope"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/flags"
+	"github.com/neuronlabs/neuron/internal"
+	ictrl "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/scope"
 	"net/http"
 )
 

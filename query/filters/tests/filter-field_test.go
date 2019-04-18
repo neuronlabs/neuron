@@ -2,11 +2,11 @@ package filters
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/repositories/mock"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/query/filters"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/repositories/mock"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"strings"
@@ -15,16 +15,16 @@ import (
 )
 
 type testingModel struct {
-	ID         int            `jsonapi:"type=primary"`
-	Attr       string         `jsonapi:"type=attr"`
-	Relation   *relationModel `jsonapi:"type=relation;foreign=ForeignKey"`
-	ForeignKey int            `jsonapi:"type=foreign"`
-	FilterKey  int            `jsonapi:"type=filterkey"`
-	Nested     *nestedModel   `jsonapi:"type=attr"`
+	ID         int            `neuron:"type=primary"`
+	Attr       string         `neuron:"type=attr"`
+	Relation   *relationModel `neuron:"type=relation;foreign=ForeignKey"`
+	ForeignKey int            `neuron:"type=foreign"`
+	FilterKey  int            `neuron:"type=filterkey"`
+	Nested     *nestedModel   `neuron:"type=attr"`
 }
 
 type relationModel struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 type nestedModel struct {

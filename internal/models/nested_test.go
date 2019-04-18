@@ -11,7 +11,7 @@ import (
 
 type subNested struct {
 	InceptionFirst  int
-	InceptionSecond float64 `jsonapi:"name=second;flags=omitempty"`
+	InceptionSecond float64 `neuron:"name=second;flags=omitempty"`
 }
 
 type nestedAttribute struct {
@@ -21,13 +21,13 @@ type nestedAttribute struct {
 	Slice     []int
 	Inception subNested
 
-	FloatTagged float64 `jsonapi:"name=float-tag"`
-	IntTagged   int     `jsonapi:"name=int-tag"`
+	FloatTagged float64 `neuron:"name=float-tag"`
+	IntTagged   int     `neuron:"name=int-tag"`
 }
 
 type modelWithNested struct {
-	ID          int              `jsonapi:"type=primary"`
-	PtrComposed *nestedAttribute `jsonapi:"type=attr;name=ptr-composed"`
+	ID          int              `neuron:"type=primary"`
+	PtrComposed *nestedAttribute `neuron:"type=attr;name=ptr-composed"`
 }
 
 func TestNestedFields(t *testing.T) {

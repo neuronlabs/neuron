@@ -2,15 +2,15 @@ package controller
 
 import (
 	"encoding/json"
-	aerrors "github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
+	aerrors "github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 
 	"fmt"
-	"github.com/kucjac/jsonapi/flags"
+	"github.com/neuronlabs/neuron/internal/flags"
 	"io"
 	"reflect"
 	"strconv"

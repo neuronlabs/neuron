@@ -1,11 +1,11 @@
 package processes
 
 import (
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	irepos "github.com/kucjac/jsonapi/internal/repositories"
-	"github.com/kucjac/jsonapi/log"
-	scp "github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/repositories"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	irepos "github.com/neuronlabs/neuron/internal/repositories"
+	"github.com/neuronlabs/neuron/log"
+	scp "github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/repositories"
 
 	"github.com/pkg/errors"
 )

@@ -7,34 +7,34 @@ import (
 )
 
 type model1WithMany2Many struct {
-	ID     int                    `jsonapi:"type=primary"`
-	Synced []*model2WithMany2Many `jsonapi:"type=relation;relation=many2many,sync,Synced"`
+	ID     int                    `neuron:"type=primary"`
+	Synced []*model2WithMany2Many `neuron:"type=relation;relation=many2many,sync,Synced"`
 }
 
 type model2WithMany2Many struct {
-	ID     int                    `jsonapi:"type=primary"`
-	Synced []*model1WithMany2Many `jsonapi:"type=relation;relation=many2many,sync,Synced"`
+	ID     int                    `neuron:"type=primary"`
+	Synced []*model1WithMany2Many `neuron:"type=relation;relation=many2many,sync,Synced"`
 }
 
 type modelWithHasMany struct {
-	ID      int                    `jsonapi:"type=primary"`
-	HasMany []*modelWithForeignKey `jsonapi:"type=relation;foreign=ForeignKey"`
+	ID      int                    `neuron:"type=primary"`
+	HasMany []*modelWithForeignKey `neuron:"type=relation;foreign=ForeignKey"`
 }
 
 type modelWithForeignKey struct {
-	ID         int `jsonapi:"type=primary"`
-	ForeignKey int `jsonapi:"type=foreign"`
+	ID         int `neuron:"type=primary"`
+	ForeignKey int `neuron:"type=foreign"`
 }
 
 type modelWithBelongsTo struct {
-	ID         int              `jsonapi:"type=primary"`
-	ForeignKey int              `jsonapi:"type=foreign"`
-	BelongsTo  *modelWithHasOne `jsonapi:"type=relation;foreign=ForeignKey"`
+	ID         int              `neuron:"type=primary"`
+	ForeignKey int              `neuron:"type=foreign"`
+	BelongsTo  *modelWithHasOne `neuron:"type=relation;foreign=ForeignKey"`
 }
 
 type modelWithHasOne struct {
-	ID     int                 `jsonapi:"type=primary"`
-	HasOne *modelWithBelongsTo `jsonapi:"type=relation;foreign=ForeignKey"`
+	ID     int                 `neuron:"type=primary"`
+	HasOne *modelWithBelongsTo `neuron:"type=relation;foreign=ForeignKey"`
 }
 
 func TestMappedRelationships(t *testing.T) {

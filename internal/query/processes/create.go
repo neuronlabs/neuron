@@ -1,11 +1,11 @@
 package processes
 
 import (
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	irepos "github.com/kucjac/jsonapi/internal/repositories"
-	"github.com/kucjac/jsonapi/log"
-	qScope "github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/repositories"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	irepos "github.com/neuronlabs/neuron/internal/repositories"
+	"github.com/neuronlabs/neuron/log"
+	qScope "github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/repositories"
 
 	// "github.com/kucjac/uni-db"
 	"github.com/pkg/errors"

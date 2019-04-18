@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/namer"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 )
 

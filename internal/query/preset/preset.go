@@ -2,8 +2,8 @@ package preset
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/scope"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 // Scope is a struct used by presetting / prechecking given model.

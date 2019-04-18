@@ -2,7 +2,7 @@ package scope
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/errors"
+	"github.com/neuronlabs/neuron/errors"
 	"reflect"
 )
 

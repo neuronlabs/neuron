@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/kucjac/jsonapi/query/scope"
+	"github.com/neuronlabs/neuron/query/scope"
 )
 
 // BeforeCreator is the interface used for hooks before the creation process

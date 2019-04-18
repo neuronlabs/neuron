@@ -1,24 +1,24 @@
 package scope
 
 import (
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 )
 
 var (
 	get Process = Process{
-		Name: "whiz:get",
+		Name: "neuron:get",
 		Func: getFunc,
 	}
 
 	beforeGet Process = Process{
-		Name: "whiz:hook_before_get",
+		Name: "neuron:hook_before_get",
 		Func: beforeGetFunc,
 	}
 
 	afterGet Process = Process{
-		Name: "whiz:hook_after_get",
+		Name: "neuron:hook_after_get",
 		Func: afterGetFunc,
 	}
 )

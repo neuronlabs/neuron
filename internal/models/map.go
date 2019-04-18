@@ -3,10 +3,10 @@ package models
 import (
 	"fmt"
 	"github.com/jinzhu/inflection"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/namer"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"net/url"
 	"time"
@@ -229,7 +229,7 @@ func BuildModelStruct(
 				continue
 			}
 
-			tag, ok := tField.Tag.Lookup(internal.AnnotationJSONAPI)
+			tag, ok := tField.Tag.Lookup(internal.AnnotationNeuron)
 			if !ok {
 				continue
 			}

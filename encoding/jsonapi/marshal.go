@@ -2,9 +2,9 @@ package jsonapi
 
 import (
 	"encoding/json"
-	ctrl "github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/errors"
-	ictrl "github.com/kucjac/jsonapi/internal/controller"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/errors"
+	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"io"
 )
 

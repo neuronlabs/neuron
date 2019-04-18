@@ -2,9 +2,9 @@ package query
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/sorts"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/sorts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"

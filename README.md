@@ -1,3 +1,3 @@
-# JSONAPI
+# Neuron
 
-`github.com/kucjac/jsonapi` is the repository that implements the server based on the https://jsonapi.org specification.
+Neuron os the JSONAPI server implementation based on the https://jsonapi.org v1.0 specification.

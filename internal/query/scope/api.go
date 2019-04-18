@@ -3,12 +3,12 @@ package scope
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/namer/dialect"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/paginations"
-	"github.com/kucjac/jsonapi/internal/query/sorts"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/namer/dialect"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/paginations"
+	"github.com/neuronlabs/neuron/internal/query/sorts"
 )
 
 // AddFilterField adds the filter field for given scope

@@ -1,11 +1,11 @@
 package models
 
 import (
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/log"
-	// "github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/namer"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/log"
+	// "github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/namer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	// "reflect"

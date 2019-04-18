@@ -3,15 +3,15 @@ package scope_test
 import (
 	"context"
 	"errors"
-	ctrl "github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/models"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
 
-	"github.com/kucjac/jsonapi/internal/repositories"
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/query/scope/mocks"
 	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/neuron/internal/repositories"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -25,15 +25,15 @@ var (
 )
 
 type createTestModel struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 type beforeCreateTestModel struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 type afterCreateTestModel struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func (c *beforeCreateTestModel) HBeforeCreate(s *scope.Scope) error {

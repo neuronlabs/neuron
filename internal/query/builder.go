@@ -1,11 +1,11 @@
 package query
 
 import (
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/i18n"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/namer"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/i18n"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/namer"
 	"github.com/pkg/errors"
 	"gopkg.in/go-playground/validator.v9"
 )

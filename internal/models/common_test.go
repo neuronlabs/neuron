@@ -1,22 +1,22 @@
 package models
 
 import (
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/log"
 	"testing"
 )
 
 type baseModel struct {
-	ID         int    `jsonapi:"type=primary"`
-	StringAttr string `jsonapi:"type=attr"`
+	ID         int    `neuron:"type=primary"`
+	StringAttr string `neuron:"type=attr"`
 
-	RelField   *embeddedModel `jsonapi:"type=relation;foreign=RelFieldID"`
-	RelFieldID int            `jsonapi:"type=foreign"`
+	RelField   *embeddedModel `neuron:"type=relation;foreign=RelFieldID"`
+	RelFieldID int            `neuron:"type=foreign"`
 }
 
 type embeddedModel struct {
 	baseModel
 
-	IntAttr int `jsonapi:"type=attr"`
+	IntAttr int `neuron:"type=attr"`
 }
 
 // RepositoryName returns the name of the repository for the embeddedModel.

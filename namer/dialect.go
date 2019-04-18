@@ -1,7 +1,7 @@
 package namer
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // DialectFieldNamer is the namer function

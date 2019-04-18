@@ -1,8 +1,8 @@
 package scope
 
 import (
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 )
 
 type processFunc func(s *Scope) error

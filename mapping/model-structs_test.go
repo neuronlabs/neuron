@@ -82,7 +82,7 @@ package mapping
 
 // func TestInitCheckFieldTypes(t *testing.T) {
 // 	type invalidPrimary struct {
-// 		ID float64 `jsonapi:"type=primary"`
+// 		ID float64 `neuron:"type=primary"`
 // 	}
 // 	clearMap()
 // 	err := c.buildModelStruct(&invalidPrimary{}, c.Models)
@@ -94,8 +94,8 @@ package mapping
 
 // 	// attribute of type chan
 // 	type invalidAttribute struct {
-// 		ID       int           `jsonapi:"type=primary"`
-// 		ChanAttr chan (string) `jsonapi:"type=attr"`
+// 		ID       int           `neuron:"type=primary"`
+// 		ChanAttr chan (string) `neuron:"type=attr"`
 // 	}
 // 	err = c.buildModelStruct(&invalidAttribute{}, c.Models)
 // 	assertNil(t, err)
@@ -107,8 +107,8 @@ package mapping
 
 // 	//attribute of type func
 // 	type invAttrFunc struct {
-// 		ID       int          `jsonapi:"type=primary"`
-// 		FuncAttr func(string) `jsonapi:"type=attr"`
+// 		ID       int          `neuron:"type=primary"`
+// 		FuncAttr func(string) `neuron:"type=attr"`
 // 	}
 // 	err = c.buildModelStruct(&invAttrFunc{}, c.Models)
 // 	assertNil(t, err)
@@ -119,8 +119,8 @@ package mapping
 
 // 	// relationship of type not a struct/ ptr struct / slice
 // 	type invalidRelBasic struct {
-// 		ID    int    `jsonapi:"type=primary"`
-// 		Basic string `jsonapi:"type=relation"`
+// 		ID    int    `neuron:"type=primary"`
+// 		Basic string `neuron:"type=relation"`
 // 	}
 // 	inv := invalidRelBasic{}
 // 	mStruct = &ModelStruct{
@@ -181,23 +181,23 @@ package mapping
 // 	}
 
 // 	type AttrArrStruct struct {
-// 		ID  int       `jsonapi:"type=primary"`
-// 		Arr []*string `jsonapi:"type=attr"`
+// 		ID  int       `neuron:"type=primary"`
+// 		Arr []*string `neuron:"type=attr"`
 // 	}
 
 // 	type ArrayModel struct {
-// 		ID  int       `jsonapi:"type=primary"`
-// 		Arr [2]string `jsonapi:"type=attr"`
+// 		ID  int       `neuron:"type=primary"`
+// 		Arr [2]string `neuron:"type=attr"`
 // 	}
 
 // 	type SliceInt struct {
-// 		ID int   `jsonapi:"type=primary"`
-// 		Sl []int `jsonapi:"type=attr"`
+// 		ID int   `neuron:"type=primary"`
+// 		Sl []int `neuron:"type=attr"`
 // 	}
 
 // 	type ArrInt struct {
-// 		ID  int    `jsonapi:"type=primary"`
-// 		Arr [2]int `jsonapi:"type=attr"`
+// 		ID  int    `neuron:"type=primary"`
+// 		Arr [2]int `neuron:"type=attr"`
 // 	}
 
 // 	type NestedStruct struct {
@@ -205,18 +205,18 @@ package mapping
 // 	}
 
 // 	type SliceStruct struct {
-// 		ID int             `jsonapi:"type=primary"`
-// 		Sl []*NestedStruct `jsonapi:"type=attr"`
+// 		ID int             `neuron:"type=primary"`
+// 		Sl []*NestedStruct `neuron:"type=attr"`
 // 	}
 
 // 	type PtrSlicePtrStruct struct {
-// 		ID int              `jsonapi:"type=primary"`
-// 		Sl *[]*NestedStruct `jsonapi:"type=attr"`
+// 		ID int              `neuron:"type=primary"`
+// 		Sl *[]*NestedStruct `neuron:"type=attr"`
 // 	}
 
 // 	type DoubleSlice struct {
-// 		ID int     `jsonapi:"type=primary"`
-// 		Sl [][]int `jsonapi:"type=attr"`
+// 		ID int     `neuron:"type=primary"`
+// 		Sl [][]int `neuron:"type=attr"`
 // 	}
 
 // 	b := bytes.NewBuffer(nil)

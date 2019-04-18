@@ -1,7 +1,7 @@
 package pagination
 
 import (
-	"github.com/kucjac/jsonapi/internal"
+	"github.com/neuronlabs/neuron/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"

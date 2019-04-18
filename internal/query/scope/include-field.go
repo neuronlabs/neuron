@@ -1,12 +1,12 @@
 package scope
 
 import (
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/sorts"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/sorts"
+	"github.com/neuronlabs/neuron/log"
 	"reflect"
 )
 

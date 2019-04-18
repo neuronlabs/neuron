@@ -2,9 +2,9 @@ package sorts
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/query/sorts"
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/sorts"
+	"github.com/neuronlabs/neuron/mapping"
 	"net/url"
 )
 

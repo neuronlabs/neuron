@@ -3,8 +3,8 @@ package sorts
 import (
 	"errors"
 	"fmt"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
 	"strings"
 )
 

@@ -3,11 +3,11 @@
 package mocks
 
 import (
-	"github.com/kucjac/jsonapi/mapping"
-	"github.com/kucjac/jsonapi/repositories"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repositories"
 	mock "github.com/stretchr/testify/mock"
 )
-import scope "github.com/kucjac/jsonapi/query/scope"
+import scope "github.com/neuronlabs/neuron/query/scope"
 
 var _ repositories.Repository = &Repository{}
 

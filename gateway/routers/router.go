@@ -1,14 +1,14 @@
 package routers
 
 import (
-	"github.com/kucjac/jsonapi/config"
-	"github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"net/http"
 )
 
-var routers *routerSetterContainer = newContainer()
+var routers = newContainer()
 
 var (
 	ErrRouterNotRegistered error = errors.New("Router not registered.")

@@ -2,11 +2,11 @@ package query
 
 import (
 	"fmt"
-	aerrors "github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/scope"
+	aerrors "github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 	"strings"
 )
 

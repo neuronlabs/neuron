@@ -2,39 +2,39 @@ package scope
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
 	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 	"reflect"
 )
 
 var (
 	patch Process = Process{
-		Name: "whiz:patch",
+		Name: "neuron:patch",
 		Func: patchFunc,
 	}
 
 	beforePatch Process = Process{
-		Name: "whiz:hook_before_patch",
+		Name: "neuron:hook_before_patch",
 		Func: beforePatchFunc,
 	}
 
 	afterPatch Process = Process{
-		Name: "whiz:hook_after_patch",
+		Name: "neuron:hook_after_patch",
 		Func: afterPatchFunc,
 	}
 
 	patchBelongsToRelationships Process = Process{
-		Name: "whiz:patch_belongs_to_relationships",
+		Name: "neuron:patch_belongs_to_relationships",
 		Func: patchBelongsToRelationshipsFunc,
 	}
 
 	patchForeignRelationships Process = Process{
-		Name: "whiz:patch_foreign_relationships",
+		Name: "neuron:patch_foreign_relationships",
 		Func: patchForeignRelationshipsFunc,
 	}
 )

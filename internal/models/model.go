@@ -2,11 +2,11 @@ package models
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/config"
-	aerrors "github.com/kucjac/jsonapi/errors"
-	"github.com/kucjac/jsonapi/flags"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/config"
+	aerrors "github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"

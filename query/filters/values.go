@@ -1,8 +1,8 @@
 package filters
 
 import (
-	"github.com/kucjac/jsonapi/log"
-	"github.com/kucjac/jsonapi/mapping"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 	"strconv"
 	"time"
 )

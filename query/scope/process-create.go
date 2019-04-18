@@ -1,11 +1,11 @@
 package scope
 
 import (
-	ctrl "github.com/kucjac/jsonapi/controller"
-	"github.com/kucjac/jsonapi/internal/controller"
-	"github.com/kucjac/jsonapi/internal/query/scope"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/log"
 
 	// "github.com/kucjac/uni-db"
 	"github.com/pkg/errors"
@@ -21,17 +21,17 @@ var ErrNoCreateRepository error = errors.New("No create repository for model fou
 
 var (
 	create Process = Process{
-		Name: "whiz:create",
+		Name: "neuron:create",
 		Func: createFunc,
 	}
 
 	beforeCreate Process = Process{
-		Name: "whiz:hook_before_create",
+		Name: "neuron:hook_before_create",
 		Func: beforeCreateFunc,
 	}
 
 	afterCreate Process = Process{
-		Name: "whiz:hook_after_create",
+		Name: "neuron:hook_after_create",
 		Func: afterCreateFunc,
 	}
 )

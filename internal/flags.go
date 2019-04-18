@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/kucjac/jsonapi/flags"
+	"github.com/neuronlabs/neuron/internal/flags"
 )
 
 // ScopeCtxFlags - flags settable on scope, endpoint, model handler and controller

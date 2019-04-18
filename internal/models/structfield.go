@@ -2,8 +2,8 @@ package models
 
 import (
 	"fmt"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"net/url"
 	"reflect"

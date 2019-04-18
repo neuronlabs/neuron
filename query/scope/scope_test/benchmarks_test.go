@@ -1,15 +1,15 @@
 package scope_test
 
 import (
-	iScope "github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/query/scope"
-	"github.com/kucjac/jsonapi/query/scope/mocks"
+	iScope "github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type benchmarkType struct {
-	ID int `jsonapi:"type=primary"`
+	ID int `neuron:"type=primary"`
 }
 
 func BenchmarkCastScope(b *testing.B) {

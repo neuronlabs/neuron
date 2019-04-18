@@ -3,9 +3,9 @@ package controller
 import (
 	"bytes"
 	"context"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"
@@ -45,13 +45,13 @@ func TestMarshal(t *testing.T) {
 		},
 		"Time": func(t *testing.T) {
 			type ModelPtrTime struct {
-				ID   int        `jsonapi:"type=primary"`
-				Time *time.Time `jsonapi:"type=attr"`
+				ID   int        `neuron:"type=primary"`
+				Time *time.Time `neuron:"type=attr"`
 			}
 
 			type ModelTime struct {
-				ID   int       `jsonapi:"type=primary"`
-				Time time.Time `jsonapi:"type=attr"`
+				ID   int       `neuron:"type=primary"`
+				Time time.Time `neuron:"type=attr"`
 			}
 
 			t.Run("NoPtr", func(t *testing.T) {
@@ -80,8 +80,8 @@ func TestMarshal(t *testing.T) {
 		"singleWithMap": func(t *testing.T) {
 			t.Run("PtrString", func(t *testing.T) {
 				type MpString struct {
-					ID  int                `jsonapi:"type=primary"`
-					Map map[string]*string `jsonapi:"type=attr"`
+					ID  int                `neuron:"type=primary"`
+					Map map[string]*string `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpString{})
 
@@ -95,8 +95,8 @@ func TestMarshal(t *testing.T) {
 
 			t.Run("NilString", func(t *testing.T) {
 				type MpString struct {
-					ID  int                `jsonapi:"type=primary"`
-					Map map[string]*string `jsonapi:"type=attr"`
+					ID  int                `neuron:"type=primary"`
+					Map map[string]*string `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpString{})
 				value := &MpString{ID: 5, Map: map[string]*string{"key": nil}}
@@ -108,8 +108,8 @@ func TestMarshal(t *testing.T) {
 
 			t.Run("PtrInt", func(t *testing.T) {
 				type MpInt struct {
-					ID  int             `jsonapi:"type=primary"`
-					Map map[string]*int `jsonapi:"type=attr"`
+					ID  int             `neuron:"type=primary"`
+					Map map[string]*int `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpInt{})
 
@@ -122,8 +122,8 @@ func TestMarshal(t *testing.T) {
 			})
 			t.Run("NilPtrInt", func(t *testing.T) {
 				type MpInt struct {
-					ID  int             `jsonapi:"type=primary"`
-					Map map[string]*int `jsonapi:"type=attr"`
+					ID  int             `neuron:"type=primary"`
+					Map map[string]*int `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpInt{})
 
@@ -135,8 +135,8 @@ func TestMarshal(t *testing.T) {
 			})
 			t.Run("PtrFloat", func(t *testing.T) {
 				type MpFloat struct {
-					ID  int                 `jsonapi:"type=primary"`
-					Map map[string]*float64 `jsonapi:"type=attr"`
+					ID  int                 `neuron:"type=primary"`
+					Map map[string]*float64 `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpFloat{})
 
@@ -149,8 +149,8 @@ func TestMarshal(t *testing.T) {
 			})
 			t.Run("NilPtrFloat", func(t *testing.T) {
 				type MpFloat struct {
-					ID  int                 `jsonapi:"type=primary"`
-					Map map[string]*float64 `jsonapi:"type=attr"`
+					ID  int                 `neuron:"type=primary"`
+					Map map[string]*float64 `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpFloat{})
 
@@ -163,8 +163,8 @@ func TestMarshal(t *testing.T) {
 
 			t.Run("SliceInt", func(t *testing.T) {
 				type MpSliceInt struct {
-					ID  int              `jsonapi:"type=primary"`
-					Map map[string][]int `jsonapi:"type=attr"`
+					ID  int              `neuron:"type=primary"`
+					Map map[string][]int `neuron:"type=attr"`
 				}
 				c := prepare(t, &MpSliceInt{})
 
@@ -198,8 +198,8 @@ func TestMarshal(t *testing.T) {
 				}
 
 				type Simple struct {
-					ID     int        `jsonapi:"type=primary"`
-					Nested *NestedSub `jsonapi:"type=attr"`
+					ID     int        `neuron:"type=primary"`
+					Nested *NestedSub `neuron:"type=attr"`
 				}
 
 				c := prepare(t, &Simple{})
@@ -222,8 +222,8 @@ func TestMarshal(t *testing.T) {
 				}
 
 				type Simple struct {
-					ID     int           `jsonapi:"type=primary"`
-					Double *DoubleNested `jsonapi:"type=attr"`
+					ID     int           `neuron:"type=primary"`
+					Double *DoubleNested `neuron:"type=attr"`
 				}
 
 				c := prepare(t, &Simple{})
@@ -445,9 +445,9 @@ func BlogScope(t *testing.T, c *Controller) *scope.Scope {
 // }
 
 type HiddenModel struct {
-	ID          int    `jsonapi:"type=primary;flags=hidden"`
-	Visibile    string `jsonapi:"type=attr"`
-	HiddenField string `jsonapi:"type=attr;flags=hidden"`
+	ID          int    `neuron:"type=primary;flags=hidden"`
+	Visibile    string `neuron:"type=attr"`
+	HiddenField string `neuron:"type=attr;flags=hidden"`
 }
 
 func (h *HiddenModel) CollectionName() string {

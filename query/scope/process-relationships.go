@@ -2,29 +2,29 @@ package scope
 
 import (
 	"context"
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/models"
-	"github.com/kucjac/jsonapi/internal/query/filters"
-	scope "github.com/kucjac/jsonapi/internal/query/scope"
-	"github.com/kucjac/jsonapi/log"
 	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/internal/query/filters"
+	scope "github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"reflect"
 )
 
 var (
 	getIncluded Process = Process{
-		Name: "whiz:get_included",
+		Name: "neuron:get_included",
 		Func: getIncludedFunc,
 	}
 
 	setBelongsToRelationships Process = Process{
-		Name: "whiz:set_belongs_to_relationships",
+		Name: "neuron:set_belongs_to_relationships",
 		Func: setBelongsToRelationshipsFunc,
 	}
 
 	getForeignRelationships Process = Process{
-		Name: "whiz:get_foreign_relationships",
+		Name: "neuron:get_foreign_relationships",
 		Func: getForeignRelationshipsFunc,
 	}
 )

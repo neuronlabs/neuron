@@ -1,9 +1,9 @@
 package pagination
 
 import (
-	"github.com/kucjac/jsonapi/internal"
-	"github.com/kucjac/jsonapi/internal/query/paginations"
-	"github.com/kucjac/jsonapi/log"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/paginations"
+	"github.com/neuronlabs/neuron/log"
 	"net/url"
 	"strconv"
 )

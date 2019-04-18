@@ -1,8 +1,8 @@
 package jsonapi
 
 import (
-	ctrl "github.com/kucjac/jsonapi/controller"
-	ictrl "github.com/kucjac/jsonapi/internal/controller"
+	ctrl "github.com/neuronlabs/neuron/controller"
+	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"io"
 )
 

@@ -1,7 +1,7 @@
 package filters
 
 import (
-	"github.com/kucjac/jsonapi/internal"
+	"github.com/neuronlabs/neuron/internal"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -76,7 +76,7 @@ func TestFilterOperators(t *testing.T) {
 // 	clearMap()
 
 // 	type modelWithStringID struct {
-// 		ID string `jsonapi:"type=primary"`
+// 		ID string `neuron:"type=primary"`
 // 	}
 // 	assert.NoError(t, c.PrecomputeModels(&modelWithStringID{}))
 // 	mStruct := c.MustGetModelStruct(&modelWithStringID{})
@@ -90,8 +90,8 @@ func TestFilterOperators(t *testing.T) {
 // 	clearMap()
 
 // 	type MapStruct struct {
-// 		ID  string                 `jsonapi:"type=primary"`
-// 		Map map[string]interface{} `jsonapi:"type=attr"`
+// 		ID  string                 `neuron:"type=primary"`
+// 		Map map[string]interface{} `neuron:"type=attr"`
 // 	}
 
 // 	assert.NoError(t, c.PrecomputeModels(&MapStruct{}))
