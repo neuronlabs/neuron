@@ -2,7 +2,6 @@ package controller
 
 import (
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/db-manager"
 	"github.com/neuronlabs/neuron/i18n"
 	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -10,6 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/internal/repositories"
 	"github.com/neuronlabs/neuron/log"
 
+	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/pkg/errors"
 
 	"github.com/kucjac/uni-logger"
@@ -58,8 +58,8 @@ type Controller struct {
 	// repositories contains mapping between the model's and it's repositories
 	repositories *repositories.RepositoryContainer
 
-	// errMgr error manager for the repositories
-	errMgr *dbmanager.ErrorManager
+	// dbErrMapper error manager for the repositories
+	dbErrMapper *aerrors.ErrorMapper
 
 	// Validators
 	// CreateValidator is used as a validator for the Create processes
@@ -151,14 +151,14 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 	}
 
 	// create error manager
-	c.errMgr = dbmanager.NewDBErrorMgr()
+	c.dbErrMapper = aerrors.NewDBMapper()
 
 	return c, nil
 }
 
-// DBManager gets the database error manager
-func (c *Controller) DBManager() *dbmanager.ErrorManager {
-	return c.errMgr
+// DBErrorMapper gets the database error manager
+func (c *Controller) DBErrorMapper() *aerrors.ErrorMapper {
+	return c.dbErrMapper
 }
 
 // QueryBuilder returns the controller query builder

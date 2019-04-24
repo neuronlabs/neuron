@@ -11,26 +11,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-type beforeCreator interface {
-	BeforeCreate(s *Scope) error
-}
-
 var ErrNoCreateRepository error = errors.New("No create repository for model found.")
 
 // CREATE process
 
 var (
-	create Process = Process{
+	// ProcessCreate is the process that does the Repository Create method
+	ProcessCreate = &Process{
 		Name: "neuron:create",
 		Func: createFunc,
 	}
 
-	beforeCreate Process = Process{
+	// ProcessBeforeCreate is the process that does the hook HBeforeCreate
+	ProcessBeforeCreate = &Process{
 		Name: "neuron:hook_before_create",
 		Func: beforeCreateFunc,
 	}
 
-	afterCreate Process = Process{
+	// ProcessAfterCreate is the Process that does the hook HAfterCreate
+	ProcessAfterCreate = &Process{
 		Name: "neuron:hook_after_create",
 		Func: afterCreateFunc,
 	}
@@ -45,7 +44,7 @@ func createFunc(s *Scope) error {
 		return ErrNoRepositoryFound
 	}
 
-	creater, ok := repo.(creater)
+	creater, ok := repo.(Creater)
 	if !ok {
 		log.Errorf("The repository deosn't implement Creater interface for model: %s", (*scope.Scope)(s).Struct().Collection())
 		return ErrNoCreateRepository
@@ -60,7 +59,7 @@ func createFunc(s *Scope) error {
 
 // beforeCreate is the function that is used before the create process
 func beforeCreateFunc(s *Scope) error {
-	beforeCreator, ok := s.Value.(wBeforeCreator)
+	beforeCreator, ok := s.Value.(BeforeCreator)
 	if !ok {
 		return nil
 	}
@@ -76,7 +75,7 @@ func beforeCreateFunc(s *Scope) error {
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
 func afterCreateFunc(s *Scope) error {
-	afterCreator, ok := s.Value.(wAfterCreator)
+	afterCreator, ok := s.Value.(AfterCreator)
 	if !ok {
 		return nil
 	}

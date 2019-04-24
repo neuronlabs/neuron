@@ -110,18 +110,25 @@ func (s *Scope) AddFilter(filter *filters.FilterField) error {
 // AddStringFilter parses the filter into the FilterField
 // and adds to the provided scope's filters
 func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
-	_, err := (*controller.Controller)(s.Controller()).QueryBuilder().BuildRawFilter((*scope.Scope)(s), rawFilter, values...)
+	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, s.Struct().SchemaName(), values...)
 	if err != nil {
 		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
 		return err
 	}
-	return nil
+	return s.AddFilter(filter)
+
 }
 
 // AddToFieldset adds the fields to the scope's fieldset.
 // The fields may be a mapping.StructField as well as the string - which might be
 // the 'api name' or structFields name.
 func (s *Scope) AddToFieldset(fields ...interface{}) error {
+	for i, field := range fields {
+		mField, ok := field.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(mField)
+		}
+	}
 	return (*scope.Scope)(s).AddToFieldset(fields...)
 }
 
@@ -145,7 +152,7 @@ func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
 func (s *Scope) AddStringSortFields(fields ...string) error {
 	errs := (*scope.Scope)(s).BuildSortFields(fields...)
 	if len(errs) > 0 {
-		return errs[0]
+		return errors.MultipleErrors(errs)
 	}
 	return nil
 }
@@ -173,7 +180,7 @@ func (s *Scope) Context() context.Context {
 
 // Create creates the scope values
 func (s *Scope) Create() error {
-	if err := DefaultQueryProcessor.doCreate(s); err != nil {
+	if err := DefaultQueryProcessor.DoCreate(s); err != nil {
 		return err
 	}
 	return nil
@@ -181,7 +188,7 @@ func (s *Scope) Create() error {
 
 // Delete deletes the values provided in the scope's value
 func (s *Scope) Delete() error {
-	if err := DefaultQueryProcessor.doDelete(s); err != nil {
+	if err := DefaultQueryProcessor.DoDelete(s); err != nil {
 		return err
 	}
 	return nil
@@ -226,7 +233,7 @@ func (s *Scope) FilterKeyFilters() []*filters.FilterField {
 // Get gets single value from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) Get() error {
-	if err := DefaultQueryProcessor.doGet(s); err != nil {
+	if err := DefaultQueryProcessor.DoGet(s); err != nil {
 		return err
 	}
 	return nil
@@ -283,7 +290,7 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 // List gets the values from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) List() error {
-	if err := DefaultQueryProcessor.doList(s); err != nil {
+	if err := DefaultQueryProcessor.DoList(s); err != nil {
 		return err
 	}
 
@@ -293,7 +300,7 @@ func (s *Scope) List() error {
 // Patch updates the scope's attribute and relationship values with the restrictions provided
 // in the scope's parameters
 func (s *Scope) Patch() error {
-	if err := DefaultQueryProcessor.doPatch(s); err != nil {
+	if err := DefaultQueryProcessor.DoPatch(s); err != nil {
 		return err
 	}
 	return nil
@@ -353,6 +360,17 @@ func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
 		selected = append(selected, (*mapping.StructField)(field))
 	}
 	return
+}
+
+// SetFieldset sets the fieldset for the provided scope
+func (s *Scope) SetFieldset(fields ...interface{}) error {
+	for i, field := range fields {
+		mField, ok := field.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(mField)
+		}
+	}
+	return (*scope.Scope)(s).SetFields(fields...)
 }
 
 // NotSelectedFields returns all the fields that are not selected

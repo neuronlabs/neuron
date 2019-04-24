@@ -1,11 +1,8 @@
 package repositories
 
 import (
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repositories"
 )
 
 // Repository is the interface used for the repositories
-type Repository interface {
-	RepositoryName() string
-	New(m *mapping.ModelStruct) interface{}
-}
+type Repository repositories.Repository

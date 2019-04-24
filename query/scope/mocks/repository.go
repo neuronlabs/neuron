@@ -86,10 +86,12 @@ func (_m *Repository) Patch(_a0 *scope.Scope) error {
 	return r0
 }
 
-func (r *Repository) RepositoryName() string {
+// RepositoryName provides a mock repository name method
+func (_m *Repository) RepositoryName() string {
 	return "scope-mock"
 }
 
-func (r *Repository) New(*mapping.ModelStruct) interface{} {
-	return &Repository{}
+// New provides a mock repository new method
+func (_m *Repository) New(*mapping.ModelStruct) (repositories.Repository, error) {
+	return &Repository{}, nil
 }

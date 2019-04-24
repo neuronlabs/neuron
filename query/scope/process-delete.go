@@ -11,22 +11,26 @@ import (
 )
 
 var (
-	deleteProcess Process = Process{
+	// ProcessDelete is the process that does the Repository Delete method
+	ProcessDelete = &Process{
 		Name: "neuron:delete",
 		Func: deleteFunc,
 	}
 
-	beforeDelete Process = Process{
+	// ProcessBeforeDelete is the Process that does the HBeforeDelete hook
+	ProcessBeforeDelete = &Process{
 		Name: "neuron:hook_before_delete",
 		Func: beforeDeleteFunc,
 	}
 
-	afterDelete Process = Process{
+	// ProcessAfterDelete is the Process that does the HAfterDelete hook
+	ProcessAfterDelete = &Process{
 		Name: "neuron:hook_after_delete",
 		Func: afterDeleteFunc,
 	}
 
-	deleteForeignRelationships Process = Process{
+	// ProcessDeleteForeignRelationships is the Process that deletes the foreing relatioionships
+	ProcessDeleteForeignRelationships = &Process{
 		Name: "neuron:delete_foreign_relationships",
 		Func: deleteForeignRelationshipsFunc,
 	}
@@ -40,7 +44,7 @@ func deleteFunc(s *Scope) error {
 		return ErrNoRepositoryFound
 	}
 
-	dRepo, ok := repo.(deleter)
+	dRepo, ok := repo.(Deleter)
 	if !ok {
 		log.Warningf("Repository for model: '%v' doesn't implement Deleter interface", s.Struct().Type().Name())
 		return ErrNoDeleterFound
@@ -61,7 +65,7 @@ func processExtractPrimaries(s *Scope) error {
 }
 
 func beforeDeleteFunc(s *Scope) error {
-	beforeDeleter, ok := s.Value.(wBeforeDeleter)
+	beforeDeleter, ok := s.Value.(BeforeDeleter)
 	if !ok {
 		return nil
 	}
@@ -73,12 +77,12 @@ func beforeDeleteFunc(s *Scope) error {
 }
 
 func afterDeleteFunc(s *Scope) error {
-	afterDeleter, ok := s.Value.(wAfterDeleter)
+	afterDeleter, ok := s.Value.(AfterDeleter)
 	if !ok {
 		return nil
 	}
 
-	if err := afterDeleter.HAfterDeleter(s); err != nil {
+	if err := afterDeleter.HAfterDelete(s); err != nil {
 		return err
 	}
 	return nil

@@ -1,4 +1,4 @@
-package dbmanager
+package errors
 
 import (
 	"github.com/kucjac/uni-db"
@@ -8,7 +8,7 @@ import (
 
 func TestNew(t *testing.T) {
 	Convey("Creating new error handler.", t, func() {
-		errorManager := NewDBErrorMgr()
+		errorManager := NewDBMapper()
 
 		Convey("The newly created handler use defaultErrorMap by default", func() {
 			So(errorManager.dbToRest, ShouldResemble, DefaultErrorMap)
@@ -19,12 +19,12 @@ func TestNew(t *testing.T) {
 
 func TestLoadCustomErrorMap(t *testing.T) {
 	Convey("While having an Error Handler", t, func() {
-		errorManager := NewDBErrorMgr()
+		errorManager := NewDBMapper()
 
 		Convey("And a prepared custom error map with a custom resterror", func() {
-			customError := ErrorObject{Code: "C123", Title: "Custom rest error"}
+			customError := ApiError{Code: "C123", Title: "Custom rest error"}
 
-			customMap := map[unidb.Error]ErrorObject{
+			customMap := map[unidb.Error]ApiError{
 				unidb.ErrUnspecifiedError: customError,
 			}
 			So(customMap, ShouldNotBeNil)
@@ -58,7 +58,7 @@ func TestLoadCustomErrorMap(t *testing.T) {
 
 func TestUpdateErrorEntry(t *testing.T) {
 	Convey("Having a ErrorHandler containing default error map", t, func() {
-		errorManager := NewDBErrorMgr()
+		errorManager := NewDBMapper()
 
 		So(errorManager.dbToRest, ShouldResemble, DefaultErrorMap)
 
@@ -70,7 +70,7 @@ func TestUpdateErrorEntry(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("While using UpdateErrorMapEntry method on the errorManager.", func() {
-				customError := ErrorObject{ID: "1234", Title: "My custom Error"}
+				customError := ApiError{ID: "1234", Title: "My custom Error"}
 
 				errorManager.UpdateErrorEntry(someErrorProto, customError)
 
@@ -90,7 +90,7 @@ func TestUpdateErrorEntry(t *testing.T) {
 
 func TestHandle(t *testing.T) {
 	Convey("Having a ErrorHandler with default error map", t, func() {
-		errorManager := NewDBErrorMgr()
+		errorManager := NewDBMapper()
 
 		Convey("And a *Error based on the basic Error prototype", func() {
 			someError := unidb.ErrUniqueViolation.New()
@@ -100,7 +100,7 @@ func TestHandle(t *testing.T) {
 				restError, err := errorManager.Handle(someError)
 
 				So(err, ShouldBeNil)
-				So(restError, ShouldHaveSameTypeAs, &ErrorObject{})
+				So(restError, ShouldHaveSameTypeAs, &ApiError{})
 				So(restError, ShouldNotBeNil)
 			})
 
@@ -119,7 +119,7 @@ func TestHandle(t *testing.T) {
 		Convey(`If we set a non default error map,
 			that may not contain every Error entry as a key`, func() {
 			someErrorProto := unidb.ErrSystemError
-			customErrorMap := map[unidb.Error]ErrorObject{
+			customErrorMap := map[unidb.Error]ApiError{
 				someErrorProto: {ID: "1921", Title: "Some Error"},
 			}
 			errorManager.LoadCustomErrorMap(customErrorMap)

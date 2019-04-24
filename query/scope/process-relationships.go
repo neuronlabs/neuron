@@ -13,17 +13,20 @@ import (
 )
 
 var (
-	getIncluded Process = Process{
+	// ProcessGetIncluded is the process that gets the included scope values
+	ProcessGetIncluded = &Process{
 		Name: "neuron:get_included",
 		Func: getIncludedFunc,
 	}
 
-	setBelongsToRelationships Process = Process{
+	// ProcessSetBelongsToRelationships is the Process that sets the BelongsToRelationships
+	ProcessSetBelongsToRelationships = &Process{
 		Name: "neuron:set_belongs_to_relationships",
 		Func: setBelongsToRelationshipsFunc,
 	}
 
-	getForeignRelationships Process = Process{
+	// ProcessGetForeignRelationships is the Process that gets the foreign relationships
+	ProcessGetForeignRelationships = &Process{
 		Name: "neuron:get_foreign_relationships",
 		Func: getForeignRelationshipsFunc,
 	}
@@ -61,7 +64,7 @@ func getIncludedFunc(s *Scope) error {
 			includedField.Scope.SetIDFilters(missing...)
 			includedField.Scope.NewValueMany()
 
-			if err := DefaultQueryProcessor.doList((*Scope)(includedField.Scope)); err != nil {
+			if err := DefaultQueryProcessor.DoList((*Scope)(includedField.Scope)); err != nil {
 				log.Debugf("Model: %v, includedField '%s' Scope.List failed. %v", s.Struct().Collection(), includedField.Name(), err)
 				return err
 			}

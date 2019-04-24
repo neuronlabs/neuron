@@ -8,17 +8,20 @@ import (
 )
 
 var (
-	list Process = Process{
+	// ProcessList is the Process that do the Repository List method
+	ProcessList = &Process{
 		Name: "neuron:list",
 		Func: listFunc,
 	}
 
-	beforeList Process = Process{
+	// ProcessBeforeList is the Process that do the Hook Before List
+	ProcessBeforeList = &Process{
 		Name: "neuron:hook_before_list",
 		Func: beforeListFunc,
 	}
 
-	afterList Process = Process{
+	// ProcessAfterList is the Process that do the Hook After List
+	ProcessAfterList = &Process{
 		Name: "neuron:hook_after_list",
 		Func: afterListFunc,
 	}
@@ -35,7 +38,7 @@ func listFunc(s *Scope) error {
 	}
 
 	// Cast repository as Lister interface
-	listerRepo, ok := repo.(lister)
+	listerRepo, ok := repo.(Lister)
 	if !ok {
 		log.Debug("processList repository is not a Lister repository.")
 		return ErrNoListerRepoFound
@@ -56,7 +59,7 @@ func afterListFunc(s *Scope) error {
 		return nil
 	}
 
-	afterLister := reflect.New(s.Struct().Type()).Interface().(wAfterLister)
+	afterLister := reflect.New(s.Struct().Type()).Interface().(AfterLister)
 
 	if err := afterLister.HAfterList(s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
@@ -72,7 +75,7 @@ func beforeListFunc(s *Scope) error {
 		return nil
 	}
 
-	beforeLister := reflect.New(s.Struct().Type()).Interface().(wBeforeLister)
+	beforeLister := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
 
 	if err := beforeLister.HBeforeList(s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)

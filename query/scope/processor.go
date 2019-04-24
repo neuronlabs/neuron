@@ -2,15 +2,16 @@ package scope
 
 import (
 	"github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/log"
 )
 
-type processFunc func(s *Scope) error
+// ProcessFunc is the function that modifies or changes the scope value
+type ProcessFunc func(s *Scope) error
 
-var DefaultQueryProcessor *queryProcessor
+// DefaultQueryProcessor is the default Query Processor set for scopes
+var DefaultQueryProcessor *QueryProcessor
 
 func init() {
-	DefaultQueryProcessor = newqueryProcessor()
+	DefaultQueryProcessor = newQueryProcessor()
 }
 
 type transactionState int8
@@ -21,74 +22,64 @@ const (
 	transFailed
 )
 
+// Process is the pair of the name and the ProcessFunction
 type Process struct {
 	Name string
-	Func processFunc
+	Func ProcessFunc
 }
 
-type processes []Process
-
-func (p processes) Register(s Process) {
-	p = append(p, s)
-}
-
-// queryProcessor is the struct that allows to query over the gateway's model's
-type queryProcessor struct {
-	creates processes
-	gets    processes
-	lists   processes
-	patches processes
-	deletes processes
+// QueryProcessor is the struct that allows to query over the gateway's model's
+type QueryProcessor struct {
+	CreateChain ProcessChain
+	GetChain    ProcessChain
+	ListChain   ProcessChain
+	PatchChain  ProcessChain
+	DeleteChain ProcessChain
 }
 
 // New creates the query processor
-func newqueryProcessor() *queryProcessor {
-	return &queryProcessor{
-		creates: processes{
-			beforeCreate,
-			create,
-			afterCreate,
+func newQueryProcessor() *QueryProcessor {
+	return &QueryProcessor{
+		CreateChain: ProcessChain{
+			ProcessBeforeCreate,
+			ProcessCreate,
+			ProcessAfterCreate,
 		},
-		gets: []Process{
-			beforeGet,
-			setBelongsToRelationships,
-			get,
-			getForeignRelationships,
-			afterGet,
+		GetChain: ProcessChain{
+			ProcessBeforeGet,
+			ProcessSetBelongsToRelationships,
+			ProcessGet,
+			ProcessGetForeignRelationships,
+			ProcessAfterGet,
 		},
-		lists: []Process{
-			beforeList,
-			setBelongsToRelationships,
-			list,
-			afterList,
-			getForeignRelationships,
-			getIncluded,
+		ListChain: ProcessChain{
+			ProcessBeforeList,
+			ProcessSetBelongsToRelationships,
+			ProcessList,
+			ProcessAfterList,
+			ProcessGetForeignRelationships,
+			ProcessGetIncluded,
 		},
-		patches: []Process{
-			beforePatch,
-			patchBelongsToRelationships,
-			patch,
-			patchForeignRelationships,
-			afterPatch,
+		PatchChain: ProcessChain{
+			ProcessBeforePatch,
+			ProcessPatchBelongsToRelationships,
+			ProcessPatch,
+			ProcessPatchForeignRelationships,
+			ProcessAfterPatch,
 		},
-		deletes: []Process{
-			beforeDelete,
-			deleteProcess,
-			afterDelete,
-			deleteForeignRelationships,
+		DeleteChain: ProcessChain{
+			ProcessBeforeDelete,
+			ProcessDelete,
+			ProcessAfterDelete,
+			ProcessDeleteForeignRelationships,
 		},
 	}
 }
 
-func (q *queryProcessor) RegisterCreateProcess(p Process) {
-	log.Debugf("Registering Create Process: %s", p.Name)
-	q.creates = append(q.creates, p)
-}
+// DoCreate is the initializes the Create Process Chain for the Scope
+func (q *QueryProcessor) DoCreate(s *Scope) error {
 
-// Create is the query create
-func (q *queryProcessor) doCreate(s *Scope) error {
-
-	for _, f := range q.creates {
+	for _, f := range q.CreateChain {
 		if err := f.Func(s); err != nil {
 			return err
 		}
@@ -96,10 +87,11 @@ func (q *queryProcessor) doCreate(s *Scope) error {
 	return nil
 }
 
-func (q *queryProcessor) doGet(s *Scope) error {
+// DoGet initializes the Get Process chain for the scope
+func (q *QueryProcessor) DoGet(s *Scope) error {
 	(*scope.Scope)(s).FillFieldsetIfNotSet()
 
-	for _, f := range q.gets {
+	for _, f := range q.GetChain {
 		if err := f.Func(s); err != nil {
 			return err
 		}
@@ -107,10 +99,11 @@ func (q *queryProcessor) doGet(s *Scope) error {
 	return nil
 }
 
-func (q *queryProcessor) doList(s *Scope) error {
+// DoList initializes the List Process Chain for the scope
+func (q *QueryProcessor) DoList(s *Scope) error {
 	(*scope.Scope)(s).FillFieldsetIfNotSet()
 
-	for _, f := range q.lists {
+	for _, f := range q.ListChain {
 		if err := f.Func(s); err != nil {
 			return err
 		}
@@ -118,8 +111,9 @@ func (q *queryProcessor) doList(s *Scope) error {
 	return nil
 }
 
-func (q *queryProcessor) doPatch(s *Scope) error {
-	for _, f := range q.patches {
+// DoPatch does the Patch Process Chain
+func (q *QueryProcessor) DoPatch(s *Scope) error {
+	for _, f := range q.PatchChain {
 		if err := f.Func(s); err != nil {
 			return err
 		}
@@ -127,8 +121,9 @@ func (q *queryProcessor) doPatch(s *Scope) error {
 	return nil
 }
 
-func (q *queryProcessor) doDelete(s *Scope) error {
-	for _, f := range q.deletes {
+// DoDelete does the Delete process chain
+func (q *QueryProcessor) DoDelete(s *Scope) error {
+	for _, f := range q.DeleteChain {
 		if err := f.Func(s); err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/internal/models"
 	"reflect"
 )
@@ -20,14 +21,9 @@ func (m *ModelStruct) Attr(attr string) (*StructField, bool) {
 	return (*StructField)(s), true
 }
 
-// RelationField gets the relationship field for the provided string
-// If the relationship field doesn't exists returns nil and false
-func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
-	s, ok := models.StructRelField((*models.ModelStruct)(m), rel)
-	if !ok {
-		return nil, ok
-	}
-	return (*StructField)(s), true
+// Config gets the model's defined confgi.ModelConfig
+func (m *ModelStruct) Config() *config.ModelConfig {
+	return (*models.ModelStruct)(m).Config()
 }
 
 // ForeignKey returns model's foreign key field if exists
@@ -37,15 +33,6 @@ func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 		return nil, ok
 	}
 	return (*StructField)(s), ok
-}
-
-// Primary returns model's primary field
-func (m *ModelStruct) Primary() *StructField {
-	p := models.StructPrimary((*models.ModelStruct)(m))
-	if p == nil {
-		return nil
-	}
-	return (*StructField)(p)
 }
 
 // FilterKey returns model's filter key if exists
@@ -73,6 +60,34 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 		fields = append(fields, (*StructField)(field))
 	}
 	return
+}
+
+// LanguageField returns model's language field
+func (m *ModelStruct) LanguageField() *StructField {
+	lf := models.StructLanguage((*models.ModelStruct)(m))
+	if lf == nil {
+		return nil
+	}
+	return (*StructField)(lf)
+}
+
+// Primary returns model's primary field
+func (m *ModelStruct) Primary() *StructField {
+	p := models.StructPrimary((*models.ModelStruct)(m))
+	if p == nil {
+		return nil
+	}
+	return (*StructField)(p)
+}
+
+// RelationField gets the relationship field for the provided string
+// If the relationship field doesn't exists returns nil and false
+func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
+	s, ok := models.StructRelField((*models.ModelStruct)(m), rel)
+	if !ok {
+		return nil, ok
+	}
+	return (*StructField)(s), true
 }
 
 // SchemaName gets the model's schema
@@ -108,15 +123,6 @@ func (m *ModelStruct) StructFields() []*StructField {
 
 	return mFields
 
-}
-
-// LanguageField returns model's language field
-func (m *ModelStruct) LanguageField() *StructField {
-	lf := models.StructLanguage((*models.ModelStruct)(m))
-	if lf == nil {
-		return nil
-	}
-	return (*StructField)(lf)
 }
 
 func (m *ModelStruct) toModels() *models.ModelStruct {

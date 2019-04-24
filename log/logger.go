@@ -10,16 +10,32 @@ import (
 )
 
 var (
-	LDEBUG    = unilogger.DEBUG
-	LINFO     = unilogger.INFO
-	LWARNING  = unilogger.WARNING
-	LERROR    = unilogger.ERROR
+	// LDEBUG is the logger DEBUG level
+	LDEBUG = unilogger.DEBUG
+
+	// LINFO is the logger INFO level
+	LINFO = unilogger.INFO
+
+	// LWARNING is the logger WARNING level
+	LWARNING = unilogger.WARNING
+
+	// LERROR is the logger ERROR level
+	LERROR = unilogger.ERROR
+
+	// LCRITICAL is the logger CRITICAL level
 	LCRITICAL = unilogger.CRITICAL
-	LPRINT    = unilogger.PRINT
-	LUNKNOWN  = unilogger.UNKNOWN
+
+	// LPRINT is the logger PRINT level
+	LPRINT = unilogger.PRINT
+
+	// LUNKNOWN is the unspecified logger level
+	LUNKNOWN = unilogger.UNKNOWN
 )
 
-var logger unilogger.LeveledLogger
+var (
+	logger       unilogger.LeveledLogger
+	currentLevel unilogger.Level = LINFO
+)
 
 // Logger returns default logger
 func Logger() unilogger.LeveledLogger {
@@ -35,12 +51,15 @@ func SetLevel(level unilogger.Level) error {
 		Default()
 	}
 
+	currentLevel = level
+
 	lvl, ok := logger.(unilogger.LevelSetter)
 	if !ok {
 		return errors.New("logger doesn't implement LevelSetter interface")
 	}
 
-	lvl.SetLevel(level)
+	lvl.SetLevel(currentLevel)
+
 	return nil
 }
 
@@ -54,6 +73,10 @@ func SetLogger(log unilogger.LeveledLogger) {
 		if ok {
 			setter.SetOutputDepth(depth.GetOutputDepth() + 1)
 		}
+	}
+
+	if lvlSetter, ok := log.(unilogger.LevelSetter); ok {
+		lvlSetter.SetLevel(currentLevel)
 	}
 }
 

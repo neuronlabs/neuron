@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/kucjac/uni-db"
 
 	// ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/errors"
@@ -105,7 +105,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 				}
 
 				// handle the db error
-				errObj, err := h.c.DBManager().Handle(e)
+				errObj, err := h.c.DBErrorMapper().Handle(e)
 				if err != nil {
 					log.Errorf("DBManager Handle failed for error: %v. Err: %v", e, err)
 					h.internalError(req, rw)

@@ -3,9 +3,9 @@ package handler
 import (
 	"context"
 	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/flags"
 	"github.com/neuronlabs/neuron/internal"
 	ictrl "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query"
 	"github.com/neuronlabs/neuron/internal/query/filters"

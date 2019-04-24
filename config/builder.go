@@ -1,5 +1,6 @@
 package config
 
+// BuilderConfig is the config used for building the queries on incoming requests
 type BuilderConfig struct {
 
 	// StrictQueriesMode if true sets the strict mode for the query builder, that doesn't allow

@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/repositories"
+
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/pkg/errors"
@@ -16,7 +18,7 @@ var (
 
 // RepositoryGetter is the interface that allows to get the repository by the model or by the nameg
 type RepositoryGetter interface {
-	RepositoryByModel(model *models.ModelStruct) (interface{}, bool)
+	RepositoryByModel(model *models.ModelStruct) (repositories.Repository, bool)
 	RepositoryByName(name string) (interface{}, bool)
 }
 
@@ -60,8 +62,12 @@ func (r *RepositoryContainer) MapModel(model *models.ModelStruct) error {
 		return ErrRepositoryNotFound
 	}
 
-	repoCopy := repo.New((*mapping.ModelStruct)(model))
-	r.models[model] = repoCopy.(Repository)
+	repoCopy, err := repo.New((*mapping.ModelStruct)(model))
+	if err != nil {
+		return err
+	}
+
+	r.models[model] = (Repository)(repoCopy)
 
 	log.Debugf("Model %s mapped, to repository: %s", model.Collection(), repoName)
 	return nil

@@ -572,16 +572,22 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 		switch f := field.(type) {
 		case string:
 
-			for _, sField := range models.StructAllFields(s.mStruct) {
-				if sField.ApiName() == f || sField.Name() == f {
+			if "*" == f {
+				for _, sField := range s.mStruct.Fields() {
 					s.fieldset[sField.ApiName()] = sField
-					found = true
-					break
 				}
-			}
-			if !found {
-				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-				return internal.IErrFieldNotFound
+			} else {
+				for _, sField := range models.StructAllFields(s.mStruct) {
+					if sField.ApiName() == f || sField.Name() == f {
+						s.fieldset[sField.ApiName()] = sField
+						found = true
+						break
+					}
+				}
+				if !found {
+					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+					return internal.IErrFieldNotFound
+				}
 			}
 
 		case *models.StructField:

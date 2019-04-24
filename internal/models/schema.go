@@ -38,6 +38,12 @@ func (s *Schema) ModelByCollection(collection string) *ModelStruct {
 	return s.models.GetByCollection(collection)
 }
 
+// Config gets the config.Schema
+func (s *Schema) Config() *config.Schema {
+	return s.config
+}
+
+// ModelSchemas is a struct containing all the schemas mapped with it's model's and names
 type ModelSchemas struct {
 	cfg map[string]*config.Schema
 

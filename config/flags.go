@@ -11,8 +11,13 @@ const (
 	// FlUseLinks is the Flag that allows to return query links
 	FlUseLinks uint = iota
 
+	// FlReturnPatchContent is a flag that sets the behaviour of returning the patch content for the request
 	FlReturnPatchContent
+
+	// FlAddMetaCountList is a flag that adds the count list to the meta as a default behavior
 	FlAddMetaCountList
+
+	// FlAllowClientID is a flag that allows to use the Client defined ID
 	FlAllowClientID
 
 	// FlAllowForeignKeyFilter is the flag that allows filtering over foreign keys

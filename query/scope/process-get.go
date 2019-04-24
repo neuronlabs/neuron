@@ -7,17 +7,20 @@ import (
 )
 
 var (
-	get Process = Process{
+	// ProcessGet is the process that does the repository Get method
+	ProcessGet = &Process{
 		Name: "neuron:get",
 		Func: getFunc,
 	}
 
-	beforeGet Process = Process{
+	// ProcessBeforeGet is the process that does the  hook HBeforeGet
+	ProcessBeforeGet = &Process{
 		Name: "neuron:hook_before_get",
 		Func: beforeGetFunc,
 	}
 
-	afterGet Process = Process{
+	// ProcessAfterGet is the process that does the hook HAfterGet
+	ProcessAfterGet = &Process{
 		Name: "neuron:hook_after_get",
 		Func: afterGetFunc,
 	}
@@ -33,7 +36,7 @@ func getFunc(s *Scope) error {
 		return ErrNoRepositoryFound
 	}
 
-	getter, ok := repo.(getter)
+	getter, ok := repo.(Getter)
 	if !ok {
 		log.Errorf("No Getter repository found for the model: %s", (*scope.Scope)(s).Struct().Collection())
 		return ErrNoGetterRepoFound
@@ -49,7 +52,7 @@ func getFunc(s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook
 func beforeGetFunc(s *Scope) error {
-	hookBeforeGetter, ok := s.Value.(wBeforeGetter)
+	hookBeforeGetter, ok := s.Value.(BeforeGetter)
 	if !ok {
 		return nil
 	}
@@ -64,7 +67,7 @@ func beforeGetFunc(s *Scope) error {
 }
 
 func afterGetFunc(s *Scope) error {
-	hookAfterGetter, ok := s.Value.(wAfterGetter)
+	hookAfterGetter, ok := s.Value.(AfterGetter)
 	if !ok {
 		return nil
 	}

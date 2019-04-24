@@ -9,7 +9,7 @@ type Schema struct {
 	Connection *Connection             `mapstructure:"connection"`
 }
 
-// Access is the configuration for non local schemas credentials
+// Connection is the configuration for non local schemas credentials
 // The connection config can be set by providing raw_url or with host,path,protocol/
 type Connection struct {
 	// Host defines the access hostname or the ip address

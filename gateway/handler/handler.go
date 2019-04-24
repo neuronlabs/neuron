@@ -3,6 +3,7 @@ package handler
 import (
 	"compress/flate"
 	"compress/gzip"
+	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/config"
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
@@ -14,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/kucjac/uni-db"
 	"io"
 	"sort"
 	"strings"
@@ -105,7 +105,7 @@ func (h *Handler) handleDBError(req *http.Request, err error, rw http.ResponseWr
 		}
 
 		// handle the db error
-		errObj, err := h.c.DBManager().Handle(e)
+		errObj, err := h.c.DBErrorMapper().Handle(e)
 		if err != nil {
 			log.Errorf("DBManager Handle failed for error: %v. Err: %v", e, err)
 			h.internalError(req, rw)

@@ -13,27 +13,32 @@ import (
 )
 
 var (
-	patch Process = Process{
+	// ProcessPatch is the Process that does the repository Patch method
+	ProcessPatch = &Process{
 		Name: "neuron:patch",
 		Func: patchFunc,
 	}
 
-	beforePatch Process = Process{
+	// ProcessBeforePatch is the Process that does the hook HBeforePatch
+	ProcessBeforePatch = &Process{
 		Name: "neuron:hook_before_patch",
 		Func: beforePatchFunc,
 	}
 
-	afterPatch Process = Process{
+	// ProcessAfterPatch is the Process that does the hook HAfterPatch
+	ProcessAfterPatch = &Process{
 		Name: "neuron:hook_after_patch",
 		Func: afterPatchFunc,
 	}
 
-	patchBelongsToRelationships Process = Process{
+	// ProcessPatchBelongsToRelationships is the process that patches the belongs to relationships
+	ProcessPatchBelongsToRelationships = &Process{
 		Name: "neuron:patch_belongs_to_relationships",
 		Func: patchBelongsToRelationshipsFunc,
 	}
 
-	patchForeignRelationships Process = Process{
+	// ProcessPatchForeignRelationships is the Process that patches the foreign relationships
+	ProcessPatchForeignRelationships = &Process{
 		Name: "neuron:patch_foreign_relationships",
 		Func: patchForeignRelationshipsFunc,
 	}
@@ -47,7 +52,7 @@ func patchFunc(s *Scope) error {
 		return ErrNoRepositoryFound
 	}
 
-	patchRepo, ok := repo.(patcher)
+	patchRepo, ok := repo.(Patcher)
 	if !ok {
 		log.Errorf("Repository for current model: '%s' doesn't support Patch method", s.Struct().Type().Name())
 		return ErrNoPatcherFound
@@ -61,7 +66,7 @@ func patchFunc(s *Scope) error {
 }
 
 func beforePatchFunc(s *Scope) error {
-	beforePatcher, ok := s.Value.(wBeforePatcher)
+	beforePatcher, ok := s.Value.(BeforePatcher)
 	if !ok {
 		return nil
 	}
@@ -74,7 +79,7 @@ func beforePatchFunc(s *Scope) error {
 }
 
 func afterPatchFunc(s *Scope) error {
-	afterPatcher, ok := s.Value.(wAfterPatcher)
+	afterPatcher, ok := s.Value.(AfterPatcher)
 	if !ok {
 		return nil
 	}

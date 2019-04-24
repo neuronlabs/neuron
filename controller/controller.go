@@ -2,13 +2,13 @@ package controller
 
 import (
 	"fmt"
+	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/db-manager"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/repositories"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/kucjac/uni-logger"
 )
 
 // DefaultController is the Default controller used if no 'controller' is provided for operations
@@ -38,9 +38,9 @@ func SetDefault(c *Controller) {
 // It contains repositories, model definitions, query builders and it's own config
 type Controller controller.Controller
 
-// DBManager returns the database error manager
-func (c *Controller) DBManager() *dbmanager.ErrorManager {
-	return (*controller.Controller)(c).DBManager()
+// DBErrorMapper returns the database error manager
+func (c *Controller) DBErrorMapper() *errors.ErrorMapper {
+	return (*controller.Controller)(c).DBErrorMapper()
 }
 
 // MustGetNew gets the
@@ -62,6 +62,15 @@ func New(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*Cont
 	}
 
 	return (*Controller)(c), nil
+}
+
+// ModelStruct gets the model struct on the base of the provided model
+func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+	m, err := (*controller.Controller)(c).GetModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+	return (*mapping.ModelStruct)(m), nil
 }
 
 // RegisterModels registers provided models within the context of the provided Controller
@@ -86,6 +95,28 @@ func (c *Controller) RegisterRepositories(repos ...interface{}) error {
 	return nil
 }
 
+// Repository gets the repository for the provided name
+func (c *Controller) Repository(repo string) (repositories.Repository, bool) {
+	return (*controller.Controller)(c).RepositoryByName(repo)
+}
+
+// Schema gets the schema by it's name
+func (c *Controller) Schema(schemaName string) (*mapping.Schema, bool) {
+	s, ok := (*controller.Controller)(c).ModelSchemas().Schema(schemaName)
+	if ok {
+		return (*mapping.Schema)(s), ok
+	}
+	return nil, ok
+}
+
+// Schemas gets the controller defined schemas
+func (c *Controller) Schemas() (schemas []*mapping.Schema) {
+	for _, s := range (*controller.Controller)(c).ModelSchemas().Schemas() {
+		schemas = append(schemas, (*mapping.Schema)(s))
+	}
+	return
+}
+
 // SetDefaultRepository sets the default repository.
 // By default the first registered repository is set to default.
 // This method allows to change the behaviour
@@ -97,15 +128,6 @@ func (c *Controller) SetDefaultRepository(repo interface{}) error {
 
 	(*controller.Controller)(c).SetDefaultRepository(r)
 	return nil
-}
-
-// ModelStruct gets the model struct on the base of the provided model
-func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
-	m, err := (*controller.Controller)(c).GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
-	return (*mapping.ModelStruct)(m), nil
 }
 
 func new(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {
