@@ -49,6 +49,6 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 			return
 		}
 
-		h.marshalScope(s, req, rw)
+		h.marshalScope((*scope.Scope)(s), req, rw)
 	})
 }

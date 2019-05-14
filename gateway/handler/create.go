@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/internal"
+	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/scope"
 
@@ -24,8 +26,10 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 
 		ic := (*ictrl.Controller)(h.c)
 		im := (*models.ModelStruct)(m)
+
 		// Unmarshal the incoming data
-		s, err := ic.UnmarshalScopeOne(req.Body, (*models.ModelStruct)(m), true)
+
+		s, err := jsonapi.UnmarshalManyScopeC(h.c, req.Body, m)
 		if err != nil {
 			switch e := err.(type) {
 			case *errors.ApiError:
@@ -44,10 +48,12 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 
 		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())
 
-		// SetFlags?
-		s.SetFlagsFrom((*models.ModelStruct)(m).Flags(), ic.Flags)
+		// SetFlags
 
-		primVal, err := s.GetFieldValue(im.PrimaryField())
+		is := (*iscope.Scope)(s)
+		is.SetFlagsFrom((*models.ModelStruct)(m).Flags(), ic.Flags)
+
+		primVal, err := is.GetFieldValue(im.PrimaryField())
 		if err != nil {
 			log.Errorf("Getting PrimaryField value failed for the model: '%s'", m.Type().String())
 			h.internalError(req, rw)
@@ -55,7 +61,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// Check if the primary field was unmarshaled
-		if s.IsPrimaryFieldSelected() {
+		if is.IsPrimaryFieldSelected() {
 
 			// the handler allows only the 'UUID' generated client-id
 			if im.AllowClientID() {
@@ -77,14 +83,14 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// Validate the input entry
-		errs := (*scope.Scope)(s).ValidateCreate()
+		errs := s.ValidateCreate()
 		if len(errs) > 0 {
 			h.marshalErrors(req, rw, unsetStatus, errs...)
 			return
 		}
 
 		// Create the scope's value
-		if err = (*scope.Scope)(s).Create(); err != nil {
+		if err = s.Create(); err != nil {
 			switch e := err.(type) {
 			case *unidb.Error:
 				log.Debugf("DBError is *unidb.Error: %v", e)

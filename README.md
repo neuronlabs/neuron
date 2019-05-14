@@ -1,4 +1,4 @@
-https://github.com/neuronlabs/neuron
+ghttps://github.com/neuronlabs/neuron
 
 Neuron is the cloud-native, modular API Gateway and Composer that implements the [JSONAPI v1.0 specification](https://jsonapi.org/format/).
 

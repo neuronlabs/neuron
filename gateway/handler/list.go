@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
 	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -11,7 +12,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/kucjac/uni-db"
 	"net/http"
 )
 
@@ -112,7 +112,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			}
 		}
 
-		h.marshalScope(s, req, rw)
+		h.marshalScope((*scope.Scope)(s), req, rw)
 		return
 
 	})

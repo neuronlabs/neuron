@@ -9,9 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	ipagination "github.com/neuronlabs/neuron/internal/query/paginations"
-	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/neuron/query/scope"
@@ -172,17 +170,11 @@ func (h *Handler) marshalErrors(
 }
 
 func (h *Handler) marshalScope(
-	s *iscope.Scope,
+	s *scope.Scope,
 	req *http.Request,
 	rw http.ResponseWriter,
 ) {
 	h.setContentType(rw)
-	payload, err := (*ictrl.Controller)(h.c).MarshalScope(s)
-	if err != nil {
-		log.Errorf("[REQ-SCOPE-ID][%s] Marshaling Scope failed. Err: %v", (*scope.Scope)(s).ID().String(), err)
-		h.internalError(req, rw)
-		return
-	}
 
 	var encoding encodingType
 	encodings := h.parseAccept(req.Header, "Accept-Encoding")
@@ -198,7 +190,10 @@ func (h *Handler) marshalScope(
 			break
 		}
 	}
-	var payloadWriter io.Writer
+	var (
+		payloadWriter io.Writer
+		err           error
+	)
 
 	// TODO: set encoding level in config
 	if encoding != noencoding {
@@ -217,9 +212,10 @@ func (h *Handler) marshalScope(
 		payloadWriter = rw
 	}
 
-	if err = ictrl.MarshalPayload(payloadWriter, payload); err != nil {
-		log.Errorf("Marshaling payload failed: '%v'", err)
+	if err := jsonapi.MarshalScopeC(h.c, payloadWriter, s); err != nil {
+		log.Errorf("[REQ-SCOPE-ID][%s] Marshaling Scope failed. Err: %v", (*scope.Scope)(s).ID().String(), err)
 		h.internalError(req, rw)
+		return
 	}
 
 }

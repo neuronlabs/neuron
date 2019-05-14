@@ -72,6 +72,6 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 		relatedScope := includedScopes[0]
 		log.Debugf("Marshaling relatedScope.")
 
-		h.marshalScope(relatedScope, req, rw)
+		h.marshalScope((*scope.Scope)(relatedScope), req, rw)
 	})
 }

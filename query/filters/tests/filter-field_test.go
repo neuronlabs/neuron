@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/repositories/mock"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/filters"
+	"github.com/neuronlabs/neuron/repositories/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"strings"
@@ -35,7 +35,7 @@ type nestedModel struct {
 func TestParseQuery(t *testing.T) {
 	c := controller.NewDefault()
 
-	require.NoError(t, c.RegisterRepositories(&mock.Repository{}))
+	require.NoError(t, c.RegisterRepositories(&mocks.Repository{}))
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
 	t.Run("Attribute", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestNewStringFilter(t *testing.T) {
 
 	c := controller.NewDefault()
 
-	require.NoError(t, c.RegisterRepositories(&mock.Repository{}))
+	require.NoError(t, c.RegisterRepositories(&mocks.Repository{}))
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
 	mStruct, err := c.ModelStruct(&testingModel{})
@@ -175,7 +175,7 @@ func TestFormatQuery(t *testing.T) {
 
 	c := controller.NewDefault()
 
-	require.NoError(t, c.RegisterRepositories(&mock.Repository{}))
+	require.NoError(t, c.RegisterRepositories(&mocks.Repository{}))
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
 	mStruct, err := c.ModelStruct(&testingModel{})

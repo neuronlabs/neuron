@@ -2,13 +2,14 @@ package handler
 
 import (
 	"context"
+	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query"
 	"github.com/neuronlabs/neuron/internal/query/filters"
+	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/scope"
@@ -22,11 +23,7 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		defer func() { log.Debugf("[PATCH] Finished for model: '%s'", m.Type().String()) }()
 
 		// Unmarshal the incoming data into the scope
-		s, err := (*ictrl.Controller)(h.c).UnmarshalScopeOne(
-			req.Body,
-			(*models.ModelStruct)(m),
-			true,
-		)
+		s, err := jsonapi.UnmarshalSingleScopeC(h.c, req.Body, m)
 		if err != nil {
 			switch e := err.(type) {
 			case *errors.ApiError:
@@ -44,8 +41,8 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		s.WithContext(ctx)
 
 		// SetFlags for the scope
-		s.SetFlagsFrom((*models.ModelStruct)(m).Flags(), h.c.Flags)
-		id, err := query.GetAndSetID(req, s)
+		(*iscope.Scope)(s).SetFlagsFrom((*models.ModelStruct)(m).Flags(), h.c.Flags)
+		id, err := query.GetAndSetID(req, (*iscope.Scope)(s))
 		if err != nil {
 			if err == internal.IErrInvalidType {
 				log.Errorf("Invalid type provided for the GetAndSetID and model: %v", m.Type().String())
@@ -68,9 +65,9 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// Set Primary Field filter to 'id'
-		err = s.AddFilterField(
+		err = (*iscope.Scope)(s).AddFilterField(
 			filters.NewFilter(
-				s.Struct().PrimaryField(),
+				(*iscope.Scope)(s).Struct().PrimaryField(),
 				filters.NewOpValuePair(
 					filters.OpEqual,
 					id,
@@ -96,10 +93,10 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 			return
 		}
 
-		v, ok := s.Flags().Get(flags.ReturnPatchContent)
+		v, ok := (*iscope.Scope)(s).Flags().Get(flags.ReturnPatchContent)
 		if ok && v {
 			// SetAllFields in the fieldset
-			s.SetAllFields()
+			(*iscope.Scope)(s).SetAllFields()
 			if err := (*scope.Scope)(s).Get(); err != nil {
 				log.Debugf("Getting the Patched scope: '%s' failed. %v", (*scope.Scope)(s).ID().String(), err)
 				h.handleDBError(req, err, rw)

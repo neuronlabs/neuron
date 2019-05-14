@@ -9,7 +9,9 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	iscope "github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/query/scope"
+
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/pkg/errors"
@@ -35,6 +37,42 @@ func Unmarshal(r io.Reader, v interface{}) error {
 func UnmarshalC(c *ctrl.Controller, r io.Reader, v interface{}) error {
 	_, err := unmarshal((*controller.Controller)(c), r, v, false)
 	return err
+}
+
+// UnmarshalSingleScopeC unmarshals the value from the reader and creates new scope
+func UnmarshalSingleScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+	s, err := unmarshalScopeOne((*controller.Controller)(c), r, (*models.ModelStruct)(m), true)
+	if err != nil {
+		return nil, err
+	}
+	return (*scope.Scope)(s), nil
+}
+
+// UnmarshalSingleScope unmarshals the value from the reader and creates the scope for the default controller
+func UnmarshalSingleScope(r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+	s, err := unmarshalScopeOne((controller.Default()), r, (*models.ModelStruct)(m), true)
+	if err != nil {
+		return nil, err
+	}
+	return (*scope.Scope)(s), nil
+}
+
+// UnmarshalManyScope unmarshals the scope of multiple values for the default controller and given model struct
+func UnmarshalManyScope(r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+	s, err := unmarshalScopeMany(controller.Default(), r, (*models.ModelStruct)(m))
+	if err != nil {
+		return nil, err
+	}
+	return (*scope.Scope)(s), nil
+}
+
+// UnmarshalManyScopeC unmarshals the scope of multiple values for the given controller and  model struct
+func UnmarshalManyScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+	s, err := unmarshalScopeMany((*controller.Controller)(c), r, (*models.ModelStruct)(m))
+	if err != nil {
+		return nil, err
+	}
+	return (*scope.Scope)(s), nil
 }
 
 // UnmarshalWithSelected unmarshals the value from io.Reader and returns the selected fields if the value is a single
@@ -69,7 +107,7 @@ func UnmarshalWithSelectedC(c *controller.Controller, r io.Reader, v interface{}
 	return mappingFields, nil
 }
 
-func unmarshalScopeMany(c *controller.Controller, in io.Reader, model interface{}) (*scope.Scope, error) {
+func unmarshalScopeMany(c *controller.Controller, in io.Reader, model interface{}) (*iscope.Scope, error) {
 	mStruct, err := c.ModelSchemas().GetModelStruct(model)
 	if err != nil {
 		return nil, err
@@ -82,7 +120,7 @@ func unmarshalScopeOne(
 	in io.Reader,
 	model interface{},
 	addSelectedFields bool,
-) (*scope.Scope, error) {
+) (*iscope.Scope, error) {
 	mStruct, ok := model.(*models.ModelStruct)
 	if !ok {
 
@@ -107,7 +145,7 @@ func unmarshalScope(
 	in io.Reader,
 	mStruct *models.ModelStruct,
 	useMany, usedFields bool,
-) (*scope.Scope, error) {
+) (*iscope.Scope, error) {
 
 	var modelValue reflect.Value
 	if useMany {
@@ -122,7 +160,7 @@ func unmarshalScope(
 		return nil, err
 	}
 
-	sc := scope.NewRootScope(mStruct)
+	sc := iscope.NewRootScope(mStruct)
 	if useMany {
 		sc.Value = v
 	} else {

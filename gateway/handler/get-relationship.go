@@ -61,6 +61,6 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 			return
 		}
 
-		h.marshalScope(relScope, req, rw)
+		h.marshalScope((*scope.Scope)(relScope), req, rw)
 	})
 }

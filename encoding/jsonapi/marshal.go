@@ -7,8 +7,9 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/scope"
 	"github.com/pkg/errors"
 
 	"fmt"
@@ -27,6 +28,26 @@ func Marshal(w io.Writer, v interface{}) error {
 // MarshalC marshals the provided value 'v' into the writer. It uses the 'c' controller
 func MarshalC(c *ctrl.Controller, w io.Writer, v interface{}) error {
 	return marshal((*controller.Controller)(c), w, v)
+}
+
+// MarshalScopeC marshals the scope into the selceted writer for the given controller
+func MarshalScopeC(c *ctrl.Controller, w io.Writer, s *scope.Scope) error {
+	pl, err := marshalScope((*controller.Controller)(c), (*iscope.Scope)(s))
+	if err != nil {
+		return err
+	}
+
+	return marshalPayload(w, pl)
+}
+
+// MarshalScope marshals the scope into the selceted writer for the given controller
+func MarshalScope(w io.Writer, s *scope.Scope) error {
+	pl, err := marshalScope(controller.Default(), (*iscope.Scope)(s))
+	if err != nil {
+		return err
+	}
+
+	return marshalPayload(w, pl)
 }
 
 // MarshalErrors writes a JSON API response using the given `[]error`.
@@ -119,8 +140,8 @@ func marshalPayload(w io.Writer, payload payloader) error {
 	return nil
 }
 
-func marshalScope(c *controller.Controller, sc *scope.Scope) (p payloader, err error) {
-	if sc.Value == nil && sc.Kind() >= scope.RelationshipKind {
+func marshalScope(c *controller.Controller, sc *iscope.Scope) (p payloader, err error) {
+	if sc.Value == nil && sc.Kind() >= iscope.RelationshipKind {
 		/** TO DO:  Build paths */
 
 		if sc.IsMany() {
@@ -132,8 +153,8 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (p payloader, err e
 		return
 	}
 
-	scopeValue := reflect.ValueOf(sc.Value)
-	t := scopeValue.Type()
+	iscopeValue := reflect.ValueOf(sc.Value)
+	t := iscopeValue.Type()
 	if t.Kind() != reflect.Ptr {
 		log.Debugf("Not a pointer")
 		err = internal.IErrUnexpectedType
@@ -164,7 +185,7 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (p payloader, err e
 
 func marshalIncludes(
 	c *controller.Controller,
-	rootScope *scope.Scope,
+	rootScope *iscope.Scope,
 	included *[]*node,
 ) (err error) {
 	for _, includedScope := range rootScope.IncludedScopes() {
@@ -177,7 +198,7 @@ func marshalIncludes(
 
 func marshalIncludedScope(
 	c *controller.Controller,
-	includedScope *scope.Scope,
+	includedScope *iscope.Scope,
 	included *[]*node,
 ) (err error) {
 
@@ -257,7 +278,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 	return resElem, nil
 }
 
-func marshalScopeOne(c *controller.Controller, s *scope.Scope) (*onePayload, error) {
+func marshalScopeOne(c *controller.Controller, s *iscope.Scope) (*onePayload, error) {
 	n, err := visitScopeNode(c, s.Value, s)
 	if err != nil {
 		return nil, err
@@ -266,7 +287,7 @@ func marshalScopeOne(c *controller.Controller, s *scope.Scope) (*onePayload, err
 	return &onePayload{Data: n}, nil
 }
 
-func marshalScopeMany(c *controller.Controller, s *scope.Scope) (*manyPayload, error) {
+func marshalScopeMany(c *controller.Controller, s *iscope.Scope) (*manyPayload, error) {
 	n, err := visitScopeManyNodes(c, s)
 	if err != nil {
 		return nil, err
@@ -274,7 +295,7 @@ func marshalScopeMany(c *controller.Controller, s *scope.Scope) (*manyPayload, e
 	return &manyPayload{Data: n}, nil
 }
 
-func visitScopeManyNodes(c *controller.Controller, s *scope.Scope) ([]*node, error) {
+func visitScopeManyNodes(c *controller.Controller, s *iscope.Scope) ([]*node, error) {
 	valInterface := reflect.ValueOf(s.Value).Elem().Interface()
 	valSlice, err := convertToSliceInterface(&valInterface)
 	if err != nil {
@@ -492,7 +513,7 @@ func visitNode(
 	return node, nil
 }
 
-func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope) (*node, error) {
+func visitScopeNode(c *controller.Controller, value interface{}, sc *iscope.Scope) (*node, error) {
 
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
 		return nil, internal.IErrUnexpectedType
@@ -642,12 +663,12 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 		links := make(map[string]interface{})
 		var self string
 		switch sc.Kind() {
-		case scope.RootKind, scope.IncludedKind:
+		case iscope.RootKind, iscope.IncludedKind:
 			self = fmt.Sprintf("%s/%s/%s", sc.Struct().SchemaName(), sc.Struct().Collection(), node.ID)
-		case scope.RelatedKind:
+		case iscope.RelatedKind:
 			rootScope := sc.GetModelsRootScope(sc.Struct())
 			if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-				err = fmt.Errorf("Invalid scope provided as related scope. Scope value type: '%s'", sc.Struct().Type())
+				err = fmt.Errorf("Invalid iscope provided as related iscope. Scope value type: '%s'", sc.Struct().Type())
 				return nil, err
 			}
 
@@ -658,10 +679,10 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 				node.ID,
 				relatedName,
 			)
-		case scope.RelationshipKind:
+		case iscope.RelationshipKind:
 			rootScope := sc.GetModelsRootScope(sc.Struct())
 			if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-				err = fmt.Errorf("Invalid scope provided as related scope. Scope value type: '%s'", sc.Struct().Type())
+				err = fmt.Errorf("Invalid iscope provided as related iscope. Scope value type: '%s'", sc.Struct().Type())
 				return nil, err
 			}
 			relatedName := rootScope.IncludedFields()[0].ApiName()

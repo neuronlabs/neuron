@@ -24,15 +24,18 @@ type Connection struct {
 	// Protocol is the protocol used in the connection
 	Protocol string `mapstructure:"protocol"`
 
-	// RawUrl is the raw connection url. If set it must define the protocol ('http://',
+	// RawURL is the raw connection url. If set it must define the protocol ('http://',
 	// 'rpc://'...)
-	RawUrl string `mapstructure:"raw_url" validate:"isdefault|url"`
+	RawURL string `mapstructure:"raw_url" validate:"isdefault|url"`
 
 	// Username is the username used to get connection credential
 	Username string `mapstructure:"username"`
 
 	// Password is the password used to get connection credentials
 	Password string `mapstructure:"password"`
+
+	// Options contains connection dependent specific options
+	Options map[string]interface{} `mapstructure:"options"`
 }
 
 // ModelConfig defines single model configurations
@@ -49,6 +52,8 @@ type ModelConfig struct {
 
 	// Map sets the model's Store values
 	Map map[string]interface{} `mapstructure:"map"`
+
+	Connection
 }
 
 // ModelEndpoints is the api endpoint's configuration for the given model
