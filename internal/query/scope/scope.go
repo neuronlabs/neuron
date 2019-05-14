@@ -24,18 +24,21 @@ import (
 	"strings"
 )
 
+// Errors used in the scope
 var (
 	ErrNoParamsInContext = errors.New("No parameters in the request Context.")
 	IErrNoValue          = errors.New("No value provided within the scope.")
 )
 
 var (
-	// used for errors
+	// MaxPermissibleDuplicates is the maximum permissible dupliactes value used for errors
 	MaxPermissibleDuplicates = 3
 )
 
+// ScopeKind is the enum defining the kind of scope
 type ScopeKind int
 
+// Enums for the scope kind
 const (
 	RootKind ScopeKind = iota
 	IncludedKind
@@ -244,6 +247,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 	return nil
 }
 
+// AddSelectedField adds the selected field to the selected field's array
 func (s *Scope) AddSelectedField(field *models.StructField) {
 	s.selectedFields = append(s.selectedFields, field)
 }
@@ -262,16 +266,18 @@ func (s *Scope) Fieldset() []*models.StructField {
 	return fs
 }
 
+// InFieldset checks if the field is in Fieldset
 func (s *Scope) InFieldset(field string) (*models.StructField, bool) {
 	f, ok := s.fieldset[field]
 	return f, ok
 }
 
+// Flags gets the scope flags
 func (s *Scope) Flags() *flags.Container {
 	return s.getFlags()
 }
 
-// setFlags sets the flags for the given scope
+// SetFlags sets the flags for the given scope
 func (s *Scope) SetFlags(c *flags.Container) {
 	s.fContainer = c
 }
@@ -298,6 +304,7 @@ func (s *Scope) SetAllFields() {
 	s.setAllFields()
 }
 
+// SetFlagsFrom sets the flags from the provided provided flags array
 func (s *Scope) SetFlagsFrom(flgs ...*flags.Container) {
 	for _, f := range internal.ScopeCtxFlags {
 		s.Flags().SetFirst(f, flgs...)
@@ -427,7 +434,7 @@ func (s *Scope) Context() context.Context {
 	return s.ctx
 }
 
-// Returns the collection name for given scope
+// GetCollection Returns the collection name for given scope
 func (s *Scope) GetCollection() string {
 	return s.mStruct.Collection()
 }
@@ -464,7 +471,7 @@ func (s *Scope) getCollectionScope() *Scope {
 }
 
 // selectedFieldValues gets the values for given
-func (s *Scope) selectedFieldValues(dialectNamer dialect.DialectFieldNamer) (
+func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (
 	values map[string]interface{}, err error,
 ) {
 	if s.Value == nil {
@@ -491,7 +498,7 @@ func (s *Scope) selectedFieldValues(dialectNamer dialect.DialectFieldNamer) (
 }
 
 // FieldsetDialectNames gets the fieldset names, named using provided DialetFieldNamer
-func (s *Scope) FieldsetDialectNames(dialectNamer dialect.DialectFieldNamer) []string {
+func (s *Scope) FieldsetDialectNames(dialectNamer dialect.FieldNamer) []string {
 	fieldNames := []string{}
 	for _, field := range s.fieldset {
 		dialectName := dialectNamer(field)
@@ -540,7 +547,7 @@ func (s *Scope) SetFieldsetNoCheck(fields ...*models.StructField) {
 	}
 }
 
-// SetNilFieldset sets the scope's fieldset to nil
+// SetEmptyFieldset sets the scope's fieldset to nil
 func (s *Scope) SetEmptyFieldset() {
 	s.fieldset = map[string]*models.StructField{}
 }
@@ -880,13 +887,13 @@ func (s *Scope) SetCollectionValues() error {
 			primary := primaryValue.Interface()
 			insider, ok := s.collectionScope.includedValues.UnsafeGet(primary)
 			if !ok {
-				s.collectionScope.includedValues.UnsafeAdd(primary, value.Interface())
+				s.collectionScope.includedValues.UnsafeSet(primary, value.Interface())
 				return
 			}
 
 			if insider == nil {
 				// in order to prevent the nil values set within given key
-				s.collectionScope.includedValues.UnsafeAdd(primary, value.Interface())
+				s.collectionScope.includedValues.UnsafeSet(primary, value.Interface())
 			} else if s.hasFieldNotInFieldset {
 				// this scopes value should have more fields
 				insideValue := reflect.ValueOf(insider)
@@ -916,11 +923,12 @@ func (s *Scope) SetCollectionValues() error {
 		return internal.IErrUnexpectedType
 	}
 	if !v.IsNil() {
-		v = v.Elem()
-		switch v.Kind() {
+
+		tempV := v.Elem()
+		switch tempV.Kind() {
 		case reflect.Slice:
-			for i := 0; i < v.Len(); i++ {
-				elem := v.Index(i)
+			for i := 0; i < tempV.Len(); i++ {
+				elem := tempV.Index(i)
 				if elem.Type().Kind() != reflect.Ptr {
 					return internal.IErrUnexpectedType
 				}
@@ -978,13 +986,13 @@ func (s *Scope) SetPrimaryFilters(values ...interface{}) {
 	s.setIDFilterValues(values...)
 }
 
-// Sets the LanguageFilter for given scope.
+// SetLanguageFilter the LanguageFilter for given scope.
 // If the scope's model does not support i18n it does not create language filter, and ends fast.
 func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 	s.setLanguageFilterValues(languages...)
 }
 
-// SetBelongsToForeignKeyFields
+// SetBelongsToForeignKeyFields sets the fields of type foreign key to the belongs of relaitonships
 func (s *Scope) SetBelongsToForeignKeyFields() error {
 	if s.Value == nil {
 		return internal.IErrNilValue
@@ -1102,6 +1110,7 @@ func (s *Scope) UseI18n() bool {
 	return s.mStruct.UseI18n()
 }
 
+// GetScopeValueString gets the scope's value string
 func (s *Scope) GetScopeValueString() string {
 	var value string
 	v := reflect.ValueOf(s.Value)
@@ -1144,6 +1153,7 @@ func (s *Scope) IncreaseErrorCount(count int) {
 	s.currentErrorCount += count
 }
 
+// InitializeIncluded initializes the included method
 func (s *Scope) InitializeIncluded(maxNestedLevel int) {
 	s.includedScopes = make(map[*models.ModelStruct]*Scope)
 	s.maxNestedLevel = maxNestedLevel
@@ -1202,7 +1212,7 @@ FIELDSET
 
 */
 
-// fields[collection] = field1, field2
+// BuildFieldset builds the fieldset for the provided scope fields[collection] = field1, field2
 func (s *Scope) BuildFieldset(fields ...string) (errs []*aerrors.ApiError) {
 	var (
 		errObj *aerrors.ApiError
@@ -1325,6 +1335,7 @@ func (s *Scope) getOrCreateIDFilter() (filter *filters.FilterField) {
 	return s.getOrCreatePrimaryFilter(models.StructPrimary(s.mStruct))
 }
 
+// GetOrCreateLanguageFilter used to get or if yet not found create the language filter field
 func (s *Scope) GetOrCreateLanguageFilter() (filter *filters.FilterField) {
 	return s.getOrCreateLangaugeFilter()
 }
@@ -1461,7 +1472,7 @@ func (s *Scope) IncludeScopeByStruct(mStruct *models.ModelStruct) (*Scope, bool)
 	return scope, ok
 }
 
-// IncludedScopes returns included scopes
+// IncludedValues returns included scope values
 func (s *Scope) IncludedValues() *safemap.SafeHashMap {
 	return s.includedValues
 }
@@ -1488,7 +1499,7 @@ func (s *Scope) BuildIncludeList(includedList ...string,
 	var includedMap map[string]int
 
 	// many includes flag if there is more than one include
-	var manyIncludes bool = len(includedList) > 1
+	var manyIncludes = len(includedList) > 1
 
 	if manyIncludes {
 		includedMap = make(map[string]int)
@@ -1606,7 +1617,7 @@ func (s *Scope) createModelsRootScope(mStruct *models.ModelStruct) *Scope {
 	return scope
 }
 
-// getModelsRootScope returns the scope for given model that is stored within
+// GetModelsRootScope returns the scope for given model that is stored within
 // the rootScope
 func (s *Scope) GetModelsRootScope(mStruct *models.ModelStruct) (collRootScope *Scope) {
 	if s.rootScope == nil {
@@ -1715,7 +1726,7 @@ func (s *Scope) Pagination() *paginations.Pagination {
 	return s.pagination
 }
 
-// PreparepaginatedValue prepares paginated value for given key, value and index
+// PreparePaginatedValue prepares paginated value for given key, value and index
 func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Parameter) *aerrors.ApiError {
 	val, err := strconv.Atoi(value)
 	if err != nil {
@@ -1749,6 +1760,7 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 SORTS
 
 */
+
 // BuildSortFields sets the sort fields for given string array.
 func (s *Scope) BuildSortFields(sortFields ...string) (errs []*aerrors.ApiError) {
 	return s.buildSortFields(sortFields...)
@@ -1759,8 +1771,8 @@ func (s *Scope) buildSortFields(sortFields ...string) (errs []*aerrors.ApiError)
 	var (
 		err      *aerrors.ApiError
 		order    sorts.Order
-		fields   map[string]int = make(map[string]int)
-		badField                = func(fieldName string) {
+		fields   = make(map[string]int)
+		badField = func(fieldName string) {
 			err = aerrors.ErrInvalidQueryParameter.Copy()
 			err.Detail = fmt.Sprintf("Provided sort parameter: '%v' is not valid for '%v' collection.", fieldName, s.mStruct.Collection())
 			errs = append(errs, err)
@@ -1830,7 +1842,7 @@ func (s *Scope) newValueMany() {
 // 	return fmt.Errorf("Provided invalid valueAddress for scope of type: %v. ValueAddress: %v", s.mStruct.Type(), s.valueAddress)
 // }
 
-// GetPrimaryFieldValue
+// GetPrimaryFieldValue gets the primary field reflect.Value
 func (s *Scope) GetPrimaryFieldValue() (reflect.Value, error) {
 	return s.getFieldValue(s.Struct().PrimaryField())
 }
@@ -2027,7 +2039,7 @@ func getURLVariables(req *http.Request, mStruct *models.ModelStruct, indexFirst,
 		err = invalidURL()
 		return
 	}
-	var collectionIndex int = -1
+	var collectionIndex = -1
 	if models.StructCollectionUrlIndex(mStruct) != -1 {
 		collectionIndex = models.StructCollectionUrlIndex(mStruct)
 	} else {
@@ -2167,7 +2179,7 @@ func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 	if s.includedValues != nil {
 		scope.includedValues = safemap.New()
 		for k, v := range s.includedValues.Values() {
-			scope.includedValues.UnsafeAdd(k, v)
+			scope.includedValues.UnsafeSet(k, v)
 		}
 	}
 

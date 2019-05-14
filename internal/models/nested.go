@@ -141,10 +141,12 @@ func (n *NestedField) StructField() *StructField {
 	return n.structField
 }
 
+// Self is the relation to it's struct field
 func (n *NestedField) Self() *StructField {
 	return n.structField.Self()
 }
 
+// SelfNested returns the pointer to itself
 func (n *NestedField) SelfNested() *NestedField {
 	return n
 }
@@ -163,6 +165,7 @@ func (n *NestedField) attr() *StructField {
 	return attr
 }
 
+// StructFielder is the interfaces used for getting the pointer to itself
 type StructFielder interface {
 	Self() *StructField
 }

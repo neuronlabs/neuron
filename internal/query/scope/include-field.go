@@ -10,7 +10,7 @@ import (
 	"reflect"
 )
 
-// IncludeScope is the includes information scope
+// IncludeField is the includes information scope
 // it contains the field to include from the root scope
 // related subscope, and subfields to include.
 type IncludeField struct {
@@ -143,7 +143,7 @@ func (i *IncludeField) getMissingFromSingle(
 
 				if _, ok := i.Scope.collectionScope.includedValues.Values()[primary]; !ok {
 					// add to collection IDs
-					i.Scope.collectionScope.includedValues.UnsafeAdd(primary, nil)
+					i.Scope.collectionScope.includedValues.UnsafeSet(primary, nil)
 					if _, ok = uniqueMissing[primary]; !ok {
 						uniqueMissing[primary] = struct{}{}
 					} else {

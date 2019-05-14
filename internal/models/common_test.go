@@ -31,7 +31,7 @@ func (m *embeddedModel) SchemaName() string {
 	return defaultSchema
 }
 
-func checkLogger() {
+func setLogger() {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)
 	}

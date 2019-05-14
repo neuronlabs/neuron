@@ -1,9 +1,10 @@
-package controller
+package jsonapi
 
 import (
 	"bytes"
 	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestUnmarshalScopeOne(t *testing.T) {
-	c := Default()
+	c := controller.DefaultTesting(t)
 
 	err := c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.Nil(t, err)
@@ -24,7 +25,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// Correct with  attributes
 	t.Run("valid_attributes", func(t *testing.T) {
 		in := strings.NewReader("{\"data\": {\"type\": \"blogs\", \"id\": \"1\", \"attributes\": {\"title\": \"Some title.\"}}}")
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.NoError(t, err)
 		assert.NotNil(t, scope)
 	})
@@ -51,7 +52,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		}
 	}`)
 
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.NoError(t, err)
 		assert.NotNil(t, scope)
 	})
@@ -60,7 +61,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// Invalid document - no opening bracket.
 	t.Run("invalid_document", func(t *testing.T) {
 		in := strings.NewReader(`"data":{"type":"blogs","id":"1"}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -76,7 +77,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// Invalid collection - unrecognized collection
 	t.Run("invalid_collection", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"unrecognized","id":"1"}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -91,7 +92,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// Invalid syntax - syntax error
 	t.Run("invalid_syntax", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1",}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -107,7 +108,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	t.Run("invalid_field_value", func(t *testing.T) {
 		// number instead of string
 		in := strings.NewReader(`{"data":{"type":"blogs","id":1.03}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -121,7 +122,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	t.Run("invalid_relationship_type", func(t *testing.T) {
 		// string instead of object
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":"invalid"}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -135,7 +136,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// array
 	t.Run("invalid_id_value_array", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"blogs","id":{"1":"2"}}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -148,7 +149,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// array
 	t.Run("invalid_relationship_value_array", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":["invalid"]}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -161,7 +162,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// bool
 	t.Run("invalid_relationship_value_bool", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "relationships":true}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -175,7 +176,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	// invalid field value within i.e. for attribute
 	t.Run("invalid_attribute_value", func(t *testing.T) {
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"title":1.02}}}`)
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -192,7 +193,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		defer func() {
 			c.StrictUnmarshalMode = false
 		}()
-		scope, err := c.UnmarshalScopeOne(in, &internal.Blog{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.Blog{}, false)
 		assert.Nil(t, scope)
 		if assert.NotNil(t, err) {
 			errObj, ok := err.(*aerrors.ApiError)
@@ -216,11 +217,11 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  }
 				}`)
 
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 		err := c.RegisterModels(&internal.UnmarshalModel{})
 		require.Nil(t, err)
 
-		scope, err := c.UnmarshalScopeOne(in, &internal.UnmarshalModel{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
 		if assert.NoError(t, err) {
 
 			m, ok := scope.Value.(*internal.UnmarshalModel)
@@ -245,11 +246,11 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 		err := c.RegisterModels(&internal.UnmarshalModel{})
 		require.Nil(t, err)
 
-		scope, err := c.UnmarshalScopeOne(in, &internal.UnmarshalModel{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
 		if assert.NoError(t, err) {
 
 			m, ok := scope.Value.(*internal.UnmarshalModel)
@@ -279,11 +280,11 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 		err := c.RegisterModels(&internal.UnmarshalModel{})
 		require.Nil(t, err)
 
-		_, err = c.UnmarshalScopeOne(in, &internal.UnmarshalModel{}, false)
+		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
 		assert.Error(t, err)
 	})
 
@@ -298,11 +299,11 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 		err := c.RegisterModels(&internal.UnmarshalModel{})
 		require.Nil(t, err)
 
-		_, err = c.UnmarshalScopeOne(in, &internal.UnmarshalModel{}, false)
+		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
 		assert.Error(t, err)
 	})
 
@@ -313,22 +314,24 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		}
 
 		t.Run("TooManyValues", func(t *testing.T) {
-			c := DefaultTesting()
+			c := controller.DefaultTesting(t)
+
 			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162,16.162]}}}`)
 			err := c.RegisterModels(&ArrModel{})
 			require.Nil(t, err)
 
-			_, err = c.UnmarshalScopeOne(in, &ArrModel{}, false)
+			_, err = unmarshalScopeOne((*controller.Controller)(c), in, &ArrModel{}, false)
 			assert.Error(t, err)
 		})
 
 		t.Run("Correct", func(t *testing.T) {
-			c := DefaultTesting()
+			c := controller.DefaultTesting(t)
+
 			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162]}}}`)
 			err := c.RegisterModels(&ArrModel{})
 			require.Nil(t, err)
 
-			_, err = c.UnmarshalScopeOne(in, &ArrModel{}, false)
+			_, err = unmarshalScopeOne((*controller.Controller)(c), in, &ArrModel{}, false)
 			assert.NoError(t, err)
 		})
 	})
@@ -729,13 +732,14 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
 				t.Helper()
-				c := DefaultTesting()
+				c := controller.DefaultTesting(t)
+
 				in := strings.NewReader(test.r)
 				err := c.RegisterModels(test.model)
 				require.NoError(t, err)
 
 				var scope *scope.Scope
-				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
+				require.NotPanics(t, func() { scope, err = unmarshalScopeOne((*controller.Controller)(c), in, test.model, false) })
 				test.f(t, scope, err)
 			})
 		}
@@ -799,11 +803,12 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
-				c := DefaultTesting()
+				c := controller.DefaultTesting(t)
+
 				in := strings.NewReader(test.r)
 				err := c.RegisterModels(test.model)
 				require.NoError(t, err)
-				scope, err := c.UnmarshalScopeOne(in, test.model, false)
+				scope, err := unmarshalScopeOne((*controller.Controller)(c), in, test.model, false)
 				test.f(t, scope, err)
 			})
 
@@ -895,7 +900,8 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
-				c := DefaultTesting()
+				c := controller.DefaultTesting(t)
+
 				in := strings.NewReader(test.r)
 				var err error
 
@@ -903,7 +909,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				require.NoError(t, err)
 
 				var scope *scope.Scope
-				require.NotPanics(t, func() { scope, err = c.UnmarshalScopeOne(in, test.model, false) })
+				require.NotPanics(t, func() { scope, err = unmarshalScopeOne((*controller.Controller)(c), in, test.model, false) })
 
 				test.f(t, scope, err)
 			})
@@ -914,16 +920,15 @@ func TestUnmarshalScopeOne(t *testing.T) {
 }
 
 func TestUnmarshalScopeMany(t *testing.T) {
-	c := DefaultTesting()
+	c := controller.DefaultTesting(t)
 
-	err := c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
-	require.Nil(t, err)
+	require.NoError(t, c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{}))
 
 	// Case 1:
 	// Correct with  attributes
 	t.Run("valid_attributes", func(t *testing.T) {
 		in := strings.NewReader("{\"data\": [{\"type\": \"blogs\", \"id\": \"1\", \"attributes\": {\"title\": \"Some title.\"}}]}")
-		scope, err := c.UnmarshalScopeMany(in, &internal.Blog{})
+		scope, err := unmarshalScopeMany(c, in, &internal.Blog{})
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			assert.NotEmpty(t, scope.Value)
@@ -955,7 +960,7 @@ func TestUnmarshalScopeMany(t *testing.T) {
 		]
 	}`)
 
-		scope, err := c.UnmarshalScopeMany(in, &internal.Blog{})
+		scope, err := unmarshalScopeMany(c, in, &internal.Blog{})
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			assert.NotEmpty(t, scope.Value)
@@ -965,15 +970,16 @@ func TestUnmarshalScopeMany(t *testing.T) {
 }
 
 func TestUnmarshalUpdateFields(t *testing.T) {
-	c := DefaultTesting()
-	assert.Nil(t, c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{}))
+	c := controller.DefaultTesting(t)
+
+	require.NoError(t, c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{}))
 
 	buf := bytes.NewBuffer(nil)
 
 	t.Run("attribute", func(t *testing.T) {
 		buf.Reset()
 		buf.WriteString(`{"data":{"type":"blogs","id":"1", 	"attributes":{"title":"New title"}}}`)
-		scope, err := c.UnmarshalScopeOne(buf, &internal.Blog{}, true)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), buf, &internal.Blog{}, true)
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			attr, _ := scope.Struct().Attribute("title")
@@ -987,7 +993,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 		buf.Reset()
 		buf.WriteString(`{"data":{"type":"blogs","id":"1", "attributes":{"title":"New title","view_count":16}}}`)
 
-		scope, err := c.UnmarshalScopeOne(buf, &internal.Blog{}, true)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), buf, &internal.Blog{}, true)
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct().Collection()) {
@@ -1023,7 +1029,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 	}
 }`)
 
-		scope, err := c.UnmarshalScopeOne(buf, &internal.Blog{}, true)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), buf, &internal.Blog{}, true)
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct().Collection()) {
@@ -1062,7 +1068,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 	}
 }`)
 
-		scope, err := c.UnmarshalScopeOne(buf, &internal.Blog{}, true)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), buf, &internal.Blog{}, true)
 		assert.NoError(t, err)
 		if assert.NotNil(t, scope) {
 			if assert.Equal(t, "blogs", scope.Struct().Collection()) {
@@ -1105,7 +1111,7 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 	}
 }`)
 
-		scope, err := c.UnmarshalScopeOne(buf, &internal.Blog{}, true)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), buf, &internal.Blog{}, true)
 		assert.NoError(t, err)
 
 		if assert.NotNil(t, scope) {

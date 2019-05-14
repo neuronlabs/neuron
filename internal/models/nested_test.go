@@ -30,9 +30,10 @@ type modelWithNested struct {
 	PtrComposed *nestedAttribute `neuron:"type=attr;name=ptr-composed"`
 }
 
+// TestNestedFields tests the nested field's definitions
 func TestNestedFields(t *testing.T) {
 
-	checkLogger()
+	setLogger()
 
 	ms := testingSchemas(t)
 
@@ -43,116 +44,104 @@ func TestNestedFields(t *testing.T) {
 	require.NoError(t, err)
 	// if assert.NoError(t, c.PrecomputeModels(&ModelWithNested{})) {
 	// m := s .Get(reflect.TypeOf(ModelWithNested{}))
-	if assert.NotNil(t, m) {
+	require.NotNil(t, m)
 
-		t.Run("ptr-composed", func(t *testing.T) {
-			ptrField, ok := m.Attribute("ptr-composed")
-			require.True(t, ok)
+	t.Run("ptr-composed", func(t *testing.T) {
+		ptrField, ok := m.Attribute("ptr-composed")
+		require.True(t, ok)
 
-			assert.True(t, ptrField.isPtr())
+		assert.True(t, ptrField.isPtr())
 
-			// ptr composed field must have a nested struct field
-			require.NotNil(t, ptrField.nested)
+		// ptr composed field must have a nested struct field
+		require.NotNil(t, ptrField.nested)
 
-			// ptrField in fact is not nested field. It contains nested subfields.
-			// and it is a NestedStruct
-			assert.False(t, ptrField.isNestedField())
+		// ptrField in fact is not nested field. It contains nested subfields.
+		// and it is a NestedStruct
+		assert.False(t, ptrField.isNestedField())
 
-			nested := ptrField.nested
+		nested := ptrField.nested
 
-			assert.Equal(t, nested.modelType, reflect.TypeOf(nestedAttribute{}))
+		assert.Equal(t, nested.modelType, reflect.TypeOf(nestedAttribute{}))
 
-			var ctr int
-			for nestedName, nestedField := range nested.fields {
+		assert.Len(t, nested.fields, 7)
 
-				assert.Equal(t, ptrField, nestedField.attr())
-				switch nestedName {
-				case "float":
-					t.Run("nestedFloat", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.Float64, nestedField.reflectField.Type.Kind())
-					})
-					ctr += 1
-				case "int":
-					t.Run("nestedInt", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.Int, nestedField.reflectField.Type.Kind())
-					})
-					ctr += 1
-				case "string":
-					t.Run("nestedString", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.String, nestedField.reflectField.Type.Kind())
-					})
-					ctr += 1
-				case "slice":
-					t.Run("nestedInt", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.Slice, nestedField.reflectField.Type.Kind())
-						assert.True(t, nestedField.isSlice())
-					})
-					ctr += 1
-				case "inception":
-					t.Run("nestedInNested", func(t *testing.T) {
-						nested := nestedField.nested
-						require.NotNil(t, nested)
+		// float field
+		nestedField, ok := nested.fields["float"]
+		if assert.True(t, ok) {
+			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, reflect.Float64, nestedField.structField.reflectField.Type.Kind())
+		}
 
-						nStructFielder := nested.structField
-						if assert.NotNil(t, nStructFielder) {
-							assert.Equal(t, nestedField.StructField, nStructFielder.Self())
+		// nested int field
+		nestedField, ok = nested.fields["int"]
+		if assert.True(t, ok) {
+			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, reflect.Int, nestedField.structField.reflectField.Type.Kind())
+		}
 
-							nestedFieldInterface, ok := nStructFielder.(NestedStructFielder)
-							if assert.True(t, ok) {
-								assert.Equal(t, nestedField, nestedFieldInterface.SelfNested())
-							}
-						}
+		// int
+		nestedField, ok = nested.fields["string"]
+		if assert.True(t, ok) {
+			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, reflect.String, nestedField.structField.reflectField.Type.Kind())
+		}
 
-						assert.Len(t, nested.fields, 2)
-						var nctr int
-						for nnName, nnField := range nested.fields {
-							switch nnName {
-							case "inception_first":
-								t.Run("non-tagged", func(t *testing.T) {
-									assert.Equal(t, reflect.Int, nnField.reflectField.Type.Kind())
-									assert.Equal(t, nested, nnField.root)
-									assert.Equal(t, nestedField.FieldKind(), KindNested)
-								})
-								nctr += 1
-							case "second":
-								nctr += 1
-								t.Run("tagged", func(t *testing.T) {
-									assert.Equal(t, reflect.Float64, nnField.reflectField.Type.Kind())
-									assert.Equal(t, nestedField.FieldKind(), KindNested)
-									assert.True(t, nnField.isOmitEmpty())
+		// slice
+		nestedField, ok = nested.fields["slice"]
+		if assert.True(t, ok) {
+			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, reflect.Slice, nestedField.structField.reflectField.Type.Kind())
+			assert.True(t, nestedField.structField.isSlice())
+		}
 
-									assert.Equal(t, nested, nnField.root)
-								})
-							default:
-								t.Logf("BadName for nested Field: %s", nnName)
-							}
-						}
-						assert.Equal(t, len(nested.fields), nctr)
-					})
-					ctr += 1
-				case "float-tag":
-					t.Run("nestedFloatTagged", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.Float64, nestedField.reflectField.Type.Kind())
-					})
-					ctr += 1
-				case "int-tag":
-					t.Run("nestedIntTagged", func(t *testing.T) {
-						assert.Equal(t, nestedField.FieldKind(), KindNested)
-						assert.Equal(t, reflect.Int, nestedField.reflectField.Type.Kind())
-					})
-					ctr += 1
-				default:
-					t.Fail()
+		// inception
+		t.Run("NestedInNested", func(t *testing.T) {
+			nestedField, ok = nested.fields["inception"]
+			if assert.True(t, ok) {
+				nestedInNested := nestedField.structField.nested
+				require.NotNil(t, nestedInNested)
 
+				nStructFielder := nestedInNested.structField
+				if assert.NotNil(t, nStructFielder) {
+					assert.Equal(t, nestedField.structField, nStructFielder.Self())
+
+					nestedFieldInterface, ok := nStructFielder.(NestedStructFielder)
+					if assert.True(t, ok) {
+						assert.Equal(t, nestedField, nestedFieldInterface.SelfNested())
+					}
+				}
+
+				assert.Len(t, nestedInNested.fields, 2)
+
+				subNestedField, ok := nestedInNested.fields["inception_first"]
+				if assert.True(t, ok) {
+					assert.Equal(t, reflect.Int, subNestedField.structField.reflectField.Type.Kind())
+					assert.Equal(t, nestedInNested, subNestedField.root)
+					assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+				}
+
+				subNestedField, ok = nestedInNested.fields["second"]
+				if assert.True(t, ok) {
+					assert.Equal(t, reflect.Float64, subNestedField.structField.reflectField.Type.Kind())
+					assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+					assert.True(t, subNestedField.structField.isOmitEmpty())
 				}
 			}
-			assert.Equal(t, len(nested.fields), ctr)
 		})
-	}
+
+		t.Run("Tagged", func(t *testing.T) {
+			nestedField, ok = nested.fields["float-tag"]
+			if assert.True(t, ok) {
+				assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+				assert.Equal(t, reflect.Float64, nestedField.structField.reflectField.Type.Kind())
+			}
+
+			nestedField, ok = nested.fields["int-tag"]
+			if assert.True(t, ok) {
+				assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+				assert.Equal(t, reflect.Int, nestedField.structField.reflectField.Type.Kind())
+			}
+		})
+	})
 
 }

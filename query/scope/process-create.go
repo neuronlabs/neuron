@@ -11,7 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ErrNoCreateRepository error = errors.New("No create repository for model found.")
+// ErrNoCreateRepository is thrown when the repository doesn't implement the creator interface
+var ErrNoCreateRepository = errors.New("No create repository for model found.")
 
 // CREATE process
 

@@ -7,18 +7,20 @@ import (
 
 var Verbose *bool = flag.Bool("verbose-api", false, "Used to get verbose data")
 
+// ScopeIDCtx is the common struct used as a scope's ID in the context
 type ScopeIDCtx struct{}
 
+// ControllerIDCtx is the common struct used as a controller's key in the context
 type ControllerIDCtx struct{}
 
 var (
-	ScopeIDCtxKey      ScopeIDCtx      = ScopeIDCtx{}
-	ControllerIDCtxKey ControllerIDCtx = ControllerIDCtx{}
+	ScopeIDCtxKey      = ScopeIDCtx{}
+	ControllerIDCtxKey = ControllerIDCtx{}
 )
 
+// Erros used in by the internal packages
 var (
-	IErrUnexpectedType = errors.
-				New("models should be a struct pointer or slice of struct pointers")
+	IErrUnexpectedType     = errors.New("models should be a struct pointer or slice of struct pointers")
 	IErrExpectedSlice      = errors.New("models should be a slice of struct pointers")
 	IErrNilValue           = errors.New("Nil value provided.")
 	IErrValueNotAddresable = errors.New("Provided value is not addressable")

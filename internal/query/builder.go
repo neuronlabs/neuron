@@ -28,23 +28,21 @@ type Builder struct {
 	schemas *models.ModelSchemas
 }
 
-var DefaultConfig *config.BuilderConfig = config.ReadDefaultControllerConfig().Builder
+// DefaultConfig is the default builder config
+var (
+	defaultCtrlConfig *config.ControllerConfig = config.ReadDefaultControllerConfig()
+	DefaultConfig     *config.BuilderConfig    = defaultCtrlConfig.Builder
+)
 
 // DefaultBuilder returns builder with default config and no i18n support
 func DefaultBuilder() *Builder {
 	schemas, _ := models.NewModelSchemas(
 		namer.NamingSnake,
-		DefaultConfig.IncludeNestedLimit,
-		map[string]*config.Schema{},
-		"default",
-		"default",
+		defaultCtrlConfig,
 		flags.New(),
 	)
-	b, err := NewBuilder(
-		schemas,
-		DefaultConfig,
-		nil,
-	)
+
+	b, err := NewBuilder(schemas, DefaultConfig, nil)
 	if err != nil {
 		panic(err)
 	}

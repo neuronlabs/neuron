@@ -21,7 +21,7 @@ func testingSchemas(t *testing.T) *ModelSchemas {
 	t.Helper()
 
 	cfg := config.ReadDefaultControllerConfig()
-	m, err := NewModelSchemas(namer.NamingSnake, 3, cfg.ModelSchemas, defaultSchema, defaultRepo, flags.New())
+	m, err := NewModelSchemas(namer.NamingSnake, cfg, flags.New())
 	require.NoError(t, err)
 	return m
 }

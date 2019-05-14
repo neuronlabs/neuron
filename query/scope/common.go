@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// common errors used in the scope package
 var (
 	ErrNilScopeValue     error = errors.New("Scope with nil value provided")
 	ErrNoRepositoryFound error = errors.New("No repositories found for model.")

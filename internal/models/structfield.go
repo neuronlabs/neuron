@@ -13,29 +13,32 @@ import (
 // FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute')
 type FieldKind int
 
+// Enums for the field kind
 const (
+	// UnknownType is the unsupported unknown type of the struct field
 	UnknownType FieldKind = iota
-	// Primary is a 'primary' field
+	// KindPrimary is a 'primary' field
 	KindPrimary
 
-	// Attribute is an 'attribute' field
+	// KindAttribute is an 'attribute' field
 	KindAttribute
 
-	// ClientID is id set by client
+	// KindClientID is id set by client
 	KindClientID
 
-	// RelationshipSingle is a 'relationship' with single object
+	// KindRelationshipSingle is a 'relationship' with single object
 	KindRelationshipSingle
 
-	// RelationshipMultiple is a 'relationship' with multiple objects
+	// KindRelationshipMultiple is a 'relationship' with multiple objects
 	KindRelationshipMultiple
 
-	// ForeignKey is the field type that is responsible for the relationships
+	// KindForeignKey is the field type that is responsible for the relationships
 	KindForeignKey
 
-	// FilterKey is the field that is used only for special case filtering
+	// KindFilterKey is the field that is used only for special case filtering
 	KindFilterKey
 
+	// KindNested is the field that is nested within another structfield
 	KindNested
 )
 
@@ -115,6 +118,7 @@ type StructField struct {
 	store map[string]interface{}
 }
 
+// NewStructField is the creator function for the struct field
 func NewStructField(
 	refField reflect.StructField,
 	mStruct *ModelStruct,
@@ -155,7 +159,7 @@ func (s *StructField) ApiName() string {
 	return s.apiName
 }
 
-// GetFieldIndex - gets the field index in the given model
+// FieldIndex - gets the field index in the given model
 func (s *StructField) FieldIndex() []int {
 	return s.getFieldIndex()
 }
@@ -200,12 +204,12 @@ func (s *StructField) Struct() *ModelStruct {
 	return s.mStruct
 }
 
-// FieldRelationship
+// FieldRelationship returns the struct field relationship
 func FieldRelationship(s *StructField) *Relationship {
 	return s.relationship
 }
 
-// FieldSetRelatinoship sets the relationship for the given field
+// FieldSetRelationship sets the relationship for the given field
 func FieldSetRelationship(s *StructField, r *Relationship) {
 	s.relationship = r
 }
@@ -230,7 +234,7 @@ func FieldIsZeroValue(s *StructField, fieldValue interface{}) bool {
 	return reflect.DeepEqual(fieldValue, reflect.Zero(s.reflectField.Type).Interface())
 }
 
-// FieldRelatedModelType gets the relationship's model type
+// FieldsRelatedModelType gets the relationship's model type
 // Returns nil if the structfield is not a relationship
 func FieldsRelatedModelType(s *StructField) reflect.Type {
 	return s.getRelatedModelType()
@@ -286,7 +290,7 @@ func FieldSetFlag(s *StructField, flag fieldFlag) {
 	s.fieldFlags = s.fieldFlags | flag
 }
 
-// FeildSetFieldKind sets the field's kind
+// FieldSetFieldKind sets the field's kind
 func FieldSetFieldKind(s *StructField, fieldKind FieldKind) {
 	s.fieldKind = fieldKind
 }
@@ -330,6 +334,7 @@ func FieldSetRelatedType(sField *StructField) error {
 	return nil
 }
 
+// SetRelatedModel sets the related model for the given struct field
 func (s *StructField) SetRelatedModel(relModel *ModelStruct) {
 	if s.relationship == nil {
 		s.relationship = &Relationship{
@@ -565,7 +570,7 @@ func FieldIsFlag(s *StructField) bool {
 	return s.isLanguage()
 }
 
-// IsLangugage checks wether the field is a language type field
+// IsLanguage checks wether the field is a language type field
 func (s *StructField) IsLanguage() bool {
 	return s.isLanguage()
 }
@@ -691,6 +696,8 @@ func (s *StructField) isNestedField() bool {
 	return s.fieldFlags&FNestedField != 0
 }
 
+// Self returns itself. Used in the nested fields.
+// Implements Structfielder interface.
 func (s *StructField) Self() *StructField {
 	return s
 }

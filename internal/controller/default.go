@@ -4,22 +4,24 @@ import (
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/neuron/repositories/mocks"
+	"testing"
 )
 
 // DefaultConfig is the controller default config used with the Default function
 var DefaultConfig *config.ControllerConfig = config.ReadDefaultControllerConfig()
 
-func DefaultTesting() *Controller {
-	c := Default()
+// DefaultTesting is the default controller used for testing
+func DefaultTesting(t *testing.T) *Controller {
+	c := NewDefault()
 
 	log.Default()
 
 	if internal.Verbose != nil && *internal.Verbose {
 		c.Config.Debug = true
 
-		log.SetLevel(unilogger.DEBUG)
+		log.SetLevel(log.LDEBUG)
 	}
-
+	c.RegisterRepository(&mocks.Repository{})
 	return c
 }

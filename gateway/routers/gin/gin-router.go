@@ -132,7 +132,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 						return nil, err
 					}
 					// iterate over all relationship fields and create the 'get related' endpoints
-					for _, rel := range model.RelatinoshipFields() {
+					for _, rel := range model.RelationshipFields() {
 						g.GET(path.Join(urlBasePath, ":id", rel.ApiName()), hc...)
 					}
 				}
@@ -154,7 +154,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 						return nil, err
 					}
 					// iterate over all relationship fields and create the 'get related' endpoints
-					for _, rel := range model.RelatinoshipFields() {
+					for _, rel := range model.RelationshipFields() {
 						g.GET(path.Join(urlBasePath, ":id", "relationship", rel.ApiName()), hc...)
 					}
 				}

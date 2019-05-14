@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// FilterValues are the values used within the provided FilterField
+// OpValuePair are the values used within the provided FilterField
 // It contains the Values which is a slice of provided values for given 'Operator'
 type OpValuePair struct {
 	Values   []interface{}

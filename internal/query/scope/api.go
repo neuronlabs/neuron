@@ -40,7 +40,7 @@ func FiltersPrimary(s *Scope) []*filters.FilterField {
 	return s.primaryFilters
 }
 
-// FiltersAttribute returns scope's attribute filters
+// FiltersAttributes returns scope's attribute filters
 func FiltersAttributes(s *Scope) []*filters.FilterField {
 	return s.attributeFilters
 }
@@ -123,6 +123,7 @@ func New(model *models.ModelStruct) *Scope {
 	return scope
 }
 
+// NewWithCtx creates new scope with the provided context
 func NewWithCtx(ctx context.Context, model *models.ModelStruct) *Scope {
 	scope := newScope(model)
 
@@ -131,6 +132,7 @@ func NewWithCtx(ctx context.Context, model *models.ModelStruct) *Scope {
 
 }
 
+// NewRootScopeWithCtx creates new root scope with provided context
 func NewRootScopeWithCtx(ctx context.Context, modelStruct *models.ModelStruct) *Scope {
 	scope := newScope(modelStruct)
 	scope.collectionScope = scope
@@ -152,7 +154,7 @@ func NewRootScope(modelStruct *models.ModelStruct) *Scope {
 }
 
 // SelectedFieldValues gets the scopes field values with provided dialectNamer
-func SelectedFieldValues(s *Scope, dialectNamer dialect.DialectFieldNamer) (map[string]interface{}, error) {
+func SelectedFieldValues(s *Scope, dialectNamer dialect.FieldNamer) (map[string]interface{}, error) {
 	return s.selectedFieldValues(dialectNamer)
 }
 
@@ -166,12 +168,12 @@ func SetContext(s *Scope, ctx context.Context) {
 	s.ctx = ctx
 }
 
-// Sets the fieldset for given scope
+// SetFields the fieldset for given scope
 func SetFields(s *Scope, fields ...interface{}) error {
 	return s.SetFields(fields...)
 }
 
-// SetLangtagValue sets the langtag to the scope's value.
+// SetLangTagValue sets the langtag to the scope's value.
 // returns an error
 //		- if the Value is of invalid type or if the
 //		- if the model does not support i18n

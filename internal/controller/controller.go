@@ -56,7 +56,7 @@ type Controller struct {
 	schemas *models.ModelSchemas
 
 	// repositories contains mapping between the model's and it's repositories
-	repositories *repositories.RepositoryContainer
+	repositories *repositories.Container
 
 	// dbErrMapper error manager for the repositories
 	dbErrMapper *aerrors.ErrorMapper
@@ -84,11 +84,13 @@ func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Control
 	return c, nil
 }
 
+// NewDefault creates new default controller based on the default config
 func NewDefault() *Controller {
 	c, _ := newController(DefaultConfig)
 	return c
 }
 
+// SetDefault sets the default controller
 func SetDefault(c *Controller) {
 	defaultController = c
 }
@@ -110,18 +112,31 @@ func Default() *Controller {
 }
 
 func newController(cfg *config.ControllerConfig) (*Controller, error) {
+	var (
+		f   *flags.Container
+		err error
+	)
+	if cfg.Flags == nil {
+		f = flags.New()
+	} else {
+		f, err = cfg.Flags.Container()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	c := &Controller{
-		Flags:           flags.New(),
+		Flags:           f,
 		CreateValidator: validator.New(),
 		PatchValidator:  validator.New(),
 	}
 
 	log.Debugf("Creating Controller with config: %+v", cfg)
 
-	err := c.setConfig(cfg)
-	if err != nil {
+	if err = c.setConfig(cfg); err != nil {
 		return nil, errors.Wrap(err, "setConfig failed.")
 	}
+
 	if cfg.I18n != nil {
 		c.i18nSup, err = i18n.New(cfg.I18n)
 		if err != nil {
@@ -132,10 +147,7 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 	// create model schemas
 	c.schemas, err = models.NewModelSchemas(
 		c.NamerFunc,
-		c.Config.Builder.IncludeNestedLimit,
-		c.Config.ModelSchemas,
-		c.Config.DefaultSchema,
-		c.Config.DefaultRepository,
+		c.Config,
 		c.Flags,
 	)
 	if err != nil {
@@ -143,7 +155,7 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 	}
 
 	// create repository container
-	c.repositories = repositories.NewRepoContainer()
+	c.repositories = repositories.New()
 
 	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.i18nSup)
 	if err != nil {
@@ -308,7 +320,7 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 	return nil
 }
 
-// Schemas returns model schemas for given controller
+// ModelSchemas returns model schemas for given controller
 func (c *Controller) ModelSchemas() *models.ModelSchemas {
 	return c.schemas
 }

@@ -193,7 +193,7 @@ func TestBuildScopeMany(t *testing.T) {
 					ovs := prims[0].Values()
 
 					if assert.Len(t, ovs, 1) {
-						assert.Equal(t, filters.OpEqual, ovs[0].Operator)
+						assert.Equal(t, filters.OpEqual, ovs[0].Operator())
 						assert.Len(t, ovs[0].Values, 2)
 					}
 				}

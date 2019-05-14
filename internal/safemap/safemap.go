@@ -10,16 +10,19 @@ type SafeHashMap struct {
 	sync.Mutex
 }
 
+// New creates new safe hashmap
 func New() *SafeHashMap {
 	return &SafeHashMap{values: make(map[interface{}]interface{})}
 }
 
-func (s *SafeHashMap) Add(key, value interface{}) {
+// Set sets the value at given _key
+func (s *SafeHashMap) Set(key, value interface{}) {
 	s.Lock()
 	defer s.Unlock()
 	s.values[key] = value
 }
 
+// Contains checks if given hash map has a given value
 func (s *SafeHashMap) Contains(value interface{}) bool {
 	s.Lock()
 	defer s.Unlock()
@@ -27,6 +30,7 @@ func (s *SafeHashMap) Contains(value interface{}) bool {
 	return ok
 }
 
+// Get gets the safe hashmap value
 func (s *SafeHashMap) Get(key interface{}) (interface{}, bool) {
 	s.Lock()
 	defer s.Unlock()
@@ -34,8 +38,8 @@ func (s *SafeHashMap) Get(key interface{}) (interface{}, bool) {
 	return value, ok
 }
 
-// UnsafeAdd adds the value at given key even if the map is locked
-func (s *SafeHashMap) UnsafeAdd(key, value interface{}) {
+// UnsafeSet adds the value at given key even if the map is locked
+func (s *SafeHashMap) UnsafeSet(key, value interface{}) {
 	s.values[key] = value
 }
 
@@ -45,6 +49,7 @@ func (s *SafeHashMap) UnsafeGet(key interface{}) (interface{}, bool) {
 	return value, ok
 }
 
+// Copy copies the safe map
 func (s *SafeHashMap) Copy() *SafeHashMap {
 	copied := New()
 	for key, value := range s.values {
@@ -53,10 +58,12 @@ func (s *SafeHashMap) Copy() *SafeHashMap {
 	return copied
 }
 
+// Values gets the hashmap values
 func (s *SafeHashMap) Values() map[interface{}]interface{} {
 	return s.values
 }
 
+// Length gets the hash map length
 func (s *SafeHashMap) Length() int {
 	s.Lock()
 	defer s.Unlock()

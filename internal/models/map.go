@@ -140,6 +140,7 @@ func getSliceElemType(modelType reflect.Type) (reflect.Type, error) {
 	return modelType, nil
 }
 
+// BuildModelStruct builds the model struct for the provided model with the given namer function
 func BuildModelStruct(
 	model interface{},
 	namerFunc namer.Namer,
@@ -183,7 +184,7 @@ func BuildModelStruct(
 
 	var (
 		assignedFields int
-		init           bool = true
+		init           = true
 	)
 
 	// assign the function to it
@@ -202,8 +203,6 @@ func BuildModelStruct(
 			} else {
 				fieldIndex = append(index, i)
 			}
-
-			log.Debugf("Field: %v", tField.Name)
 
 			if tField.Anonymous {
 				// the field is embedded struct or ptr to struct
@@ -247,6 +246,8 @@ func BuildModelStruct(
 			}
 			structField.fieldIndex = make([]int, len(fieldIndex))
 			copy(structField.fieldIndex, fieldIndex)
+
+			log.Debugf("[%s] - Field: %s with tags: %s ", modelStruct.Type().Name(), tField.Name, tagValues)
 
 			assignedFields++
 
@@ -592,7 +593,7 @@ func getNestedStruct(
 
 		nestedField := NewNestedField(nestedStruct, sFielder, nField)
 
-		tag, ok := nField.Tag.Lookup("jsonapi")
+		tag, ok := nField.Tag.Lookup("neuron")
 		if ok {
 			if tag == "-" {
 				marshalField.Tag = reflect.StructTag(`json:"-"`)
@@ -613,7 +614,7 @@ func getNestedStruct(
 				case internal.AnnotationFieldType:
 					if tValue[0] != internal.AnnotationNestedField {
 						log.Debugf("Invalid annotationNestedField value: '%s' for field: %s", tValue[0], nestedField.structField.Name())
-						err = errors.Errorf("Provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.Name())
+						err = errors.Errorf("Provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.FieldType(), nestedField.structField.Name())
 						return nil, err
 					}
 				case internal.AnnotationFlags:
@@ -648,6 +649,7 @@ func getNestedStruct(
 				nestedField.structField.ApiName(),
 			)
 		default:
+
 		}
 
 		if _, ok = NestedStructSubField(nestedStruct, nestedField.structField.ApiName()); ok {
@@ -794,7 +796,7 @@ func getNestedStruct(
 			}
 		}
 
-		var tagValue string = nestedField.structField.ApiName()
+		var tagValue = nestedField.structField.ApiName()
 
 		if FieldIsOmitEmpty(nestedField.structField) {
 			tagValue += ",omitempty"

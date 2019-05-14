@@ -63,8 +63,17 @@ type ModelSchemas struct {
 	NestedIncludeLimit int
 }
 
-// NewModelSchemas create new ModelSchemas
+// NewModelSchemas create new ModelSchemas based on the config
 func NewModelSchemas(
+	namerFunc namer.Namer,
+	c *config.ControllerConfig,
+	flgs *flags.Container,
+) (*ModelSchemas, error) {
+	return newModelSchemas(namerFunc, c.Builder.IncludeNestedLimit, c.ModelSchemas,
+		c.DefaultSchema, c.DefaultRepository, flgs)
+}
+
+func newModelSchemas(
 	namerFunc namer.Namer,
 	nestedIncludeLimit int,
 	cfg map[string]*config.Schema,
@@ -72,7 +81,7 @@ func NewModelSchemas(
 	defaultRepoName string,
 	flgs *flags.Container,
 ) (*ModelSchemas, error) {
-	log.Debugf("Createing New ModelSchemas...")
+	log.Debugf("Creating New ModelSchemas...")
 	ms := &ModelSchemas{
 		NestedIncludeLimit: nestedIncludeLimit,
 		Flags:              flgs,
@@ -251,7 +260,7 @@ func (m *ModelSchemas) RegisterModelsRecursively(models ...interface{}) error {
 func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
 	schema := m.schemas[model.SchemaName()]
 
-	for _, rel := range model.RelatinoshipFields() {
+	for _, rel := range model.RelationshipFields() {
 		relType := FieldsRelatedModelType(rel)
 		val := schema.models.Get(relType)
 		if val == nil {
@@ -267,7 +276,7 @@ func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
 func (m *ModelSchemas) setRelationships() error {
 	for _, schema := range m.schemas {
 		for _, model := range schema.models.Models() {
-			for _, relField := range model.RelatinoshipFields() {
+			for _, relField := range model.RelationshipFields() {
 
 				relationship := relField.Relationship()
 
@@ -280,6 +289,7 @@ func (m *ModelSchemas) setRelationships() error {
 				// get proper foreign key field name
 				fkeyFieldName := tags.Get(internal.AnnotationForeignKey)
 
+				log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), fkeyFieldName)
 				// check field type
 				switch relField.ReflectField().Type.Kind() {
 				case reflect.Slice:

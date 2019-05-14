@@ -1,9 +1,11 @@
-package controller
+package jsonapi
 
 import (
 	"bytes"
 	"context"
+	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/stretchr/testify/assert"
@@ -18,16 +20,16 @@ import (
 func TestMarshal(t *testing.T) {
 	buf := bytes.Buffer{}
 
-	prepare := func(t *testing.T, models ...interface{}) *Controller {
+	prepare := func(t *testing.T, models ...interface{}) *ctrl.Controller {
 		t.Helper()
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 
 		buf.Reset()
 		require.NoError(t, c.RegisterModels(models...))
-		return c
+		return (*ctrl.Controller)(c)
 	}
 
-	prepareBlogs := func(t *testing.T) *Controller {
+	prepareBlogs := func(t *testing.T) *ctrl.Controller {
 		return prepare(t, &internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	}
 
@@ -36,7 +38,7 @@ func TestMarshal(t *testing.T) {
 			c := prepareBlogs(t)
 
 			value := &internal.Blog{ID: 5, Title: "My title", ViewCount: 14}
-			if assert.NoError(t, c.Marshal(&buf, value)) {
+			if assert.NoError(t, MarshalC(c, &buf, value)) {
 				marshaled := buf.String()
 				assert.Contains(t, marshaled, `"title":"My title"`)
 				assert.Contains(t, marshaled, `"view_count":14`)
@@ -58,7 +60,7 @@ func TestMarshal(t *testing.T) {
 				c := prepare(t, &ModelTime{})
 				now := time.Now()
 				v := &ModelTime{ID: 5, Time: now}
-				if assert.NoError(t, c.Marshal(&buf, v)) {
+				if assert.NoError(t, MarshalC(c, &buf, v)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, "time")
 					assert.Contains(t, marshaled, `"id":"5"`)
@@ -69,7 +71,7 @@ func TestMarshal(t *testing.T) {
 				c := prepare(t, &ModelPtrTime{})
 				now := time.Now()
 				v := &ModelPtrTime{ID: 5, Time: &now}
-				if assert.NoError(t, c.Marshal(&buf, v)) {
+				if assert.NoError(t, MarshalC(c, &buf, v)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, "time")
 					assert.Contains(t, marshaled, `"id":"5"`)
@@ -87,7 +89,7 @@ func TestMarshal(t *testing.T) {
 
 				kv := "some"
 				value := &MpString{ID: 5, Map: map[string]*string{"key": &kv}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":"some"}`)
 				}
@@ -100,7 +102,7 @@ func TestMarshal(t *testing.T) {
 				}
 				c := prepare(t, &MpString{})
 				value := &MpString{ID: 5, Map: map[string]*string{"key": nil}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":null}`)
 				}
@@ -115,7 +117,7 @@ func TestMarshal(t *testing.T) {
 
 				kv := 5
 				value := &MpInt{ID: 5, Map: map[string]*int{"key": &kv}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":5}`)
 				}
@@ -128,7 +130,7 @@ func TestMarshal(t *testing.T) {
 				c := prepare(t, &MpInt{})
 
 				value := &MpInt{ID: 5, Map: map[string]*int{"key": nil}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":null}`)
 				}
@@ -142,7 +144,7 @@ func TestMarshal(t *testing.T) {
 
 				fv := 1.214
 				value := &MpFloat{ID: 5, Map: map[string]*float64{"key": &fv}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":1.214}`)
 				}
@@ -155,7 +157,7 @@ func TestMarshal(t *testing.T) {
 				c := prepare(t, &MpFloat{})
 
 				value := &MpFloat{ID: 5, Map: map[string]*float64{"key": nil}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":null}`)
 				}
@@ -169,7 +171,7 @@ func TestMarshal(t *testing.T) {
 				c := prepare(t, &MpSliceInt{})
 
 				value := &MpSliceInt{ID: 5, Map: map[string][]int{"key": {1, 5}}}
-				if assert.NoError(t, c.Marshal(&buf, value)) {
+				if assert.NoError(t, MarshalC(c, &buf, value)) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"map":{"key":[1,5]}`)
 				}
@@ -180,7 +182,7 @@ func TestMarshal(t *testing.T) {
 			c := prepareBlogs(t)
 
 			values := []*internal.Blog{{ID: 5, Title: "First"}, {ID: 2, Title: "Second"}}
-			if assert.NoError(t, c.Marshal(&buf, values)) {
+			if assert.NoError(t, MarshalC(c, &buf, &values)) {
 				marshaled := buf.String()
 				assert.Contains(t, marshaled, `"title":"First"`)
 				assert.Contains(t, marshaled, `"title":"Second"`)
@@ -204,7 +206,7 @@ func TestMarshal(t *testing.T) {
 
 				c := prepare(t, &Simple{})
 
-				err := c.Marshal(&buf, &Simple{ID: 2, Nested: &NestedSub{First: 1}})
+				err := MarshalC(c, &buf, &Simple{ID: 2, Nested: &NestedSub{First: 1}})
 				if assert.NoError(t, err) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"nested":{"first":1}`)
@@ -228,7 +230,7 @@ func TestMarshal(t *testing.T) {
 
 				c := prepare(t, &Simple{})
 
-				err := c.Marshal(&buf, &Simple{ID: 2, Double: &DoubleNested{Nested: &NestedSub{First: 1}}})
+				err := MarshalC(c, &buf, &Simple{ID: 2, Double: &DoubleNested{Nested: &NestedSub{First: 1}}})
 				if assert.NoError(t, err) {
 					marshaled := buf.String()
 					assert.Contains(t, marshaled, `"nested":{"first":1}`)
@@ -248,6 +250,9 @@ func TestMarshal(t *testing.T) {
 
 func TestMarshalScope(t *testing.T) {
 
+	if testing.Verbose() {
+		log.SetLevel(log.LDEBUG)
+	}
 	buf := bytes.NewBufferString("")
 
 	ctx := context.Background()
@@ -258,7 +263,7 @@ func TestMarshalScope(t *testing.T) {
 		u, err := url.Parse("/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments")
 		require.NoError(t, err)
 
-		s, errs, err := c.queryBuilder.BuildScopeSingle(ctx, &internal.Blog{}, u, 3)
+		s, errs, err := (*controller.Controller)(c).QueryBuilder().BuildScopeSingle(ctx, &internal.Blog{}, u, 3)
 
 		if assert.NoError(t, err) && assert.Empty(t, errs) && assert.NotNil(t, s) {
 
@@ -270,7 +275,7 @@ func TestMarshalScope(t *testing.T) {
 				// assertEqual(t, 1, len(scope.IncludedFields))
 				postInclude := s.IncludedFields()[0]
 				postScope := postInclude.Scope
-				postScope.Value = []*internal.Post{{ID: 1, Title: "Post title", Body: "Post body."}}
+				postScope.Value = &([]*internal.Post{{ID: 1, Title: "Post title", Body: "Post body."}})
 
 				currentPost := s.IncludedFields()[1]
 				currentPost.Scope.Value = &internal.Post{ID: 2, Title: "Current One", Body: "This is current post", LatestComment: &internal.Comment{ID: 1}}
@@ -313,10 +318,10 @@ func TestMarshalScope(t *testing.T) {
 		}
 
 		log.Debugf("Preparing to marshal")
-		payload, err := marshalScope(s, c)
+		payload, err := marshalScope((*controller.Controller)(c), s)
 		assert.NoError(t, err)
 
-		err = MarshalPayload(buf, payload)
+		err = marshalPayload(buf, payload)
 		assert.NoError(t, err)
 		// even if included, there is no
 
@@ -329,10 +334,10 @@ func TestMarshalScope(t *testing.T) {
 	})
 
 	t.Run("MarshalToManyRelationship", func(t *testing.T) {
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		s, err := c.queryBuilder.NewScope(&internal.Pet{})
+		s, err := (*controller.Controller)(c).QueryBuilder().NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
 		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{{ID: 2}, {ID: 3}}}
@@ -340,21 +345,21 @@ func TestMarshalScope(t *testing.T) {
 		err = s.SetFields("Owners")
 		assert.NoError(t, err)
 
-		payload, err := c.MarshalScope(s)
+		payload, err := marshalScope((*controller.Controller)(c), s)
 		if assert.NoError(t, err) {
-			single, ok := payload.(*OnePayload)
+			single, ok := payload.(*onePayload)
 			if assert.True(t, ok) {
 				if assert.NotNil(t, single.Data) {
 					if assert.NotEmpty(t, single.Data.Relationships) {
 						if assert.NotNil(t, single.Data.Relationships["owners"]) {
-							owners, ok := single.Data.Relationships["owners"].(*RelationshipManyNode)
+							owners, ok := single.Data.Relationships["owners"].(*relationshipManyNode)
 							if assert.True(t, ok) {
 								var count int
 								for _, owner := range owners.Data {
 									if assert.NotNil(t, owner) {
 										switch owner.ID {
 										case "2", "3":
-											count += 1
+											count++
 										}
 									}
 								}
@@ -370,23 +375,24 @@ func TestMarshalScope(t *testing.T) {
 	})
 
 	t.Run("MarshalToManyEmptyRelationship", func(t *testing.T) {
-		c := DefaultTesting()
+		c := controller.DefaultTesting(t)
+
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		s, err := c.queryBuilder.NewScope(&internal.Pet{})
+		s, err := (*controller.Controller)(c).QueryBuilder().NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
 		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{}}
 		s.SetFields("Owners")
 
-		payload, err := c.MarshalScope(s)
+		payload, err := marshalScope(c, s)
 		if assert.NoError(t, err) {
-			single, ok := payload.(*OnePayload)
+			single, ok := payload.(*onePayload)
 			if assert.True(t, ok) {
 				if assert.NotNil(t, single.Data) {
 					if assert.NotEmpty(t, single.Data.Relationships) {
 						if assert.NotNil(t, single.Data.Relationships["owners"]) {
-							owners, ok := single.Data.Relationships["owners"].(*RelationshipManyNode)
+							owners, ok := single.Data.Relationships["owners"].(*relationshipManyNode)
 							if assert.True(t, ok, reflect.TypeOf(single.Data.Relationships["owners"]).String()) {
 								if assert.NotNil(t, owners) {
 									assert.Empty(t, owners.Data)
@@ -397,7 +403,7 @@ func TestMarshalScope(t *testing.T) {
 					}
 				}
 				buf := bytes.Buffer{}
-				assert.NoError(t, MarshalPayload(&buf, single))
+				assert.NoError(t, marshalPayload(&buf, single))
 				assert.Contains(t, buf.String(), "owners")
 			}
 		}
@@ -405,15 +411,19 @@ func TestMarshalScope(t *testing.T) {
 	})
 }
 
-func BlogController(t *testing.T) *Controller {
-	c := DefaultTesting()
+func BlogController(t *testing.T) *controller.Controller {
+	v := testing.Verbose()
+	internal.Verbose = &v
+
+	c := controller.DefaultTesting(t)
+
 	err := c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.NoError(t, err)
 	return c
 }
 
-func BlogScope(t *testing.T, c *Controller) *scope.Scope {
-	scope, err := c.queryBuilder.NewScope(&internal.Blog{})
+func BlogScope(t *testing.T, c *controller.Controller) *scope.Scope {
+	scope, err := c.QueryBuilder().NewScope(&internal.Blog{})
 	require.NoError(t, err)
 	return scope
 }
@@ -456,19 +466,19 @@ func (h *HiddenModel) CollectionName() string {
 
 func TestMarshalHiddenScope(t *testing.T) {
 
-	c := DefaultTesting()
+	c := controller.DefaultTesting(t)
 	assert.NoError(t, c.RegisterModels(&HiddenModel{}))
 
-	scope, err := c.queryBuilder.NewScope(&HiddenModel{})
+	scope, err := c.QueryBuilder().NewScope(&HiddenModel{})
 	assert.NoError(t, err)
 
 	scope.Value = &HiddenModel{ID: 1, Visibile: "Visible", HiddenField: "Invisible"}
 
-	payload, err := c.MarshalScope(scope)
+	payload, err := marshalScope(c, scope)
 	assert.NoError(t, err)
 
 	buffer := bytes.NewBufferString("")
-	err = MarshalPayload(buffer, payload)
+	err = marshalPayload(buffer, payload)
 	assert.NoError(t, err)
 
 }

@@ -310,44 +310,43 @@ func (b *Builder) buildNestedFilter(
 				return errObj
 
 				// the splitted[0] is map, check the splitted[1] if it is an operator or key
-			} else {
-
-				// otherwise check if the filter contains map->key or the operator
-				_, ok := filters.Operators.Get(splitted[1])
-				if ok {
-
-					// filter[colleciton][relationship][map][$eq]
-
-					// the filter to the map cannot be compared with an operator (with no key)
-					errObj = aerrors.ErrInvalidQueryParameter.Copy()
-					errObj.Detail = fmt.Sprint("The HashMap type field cannot be comparable using raw operators. Add 'key' filter to the query.")
-					addDetails()
-					return
-				}
-
-				// otherwise the value must be a map - key
-				// filter[collection][relationship][map][attr]
-				if len(values) > 1 {
-					op = filters.OpIn
-				} else {
-					op = filters.OpEqual
-				}
-
-				interfaceValues := []interface{}{}
-
-				for _, v := range values {
-					interfaceValues = append(interfaceValues, v)
-				}
-
-				// Get the Subfield Filtervalue
-				fv := filters.NewOpValuePair(op, interfaceValues...)
-
-				// getOrCreateNested field for given 'key'
-				nested := filters.GetOrCreateNestedFilter(filter, splitted[1])
-
-				// add the 'key' values
-				nested.AddValues(fv)
 			}
+
+			// otherwise check if the filter contains map->key or the operator
+			_, ok := filters.Operators.Get(splitted[1])
+			if ok {
+
+				// filter[colleciton][relationship][map][$eq]
+
+				// the filter to the map cannot be compared with an operator (with no key)
+				errObj = aerrors.ErrInvalidQueryParameter.Copy()
+				errObj.Detail = fmt.Sprint("The HashMap type field cannot be comparable using raw operators. Add 'key' filter to the query.")
+				addDetails()
+				return
+			}
+
+			// otherwise the value must be a map - key
+			// filter[collection][relationship][map][attr]
+			if len(values) > 1 {
+				op = filters.OpIn
+			} else {
+				op = filters.OpEqual
+			}
+
+			interfaceValues := []interface{}{}
+
+			for _, v := range values {
+				interfaceValues = append(interfaceValues, v)
+			}
+
+			// Get the Subfield Filtervalue
+			fv := filters.NewOpValuePair(op, interfaceValues...)
+
+			// getOrCreateNested field for given 'key'
+			nested := filters.GetOrCreateNestedFilter(filter, splitted[1])
+
+			// add the 'key' values
+			nested.AddValues(fv)
 
 			// if the relatinoship subfield is not a map - create just raw relationship subfield
 		} else {

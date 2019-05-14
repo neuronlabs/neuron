@@ -22,16 +22,3 @@ type Repository interface {
 type OptionsSetter interface {
 	SetOptions(field *mapping.StructField)
 }
-
-// // IsRepository is a quick check if the provided interface implements any of the repository
-// // interfaces
-// func IsRepository(r interface{}) bool {
-// 	switch r.(type) {
-// 	case Creater, GetLister, Patcher, Deleter:
-// 		// if the provided 'r' repository implements any of the provided repository interfaces
-// 		// Then it is treated as the repository
-// 	default:
-// 		return false
-// 	}
-// 	return true
-// }

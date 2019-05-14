@@ -6,9 +6,10 @@ import (
 	"github.com/neuronlabs/neuron/config"
 )
 
-// PaginationType is the enum that describes the type of pagination
+// Type is the pagination type definition enum
 type Type int
 
+// Enum defined for the scope's pagination
 const (
 	TpOffset Type = iota
 	TpPage
@@ -31,6 +32,7 @@ func (t Type) String() string {
 // Parameter Defines the given paginate paramater type
 type Parameter int
 
+// Parameter enum definition
 const (
 	ParamLimit Parameter = iota
 	ParamOffset
@@ -52,6 +54,7 @@ type Pagination struct {
 	tp Type
 }
 
+// NewFromConfig creates new pagination based on the provided config
 func NewFromConfig(p *config.Pagination) *Pagination {
 	pg := &Pagination{
 		Limit:      p.Limit,

@@ -235,12 +235,12 @@ func (b *Builder) BuildScopeSingle(
 	s.InitializeIncluded(b.Config.IncludeNestedLimit)
 
 	if id == nil {
-		var stringId string
-		stringId, err = getID(query, s.Struct())
+		var stringID string
+		stringID, err = getID(query, s.Struct())
 		if err != nil {
 			return
 		}
-		_, er := b.buildFilterField(s, "filter["+s.Struct().Collection()+"][id][$eq]", stringId)
+		_, er := b.buildFilterField(s, "filter["+s.Struct().Collection()+"][id][$eq]", stringID)
 		if er != nil {
 			if errObj, ok := er.(*aerrors.ApiError); ok {
 				errs = append(errs, errObj)
@@ -262,6 +262,7 @@ func (b *Builder) BuildScopeSingle(
 Related Value
 
 */
+
 //BuildScopeRelated builds the Related scope
 func (b *Builder) BuildScopeRelated(
 	ctx context.Context,
@@ -372,7 +373,7 @@ func (b *Builder) BuildScopeRelated(
 	return
 }
 
-//BuildScopeRelated builds the Related scope
+// BuildScopeRelationship builds the relationship kind scope
 func (b *Builder) BuildScopeRelationship(
 	ctx context.Context,
 	model interface{},
@@ -738,7 +739,7 @@ func getURLVariables(query *url.URL, mStruct *models.ModelStruct, indexFirst, in
 		err = invalidURL()
 		return
 	}
-	var collectionIndex int = -1
+	var collectionIndex = -1
 
 	if cIndex := models.StructCollectionUrlIndex(mStruct); cIndex != -1 {
 		collectionIndex = cIndex

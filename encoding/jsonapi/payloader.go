@@ -1,49 +1,49 @@
-package controller
+package jsonapi
 
 import "fmt"
 
-// Payloader is used to encapsulate the One and Many payload types
-type Payloader interface {
+// payloader is used to encapsulate the One and Many payload types
+type payloader interface {
 	clearIncluded()
-	setIncluded(included []*Node)
+	setIncluded(included []*node)
 }
 
-// OnePayload is used to represent a generic JSON API payload where a single
-// resource (Node) was included as an {} in the "data" key
-type OnePayload struct {
-	Data     *Node   `json:"data"`
-	Included []*Node `json:"included,omitempty"`
+// onePayload is used to represent a generic JSON API payload where a single
+// resource (node) was included as an {} in the "data" key
+type onePayload struct {
+	Data     *node   `json:"data"`
+	Included []*node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
 	Meta     *Meta   `json:"meta,omitempty"`
 }
 
-func (p *OnePayload) clearIncluded() {
-	p.Included = []*Node{}
+func (p *onePayload) clearIncluded() {
+	p.Included = []*node{}
 }
 
-func (p *OnePayload) setIncluded(included []*Node) {
+func (p *onePayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
-// ManyPayload is used to represent a generic JSON API payload where many
+// manyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
-type ManyPayload struct {
-	Data     []*Node `json:"data"`
-	Included []*Node `json:"included,omitempty"`
+type manyPayload struct {
+	Data     []*node `json:"data"`
+	Included []*node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
 	Meta     *Meta   `json:"meta,omitempty"`
 }
 
-func (p *ManyPayload) clearIncluded() {
-	p.Included = []*Node{}
+func (p *manyPayload) clearIncluded() {
+	p.Included = []*node{}
 }
 
-func (p *ManyPayload) setIncluded(included []*Node) {
+func (p *manyPayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
-// Node is used to represent a generic JSON API Resource
-type Node struct {
+// node is used to represent a generic JSON API Resource
+type node struct {
 	Type string `json:"type"`
 	ID   string `json:"id,omitempty"`
 	// ClientID      string                 `json:"client-id,omitempty"`
@@ -53,17 +53,17 @@ type Node struct {
 	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
-// RelationshipOneNode is used to represent a generic has one JSON API relation
-type RelationshipOneNode struct {
-	Data  *Node  `json:"data"`
+// relationshipOneNode is used to represent a generic has one JSON API relation
+type relationshipOneNode struct {
+	Data  *node  `json:"data"`
 	Links *Links `json:"links,omitempty"`
 	Meta  *Meta  `json:"meta,omitempty"`
 }
 
-// RelationshipManyNode is used to represent a generic has many JSON API
+// relationshipManyNode is used to represent a generic has many JSON API
 // relation
-type RelationshipManyNode struct {
-	Data  []*Node `json:"data"`
+type relationshipManyNode struct {
+	Data  []*node `json:"data"`
 	Links *Links  `json:"links,omitempty"`
 	Meta  *Meta   `json:"meta,omitempty"`
 }
@@ -106,21 +106,21 @@ type Linkable interface {
 	JSONAPILinks() *Links
 }
 
-// RelationshipLinkable is used to include relationship links  in response data
-// e.g. {"related": "http://example.com/posts/1/comments"}
-type RelationshipLinkable interface {
-	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONAPIRelationshipLinks(relation string) *Links
+// Metable is used to include document meta in response data
+// e.g. {"foo": "bar"}
+type Metable interface {
+	JSONAPIMeta() *Meta
 }
 
 // Meta is used to represent a `meta` object.
 // http://jsonapi.org/format/#document-meta
 type Meta map[string]interface{}
 
-// Metable is used to include document meta in response data
-// e.g. {"foo": "bar"}
-type Metable interface {
-	JSONAPIMeta() *Meta
+// RelationshipLinkable is used to include relationship links  in response data
+// e.g. {"related": "http://example.com/posts/1/comments"}
+type RelationshipLinkable interface {
+	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
+	JSONAPIRelationshipLinks(relation string) *Links
 }
 
 // RelationshipMetable is used to include relationship meta in response data

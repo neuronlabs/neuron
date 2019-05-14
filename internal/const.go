@@ -1,5 +1,6 @@
 package internal
 
+// constants defined for the internal neuron packages
 const (
 	// StructTag Annotation strings
 	AnnotationNeuron = "neuron"

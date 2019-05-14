@@ -13,20 +13,6 @@ import (
 	"sync"
 )
 
-var ctr *counter = &counter{}
-
-type counter struct {
-	nextID int
-	lock   sync.Mutex
-}
-
-func (c *counter) next() int {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.nextID += 1
-	return c.nextID
-}
-
 // ModelStruct is a computed representation of the jsonapi models.
 // Contain information about the model like the collection type,
 // distinction of the field types (primary, attributes, relationships).
@@ -214,6 +200,7 @@ func (m *ModelStruct) NewValueSingle() interface{} {
 	return m.newReflectValueSingle().Interface()
 }
 
+// NewReflectValueSingle creates and returns a model's new single value
 func (m *ModelStruct) NewReflectValueSingle() reflect.Value {
 	return m.newReflectValueSingle()
 }
@@ -233,7 +220,7 @@ func (m *ModelStruct) RelationshipField(field string) (*StructField, bool) {
 }
 
 // RelationshipFields return structfields that are matched as relatinoships
-func (m *ModelStruct) RelatinoshipFields() (rels []*StructField) {
+func (m *ModelStruct) RelationshipFields() (rels []*StructField) {
 	for _, rel := range m.relationships {
 		rels = append(rels, rel)
 	}
@@ -323,7 +310,9 @@ func (m *ModelStruct) setBelongsToForeigns(v reflect.Value) error {
 		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
 	}
 	for _, rel := range m.relationships {
+
 		if rel.relationship != nil && rel.relationship.kind == RelBelongsTo {
+
 			relVal := v.FieldByIndex(rel.reflectField.Index)
 			if reflect.DeepEqual(relVal.Interface(), reflect.Zero(relVal.Type()).Interface()) {
 				continue
@@ -533,4 +522,18 @@ func InitCheckFieldTypes(m *ModelStruct) error {
 		}
 	}
 	return nil
+}
+
+var ctr = &counter{}
+
+type counter struct {
+	nextID int
+	lock   sync.Mutex
+}
+
+func (c *counter) next() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.nextID++
+	return c.nextID
 }
