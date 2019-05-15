@@ -10,12 +10,13 @@ var Verbose *bool = flag.Bool("verbose-api", false, "Used to get verbose data")
 // ScopeIDCtx is the common struct used as a scope's ID in the context
 type ScopeIDCtx struct{}
 
-// ControllerIDCtx is the common struct used as a controller's key in the context
-type ControllerIDCtx struct{}
+// ControllerKeyCtx is the common struct used as a controller's key in the context
+type ControllerKeyCtx struct{}
 
+//
 var (
-	ScopeIDCtxKey      = ScopeIDCtx{}
-	ControllerIDCtxKey = ControllerIDCtx{}
+	ScopeIDCtxKey       = ScopeIDCtx{}
+	ControllerKeyCtxKey = ControllerKeyCtx{}
 )
 
 // Erros used in by the internal packages

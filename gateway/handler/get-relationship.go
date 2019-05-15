@@ -19,7 +19,7 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 		defer func() { log.Debugf("[GET-RELATIONSHIP] Finished for model: '%s'", m.Type()) }()
 
 		// Prepare Context for the scopes
-		ctx := context.WithValue(req.Context(), internal.ControllerIDCtxKey, h.c)
+		ctx := context.WithValue(req.Context(), internal.ControllerKeyCtxKey, h.c)
 		rootScope, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeRelationship(
 			ctx,
 			(*models.ModelStruct)(m),

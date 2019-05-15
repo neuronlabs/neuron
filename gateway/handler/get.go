@@ -31,7 +31,7 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// set controller into scope's context
-		ctx := context.WithValue(s.Context(), internal.ControllerIDCtxKey, h.c)
+		ctx := context.WithValue(s.Context(), internal.ControllerKeyCtxKey, h.c)
 		s.WithContext(ctx)
 
 		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())

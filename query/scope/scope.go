@@ -56,7 +56,7 @@ func NewWithC(c *ctrl.Controller, model interface{}) (*Scope, error) {
 func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct, isMany bool) *Scope {
 	ctx := context.WithValue(
 		context.Background(),
-		internal.ControllerIDCtxKey,
+		internal.ControllerKeyCtxKey,
 		(*ctrl.Controller)(c),
 	)
 
@@ -81,7 +81,7 @@ func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
 		return nil, err
 	}
 
-	ctx := context.WithValue(context.Background(), internal.ControllerIDCtxKey, (*ctrl.Controller)(c))
+	ctx := context.WithValue(context.Background(), internal.ControllerKeyCtxKey, (*ctrl.Controller)(c))
 	s := scope.NewWithCtx(ctx, mStruct)
 
 	t := reflect.TypeOf(model)
@@ -167,9 +167,24 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return res
 }
 
+// BeginTx begins the transaction for the provided scope
+func (s *Scope) BeginTx() error {
+	return nil
+}
+
+// Commit commits the given transaction for the scope
+func (s *Scope) Commit() error {
+	return nil
+}
+
+// Rollback rollsback the transaction for given scope
+func (s *Scope) Rollback() error {
+	return nil
+}
+
 // Controller getsthe scope's predefined controller
 func (s *Scope) Controller() *ctrl.Controller {
-	c := s.Context().Value(internal.ControllerIDCtxKey).(*ctrl.Controller)
+	c := s.Context().Value(internal.ControllerKeyCtxKey).(*ctrl.Controller)
 	return c
 }
 

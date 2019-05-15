@@ -316,9 +316,9 @@ func (s *Scope) WithContext(ctx context.Context) {
 	// overwrite the scopIDCtx with it's own value
 	ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, s.ctx.Value(internal.ScopeIDCtxKey))
 
-	ctrl := s.ctx.Value(internal.ControllerIDCtxKey)
+	ctrl := s.ctx.Value(internal.ControllerKeyCtxKey)
 	if ctrl != nil {
-		ctx = context.WithValue(ctx, internal.ControllerIDCtxKey, ctrl)
+		ctx = context.WithValue(ctx, internal.ControllerKeyCtxKey, ctrl)
 	}
 
 	s.ctx = ctx

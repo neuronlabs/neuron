@@ -9,6 +9,14 @@ type Schema struct {
 	Connection *Connection             `mapstructure:"connection"`
 }
 
+// DBConnection is the connection with the database specific variables
+type DBConnection struct {
+	Connection
+
+	SSLMode string `mapstructure:"ssl_mode"`
+	DBName  string `mapstructure:"db_name"`
+}
+
 // Connection is the configuration for non local schemas credentials
 // The connection config can be set by providing raw_url or with host,path,protocol/
 type Connection struct {
@@ -53,7 +61,8 @@ type ModelConfig struct {
 	// Map sets the model's Store values
 	Map map[string]interface{} `mapstructure:"map"`
 
-	Connection
+	// Connection defines the model's repository connection config
+	Connection *DBConnection `mapstructure:"connection"`
 }
 
 // ModelEndpoints is the api endpoint's configuration for the given model

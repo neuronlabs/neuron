@@ -103,7 +103,7 @@ func getForeignRelationshipsFunc(s *Scope) error {
 
 	ctx := s.Context()
 
-	// log.Debugf("Internal check for the ctrl: %p", ctx.Value(internal.ControllerIDCtxKey))
+	// log.Debugf("Internal check for the ctrl: %p", ctx.Value(internal.ControllerKeyCtxKey))
 
 	for _, rel := range relations {
 		err := getForeignRelationshipValue(ctx, s, v, rel)

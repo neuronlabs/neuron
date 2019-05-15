@@ -24,7 +24,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 
 		ctx := context.WithValue(
 			req.Context(),
-			internal.ControllerIDCtxKey,
+			internal.ControllerKeyCtxKey,
 			h.c,
 		)
 
@@ -41,7 +41,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			return
 		}
 
-		log.Debugf("Controller ptr: %p", s.Context().Value(internal.ControllerIDCtxKey))
+		log.Debugf("Controller ptr: %p", s.Context().Value(internal.ControllerKeyCtxKey))
 
 		// handle client side errors
 		if len(errs) > 0 {

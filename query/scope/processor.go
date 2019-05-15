@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"github.com/google/uuid"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
@@ -74,6 +75,11 @@ func newQueryProcessor() *QueryProcessor {
 			ProcessDeleteForeignRelationships,
 		},
 	}
+}
+
+// CreateTxID creates the new transaction ID
+func (q *QueryProcessor) CreateTxID() (uuid.UUID, error) {
+	return uuid.NewUUID()
 }
 
 // DoCreate is the initializes the Create Process Chain for the Scope

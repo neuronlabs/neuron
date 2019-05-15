@@ -37,7 +37,7 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// set controller into scope's context
-		ctx := context.WithValue(s.Context(), internal.ControllerIDCtxKey, h.c)
+		ctx := context.WithValue(s.Context(), internal.ControllerKeyCtxKey, h.c)
 		s.WithContext(ctx)
 
 		// SetFlags for the scope
