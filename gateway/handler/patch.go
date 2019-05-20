@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"

@@ -255,7 +255,7 @@ func TestPatch(t *testing.T) {
 
 			repo2.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 
-			repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
+			repo.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
 
 			repo.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
