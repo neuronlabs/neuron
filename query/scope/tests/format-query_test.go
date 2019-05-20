@@ -1,4 +1,4 @@
-package scope_test
+package tests
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ func TestFormatQuery(t *testing.T) {
 
 	t.Run("Filters", func(t *testing.T) {
 		t.Run("Primary", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			s.AddFilter(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
@@ -51,7 +51,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Foreign", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			field, ok := mStruct.ForeignKey("fk")
@@ -66,7 +66,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Attribute", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			field, ok := mStruct.Attr("attr")
@@ -81,7 +81,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Relationship", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			field, ok := mStruct.RelationField("rel")
@@ -98,7 +98,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("FilterKey", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			field, ok := mStruct.FilterKey("filter")
@@ -113,7 +113,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Language", func(t *testing.T) {
-			s, err := scope.NewWithC(c, &formatter{})
+			s, err := scope.NewC(c, &formatter{})
 			require.NoError(t, err)
 
 			field := mStruct.LanguageField()
@@ -129,7 +129,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Pagination", func(t *testing.T) {
-		s, err := scope.NewWithC(c, &formatter{})
+		s, err := scope.NewC(c, &formatter{})
 		require.NoError(t, err)
 
 		s.SetPagination(pagination.NewLimitOffset(12, 0))
@@ -140,7 +140,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Sorts", func(t *testing.T) {
-		s, err := scope.NewWithC(c, &formatter{})
+		s, err := scope.NewC(c, &formatter{})
 		require.NoError(t, err)
 
 		s.SortBy("-id")

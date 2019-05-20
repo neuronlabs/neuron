@@ -1,5 +1,9 @@
 package config
 
+import (
+	"time"
+)
+
 // BuilderConfig is the config used for building the queries on incoming requests
 type BuilderConfig struct {
 
@@ -16,4 +20,6 @@ type BuilderConfig struct {
 
 	// FilterValueLimit is a maximum length of the filter values
 	FilterValueLimit int `validate:"min=1,max=50" mapstructure:"filter_value_limit"`
+
+	RepositoryTimeout time.Duration `mapstructure:"repository_timeout"`
 }

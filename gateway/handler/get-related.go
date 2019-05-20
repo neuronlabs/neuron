@@ -19,7 +19,7 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 
 		defer func() { log.Debugf("[GET-RELATED] Finished for model: %s", m.Type()) }()
 
-		ctx := context.WithValue(req.Context(), internal.ControllerKeyCtxKey, h.c)
+		ctx := context.WithValue(req.Context(), internal.ControllerCtxKey, h.c)
 
 		// Build the root scope with the related included field
 		rootScope, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeRelated(

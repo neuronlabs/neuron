@@ -18,6 +18,7 @@ import (
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/neuron/query/sorts"
+	"github.com/neuronlabs/neuron/query/tx"
 	"gopkg.in/go-playground/validator.v9"
 	"net/url"
 	"reflect"
@@ -36,8 +37,8 @@ var (
 // Within it's structure
 type Scope scope.Scope
 
-// MustWithC creates the scope's model for the provided controller
-func MustWithC(c *ctrl.Controller, model interface{}) *Scope {
+// MustC creates the scope's model for the provided controller
+func MustC(c *ctrl.Controller, model interface{}) *Scope {
 	s, err := newScope((*controller.Controller)(c), model)
 	if err != nil {
 		panic(err)
@@ -45,29 +46,17 @@ func MustWithC(c *ctrl.Controller, model interface{}) *Scope {
 	return s
 }
 
-// NewWithC creates the scope for the provided model with respect to the provided
+// NewC creates the scope for the provided model with respect to the provided
 // controller 'c'
-func NewWithC(c *ctrl.Controller, model interface{}) (*Scope, error) {
+func NewC(c *ctrl.Controller, model interface{}) (*Scope, error) {
 	return newScope((*controller.Controller)(c), model)
 }
 
-// NewWithModelC creates new scope on the base of the provided model struct with the new single
+// NewModelC creates new scope on the base of the provided model struct with the new single
 // value
-func NewWithModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct, isMany bool) *Scope {
-	ctx := context.WithValue(
-		context.Background(),
-		internal.ControllerKeyCtxKey,
-		(*ctrl.Controller)(c),
-	)
+func NewModelC(c *ctrl.Controller, mStruct *mapping.ModelStruct, isMany bool) *Scope {
 
-	s := scope.NewWithCtx(ctx, (*models.ModelStruct)(mStruct))
-	if isMany {
-		s.NewValueMany()
-	} else {
-		s.NewValueSingle()
-	}
-
-	return (*Scope)(s)
+	return (*Scope)(newScopeWithModel(c, (*models.ModelStruct)(mStruct), isMany))
 }
 
 // New creates the scope on the base of the given model
@@ -75,31 +64,10 @@ func New(model interface{}) (*Scope, error) {
 	return newScope(controller.Default(), model)
 }
 
-func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
-	mStruct, err := c.GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := context.WithValue(context.Background(), internal.ControllerKeyCtxKey, (*ctrl.Controller)(c))
-	s := scope.NewWithCtx(ctx, mStruct)
-
-	t := reflect.TypeOf(model)
-	if t.Kind() != reflect.Ptr {
-		return nil, internal.IErrInvalidType
-	}
-
-	s.Value = model
-
-	switch t.Elem().Kind() {
-	case reflect.Struct:
-	case reflect.Array, reflect.Slice:
-		s.SetIsMany(true)
-	default:
-		return nil, internal.IErrInvalidType
-	}
-
-	return (*Scope)(s), nil
+// AddTxChain adds the 'sub' Scope to the 's' transaction chain
+// Use on scope not created with 's'.New()
+func (s *Scope) AddTxChain(sub *Scope) {
+	(*scope.Scope)(s).AddChainSubscope((*scope.Scope)(sub))
 }
 
 // AddFilter adds the given scope's filter field
@@ -167,43 +135,53 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return res
 }
 
-// BeginTx begins the transaction for the provided scope
-func (s *Scope) BeginTx() error {
-	return nil
+// Begin begins the transaction for the provided scope
+func (s *Scope) Begin() error {
+	return s.begin(context.Background(), nil, true)
+}
+
+// BeginTx begins the transaction with the given tx.Options
+func (s *Scope) BeginTx(ctx context.Context, opts *tx.Options) error {
+	return s.begin(ctx, opts, true)
 }
 
 // Commit commits the given transaction for the scope
 func (s *Scope) Commit() error {
-	return nil
+	return s.commit(context.Background())
 }
 
-// Rollback rollsback the transaction for given scope
-func (s *Scope) Rollback() error {
-	return nil
+// CommitContext commits the given transaction for the scope with the context
+func (s *Scope) CommitContext(ctx context.Context) error {
+	return s.commit(ctx)
 }
 
 // Controller getsthe scope's predefined controller
 func (s *Scope) Controller() *ctrl.Controller {
-	c := s.Context().Value(internal.ControllerKeyCtxKey).(*ctrl.Controller)
+	c := s.Store[internal.ControllerCtxKey].(*ctrl.Controller)
 	return c
-}
-
-// Context return's scope's context
-func (s *Scope) Context() context.Context {
-	return (*scope.Scope)(s).Context()
 }
 
 // Create creates the scope values
 func (s *Scope) Create() error {
-	if err := DefaultQueryProcessor.DoCreate(s); err != nil {
+	return s.createContext(context.Background())
+}
+
+// CreateContext creates the scope values with the context.Context
+func (s *Scope) CreateContext(ctx context.Context) error {
+	return s.createContext(ctx)
+}
+
+// Delete deletes the values provided in the scope's value
+func (s *Scope) Delete() error {
+	if err := DefaultQueryProcessor.DoDelete(context.Background(), s); err != nil {
 		return err
 	}
 	return nil
 }
 
-// Delete deletes the values provided in the scope's value
-func (s *Scope) Delete() error {
-	if err := DefaultQueryProcessor.DoDelete(s); err != nil {
+// DeleteContext deletes the values provided in the scope's value with the context
+func (s *Scope) DeleteContext(ctx context.Context) error {
+	if err := DefaultQueryProcessor.DoDelete(ctx, s); err != nil {
 		return err
 	}
 	return nil
@@ -218,13 +196,13 @@ func (s *Scope) Fieldset() (fs []*mapping.StructField) {
 	return fs
 }
 
-// InFieldset checks if the provided field is in the fieldset
-func (s *Scope) InFieldset(field string) (*mapping.StructField, bool) {
-	f, ok := (*scope.Scope)(s).InFieldset(field)
-	if ok {
-		return (*mapping.StructField)(f), true
+// FilterKeyFilters returns scope's primary iFilters
+func (s *Scope) FilterKeyFilters() []*filters.FilterField {
+	var res []*filters.FilterField
+	for _, filter := range scope.FiltersKeys((*scope.Scope)(s)) {
+		res = append(res, (*filters.FilterField)(filter))
 	}
-	return nil, false
+	return res
 }
 
 // ForeignFilters returns scope's foreign key iFilters
@@ -236,19 +214,24 @@ func (s *Scope) ForeignFilters() []*filters.FilterField {
 	return res
 }
 
-// FilterKeyFilters returns scope's primary iFilters
-func (s *Scope) FilterKeyFilters() []*filters.FilterField {
-	var res []*filters.FilterField
-	for _, filter := range scope.FiltersKeys((*scope.Scope)(s)) {
-		res = append(res, (*filters.FilterField)(filter))
-	}
-	return res
+// FormatQuery formats the scope's query into the url.Values
+func (s *Scope) FormatQuery() url.Values {
+	return s.formatQuery()
 }
 
 // Get gets single value from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) Get() error {
-	if err := DefaultQueryProcessor.DoGet(s); err != nil {
+	if err := DefaultQueryProcessor.DoGet(context.Background(), s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetContext gets single value from repository taking into account the scope
+// filters, parameters and the context.
+func (s *Scope) GetContext(ctx context.Context) error {
+	if err := DefaultQueryProcessor.DoGet(ctx, s); err != nil {
 		return err
 	}
 	return nil
@@ -257,7 +240,7 @@ func (s *Scope) Get() error {
 // ID returns the scope's identity number represented as
 // github.com/google/uuid
 func (s *Scope) ID() uuid.UUID {
-	return s.Context().Value(internal.ScopeIDCtxKey).(uuid.UUID)
+	return (*scope.Scope)(s).ID()
 }
 
 // IncludeFields adds the included fields into the root scope
@@ -297,6 +280,15 @@ func (s *Scope) IncludedValue(model interface{}) (interface{}, error) {
 	return included.Value, nil
 }
 
+// InFieldset checks if the provided field is in the fieldset
+func (s *Scope) InFieldset(field string) (*mapping.StructField, bool) {
+	f, ok := (*scope.Scope)(s).InFieldset(field)
+	if ok {
+		return (*mapping.StructField)(f), true
+	}
+	return nil, false
+}
+
 // LanguageFilter returns language filter for given scope
 func (s *Scope) LanguageFilter() *filters.FilterField {
 	return (*filters.FilterField)((*scope.Scope)(s).LanguageFilter())
@@ -305,25 +297,57 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 // List gets the values from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) List() error {
-	if err := DefaultQueryProcessor.DoList(s); err != nil {
+	if err := DefaultQueryProcessor.DoList(context.Background(), s); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// ListContext gets the values from the repository taking into account the scope
+// filters and parameters
+func (s *Scope) ListContext(ctx context.Context) error {
+	if err := DefaultQueryProcessor.DoList(ctx, s); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// New creates new scope for the provided model value.
+// Created scope is a subscope for the scope. If the root scope 's' is on the transacation
+// the new one will be created with the current transaction.
+// It allows to commit or rollback a chain of scopes within a single method usage
+func (s *Scope) New(value interface{}) (*Scope, error) {
+	return s.newSubscope(context.Background(), value)
+}
+
+// NewContext creates new scope for the provided model value.
+// Created scope is a subscope for the scope. If the root scope 's' is on the transacation
+// the new one will be created with the current transaction.
+// It allows to commit or rollback a chain of scopes within a single method usage
+func (s *Scope) NewContext(ctx context.Context, value interface{}) (*Scope, error) {
+	return s.newSubscope(ctx, value)
+}
+
+// NotSelectedFields returns all the fields that are not selected
+func (s *Scope) NotSelectedFields(withForeigns ...bool) (notSelected []*mapping.StructField) {
+	for _, field := range (*scope.Scope)(s).NotSelectedFields(withForeigns...) {
+		notSelected = append(notSelected, (*mapping.StructField)(field))
+	}
+	return
 }
 
 // Patch updates the scope's attribute and relationship values with the restrictions provided
 // in the scope's parameters
 func (s *Scope) Patch() error {
-	if err := DefaultQueryProcessor.DoPatch(s); err != nil {
-		return err
-	}
-	return nil
+	return s.patch(context.Background())
 }
 
-// FormatQuery formats the scope's query into the url.Values
-func (s *Scope) FormatQuery() url.Values {
-	return s.formatQuery()
+// PatchContext updates the scope's attribute and relationship values with the restrictions provided
+// in the scope's parameters
+func (s *Scope) PatchContext(ctx context.Context) error {
+	return s.patch(ctx)
 }
 
 // Pagination returns the pagination for given scope
@@ -347,6 +371,16 @@ func (s *Scope) RelationFilters() []*filters.FilterField {
 		res = append(res, (*filters.FilterField)(filter))
 	}
 	return res
+}
+
+// Rollback rollsback the transaction for given scope
+func (s *Scope) Rollback() error {
+	return s.rollback(context.Background())
+}
+
+// RollbackContext rollsback the transaction for given scope
+func (s *Scope) RollbackContext(ctx context.Context) error {
+	return s.rollback(ctx)
 }
 
 // SetPagination sets the Pagination for the scope.
@@ -388,20 +422,6 @@ func (s *Scope) SetFieldset(fields ...interface{}) error {
 	return (*scope.Scope)(s).SetFields(fields...)
 }
 
-// NotSelectedFields returns all the fields that are not selected
-func (s *Scope) NotSelectedFields(withForeigns ...bool) (notSelected []*mapping.StructField) {
-	for _, field := range (*scope.Scope)(s).NotSelectedFields(withForeigns...) {
-		notSelected = append(notSelected, (*mapping.StructField)(field))
-	}
-	return
-}
-
-// SetContext sets the context for the provided scope
-// Logic is the same as in the WithContext
-func (s *Scope) SetContext(ctx context.Context) {
-	s.WithContext(ctx)
-}
-
 // SortBy adds the sort fields into given scope
 func (s *Scope) SortBy(fields ...string) error {
 	errs := (*scope.Scope)(s).BuildSortFields(fields...)
@@ -438,6 +458,324 @@ func (s *Scope) ValidateCreate() []*errors.ApiError {
 func (s *Scope) ValidatePatch() []*errors.ApiError {
 	v := s.Controller().PatchValidator
 	return s.validate(v, "PatchValidator")
+}
+
+func (s *Scope) begin(ctx context.Context, opts *tx.Options, checkError bool) (err error) {
+
+	// check if the context contains the transaction
+	if v := s.Store[internal.TxStateCtxKey]; v != nil {
+		txn := v.(*tx.Tx)
+		if checkError {
+			if txn.State != tx.Done {
+				err = tx.ErrTxAlreadyBegan
+				return
+			}
+		}
+	}
+
+	// for nil options set it to default value
+	if opts == nil {
+		opts = &tx.Options{}
+	}
+
+	txn := &tx.Tx{
+		Options: *opts,
+	}
+
+	// generate the id
+	// TODO: enterprise set the uuid based on the namespace of the gateway
+	// so that the node name can be taken from the UUID v3 or v5 namespace
+	txn.ID, err = uuid.NewRandom()
+	if err != nil {
+		return
+	}
+
+	txn.State = tx.Begin
+
+	// set the transaction to the context
+	s.Store[internal.TxStateCtxKey] = txn
+
+	c := s.Controller()
+
+	repo, ok := (*controller.Controller)(c).RepositoryByModel((*scope.Scope)(s).Struct())
+	if !ok {
+		log.Errorf("No repository found for the %s model.", s.Struct().Collection())
+		err = ErrNoRepositoryFound
+		return
+	}
+
+	transactioner, ok := repo.(Transactioner)
+	if !ok {
+		log.Errorf("The repository deosn't implement Creater interface for model: %s", (*scope.Scope)(s).Struct().Collection())
+		err = ErrRepsitoryNotATransactioner
+	}
+
+	if err = transactioner.Begin(ctx, s); err != nil {
+		return
+	}
+
+	return nil
+}
+
+func (s *Scope) commit(ctx context.Context) error {
+
+	txV, ok := s.Store[internal.TxStateCtxKey].(*tx.Tx)
+	if txV == nil || !ok {
+		log.Debugf("COMMIT: No transaction found for the scope")
+		return stdErrors.New("Nothing to commit")
+	}
+
+	if txV != nil && ok && txV.State != tx.Begin {
+		log.Debugf("COMMIT: Transaction already resolved: %s", txV.State)
+		return stdErrors.New("Transaction already resolved")
+	}
+
+	chain := (*scope.Scope)(s).Chain()
+
+	if len(chain) > 0 {
+
+		// create the cancelable context for the sub context
+		maxTimeout := s.Controller().Config.Builder.RepositoryTimeout
+		for _, sub := range chain {
+			if sub.Struct().Config() == nil {
+				continue
+			}
+			if conn := sub.Struct().Config().Connection; conn != nil {
+				if tm := conn.MaxTimeout; tm != nil {
+					if *tm > maxTimeout {
+						maxTimeout = *tm
+					}
+				}
+			}
+
+		}
+		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
+		defer cancel()
+
+		results := make(chan interface{}, len(chain))
+		for _, sub := range chain {
+
+			// create goroutine for the given subscope that commits the query
+			go (*Scope)(sub).commitSingle(ctx, results)
+		}
+
+		var resultCount int
+
+	fl:
+		for {
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case v, ok := <-results:
+
+				// break when the result count is equal to the length of the chain
+				if !ok {
+					break fl
+				}
+				if err, ok := v.(error); ok && err != ErrRepositoryNotACommiter && err != ErrTransactionAlreadyResolved {
+					return err
+				}
+				resultCount++
+				if resultCount == len(chain) {
+					break fl
+				}
+			}
+
+		}
+	}
+
+	single := make(chan interface{}, 1)
+	s.commitSingle(ctx, single)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case v := <-single:
+		if err, ok := v.(error); ok {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Scope) createContext(ctx context.Context) error {
+	// if no fields were selected set automatically non zero
+	if err := (*scope.Scope)(s).AutoSelectFields(); err != nil {
+		return err
+	}
+
+	if err := DefaultQueryProcessor.DoCreate(ctx, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Scope) formatQuery() url.Values {
+	q := url.Values{}
+
+	for _, prim := range s.PrimaryFilters() {
+		prim.FormatQuery(q)
+	}
+
+	for _, fk := range s.ForeignFilters() {
+		fk.FormatQuery(q)
+	}
+
+	for _, attr := range s.AttributeFilters() {
+		attr.FormatQuery(q)
+	}
+
+	for _, rel := range s.RelationFilters() {
+		rel.FormatQuery(q)
+	}
+
+	if s.LanguageFilter() != nil {
+		s.LanguageFilter().FormatQuery(q)
+	}
+
+	for _, fk := range s.FilterKeyFilters() {
+		fk.FormatQuery(q)
+	}
+
+	for _, sort := range s.SortFields() {
+		sort.FormatQuery(q)
+	}
+
+	if s.Pagination() != nil {
+		s.Pagination().FormatQuery(q)
+	}
+
+	// TODO: add included fields into query formatting
+
+	return q
+}
+
+func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, error) {
+	sub, err := newScope((*controller.Controller)(s.Controller()), value)
+	if err != nil {
+		return nil, err
+	}
+
+	(*scope.Scope)(sub).SetKind(scope.SubscopeKind)
+
+	if txn := s.tx(); txn != nil {
+
+		if err := sub.begin(ctx, &txn.Options, false); err != nil {
+			log.Debug("Begin the subscope failed.")
+			return nil, err
+		}
+
+		(*scope.Scope)(s).AddChainSubscope((*scope.Scope)(sub))
+	}
+
+	return sub, nil
+}
+
+func (s *Scope) patch(ctx context.Context) error {
+	// if no fields were selected set automatically non zero
+	if err := (*scope.Scope)(s).AutoSelectFields(); err != nil {
+		return err
+	}
+
+	if err := DefaultQueryProcessor.DoPatch(ctx, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Scope) rollback(ctx context.Context) error {
+
+	txV, ok := s.Store[internal.TxStateCtxKey].(*tx.Tx)
+	if txV == nil || !ok {
+		log.Debugf("ROLLBACK: No transaction found for the scope")
+		return stdErrors.New("Nothing to commit")
+	}
+
+	if txV != nil && ok && txV.State != tx.Begin {
+		log.Debugf("ROLLBACK: Transaction already resolved: %s", txV.State)
+		return ErrTransactionAlreadyResolved
+	}
+
+	log.Debugf("s.Rollback: %s for model: %s rolling back", s.ID().String(), s.Struct().Collection())
+
+	chain := (*scope.Scope)(s).Chain()
+
+	if len(chain) > 0 {
+
+		results := make(chan interface{}, len(chain))
+
+		// get initial time out from the controller builder config
+		maxTimeout := s.Controller().Config.Builder.RepositoryTimeout
+
+		// check if any model has a preset timeout greater than the maxTimeout
+		for _, sub := range chain {
+			if sub.Struct().Config() == nil {
+				continue
+			}
+			if conn := sub.Struct().Config().Connection; conn != nil {
+				if tm := conn.MaxTimeout; tm != nil {
+					if *tm > maxTimeout {
+						maxTimeout = *tm
+					}
+				}
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
+		defer cancel()
+
+		for _, sub := range chain {
+
+			// get the cancel functions
+
+			// create goroutine for the given subscope that commits the query
+			go (*Scope)(sub).rollbackSingle(ctx, results)
+		}
+
+		var rescount int
+
+	fl:
+		for {
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case v, ok := <-results:
+
+				if !ok {
+					break fl
+				}
+
+				if err, ok := v.(error); ok && err != ErrRepositoryNotARollbacker && err != ErrTransactionAlreadyResolved {
+					return err
+				}
+
+				rescount++
+				if rescount == len(chain) {
+					break fl
+				}
+
+			}
+
+		}
+	}
+
+	log.Debugf("Rolling back root.")
+	single := make(chan interface{}, 1)
+
+	go s.rollbackSingle(ctx, single)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case v := <-single:
+		if err, ok := v.(error); ok && err != ErrTransactionAlreadyResolved {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.ApiError {
@@ -514,48 +852,56 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 	return nil
 }
 
-// WithContext sets the context for given scope
-func (s *Scope) WithContext(ctx context.Context) {
-	(*scope.Scope)(s).WithContext(ctx)
-	return
+func (s *Scope) tx() *tx.Tx {
+	txn, _ := s.Store[internal.TxStateCtxKey].(*tx.Tx)
+	return txn
 }
 
-func (s *Scope) formatQuery() url.Values {
-	q := url.Values{}
-
-	for _, prim := range s.PrimaryFilters() {
-		prim.FormatQuery(q)
+func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
+	mStruct, err := c.GetModelStruct(model)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, fk := range s.ForeignFilters() {
-		fk.FormatQuery(q)
+	s := scope.New(mStruct)
+	s.Store[internal.ControllerCtxKey] = (*ctrl.Controller)(c)
+
+	t := reflect.TypeOf(model)
+	if t.Kind() != reflect.Ptr {
+		return nil, internal.ErrInvalidType
 	}
 
-	for _, attr := range s.AttributeFilters() {
-		attr.FormatQuery(q)
+	s.Value = model
+
+	switch t.Elem().Kind() {
+	case reflect.Struct:
+	case reflect.Array, reflect.Slice:
+		s.SetIsMany(true)
+	default:
+		return nil, internal.ErrInvalidType
 	}
 
-	for _, rel := range s.RelationFilters() {
-		rel.FormatQuery(q)
+	return (*Scope)(s), nil
+}
+
+func newScopeWithModel(c *ctrl.Controller, m *models.ModelStruct, isMany bool) *scope.Scope {
+	s := scope.NewRootScope(m)
+
+	s.Store[internal.ControllerCtxKey] = (*ctrl.Controller)(c)
+
+	if isMany {
+		s.Value = m.NewValueMany()
+		s.SetIsMany(true)
+	} else {
+		s.Value = m.NewValueSingle()
 	}
 
-	if s.LanguageFilter() != nil {
-		s.LanguageFilter().FormatQuery(q)
+	return s
+}
+
+func copyStore(s *Scope, store map[interface{}]interface{}) {
+	for k, v := range store {
+		// TODO:
+		s.Store[k] = v
 	}
-
-	for _, fk := range s.FilterKeyFilters() {
-		fk.FormatQuery(q)
-	}
-
-	for _, sort := range s.SortFields() {
-		sort.FormatQuery(q)
-	}
-
-	if s.Pagination() != nil {
-		s.Pagination().FormatQuery(q)
-	}
-
-	// TODO: add included fields into query formatting
-
-	return q
 }

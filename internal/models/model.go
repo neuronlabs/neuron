@@ -200,9 +200,19 @@ func (m *ModelStruct) NewValueSingle() interface{} {
 	return m.newReflectValueSingle().Interface()
 }
 
+// NewValueMany creates and returns a model's new slice of pointers to values
+func (m *ModelStruct) NewValueMany() interface{} {
+	return m.NewReflectValueMany().Interface()
+}
+
 // NewReflectValueSingle creates and returns a model's new single value
 func (m *ModelStruct) NewReflectValueSingle() reflect.Value {
 	return m.newReflectValueSingle()
+}
+
+// NewReflectValueMany creates the *[]*m.Type reflect.Value
+func (m *ModelStruct) NewReflectValueMany() reflect.Value {
+	return reflect.New(reflect.SliceOf(reflect.PtrTo(m.Type())))
 }
 
 func (m *ModelStruct) newReflectValueSingle() reflect.Value {
@@ -433,7 +443,7 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 	switch value.Type().Kind() {
 	case reflect.Slice:
 		if value.Type().Elem().Kind() != reflect.Ptr {
-			err = internal.IErrUnexpectedType
+			err = internal.ErrUnexpectedType
 			return
 		}
 		// create slice of values
@@ -457,7 +467,7 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 			err = fmt.Errorf("Provided invalid Value for model: %v", m.Type())
 		}
 	default:
-		err = internal.IErrUnexpectedType
+		err = internal.ErrUnexpectedType
 	}
 	return
 }

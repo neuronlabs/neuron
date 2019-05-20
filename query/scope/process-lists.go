@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"context"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
@@ -27,7 +28,7 @@ var (
 	}
 )
 
-func listFunc(s *Scope) error {
+func listFunc(ctx context.Context, s *Scope) error {
 	log.Debugf("ListFunc")
 	var c *controller.Controller = (*controller.Controller)(s.Controller())
 
@@ -45,7 +46,7 @@ func listFunc(s *Scope) error {
 	}
 
 	// List the
-	if err := listerRepo.List(s); err != nil {
+	if err := listerRepo.List(ctx, s); err != nil {
 		log.Debugf("processList listerRepo.List failed for model %v. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
@@ -53,7 +54,7 @@ func listFunc(s *Scope) error {
 	return nil
 }
 
-func afterListFunc(s *Scope) error {
+func afterListFunc(ctx context.Context, s *Scope) error {
 	log.Debugf("AfterListFunc")
 	if !(*scope.Scope)(s).Struct().IsAfterLister() {
 		return nil
@@ -61,7 +62,7 @@ func afterListFunc(s *Scope) error {
 
 	afterLister := reflect.New(s.Struct().Type()).Interface().(AfterLister)
 
-	if err := afterLister.HAfterList(s); err != nil {
+	if err := afterLister.HAfterList(ctx, s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}
@@ -69,7 +70,7 @@ func afterListFunc(s *Scope) error {
 	return nil
 }
 
-func beforeListFunc(s *Scope) error {
+func beforeListFunc(ctx context.Context, s *Scope) error {
 	log.Debugf("BeforeListFunc")
 	if !(*scope.Scope)(s).Struct().IsAfterLister() {
 		return nil
@@ -77,7 +78,7 @@ func beforeListFunc(s *Scope) error {
 
 	beforeLister := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
 
-	if err := beforeLister.HBeforeList(s); err != nil {
+	if err := beforeLister.HBeforeList(ctx, s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}

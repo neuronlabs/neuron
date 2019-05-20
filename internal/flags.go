@@ -16,7 +16,7 @@ var ModelCtxFlags = []uint{
 	flags.AllowClientID,
 }
 
-// ControllerContextFlags - flags settable only for the needs of the controller
+// ControllerCtxFlags - flags settable only for the needs of the controller
 var ControllerCtxFlags = []uint{
 	flags.AllowForeignKeyFilter,
 	flags.UseFilterValueLimit,

@@ -77,7 +77,7 @@ func (b *Builder) buildFilterField(
 
 	schema, ok := b.schemas.Schema(s.Struct().SchemaName())
 	if !ok {
-		err = internal.IErrModelNotMapped
+		err = internal.ErrModelNotMapped
 		return
 	}
 

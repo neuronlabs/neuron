@@ -1,4 +1,4 @@
-package scope_test
+package tests
 
 import (
 	iScope "github.com/neuronlabs/neuron/internal/query/scope"

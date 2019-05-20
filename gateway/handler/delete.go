@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/errors"
 	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -9,7 +10,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/kucjac/uni-db"
 	"net/http"
 )
 
@@ -18,7 +18,7 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		log.Debugf("[DELETE] Begins for model: '%s'", m.Type().String())
 		defer func() { log.Debugf("[DELETE] Finished for model: '%s'", m.Type().String()) }()
-		s := scope.NewWithModelC(h.c, m, false)
+		s := scope.NewModelC(h.c, m, false)
 
 		// Get the ID from the query
 		id, err := query.GetID(req.URL, (*models.ModelStruct)(m))

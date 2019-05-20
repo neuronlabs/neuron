@@ -35,16 +35,11 @@ func (h *Handler) HandlePatch(m *mapping.ModelStruct) http.HandlerFunc {
 			}
 			return
 		}
-
-		// set controller into scope's context
-		ctx := context.WithValue(s.Context(), internal.ControllerKeyCtxKey, h.c)
-		s.WithContext(ctx)
-
 		// SetFlags for the scope
 		(*iscope.Scope)(s).SetFlagsFrom((*models.ModelStruct)(m).Flags(), h.c.Flags)
 		id, err := query.GetAndSetID(req, (*iscope.Scope)(s))
 		if err != nil {
-			if err == internal.IErrInvalidType {
+			if err == internal.ErrInvalidType {
 				log.Errorf("Invalid type provided for the GetAndSetID and model: %v", m.Type().String())
 				h.internalError(req, rw)
 				return

@@ -33,7 +33,7 @@ var (
 )
 
 // processGetIncluded gets the included fields for the
-func getIncludedFunc(s *Scope) error {
+func getIncludedFunc(ctx context.Context, s *Scope) error {
 	log.Debugf("getIncludedFunc")
 	iScope := (*scope.Scope)(s)
 
@@ -46,36 +46,63 @@ func getIncludedFunc(s *Scope) error {
 		return err
 	}
 
-	for iScope.NextIncludedField() {
-		includedField, err := iScope.CurrentIncludedField()
-		if err != nil {
-			return err
-		}
-		log.Debugf("Getting Included for the field: %v", includedField.ApiName())
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		missing, err := includedField.GetMissingPrimaries()
-		if err != nil {
-			log.Debugf("Model: %v, includedField: '%s', GetMissingPrimaries failed: %v", s.Struct().Collection(), includedField.Name(), err)
-			return err
-		}
-		log.Debugf("Missing primaries: %v", missing)
+	includedFields := iScope.IncludedFields()
 
-		if len(missing) > 0 {
-			includedField.Scope.SetIDFilters(missing...)
-			includedField.Scope.NewValueMany()
+	results := make(chan interface{}, len(includedFields))
 
-			if err := DefaultQueryProcessor.DoList((*Scope)(includedField.Scope)); err != nil {
-				log.Debugf("Model: %v, includedField '%s' Scope.List failed. %v", s.Struct().Collection(), includedField.Name(), err)
+	for _, includedField := range includedFields {
+		go func(includedField *scope.IncludeField) {
+
+			missing, err := includedField.GetMissingPrimaries()
+			if err != nil {
+				log.Debugf("Model: %v, includedField: '%s', GetMissingPrimaries failed: %v", s.Struct().Collection(), includedField.Name(), err)
+				results <- err
+				return
+			}
+			log.Debugf("Missing primaries: %v", missing)
+
+			if len(missing) > 0 {
+				includedScope := includedField.Scope
+
+				includedScope.SetIDFilters(missing...)
+				includedScope.NewValueMany()
+
+				if err = (*Scope)(includedScope).ListContext(ctx); err != nil {
+					log.Debugf("Model: %v, includedField '%s' Scope.List failed. %v", s.Struct().Collection(), includedField.Name(), err)
+					results <- err
+					return
+				}
+
+			}
+			results <- struct{}{}
+		}(includedField)
+	}
+
+	var ctr int
+	for {
+		select {
+		case <-ctx.Done():
+		case v, ok := <-results:
+			if !ok {
+				break
+			}
+			if err, ok := v.(error); ok {
 				return err
+			}
+			ctr++
+			if ctr == len(includedFields) {
+				break
 			}
 		}
 	}
-	iScope.ResetIncludedField()
-	return nil
 }
 
-func getForeignRelationshipsFunc(s *Scope) error {
-	log.Debugf("getForeignRelationship")
+func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
+	log.Debugf("Scope: %s, getForeignRelationship", s.ID().String())
+
 	relations := map[string]*models.StructField{}
 
 	// get all relationship field from the fieldset
@@ -94,24 +121,62 @@ func getForeignRelationshipsFunc(s *Scope) error {
 		}
 	}
 
-	v := reflect.ValueOf(s.Value)
-	if v.IsNil() {
-		log.Debugf("Scope has a nil value.")
-		return internal.IErrNilValue
-	}
-	v = v.Elem()
+	if len(relations) > 0 {
 
-	ctx := s.Context()
+		v := reflect.ValueOf(s.Value)
+		if v.IsNil() {
+			log.Debugf("Scope has a nil value.")
+			return internal.ErrNilValue
+		}
+		v = v.Elem()
 
-	// log.Debugf("Internal check for the ctrl: %p", ctx.Value(internal.ControllerKeyCtxKey))
+		// log.Debugf("Internal check for the ctrl: %p", ctx.Value(internal.ControllerCtxKey))
 
-	for _, rel := range relations {
-		err := getForeignRelationshipValue(ctx, s, v, rel)
-		if err != nil {
-			return err
+		results := make(chan interface{}, len(relations))
+
+		// create the cancelable context for the sub context
+		maxTimeout := s.Controller().Config.Builder.RepositoryTimeout
+		for _, rel := range relations {
+			if rel.Relationship().Struct().Config() == nil {
+				continue
+			}
+			if conn := rel.Relationship().Struct().Config().Connection; conn != nil {
+				if tm := conn.MaxTimeout; tm != nil {
+					if *tm > maxTimeout {
+						maxTimeout = *tm
+					}
+				}
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
+		defer cancel()
+
+		for _, rel := range relations {
+			go getForeignRelationshipValue(ctx, s, v, rel, results)
+		}
+
+		var ctr int
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case v, ok := <-results:
+				if !ok {
+					return nil
+				}
+
+				if err, ok := v.(error); ok {
+					return err
+				}
+
+				ctr++
+				if ctr == len(relations) {
+					return nil
+				}
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -120,7 +185,18 @@ func getForeignRelationshipValue(
 	s *Scope,
 	v reflect.Value,
 	relField *models.StructField,
-) error {
+	res chan<- interface{},
+) {
+
+	var err error
+
+	defer func() {
+		if err != nil {
+			res <- err
+		} else {
+			res <- struct{}{}
+		}
+	}()
 	// Check the relationships
 	rel := relField.Relationship()
 
@@ -140,7 +216,7 @@ func getForeignRelationshipValue(
 
 		sync := rel.Sync()
 		if sync != nil && !*sync {
-			return nil
+			return
 		}
 
 		if !(*scope.Scope)(s).IsMany() {
@@ -153,7 +229,7 @@ func getForeignRelationshipValue(
 
 			// check if primary field is zero
 			if reflect.DeepEqual(prim, reflect.Zero(primVal.Type()).Interface()) {
-				return nil
+				return
 			}
 
 			filterValues = []interface{}{prim}
@@ -184,13 +260,14 @@ func getForeignRelationshipValue(
 			}
 
 			if len(filterValues) == 0 {
-				return nil
+				return
 			}
 		}
 
 		// Create the
 		fk := rel.ForeignKey()
-		relatedScope := scope.NewWithCtx(ctx, rel.Struct())
+
+		relatedScope := newScopeWithModel(s.Controller(), rel.Struct(), (*scope.Scope)(s).IsMany())
 
 		relatedScope.SetEmptyFieldset()
 		relatedScope.SetFieldsetNoCheck(fk)
@@ -203,23 +280,25 @@ func getForeignRelationshipValue(
 		relatedScope.AddFilterField(filter)
 
 		if (*scope.Scope)(s).IsMany() {
-			relatedScope.NewValueMany()
-			err := (*Scope)(relatedScope).List()
+			err = (*Scope)(relatedScope).ListContext(ctx)
 			if err != nil {
 				dberr, ok := err.(*unidb.Error)
 				if ok {
 					if dberr.Compare(unidb.ErrNoResult) {
-						return nil
+						err = nil
+						return
 					}
 				}
-				return err
+
+				return
 			}
 
 			// iterate over relatedScope values and match the fk's with scope's primaries.
 			relVal := reflect.ValueOf(relatedScope.Value)
 			if relVal.IsNil() {
 				log.Errorf("Relationship field's scope has nil value after List. Rel: %s", relField.ApiName())
-				return internal.IErrNilValue
+				err = internal.ErrNilValue
+				return
 			}
 
 			relVal = relVal.Elem()
@@ -262,14 +341,15 @@ func getForeignRelationshipValue(
 
 			}
 		} else {
-			relatedScope.NewValueSingle()
-			err := (*Scope)(relatedScope).Get()
+
+			err = (*Scope)(relatedScope).GetContext(ctx)
 			if err != nil {
 				dberr, ok := err.(*unidb.Error)
 				if ok && dberr.Compare(unidb.ErrNoResult) {
-					return nil
+					err = nil
+					return
 				}
-				return err
+				return
 			}
 			// After getting the values set the scope relation value into the value of the relatedscope
 			rf := v.FieldByIndex(relField.ReflectField().Index)
@@ -295,7 +375,7 @@ func getForeignRelationshipValue(
 
 		sync := rel.Sync()
 		if sync != nil && !*sync {
-			return nil
+			return
 		}
 
 		// If is single scope's value
@@ -306,9 +386,9 @@ func getForeignRelationshipValue(
 			pk := pkVal.Interface()
 			if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
 				// if the primary value is not set the function should not enter here
-				err := errors.Errorf("Empty Scope Primary Value")
+				err = errors.Errorf("Empty Scope Primary Value")
 				log.Debugf("Err: %v. pk:%v, Scope: %#v", err, pk, s)
-				return err
+				return
 			}
 
 			rf := v.FieldByIndex(relField.ReflectField().Index)
@@ -344,31 +424,31 @@ func getForeignRelationshipValue(
 			}
 		}
 
-		relatedScope := scope.NewWithCtx(ctx, rel.Struct())
+		relatedScope := newScopeWithModel(s.Controller(), rel.Struct(), true)
 		relatedScope.SetCollectionScope(relatedScope)
 
 		fk := rel.ForeignKey()
 
 		filterField := filters.NewFilter(fk, filters.NewOpValuePair(op, filterValues...))
 
-		if err := relatedScope.AddFilterField(filterField); err != nil {
-			panic(err)
+		if err = relatedScope.AddFilterField(filterField); err != nil {
+			log.Errorf("AddingFilterField failed. %v", err)
+			return
 		}
+		// set fieldset
 		relatedScope.SetEmptyFieldset()
 		relatedScope.SetFieldsetNoCheck(fk)
 
-		// set fieldset
-		relatedScope.NewValueMany()
-
-		if err := (*Scope)(relatedScope).List(); err != nil {
+		if err = (*Scope)(relatedScope).ListContext(ctx); err != nil {
 			dberr, ok := err.(*unidb.Error)
 			if ok {
 				if dberr.Compare(unidb.ErrNoResult) {
-					return nil
+					err = nil
+					return
 				}
 			}
 			log.Debugf("Error while getting foreign field: '%s'. Err: %v", rel.BackrefernceFieldName(), err)
-			return err
+			return
 		}
 
 		relVal := reflect.ValueOf(relatedScope.Value).Elem()
@@ -434,8 +514,8 @@ func getForeignRelationshipValue(
 				pk := pkVal.Interface()
 
 				if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
-					err := errors.Errorf("Error no primary valoue set for the scope value.  Scope %#v. Value: %+v", s, s.Value)
-					return err
+					err = errors.Errorf("Error no primary valoue set for the scope value.  Scope %#v. Value: %+v", s, s.Value)
+					return
 				}
 
 				filterValues = append(filterValues, pk)
@@ -477,32 +557,32 @@ func getForeignRelationshipValue(
 			backRefRelPrimary := backReference.Relationship().Struct().PrimaryField()
 
 			// prepare new scope
-			relatedScope := scope.NewWithCtx(ctx, rel.Struct())
+			relatedScope := newScopeWithModel(s.Controller(), rel.Struct(), true)
+
 			relatedScope.SetEmptyFieldset()
 			relatedScope.SetFieldsetNoCheck(backReference)
 			relatedScope.SetCollectionScope(relatedScope)
 
 			// Add filter
-
 			filterField := filters.NewFilter(backReference, filters.NewOpValuePair(op, filterValues...))
 			relatedScope.AddFilterField(filterField)
 
-			relatedScope.NewValueMany()
-
-			if err := (*Scope)(relatedScope).List(); err != nil {
+			if err = (*Scope)(relatedScope).ListContext(ctx); err != nil {
 				dberr, ok := err.(*unidb.Error)
 				if ok {
 					if dberr.Compare(unidb.ErrNoResult) {
-						return nil
+						err = nil
+						return
 					}
 				}
-				return err
+				return
 			}
 
 			relVal := reflect.ValueOf(relatedScope.Value)
 			if relVal.IsNil() {
 				log.Errorf("Related Field scope: %s is nil after getting m2m relationships.", relField.ApiName())
-				return internal.IErrNilValue
+				err = internal.ErrNilValue
+				return
 			}
 
 			relVal = relVal.Elem()
@@ -602,7 +682,8 @@ func getForeignRelationshipValue(
 
 			// check if foreign key is zero
 			if reflect.DeepEqual(fkVal.Interface(), reflect.Zero(fkVal.Type()).Interface()) {
-				return nil
+
+				return
 			}
 
 			relVal := v.FieldByIndex(relField.ReflectField().Index)
@@ -613,9 +694,9 @@ func getForeignRelationshipValue(
 				}
 				relVal = relVal.Elem()
 			} else if relVal.Kind() != reflect.Struct {
-				err := errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
+				err = errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
 				log.Warning(err)
-				return err
+				return
 			}
 
 			relPrim := relVal.FieldByIndex(rel.Struct().PrimaryField().ReflectField().Index)
@@ -645,18 +726,18 @@ func getForeignRelationshipValue(
 					}
 					relVal = relVal.Elem()
 				} else if relVal.Kind() != reflect.Struct {
-					err := errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
+					err = errors.Errorf("Relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
 					log.Warning(err)
-					return err
+					return
 				}
 				relPrim := relVal.FieldByIndex(rel.Struct().PrimaryField().ReflectField().Index)
 				relPrim.Set(fkVal)
 			}
 		}
 	}
-	return nil
+
 }
 
-func setBelongsToRelationshipsFunc(s *Scope) error {
+func setBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
 	return (*scope.Scope)(s).SetBelongsToForeignKeyFields()
 }

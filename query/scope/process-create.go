@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"context"
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
@@ -36,7 +37,7 @@ var (
 	}
 )
 
-func createFunc(s *Scope) error {
+func createFunc(ctx context.Context, s *Scope) error {
 	var c *ctrl.Controller = s.Controller()
 
 	repo, ok := (*controller.Controller)(c).RepositoryByModel((*scope.Scope)(s).Struct())
@@ -51,7 +52,7 @@ func createFunc(s *Scope) error {
 		return ErrNoCreateRepository
 	}
 
-	if err := creater.Create(s); err != nil {
+	if err := creater.Create(ctx, s); err != nil {
 		return err
 	}
 
@@ -59,14 +60,14 @@ func createFunc(s *Scope) error {
 }
 
 // beforeCreate is the function that is used before the create process
-func beforeCreateFunc(s *Scope) error {
+func beforeCreateFunc(ctx context.Context, s *Scope) error {
 	beforeCreator, ok := s.Value.(BeforeCreator)
 	if !ok {
 		return nil
 	}
 
 	// Use the hook function before create
-	err := beforeCreator.HBeforeCreate(s)
+	err := beforeCreator.HBeforeCreate(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -75,13 +76,13 @@ func beforeCreateFunc(s *Scope) error {
 
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
-func afterCreateFunc(s *Scope) error {
+func afterCreateFunc(ctx context.Context, s *Scope) error {
 	afterCreator, ok := s.Value.(AfterCreator)
 	if !ok {
 		return nil
 	}
 
-	err := afterCreator.HAfterCreate(s)
+	err := afterCreator.HAfterCreate(ctx, s)
 	if err != nil {
 		return err
 	}

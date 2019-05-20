@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/neuronlabs/neuron/internal"
 	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -31,8 +30,7 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// set controller into scope's context
-		ctx := context.WithValue(s.Context(), internal.ControllerKeyCtxKey, h.c)
-		s.WithContext(ctx)
+		s.Store[internal.ControllerCtxKey] = h.c
 
 		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())
 

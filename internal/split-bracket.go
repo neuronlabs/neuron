@@ -4,15 +4,17 @@ import (
 	"fmt"
 )
 
+// SplitBracketParameter splits the parameters within the '[' and ']' brackets
 func SplitBracketParameter(bracketed string) (values []string, err error) {
-	// look for values in
+
 	doubleOpen := func() error {
 		return fmt.Errorf("Open square bracket '[' found, without closing ']' in: '%s'.",
 			bracketed)
 	}
 
-	var startIndex int = -1
-	var endIndex int = -1
+	// set initial indexes
+	var startIndex = -1
+	var endIndex = -1
 	for i := 0; i < len(bracketed); i++ {
 		c := bracketed[i]
 		switch c {

@@ -137,12 +137,15 @@ func setDefaultControllerConfigs(v *viper.Viper) {
 	v.SetDefault("controller.builder.error_limit", 5)
 	v.SetDefault("controller.builder.include_nested_limit", 3)
 	v.SetDefault("controller.builder.filter_value_limit", 50)
+	v.SetDefault("controller.builder.repository_timeout", time.Second*30)
+
 	v.SetDefault("controller.flags.return_links", true)
 	v.SetDefault("controller.flags.use_filter_values_limit", true)
 	v.SetDefault("controller.flags.return_patch_content", true)
 	v.SetDefault("controller.create_validator_alias", "create")
 	v.SetDefault("controller.patch_validator_alias", "patch")
 	v.SetDefault("controller.default_schema", "api")
+
 }
 
 func setDefaultGatewayConfig(v *viper.Viper) {

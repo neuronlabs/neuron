@@ -440,12 +440,12 @@ func (m *ModelSchemas) getByType(t reflect.Type) (*ModelStruct, error) {
 
 	schema, ok := m.schemas[schemaName]
 	if !ok {
-		return nil, internal.IErrModelNotMapped
+		return nil, internal.ErrModelNotMapped
 	}
 
 	mStruct := schema.models.Get(t)
 	if mStruct == nil {
-		return nil, internal.IErrModelNotMapped
+		return nil, internal.ErrModelNotMapped
 	}
 
 	return mStruct, nil
@@ -477,7 +477,7 @@ func (m *ModelSchemas) getSchemaByType(t reflect.Type) (*Schema, error) {
 
 	schema, ok := m.schemas[schemaName]
 	if !ok {
-		return nil, internal.IErrModelNotMapped
+		return nil, internal.ErrModelNotMapped
 	}
 	return schema, nil
 }

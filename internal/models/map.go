@@ -18,7 +18,7 @@ import (
 
 var (
 	errBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
-	IErrModelNotMapped     = errors.New("Unmapped model provided.")
+	ErrModelNotMapped      = errors.New("Unmapped model provided.")
 )
 
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.

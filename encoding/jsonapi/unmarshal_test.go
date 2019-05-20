@@ -15,6 +15,14 @@ import (
 	"time"
 )
 
+// UnmarshalModel basic model used to tests in unmarshal
+type UnmarshalModel struct {
+	ID          string     `neuron:"type=primary"`
+	PtrString   *string    `neuron:"type=attr"`
+	PtrTime     *time.Time `neuron:"type=attr"`
+	StringSlice []string   `neuron:"type=attr"`
+}
+
 func TestUnmarshalScopeOne(t *testing.T) {
 	c := controller.DefaultTesting(t)
 
@@ -218,13 +226,13 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				}`)
 
 		c := controller.DefaultTesting(t)
-		err := c.RegisterModels(&internal.UnmarshalModel{})
+		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
-		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &UnmarshalModel{}, false)
 		if assert.NoError(t, err) {
 
-			m, ok := scope.Value.(*internal.UnmarshalModel)
+			m, ok := scope.Value.(*UnmarshalModel)
 			if assert.True(t, ok) {
 				assert.Nil(t, m.PtrString)
 				assert.Nil(t, m.PtrTime)
@@ -247,13 +255,13 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  }
 				}`)
 		c := controller.DefaultTesting(t)
-		err := c.RegisterModels(&internal.UnmarshalModel{})
+		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
-		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
+		scope, err := unmarshalScopeOne((*controller.Controller)(c), in, &UnmarshalModel{}, false)
 		if assert.NoError(t, err) {
 
-			m, ok := scope.Value.(*internal.UnmarshalModel)
+			m, ok := scope.Value.(*UnmarshalModel)
 			if assert.True(t, ok) {
 				if assert.NotNil(t, m.PtrString) {
 					assert.Equal(t, "maciej", *m.PtrString)
@@ -281,10 +289,10 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  }
 				}`)
 		c := controller.DefaultTesting(t)
-		err := c.RegisterModels(&internal.UnmarshalModel{})
+		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
-		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
+		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &UnmarshalModel{}, false)
 		assert.Error(t, err)
 	})
 
@@ -300,10 +308,10 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  }
 				}`)
 		c := controller.DefaultTesting(t)
-		err := c.RegisterModels(&internal.UnmarshalModel{})
+		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
-		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &internal.UnmarshalModel{}, false)
+		_, err = unmarshalScopeOne((*controller.Controller)(c), in, &UnmarshalModel{}, false)
 		assert.Error(t, err)
 	})
 

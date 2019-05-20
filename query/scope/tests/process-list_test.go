@@ -1,4 +1,4 @@
-package scope_test
+package tests
 
 import (
 	"context"
@@ -14,16 +14,12 @@ import (
 	"testing"
 )
 
-type testDeleter struct {
+type beforeLister struct {
 	ID int `neuron:"type=primary"`
 }
 
-type testBeforeDeleter struct {
-	ID int `neuron:"type=primary"`
-}
-
-func (b *testBeforeDeleter) HBeforeDelete(s *scope.Scope) error {
-	v := s.Context().Value(testCtxKey)
+func (b *beforeLister) HBeforeList(ctx context.Context, s *scope.Scope) error {
+	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
 	}
@@ -31,12 +27,12 @@ func (b *testBeforeDeleter) HBeforeDelete(s *scope.Scope) error {
 	return nil
 }
 
-type testAfterDeleter struct {
+type afterLister struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *testAfterDeleter) HAfterDelete(s *scope.Scope) error {
-	v := s.Context().Value(testCtxKey)
+func (a *afterLister) HAfterList(ctx context.Context, s *scope.Scope) error {
+	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
 	}
@@ -44,7 +40,11 @@ func (a *testAfterDeleter) HAfterDelete(s *scope.Scope) error {
 	return nil
 }
 
-func TestDelete(t *testing.T) {
+type lister struct {
+	ID int `neuron:"type=primary"`
+}
+
+func TestList(t *testing.T) {
 	if testing.Verbose() {
 		err := log.SetLevel(unilogger.DEBUG)
 		require.NoError(t, err)
@@ -54,56 +54,57 @@ func TestDelete(t *testing.T) {
 
 	c := newController(t, repo)
 
-	err := c.RegisterModels(&testDeleter{}, &testAfterDeleter{}, &testBeforeDeleter{})
+	err := c.RegisterModels(&beforeLister{}, &afterLister{}, &lister{})
 	require.NoError(t, err)
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testDeleter{})
+		v := []*lister{}
+		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Delete", mock.Anything).Return(nil)
+		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Delete()
+		err = s.ListContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Delete", mock.Anything)
+			repo.AssertCalled(t, "List", mock.Anything, mock.Anything)
 		}
 	})
 
 	t.Run("HookBefore", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testBeforeDeleter{})
+		v := []*beforeLister{}
+		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
-		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Delete", mock.Anything).Return(nil)
+		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Delete()
+		err = s.ListContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Delete", mock.Anything)
+			repo.AssertCalled(t, "List", mock.Anything, mock.Anything)
 		}
 	})
 
 	t.Run("HookAfter", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testAfterDeleter{})
+		v := []*afterLister{}
+		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
-		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Delete", mock.Anything).Return(nil)
+		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Delete()
+		err = s.ListContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Delete", mock.Anything)
+			repo.AssertCalled(t, "List", mock.Anything, mock.Anything)
 		}
 	})
 }

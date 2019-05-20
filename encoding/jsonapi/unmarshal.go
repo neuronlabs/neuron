@@ -167,6 +167,8 @@ func unmarshalScope(
 		sc.Value = v
 	}
 
+	sc.Store[internal.ControllerCtxKey] = c
+
 	if usedFields && !useMany {
 		for _, field := range fields {
 			sc.AddSelectedField(field)
@@ -186,7 +188,7 @@ func unmarshal(
 
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
-		return nil, internal.IErrUnexpectedType
+		return nil, internal.ErrUnexpectedType
 	}
 
 	mStruct, err := c.ModelSchemas().GetModelStruct(model)
@@ -243,8 +245,8 @@ func unmarshal(
 			err = unmarshalNode(c, one.Data, reflect.ValueOf(model), nil)
 		}
 		switch err {
-		case internal.IErrUnknownFieldNumberType, internal.IErrInvalidTime, internal.IErrInvalidISO8601,
-			internal.IErrInvalidType, internal.IErrBadJSONAPIID:
+		case internal.ErrUnknownFieldNumberType, internal.ErrInvalidTime, internal.ErrInvalidISO8601,
+			internal.ErrInvalidType, internal.ErrBadJSONAPIID:
 			errObj := aerrors.ErrInvalidJSONFieldValue.Copy()
 			errObj.Detail = err.Error()
 			errObj.Err = err
@@ -262,11 +264,11 @@ func unmarshal(
 
 		t = t.Elem().Elem()
 		if t.Kind() != reflect.Ptr {
-			return nil, internal.IErrUnexpectedType
+			return nil, internal.ErrUnexpectedType
 		}
 		mStruct, err := c.ModelSchemas().ModelByType(t.Elem())
 		if mStruct == nil {
-			return nil, internal.IErrModelNotMapped
+			return nil, internal.ErrModelNotMapped
 		}
 
 		many, err := unmarshalManyPayload(c, in)
@@ -415,7 +417,7 @@ func unmarshalNode(
 	// 			return
 	// 		}
 	// 	} else {
-	// 		err = IErrClientIDDisallowed
+	// 		err = ErrClientIDDisallowed
 	// 		return
 	// 	}
 	// }
@@ -831,13 +833,13 @@ func unmarshalSingleFieldValue(
 			if v.Kind() == reflect.String {
 				tm = v.Interface().(string)
 			} else {
-				return reflect.Value{}, internal.IErrInvalidISO8601
+				return reflect.Value{}, internal.ErrInvalidISO8601
 			}
 
 			// parse the string time with iso formatting
 			t, err := time.Parse(internal.Iso8601TimeFormat, tm)
 			if err != nil {
-				return reflect.Value{}, internal.IErrInvalidISO8601
+				return reflect.Value{}, internal.ErrInvalidISO8601
 			}
 
 			if modelAttr.IsBasePtr() {
@@ -856,7 +858,7 @@ func unmarshalSingleFieldValue(
 				at = v.Int()
 			} else {
 				log.Debugf("Invalid time format: %v", v.Kind().String())
-				return reflect.Value{}, internal.IErrInvalidTime
+				return reflect.Value{}, internal.ErrInvalidTime
 			}
 
 			t := time.Unix(at, 0)
@@ -919,7 +921,7 @@ func unmarshalSingleFieldValue(
 			numericValue = reflect.ValueOf(&n)
 		default:
 			log.Debugf("Unknown field number type: '%v'", baseType.String())
-			return reflect.Value{}, internal.IErrUnknownFieldNumberType
+			return reflect.Value{}, internal.ErrUnknownFieldNumberType
 		}
 
 		// if the field was ptr
@@ -988,7 +990,7 @@ func unmarshalSingleFieldValue(
 			numericValue = reflect.ValueOf(&n)
 		default:
 			log.Debugf("Unknown field number type: '%v'", baseType.String())
-			return reflect.Value{}, internal.IErrUnknownFieldNumberType
+			return reflect.Value{}, internal.ErrUnknownFieldNumberType
 		}
 
 		// if the field was ptr
@@ -1127,7 +1129,7 @@ func unmarshalIDField(fieldValue reflect.Value, dataValue string) error {
 	floatValue, err := strconv.ParseFloat(dataValue, 64)
 	if err != nil {
 		// Could not convert the value in the "id" attr to a float
-		return internal.IErrBadJSONAPIID
+		return internal.ErrBadJSONAPIID
 
 	}
 
@@ -1168,7 +1170,7 @@ func unmarshalIDField(fieldValue reflect.Value, dataValue string) error {
 	default:
 		// We had a JSON float (numeric), but our field was not one of the
 		// allowed numeric types
-		return internal.IErrBadJSONAPIID
+		return internal.ErrBadJSONAPIID
 
 	}
 	assign(fieldValue, idValue)

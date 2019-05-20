@@ -1,6 +1,7 @@
 package scope
 
 import (
+	"context"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
@@ -27,7 +28,7 @@ var (
 )
 
 // get returns the single value for the provided scope
-func getFunc(s *Scope) error {
+func getFunc(ctx context.Context, s *Scope) error {
 	var c *controller.Controller = (*controller.Controller)(s.Controller())
 
 	repo, ok := c.RepositoryByModel((*scope.Scope)(s).Struct())
@@ -43,7 +44,7 @@ func getFunc(s *Scope) error {
 	}
 
 	// 	Get the value from the getter
-	err := getter.Get(s)
+	err := getter.Get(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func getFunc(s *Scope) error {
 }
 
 // processHookBeforeGet is the function that makes the beforeGet hook
-func beforeGetFunc(s *Scope) error {
+func beforeGetFunc(ctx context.Context, s *Scope) error {
 	hookBeforeGetter, ok := s.Value.(BeforeGetter)
 	if !ok {
 		return nil
@@ -59,20 +60,20 @@ func beforeGetFunc(s *Scope) error {
 
 	log.Debugf("hookBeforeGetter: %T", hookBeforeGetter)
 
-	if err := hookBeforeGetter.HBeforeGet(s); err != nil {
+	if err := hookBeforeGetter.HBeforeGet(ctx, s); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func afterGetFunc(s *Scope) error {
+func afterGetFunc(ctx context.Context, s *Scope) error {
 	hookAfterGetter, ok := s.Value.(AfterGetter)
 	if !ok {
 		return nil
 	}
 
-	if err := hookAfterGetter.HAfterGet(s); err != nil {
+	if err := hookAfterGetter.HAfterGet(ctx, s); err != nil {
 		return err
 	}
 

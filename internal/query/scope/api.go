@@ -1,9 +1,6 @@
 package scope
 
 import (
-	"context"
-	"github.com/google/uuid"
-	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/namer/dialect"
 	"github.com/neuronlabs/neuron/internal/query/filters"
@@ -82,8 +79,8 @@ func GetLangtagValue(s *Scope) (string, error) {
 
 // GetPrimaryFieldValues - gets the primary field values from the scope.
 // Returns the values within the []interface{} form
-//			returns	- IErrNoValue if no value provided.
-//					- IErrInvalidType if the scope's value is of invalid type
+//			returns	- ErrNoValue if no value provided.
+//					- ErrInvalidType if the scope's value is of invalid type
 // 					- *reflect.ValueError if internal occurs.
 func GetPrimaryFieldValues(s *Scope) ([]interface{}, error) {
 	return s.getPrimaryFieldValues()
@@ -117,29 +114,6 @@ func IsRoot(s *Scope) bool {
 func New(model *models.ModelStruct) *Scope {
 	scope := newScope(model)
 
-	ctx := context.Background()
-	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
-
-	return scope
-}
-
-// NewWithCtx creates new scope with the provided context
-func NewWithCtx(ctx context.Context, model *models.ModelStruct) *Scope {
-	scope := newScope(model)
-
-	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
-	return scope
-
-}
-
-// NewRootScopeWithCtx creates new root scope with provided context
-func NewRootScopeWithCtx(ctx context.Context, modelStruct *models.ModelStruct) *Scope {
-	scope := newScope(modelStruct)
-	scope.collectionScope = scope
-
-	ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
-	scope.ctx = ctx
-
 	return scope
 }
 
@@ -148,8 +122,6 @@ func NewRootScope(modelStruct *models.ModelStruct) *Scope {
 	scope := newScope(modelStruct)
 	scope.collectionScope = scope
 
-	ctx := context.Background()
-	scope.ctx = context.WithValue(ctx, internal.ScopeIDCtxKey, uuid.New())
 	return scope
 }
 
@@ -161,11 +133,6 @@ func SelectedFieldValues(s *Scope, dialectNamer dialect.FieldNamer) (map[string]
 // SetAllFields sets the fieldset to all possible fields
 func SetAllFields(s *Scope) {
 	s.setAllFields()
-}
-
-// SetContext sets the context for given scope
-func SetContext(s *Scope, ctx context.Context) {
-	s.ctx = ctx
 }
 
 // SetFields the fieldset for given scope

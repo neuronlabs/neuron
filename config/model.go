@@ -1,5 +1,9 @@
 package config
 
+import (
+	"time"
+)
+
 // Schema defines configuration for the single model schema.
 // If the schema is not local the
 type Schema struct {
@@ -44,6 +48,9 @@ type Connection struct {
 
 	// Options contains connection dependent specific options
 	Options map[string]interface{} `mapstructure:"options"`
+
+	// MaxTimeout defines the maximum timeout for the given repository connection
+	MaxTimeout *time.Duration `mapstructure:"max_timeout"`
 }
 
 // ModelConfig defines single model configurations

@@ -1,4 +1,4 @@
-package scope_test
+package tests
 
 import (
 	"context"
@@ -14,16 +14,12 @@ import (
 	"testing"
 )
 
-type testPatcher struct {
+type beforeGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-type testBeforePatcher struct {
-	ID int `neuron:"type=primary"`
-}
-
-func (b *testBeforePatcher) HBeforePatch(s *scope.Scope) error {
-	v := s.Context().Value(testCtxKey)
+func (b *beforeGetter) HBeforeGet(ctx context.Context, s *scope.Scope) error {
+	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
 	}
@@ -31,12 +27,12 @@ func (b *testBeforePatcher) HBeforePatch(s *scope.Scope) error {
 	return nil
 }
 
-type testAfterPatcher struct {
+type afterGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *testAfterPatcher) HAfterPatch(s *scope.Scope) error {
-	v := s.Context().Value(testCtxKey)
+func (a *afterGetter) HAfterGet(ctx context.Context, s *scope.Scope) error {
+	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
 	}
@@ -44,7 +40,11 @@ func (a *testAfterPatcher) HAfterPatch(s *scope.Scope) error {
 	return nil
 }
 
-func TestPatch(t *testing.T) {
+type getter struct {
+	ID int `neuron:"type=primary"`
+}
+
+func TestGet(t *testing.T) {
 	if testing.Verbose() {
 		err := log.SetLevel(unilogger.DEBUG)
 		require.NoError(t, err)
@@ -54,56 +54,56 @@ func TestPatch(t *testing.T) {
 
 	c := newController(t, repo)
 
-	err := c.RegisterModels(&testPatcher{}, &testAfterPatcher{}, &testBeforePatcher{})
+	err := c.RegisterModels(&beforeGetter{}, &afterGetter{}, &getter{})
 	require.NoError(t, err)
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testPatcher{})
+		s, err := scope.NewC((*ctrl.Controller)(c), &getter{})
 		require.NoError(t, err)
 
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Patch", mock.Anything).Return(nil)
+		repo.On("Get", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Patch()
+		err = s.Get()
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Patch", mock.Anything)
+			repo.AssertCalled(t, "Get", mock.Anything, mock.Anything)
 		}
 	})
 
-	t.Run("HookBefore", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testBeforePatcher{})
+	t.Run("BeforeGet", func(t *testing.T) {
+		s, err := scope.NewC((*ctrl.Controller)(c), &beforeGetter{})
 		require.NoError(t, err)
 
-		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
+		require.NotNil(t, s.Value)
+
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Patch", mock.Anything).Return(nil)
+		repo.On("Get", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Patch()
+		err = s.GetContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Patch", mock.Anything)
+			repo.AssertCalled(t, "Get", mock.Anything, mock.Anything)
 		}
 	})
 
-	t.Run("HookAfter", func(t *testing.T) {
-		s, err := scope.NewWithC((*ctrl.Controller)(c), &testAfterPatcher{})
+	t.Run("AfterGet", func(t *testing.T) {
+		s, err := scope.NewC((*ctrl.Controller)(c), &afterGetter{})
 		require.NoError(t, err)
 
-		s.WithContext(context.WithValue(s.Context(), testCtxKey, t))
 		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
 
 		repo = r.(*mocks.Repository)
 
-		repo.On("Patch", mock.Anything).Return(nil)
+		repo.On("Get", mock.Anything, mock.Anything).Return(nil)
 
-		err = s.Patch()
+		err = s.GetContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
-			repo.AssertCalled(t, "Patch", mock.Anything)
+			repo.AssertCalled(t, "Get", mock.Anything, mock.Anything)
 		}
 	})
 }

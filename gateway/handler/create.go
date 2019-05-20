@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/google/uuid"
 	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
@@ -43,8 +42,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// set controller into scope's context
-		ctx := context.WithValue(s.Context(), internal.ControllerKeyCtxKey, h.c)
-		s.WithContext(ctx)
+		s.Store[internal.ControllerCtxKey] = h.c
 
 		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())
 

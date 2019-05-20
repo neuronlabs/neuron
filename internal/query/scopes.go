@@ -49,7 +49,8 @@ func (b *Builder) BuildScopeMany(
 		}
 	)
 
-	s = scope.NewRootScopeWithCtx(ctx, mStruct)
+	s = scope.NewRootScope(mStruct)
+	s.Store[internal.ControllerCtxKey] = ctx.Value(internal.ControllerCtxKey)
 	s.NewValueMany()
 
 	// Initialize Includes
@@ -230,7 +231,7 @@ func (b *Builder) BuildScopeSingle(
 
 	q := query.Query()
 
-	s = scope.NewRootScopeWithCtx(ctx, mStruct)
+	s = scope.NewRootScope(mStruct)
 	s.NewValueSingle()
 	s.InitializeIncluded(b.Config.IncludeNestedLimit)
 
@@ -279,7 +280,7 @@ func (b *Builder) BuildScopeRelated(
 
 	// schema, ok := b.schemas.Schema(mStruct.SchemaName())
 	// if !ok {
-	// 	err = errors.Wrapf(internal.IErrModelNotMapped, "Model: %T, q: %v", model, query.RawQuery)
+	// 	err = errors.Wrapf(internal.ErrModelNotMapped, "Model: %T, q: %v", model, query.RawQuery)
 	// 	return
 	// }
 
@@ -288,7 +289,8 @@ func (b *Builder) BuildScopeRelated(
 		return
 	}
 
-	s = scope.NewWithCtx(ctx, mStruct)
+	s = scope.New(mStruct)
+	s.Store[internal.ControllerCtxKey] = ctx.Value(internal.ControllerCtxKey)
 
 	s.SetKind(scope.RootKind)
 
@@ -389,7 +391,7 @@ func (b *Builder) BuildScopeRelationship(
 
 	// schema, ok := b.schemas.Schema(mStruct.SchemaName())
 	// if !ok {
-	// 	err = errors.Wrapf(internal.IErrModelNotMapped, "Model: %T, q: %v", model, query.RawQuery)
+	// 	err = errors.Wrapf(internal.ErrModelNotMapped, "Model: %T, q: %v", model, query.RawQuery)
 	// 	return
 	// }
 
@@ -398,7 +400,8 @@ func (b *Builder) BuildScopeRelationship(
 		return
 	}
 
-	s = scope.NewWithCtx(ctx, mStruct)
+	s = scope.New(mStruct)
+	s.Store[internal.ControllerCtxKey] = ctx.Value(internal.ControllerCtxKey)
 
 	s.SetKind(scope.RootKind)
 
@@ -680,7 +683,7 @@ func (b *Builder) modelStruct(model interface{}) (mStruct *models.ModelStruct, e
 		}
 
 		if t.Kind() != reflect.Struct {
-			err = internal.IErrUnexpectedType
+			err = internal.ErrUnexpectedType
 			return
 		}
 
@@ -691,7 +694,7 @@ func (b *Builder) modelStruct(model interface{}) (mStruct *models.ModelStruct, e
 	}
 
 	if mStruct == nil {
-		err = internal.IErrModelNotMapped
+		err = internal.ErrModelNotMapped
 	}
 	return
 }
@@ -795,7 +798,7 @@ func GetAndSetID(
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	} else {
-		return nil, internal.IErrInvalidType
+		return nil, internal.ErrInvalidType
 	}
 
 	newPrim := reflect.New(s.Struct().PrimaryField().ReflectField().Type).Elem()
@@ -825,7 +828,7 @@ func GetAndSetID(
 
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() != reflect.Ptr {
-		return nil, internal.IErrInvalidType
+		return nil, internal.ErrInvalidType
 	}
 	return primVal.Interface(), nil
 }

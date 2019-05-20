@@ -1,14 +1,236 @@
 package scope
 
 import (
+	"fmt"
+	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/sorts"
+	"github.com/neuronlabs/neuron/internal/safemap"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/pkg/errors"
 	"reflect"
+	"strings"
 )
+
+/**
+
+SCOPE INCLUDED FIELDS
+
+*/
+
+// BuildIncludeList provide fast checks for the includedList
+// if given include passes use buildInclude method on it.
+func (s *Scope) BuildIncludeList(includedList ...string,
+) (errs []*aerrors.ApiError) {
+	var errorObjects []*aerrors.ApiError
+	var errObj *aerrors.ApiError
+
+	// check if the number of included fields is possible
+	if len(includedList) > models.StructMaxIncludedCount(s.mStruct) {
+		errObj = aerrors.ErrOutOfRangeQueryParameterValue.Copy()
+		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
+			s.mStruct.Collection())
+		errs = append(errs, errObj)
+		return
+	}
+
+	// includedScopes for root are always set
+	s.includedScopes = make(map[*models.ModelStruct]*Scope)
+
+	var includedMap map[string]int
+
+	// many includes flag if there is more than one include
+	var manyIncludes = len(includedList) > 1
+
+	if manyIncludes {
+		includedMap = make(map[string]int)
+	}
+
+	// having multiple included in the query
+	for _, included := range includedList {
+
+		// check the nested level of every included
+		annotCount := strings.Count(included, internal.AnnotationNestedSeperator)
+		if annotCount > s.maxNestedLevel {
+			log.Debugf("AnnotCount: %v MaxNestedLevel: %v", annotCount, s.maxNestedLevel)
+			errs = append(errs, aerrors.ErrTooManyNestedRelationships(included))
+			continue
+		}
+
+		// if there are more than one include
+		if manyIncludes {
+
+			// assert no duplicates are provided in the include list
+			includedCount := includedMap[included]
+			includedCount++
+			includedMap[included] = includedCount
+			if annotCount == 0 && includedCount > 1 {
+				if includedCount == 2 {
+					errObj = aerrors.ErrInvalidQueryParameter.Copy()
+					errObj.Detail = fmt.Sprintf("Included parameter '%s' used more than once.", included)
+					errs = append(errs, errObj)
+					continue
+				} else if includedCount >= MaxPermissibleDuplicates {
+					break
+				}
+			}
+		}
+		errorObjects = s.buildInclude(included)
+		errs = append(errs, errorObjects...)
+	}
+	return
+}
+
+// GetOrCreateIncludeField checks if given include field exists within given scope.
+// if not found create new include field.
+// returns the include field
+func (s *Scope) GetOrCreateIncludeField(field *models.StructField,
+) (includeField *IncludeField) {
+	return s.getOrCreateIncludeField(field)
+}
+
+// IncludedFields returns included fields slice
+func (s *Scope) IncludedFields() []*IncludeField {
+	return s.includedFields
+}
+
+// IncludedFieldsChan generates an included field channel
+func (s *Scope) IncludedFieldsChan() <-chan *IncludeField {
+	fields := make(chan *IncludeField)
+
+	go func() {
+		defer close(fields)
+		for _, includedField := range s.includedFields {
+			fields <- includedField
+		}
+	}()
+	return fields
+}
+
+// IncludedScopes returns included scopes
+func (s *Scope) IncludedScopes() []*Scope {
+	if len(s.includedScopes) == 0 {
+		return nil
+	}
+
+	scopes := []*Scope{}
+	for _, included := range s.includedScopes {
+		scopes = append(scopes, included)
+	}
+	return scopes
+}
+
+// IncludeScopeByStruct returns the included scope by model struct
+func (s *Scope) IncludeScopeByStruct(mStruct *models.ModelStruct) (*Scope, bool) {
+	scope, ok := s.includedScopes[mStruct]
+	return scope, ok
+}
+
+// IncludedValues returns included scope values
+func (s *Scope) IncludedValues() *safemap.SafeHashMap {
+	return s.includedValues
+}
+
+// InitializeIncluded initializes the included scopes
+func (s *Scope) InitializeIncluded(maxNestedLevel int) {
+	s.includedScopes = make(map[*models.ModelStruct]*Scope)
+	s.maxNestedLevel = maxNestedLevel
+}
+
+// CopyIncludedBoundaries copies all included data from scope's included fields
+// Into it's included scopes.
+func (s *Scope) CopyIncludedBoundaries() {
+	s.copyIncludedBoundaries()
+}
+
+// CurrentIncludedField gets current included field, based on the index
+func (s *Scope) CurrentIncludedField() (*IncludeField, error) {
+	if s.currentIncludedFieldIndex == -1 || s.currentIncludedFieldIndex > len(s.includedFields)-1 {
+		return nil, errors.New("Getting non-existing included field.")
+	}
+
+	return s.includedFields[s.currentIncludedFieldIndex], nil
+}
+
+// NextIncludedField allows iteration over the includedFields.
+// If there is any included field it changes the current field index to the next available.
+func (s *Scope) NextIncludedField() bool {
+	if s.currentIncludedFieldIndex >= len(s.includedFields)-1 {
+		return false
+	}
+
+	s.currentIncludedFieldIndex++
+	return true
+}
+
+// ResetIncludedField resets the current included field pointer
+func (s *Scope) ResetIncludedField() {
+	s.currentIncludedFieldIndex = -1
+}
+
+// buildInclude searches for the relationship field within given scope
+// if not found, then tries to seperate the 'included' argument
+// by the 'annotationNestedSeperator'. If seperated correctly
+// it tries to create nested fields.
+// adds IncludeScope for given field.
+func (s *Scope) buildInclude(included string) (errs []*aerrors.ApiError) {
+	var includedField *IncludeField
+	// search for the 'included' in the model's
+	relationField, ok := models.StructRelField(s.mStruct, included)
+	if !ok {
+		// no relationship found check nesteds
+		index := strings.Index(included, internal.AnnotationNestedSeperator)
+		if index == -1 {
+			errs = append(errs, errNoRelationship(s.mStruct.Collection(), included))
+			return
+		}
+
+		// root part of included (root.subfield)
+		field := included[:index]
+		relationField, ok := models.StructRelField(s.mStruct, field)
+		if !ok {
+			errs = append(errs, errNoRelationship(s.mStruct.Collection(), field))
+			return
+		}
+
+		// create new included field
+		includedField = s.getOrCreateIncludeField(relationField)
+
+		errs = includedField.Scope.buildInclude(included[index+1:])
+		if errs != nil {
+			return
+		}
+
+	} else {
+		// create new includedField if the field was not already created during nested process.
+		includedField = s.getOrCreateIncludeField(relationField)
+	}
+
+	includedField.Scope.kind = IncludedKind
+	return
+}
+
+// copies the and fieldset for given include and it's nested fields.
+func (s *Scope) copyIncludedBoundaries() {
+	for _, includedField := range s.includedFields {
+		includedField.copyScopeBoundaries()
+	}
+}
+
+// getTotalIncludeFieldCount gets the count for all included Fields. May be used
+// as a wait group counter.
+func (s *Scope) getTotalIncludeFieldCount() int {
+	return s.totalIncludeCount
+}
+
+/**
+
+INCLUDED FIELD DEFINITION
+
+*/
 
 // IncludeField is the includes information scope
 // it contains the field to include from the root scope
@@ -75,7 +297,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 
 	// RelatedScope Value must be a pointer type
 	if v.Kind() != reflect.Ptr {
-		return nil, internal.IErrUnexpectedType
+		return nil, internal.ErrUnexpectedType
 	}
 
 	// Check if is nil
@@ -105,7 +327,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 			}
 
 		default:
-			err := internal.IErrUnexpectedType
+			err := internal.ErrUnexpectedType
 			log.Errorf("Unexpected Included Scope Value type: %s", v.Type())
 			return nil, err
 		}
@@ -187,7 +409,7 @@ func (i *IncludeField) getMissingFromSingle(
 		setCollectionValues(fieldValue)
 	default:
 		log.Debugf("Unexpect type: '%s' in the relationship field's value.", fieldValue.Type())
-		err := internal.IErrUnexpectedType
+		err := internal.ErrUnexpectedType
 		return err
 	}
 
@@ -248,7 +470,6 @@ func (i *IncludeField) copyScopeBoundaries() {
 
 	// fieldset is taken by reference - copied if there is nested
 	i.Scope.fieldset = i.Scope.collectionScope.fieldset
-	i.Scope.ctx = i.Scope.collectionScope.ctx
 
 	if f, ok := i.Scope.collectionScope.fContainer.Get(flags.UseLinks); ok {
 		i.Scope.fContainer.Set(flags.UseLinks, f)
@@ -257,6 +478,8 @@ func (i *IncludeField) copyScopeBoundaries() {
 	if f, ok := i.Scope.collectionScope.fContainer.Get(flags.ReturnPatchContent); ok {
 		i.Scope.fContainer.Set(flags.ReturnPatchContent, f)
 	}
+
+	i.Scope.Store[internal.ControllerCtxKey] = i.Scope.collectionScope.Store[internal.ControllerCtxKey]
 
 	for _, nested := range i.Scope.includedFields {
 		// if the nested include is not found within the collection fieldset
@@ -322,6 +545,8 @@ func (i *IncludeField) copyPresetFullParameters() {
 	if f, ok := i.Scope.collectionScope.fContainer.Get(flags.ReturnPatchContent); ok {
 		i.Scope.fContainer.Set(flags.ReturnPatchContent, f)
 	}
+
+	i.Scope.Store[internal.ControllerCtxKey] = i.Scope.collectionScope.Store[internal.ControllerCtxKey]
 
 	for _, nested := range i.Scope.includedFields {
 		// if the nested include is not found within the collection fieldset

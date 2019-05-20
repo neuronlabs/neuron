@@ -70,7 +70,7 @@ type ErrorsPayload struct {
 // Marshal marshals provided value 'v' into writer 'w'
 func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 	if v == nil {
-		return internal.IErrNilValue
+		return internal.ErrNilValue
 	}
 
 	var isMany bool
@@ -80,7 +80,7 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	} else {
-		return internal.IErrUnsupportedPtrType
+		return internal.ErrUnsupportedPtrType
 	}
 
 	if t.Kind() == reflect.Slice {
@@ -92,7 +92,7 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 	}
 
 	if t.Kind() != reflect.Struct {
-		return internal.IErrUnexpectedType
+		return internal.ErrUnexpectedType
 	}
 
 	var schemaName string
@@ -157,7 +157,7 @@ func marshalScope(c *controller.Controller, sc *iscope.Scope) (p payloader, err 
 	t := iscopeValue.Type()
 	if t.Kind() != reflect.Ptr {
 		log.Debugf("Not a pointer")
-		err = internal.IErrUnexpectedType
+		err = internal.ErrUnexpectedType
 		return
 	}
 	switch t.Elem().Kind() {
@@ -166,7 +166,7 @@ func marshalScope(c *controller.Controller, sc *iscope.Scope) (p payloader, err 
 	case reflect.Struct:
 		p, err = marshalScopeOne(c, sc)
 	default:
-		err = internal.IErrUnexpectedType
+		err = internal.ErrUnexpectedType
 	}
 	if err != nil {
 		return
@@ -339,7 +339,7 @@ func visitNode(
 ) (*node, error) {
 
 	if reflect.Indirect(value).Kind() != reflect.Struct {
-		return nil, internal.IErrUnexpectedType
+		return nil, internal.ErrUnexpectedType
 	}
 
 	valInt := value.Interface()
@@ -516,7 +516,7 @@ func visitNode(
 func visitScopeNode(c *controller.Controller, value interface{}, sc *iscope.Scope) (*node, error) {
 
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
-		return nil, internal.IErrUnexpectedType
+		return nil, internal.ErrUnexpectedType
 	}
 	node := &node{Type: sc.Struct().Collection()}
 
@@ -784,7 +784,7 @@ func setNodePrimary(value reflect.Value, node *node) (err error) {
 func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 	vals := reflect.ValueOf(*i)
 	if vals.Kind() != reflect.Slice {
-		return nil, internal.IErrExpectedSlice
+		return nil, internal.ErrExpectedSlice
 	}
 	var response []interface{}
 	for x := 0; x < vals.Len(); x++ {
