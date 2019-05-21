@@ -69,8 +69,13 @@ func NewModelSchemas(
 	c *config.ControllerConfig,
 	flgs *flags.Container,
 ) (*ModelSchemas, error) {
-	return newModelSchemas(namerFunc, c.Builder.IncludeNestedLimit, c.ModelSchemas,
-		c.DefaultSchema, c.DefaultRepositoryName, flgs)
+	return newModelSchemas(namerFunc,
+		c.Builder.IncludeNestedLimit,
+		c.ModelSchemas,
+		c.DefaultSchema,
+		c.DefaultRepositoryName,
+		flgs,
+	)
 }
 
 func newModelSchemas(

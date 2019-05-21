@@ -38,6 +38,9 @@ func DefaultTesting(t testing.TB, cfg *config.ControllerConfig) *Controller {
 
 // NewDefault creates new default controller based on the default config
 func NewDefault() *Controller {
-	c, _ := newController(DefaultConfig)
+	c, err := newController(DefaultConfig)
+	if err != nil {
+		panic(err)
+	}
 	return c
 }

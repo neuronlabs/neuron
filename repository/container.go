@@ -69,6 +69,7 @@ func (c *container) registerFactory(f Factory) error {
 	_, ok := c.factories[repoName]
 	if ok {
 		log.Debugf("Repository already registered: %s", repoName)
+		log.Debugf("Factories: %v", c.factories)
 		return fmt.Errorf("Factory already registered: %s", repoName)
 	}
 

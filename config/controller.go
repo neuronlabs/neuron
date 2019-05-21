@@ -83,23 +83,28 @@ func (c *ControllerConfig) MapRepositories(s *Schema) error {
 
 // SetDefaultRepository sets the default repository if defined
 func (c *ControllerConfig) SetDefaultRepository() error {
-	repoName := c.DefaultRepositoryName
-	if repoName != "" {
+	if c.DefaultRepository != nil && c.DefaultRepositoryName != "" {
+		if c.Repositories == nil {
+			c.Repositories = map[string]*Repository{}
+		}
+		c.Repositories[c.DefaultRepositoryName] = c.DefaultRepository
+	} else if repoName := c.DefaultRepositoryName; repoName != "" && len(c.Repositories) > 0 {
+
 		repo, ok := c.Repositories[repoName]
 		if !ok {
 			return fmt.Errorf("Default repository: %s not defined in the ControllerConfig.Repository map", repoName)
 		}
 		c.DefaultRepository = repo
 
-	} else {
+	} else if len(c.Repositories) == 1 {
 
-		if len(c.Repositories) == 1 {
-
-			for repoName, repo := range c.Repositories {
-				c.DefaultRepositoryName = repoName
-				c.DefaultRepository = repo
-			}
+		for repoName, repo := range c.Repositories {
+			c.DefaultRepositoryName = repoName
+			c.DefaultRepository = repo
 		}
+	} else {
+		return errors.New("No repositories found within the config")
+
 	}
 
 	return nil

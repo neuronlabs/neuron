@@ -7,7 +7,7 @@ import (
 // Repository defines the repository configuration variables
 type Repository struct {
 	// DriverName defines the name for the repository driver
-	DriverName string `mapstructure:"repository_driver"`
+	DriverName string `mapstructure:"driver_name"`
 
 	// Host defines the access hostname or the ip address
 	Host string `mapstructure:"host" validate:"hostname|ip"`
@@ -36,4 +36,10 @@ type Repository struct {
 
 	// MaxTimeout defines the maximum timeout for the given repository connection
 	MaxTimeout *time.Duration `mapstructure:"max_timeout"`
+
+	// DBName gets the database name
+	DBName string `mapstructure:"dbname"`
+
+	// SSLMode defines if the ssl is enabled
+	SSLMode string `mapstructure:"sslmode"`
 }

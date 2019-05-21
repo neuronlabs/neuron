@@ -91,6 +91,7 @@ func ReadGatewayConfig(name, path string) (*GatewayConfig, error) {
 	v := viper.New()
 	v.AddConfigPath(path)
 	v.SetConfigName(name)
+	setDefaultGatewayConfig(v, false)
 
 	err := v.ReadInConfig()
 	if err != nil {
@@ -111,6 +112,7 @@ func ReadControllerConfig(name, path string) (*ControllerConfig, error) {
 	v := viper.New()
 	v.AddConfigPath(path)
 	v.SetConfigName(name)
+	setDefaultControllerConfigs(v, false)
 
 	err := v.ReadInConfig()
 	if err != nil {
@@ -128,36 +130,51 @@ func ReadControllerConfig(name, path string) (*ControllerConfig, error) {
 
 // Default values
 func setDefaults(v *viper.Viper) {
-	setDefaultControllerConfigs(v)
-	setDefaultGatewayConfig(v)
+	setDefaultControllerConfigs(v, true)
+	setDefaultGatewayConfig(v, true)
 }
 
-func setDefaultControllerConfigs(v *viper.Viper) {
+func setDefaultControllerConfigs(v *viper.Viper, general bool) {
 	// Set defaults for the controller
-	v.SetDefault("controller.naming_convention", "snake")
-	v.SetDefault("controller.builder.error_limit", 5)
-	v.SetDefault("controller.builder.include_nested_limit", 3)
-	v.SetDefault("controller.builder.filter_value_limit", 50)
-	v.SetDefault("controller.builder.repository_timeout", time.Second*30)
+	keys := map[string]interface{}{
+		"naming_convention":             "snake",
+		"builder.error_limit":           5,
+		"builder.include_nested_limit":  3,
+		"builder.filter_value_limit":    50,
+		"builder.repository_timeout":    time.Second * 30,
+		"flags.return_links":            true,
+		"flags.use_filter_values_limit": true,
+		"flags.return_patch_content":    true,
+		"create_validator_alias":        "create",
+		"patch_validator_alias":         "patch",
+		"default_schema":                "api",
+	}
 
-	v.SetDefault("controller.flags.return_links", true)
-	v.SetDefault("controller.flags.use_filter_values_limit", true)
-	v.SetDefault("controller.flags.return_patch_content", true)
-	v.SetDefault("controller.create_validator_alias", "create")
-	v.SetDefault("controller.patch_validator_alias", "patch")
-	v.SetDefault("controller.default_schema", "api")
+	for k, value := range keys {
+		if general {
+			k = "controller." + k
+		}
+		v.SetDefault(k, value)
+	}
 
 }
 
-func setDefaultGatewayConfig(v *viper.Viper) {
+func setDefaultGatewayConfig(v *viper.Viper, general bool) {
 	// Set Default Gateway config values
-	v.SetDefault("gateway.port", 8080)
-	v.SetDefault("gateway.read_timeout", time.Second*10)
-	v.SetDefault("gateway.read_header_timeout", time.Second*5)
-	v.SetDefault("gateway.write_timeout", time.Second*10)
-	v.SetDefault("gateway.idle_timeout", time.Second*120)
-	v.SetDefault("gateway.shutdown_timeout", time.Second*10)
-
-	v.SetDefault("gateway.router.prefix", "v1")
-	v.SetDefault("gateway.router.compression_level", -1)
+	keys := map[string]interface{}{
+		"port":                     8080,
+		"read_timeout":             time.Second * 10,
+		"read_header_timeout":      time.Second * 5,
+		"write_timeout":            time.Second * 10,
+		"idle_timeout":             time.Second * 120,
+		"shutdown_timeout":         time.Second * 10,
+		"router.prefix":            "v1",
+		"router.compression_level": -1,
+	}
+	for k, value := range keys {
+		if general {
+			k = "gateway." + k
+		}
+		v.SetDefault(k, value)
+	}
 }

@@ -136,6 +136,10 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 		}
 	}
 
+	if c.Config.Builder == nil {
+		return nil, errors.New("No builder within the controller config found")
+	}
+
 	// create model schemas
 	c.schemas, err = models.NewModelSchemas(
 		c.NamerFunc,
@@ -153,7 +157,7 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 
 	// set default factory
 	if factory := repository.GetFactory(defaultRepository.DriverName); factory == nil {
-		return nil, errors.Errorf("Repository Factory not found for the repository: %s ", c.Config.DefaultRepositoryName)
+		return nil, errors.Errorf("Repository Factory not found for the repository: %s ", defaultRepository.DriverName)
 	}
 
 	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.i18nSup)
