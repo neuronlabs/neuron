@@ -86,6 +86,7 @@ func ReadDefaultGatewayConfig() *GatewayConfig {
 	return c.Gateway
 }
 
+// ReadGatewayConfig reads the gateway config from the provided path and for given config name
 func ReadGatewayConfig(name, path string) (*GatewayConfig, error) {
 	v := viper.New()
 	v.AddConfigPath(path)

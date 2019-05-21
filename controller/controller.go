@@ -1,13 +1,10 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/repositories"
-	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
@@ -78,28 +75,6 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	return (*controller.Controller)(c).RegisterModels(models...)
 }
 
-// RegisterRepositories registers provided repositories
-func (c *Controller) RegisterRepositories(repos ...interface{}) error {
-	for _, repo := range repos {
-		r, ok := repo.(repositories.Repository)
-		if !ok {
-			log.Errorf("Cannot register repository: %T. It doesn't implement repository interface.", repo)
-			return repositories.ErrNewNotRepository
-		}
-		if err := (*controller.Controller)(c).RegisterRepository(r); err != nil {
-			log.Debugf("Registering Repository: '%s' failed. %v", r.RepositoryName(), err)
-			return err
-		}
-		log.Debugf("Repository: '%s' registered succesfully.", r.RepositoryName())
-	}
-	return nil
-}
-
-// Repository gets the repository for the provided name
-func (c *Controller) Repository(repo string) (repositories.Repository, bool) {
-	return (*controller.Controller)(c).RepositoryByName(repo)
-}
-
 // Schema gets the schema by it's name
 func (c *Controller) Schema(schemaName string) (*mapping.Schema, bool) {
 	s, ok := (*controller.Controller)(c).ModelSchemas().Schema(schemaName)
@@ -115,19 +90,6 @@ func (c *Controller) Schemas() (schemas []*mapping.Schema) {
 		schemas = append(schemas, (*mapping.Schema)(s))
 	}
 	return
-}
-
-// SetDefaultRepository sets the default repository.
-// By default the first registered repository is set to default.
-// This method allows to change the behaviour
-func (c *Controller) SetDefaultRepository(repo interface{}) error {
-	r, ok := repo.(repositories.Repository)
-	if !ok {
-		return fmt.Errorf("Provided 'repo' struct is not a Repository: %T", repo)
-	}
-
-	(*controller.Controller)(c).SetDefaultRepository(r)
-	return nil
 }
 
 func new(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {

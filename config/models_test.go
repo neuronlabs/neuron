@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/neuronlabs/neuron/log"
 	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,8 @@ func TestModelConfig(t *testing.T) {
 	require.NoError(t, viper.Unmarshal(cfg))
 
 	assert.Equal(t, "some_model", cfg.Collection)
-	assert.Equal(t, "default", cfg.Repository)
+	assert.Equal(t, "default", cfg.RepositoryName)
+
 	// Create
 	e := cfg.Endpoints.Create
 

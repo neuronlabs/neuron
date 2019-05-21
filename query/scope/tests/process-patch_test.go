@@ -6,10 +6,11 @@ import (
 	"github.com/kucjac/uni-logger"
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/scope"
 	"github.com/neuronlabs/neuron/query/scope/mocks"
+	"github.com/neuronlabs/neuron/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -52,9 +53,7 @@ func TestPatch(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	repo := &mocks.Repository{}
-
-	c := newController(t, repo)
+	c := newController(t)
 
 	err := c.RegisterModels(&testPatcher{}, &testAfterPatcher{}, &testBeforePatcher{})
 	require.NoError(t, err)
@@ -63,9 +62,9 @@ func TestPatch(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &testPatcher{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("Patch", mock.Anything, mock.Anything).Return(nil)
 
@@ -79,9 +78,9 @@ func TestPatch(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &testBeforePatcher{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("Patch", mock.Anything, mock.Anything).Return(nil)
 
@@ -95,9 +94,9 @@ func TestPatch(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &testAfterPatcher{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("Patch", mock.Anything, mock.Anything).Return(nil)
 
@@ -120,9 +119,7 @@ func TestPatch(t *testing.T) {
 			Rel *patchTMRelated `neuron:"type=relation;foreign=FK"`
 		}
 
-		repo := &mocks.Repository{}
-
-		c := newController(t, repo)
+		c := newController(t)
 
 		err := c.RegisterModels(&patchTMRelations{}, &patchTMRelated{})
 		require.NoError(t, err)
@@ -139,8 +136,8 @@ func TestPatch(t *testing.T) {
 			s, err := scope.NewC((*ctrl.Controller)(c), tm)
 			require.NoError(t, err)
 
-			r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
-			repo = r.(*mocks.Repository)
+			r, _ := repository.GetRepository(s.Controller(), s.Struct())
+			repo := r.(*mocks.Repository)
 
 			// Begin define
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
@@ -162,8 +159,8 @@ func TestPatch(t *testing.T) {
 			model, err := c.GetModelStruct(&patchTMRelated{})
 			require.NoError(t, err)
 
-			mr, ok := c.RepositoryByModel(model)
-			require.True(t, ok)
+			mr, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			require.NoError(t, err)
 
 			repo2, ok := mr.(*mocks.Repository)
 			require.True(t, ok)
@@ -205,10 +202,10 @@ func TestPatch(t *testing.T) {
 
 			s, err := scope.NewC((*ctrl.Controller)(c), tm)
 			require.NoError(t, err)
-			r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
 			// prepare the transaction
-			repo = r.(*mocks.Repository)
+			repo := r.(*mocks.Repository)
 
 			// Begin the transaction
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
@@ -226,8 +223,8 @@ func TestPatch(t *testing.T) {
 			model, err := c.GetModelStruct(&patchTMRelated{})
 			require.NoError(t, err)
 
-			m2Repo, ok := c.RepositoryByModel(model)
-			require.True(t, ok)
+			m2Repo, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			require.NoError(t, err)
 
 			repo2, ok := m2Repo.(*mocks.Repository)
 			require.True(t, ok)

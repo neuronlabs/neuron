@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/gateway/routers"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/kucjac/uni-logger"
+	_ "github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/assert"
 
 	"net/http"

@@ -19,6 +19,7 @@ import (
 	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/neuron/query/sorts"
 	"github.com/neuronlabs/neuron/query/tx"
+	"github.com/neuronlabs/neuron/repository"
 	"gopkg.in/go-playground/validator.v9"
 	"net/url"
 	"reflect"
@@ -447,6 +448,11 @@ func (s *Scope) Struct() *mapping.ModelStruct {
 	return (*mapping.ModelStruct)(mStruct)
 }
 
+// Tx returns the transaction for the given scope if exists
+func (s *Scope) Tx() *tx.Tx {
+	return s.tx()
+}
+
 // ValidateCreate validates the scope's value with respect to the 'create validator' and
 // the 'create' validation tags
 func (s *Scope) ValidateCreate() []*errors.ApiError {
@@ -495,11 +501,9 @@ func (s *Scope) begin(ctx context.Context, opts *tx.Options, checkError bool) (e
 	// set the transaction to the context
 	s.Store[internal.TxStateCtxKey] = txn
 
-	c := s.Controller()
-
-	repo, ok := (*controller.Controller)(c).RepositoryByModel((*scope.Scope)(s).Struct())
-	if !ok {
-		log.Errorf("No repository found for the %s model.", s.Struct().Collection())
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
+		log.Errorf("No repository found for the %s model. %s", s.Struct().Collection(), err)
 		err = ErrNoRepositoryFound
 		return
 	}
@@ -540,8 +544,8 @@ func (s *Scope) commit(ctx context.Context) error {
 			if sub.Struct().Config() == nil {
 				continue
 			}
-			if conn := sub.Struct().Config().Connection; conn != nil {
-				if tm := conn.MaxTimeout; tm != nil {
+			if modelRepo := sub.Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
 					if *tm > maxTimeout {
 						maxTimeout = *tm
 					}
@@ -713,8 +717,8 @@ func (s *Scope) rollback(ctx context.Context) error {
 			if sub.Struct().Config() == nil {
 				continue
 			}
-			if conn := sub.Struct().Config().Connection; conn != nil {
-				if tm := conn.MaxTimeout; tm != nil {
+			if modelRepo := sub.Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
 					if *tm > maxTimeout {
 						maxTimeout = *tm
 					}

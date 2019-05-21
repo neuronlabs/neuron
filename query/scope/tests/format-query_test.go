@@ -7,10 +7,14 @@ import (
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+)
+
+import (
+	// mocks import and register mock repository
+	_ "github.com/neuronlabs/neuron/query/scope/mocks"
 )
 
 type formatter struct {
@@ -28,9 +32,8 @@ type formatterRelation struct {
 
 // TestFormatQuery tests the format query methods
 func TestFormatQuery(t *testing.T) {
-	repo := &mocks.Repository{}
 
-	c := (*controller.Controller)(newController(t, repo))
+	c := (*controller.Controller)(newController(t))
 	err := c.RegisterModels(&formatter{}, &formatterRelation{})
 	require.NoError(t, err)
 

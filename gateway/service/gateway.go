@@ -69,11 +69,6 @@ func (g *GatewayService) RegisterModels(models ...interface{}) error {
 	return g.Controller().RegisterModels(models...)
 }
 
-// RegisterRepositories registers the repositories within given gateway service controller
-func (g *GatewayService) RegisterRepositories(repos ...interface{}) error {
-	return g.Controller().RegisterRepositories(repos...)
-}
-
 // SetHandlerAndRoutes sets the routes for the gateway service
 // This step should be done as the last step before running the service
 // It is based on the registered models and repositories

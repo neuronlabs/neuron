@@ -17,12 +17,17 @@ import (
 	"time"
 )
 
+import (
+	// mocks import and register mock repository
+	_ "github.com/neuronlabs/neuron/query/scope/mocks"
+)
+
 func TestMarshal(t *testing.T) {
 	buf := bytes.Buffer{}
 
 	prepare := func(t *testing.T, models ...interface{}) *ctrl.Controller {
 		t.Helper()
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 
 		buf.Reset()
 		require.NoError(t, c.RegisterModels(models...))
@@ -334,7 +339,7 @@ func TestMarshalScope(t *testing.T) {
 	})
 
 	t.Run("MarshalToManyRelationship", func(t *testing.T) {
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
 		s, err := (*controller.Controller)(c).QueryBuilder().NewScope(&internal.Pet{})
@@ -375,7 +380,7 @@ func TestMarshalScope(t *testing.T) {
 	})
 
 	t.Run("MarshalToManyEmptyRelationship", func(t *testing.T) {
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
@@ -415,7 +420,7 @@ func BlogController(t *testing.T) *controller.Controller {
 	v := testing.Verbose()
 	internal.Verbose = &v
 
-	c := controller.DefaultTesting(t)
+	c := controller.DefaultTesting(t, nil)
 
 	err := c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.NoError(t, err)
@@ -466,7 +471,7 @@ func (h *HiddenModel) CollectionName() string {
 
 func TestMarshalHiddenScope(t *testing.T) {
 
-	c := controller.DefaultTesting(t)
+	c := controller.DefaultTesting(t, nil)
 	assert.NoError(t, c.RegisterModels(&HiddenModel{}))
 
 	scope, err := c.QueryBuilder().NewScope(&HiddenModel{})

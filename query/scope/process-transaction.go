@@ -3,10 +3,9 @@ package scope
 import (
 	"context"
 	"errors"
-	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/tx"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // ErrRepositoryNotACommiter is an error returned when the repository doesn't implement Commiter interface
@@ -33,9 +32,8 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 	}
 	log.Debugf("Scope: %s for model: %s commiting tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
-	repo, ok := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
-	if !ok {
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
 		err = ErrNoRepositoryFound
 		return
@@ -73,9 +71,8 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 	}
 
 	log.Debugf("Scope: %s for model: %s rolling back tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
-	repo, ok := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
-	if !ok {
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
 		err = ErrNoRepositoryFound
 		return

@@ -4,23 +4,6 @@ import (
 	"time"
 )
 
-// Schema defines configuration for the single model schema.
-// If the schema is not local the
-type Schema struct {
-	Name       string                  `mapstructure:"name"`
-	Models     map[string]*ModelConfig `mapstructure:"models"`
-	Local      bool                    `mapstructure:"local"`
-	Connection *Connection             `mapstructure:"connection"`
-}
-
-// DBConnection is the connection with the database specific variables
-type DBConnection struct {
-	Connection
-
-	SSLMode string `mapstructure:"ssl_mode"`
-	DBName  string `mapstructure:"db_name"`
-}
-
 // Connection is the configuration for non local schemas credentials
 // The connection config can be set by providing raw_url or with host,path,protocol/
 type Connection struct {
@@ -58,9 +41,9 @@ type ModelConfig struct {
 	// Collection is the model's collection name
 	Collection string `mapstructure:"collection"`
 
-	// Repository is the model's repository name, with the name provided in the initialization
+	// RepositoryName is the model's repository name, with the name provided in the initialization
 	// process...
-	Repository string `mapstructure:"repository"`
+	RepositoryName string `mapstructure:"repository_name"`
 
 	// Endpoints defines model's api endpoints configuration
 	Endpoints ModelEndpoints `mapstructure:"endpoints"`
@@ -68,8 +51,12 @@ type ModelConfig struct {
 	// Map sets the model's Store values
 	Map map[string]interface{} `mapstructure:"map"`
 
-	// Connection defines the model's repository connection config
-	Connection *DBConnection `mapstructure:"connection"`
+	// Repository defines the model's repository connection config
+	Repository *Repository `mapstructure:"repository"`
+
+	// AutoMigrate automatically migrates the model into the given repository structuring
+	// I.e. sql creates or updates the table
+	AutoMigrate bool `mapstructure:"automigrate"`
 }
 
 // ModelEndpoints is the api endpoint's configuration for the given model
@@ -171,6 +158,7 @@ type PresetQuery struct {
 	Filters []string
 }
 
+// PresetScope is the preset scope values
 type PresetScope struct {
 	// Scope Query defines the preset scope
 	ScopeQuery string

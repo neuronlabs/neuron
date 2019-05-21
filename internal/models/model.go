@@ -69,9 +69,6 @@ type ModelStruct struct {
 
 	flags *flags.Container
 
-	// repositoryName defines the model's repository name
-	repositoryName string
-
 	isAfterLister  bool
 	isBeforeLister bool
 
@@ -256,7 +253,6 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 		m.store[k] = v
 	}
 
-	m.repositoryName = cfg.Repository
 	return nil
 }
 
@@ -267,12 +263,12 @@ func (m *ModelStruct) Config() *config.ModelConfig {
 
 // SetRepositoryName sets the repositoryName
 func (m *ModelStruct) SetRepositoryName(repo string) {
-	m.repositoryName = repo
+	m.cfg.RepositoryName = repo
 }
 
 // RepositoryName returns the repository name for given model
 func (m *ModelStruct) RepositoryName() string {
-	return m.repositoryName
+	return m.Config().RepositoryName
 }
 
 // NewModelStruct creates new model struct for given type

@@ -1,5 +1,11 @@
 package config
 
+import (
+	"errors"
+	"fmt"
+	"github.com/neuronlabs/neuron/log"
+)
+
 // ControllerConfig defines the configuration for the Controller
 type ControllerConfig struct {
 
@@ -34,8 +40,14 @@ type ControllerConfig struct {
 	// Flags defines the controller default flags
 	Flags *Flags `mapstructure:"flags"`
 
-	// DefaultRepository
-	DefaultRepository string `mapstructure:"default_repository"`
+	// Repositories contains the connection configs for the given repository instance name
+	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
+
+	// DefaultRepositoryName defines default repositoy name
+	DefaultRepositoryName string `mapstructure:"default_repository_name"`
+
+	// DefaultRepository defines controller default repository
+	DefaultRepository *Repository `mapstructure:"default_repository" validate:"-"`
 
 	// CreateValidatorAlias is the alias for the create validators
 	CreateValidatorAlias string `mapstructure:"create_validator_alias"`
@@ -45,4 +57,50 @@ type ControllerConfig struct {
 
 	// DefaultValidatorAlias is the alias used as a default validator alias
 	DefaultValidatorAlias string `mapstructure:"default_validator_alias"`
+}
+
+// MapRepositories maps the repositories definitions from the controller with the model's repositories
+func (c *ControllerConfig) MapRepositories(s *Schema) error {
+	if c.Repositories == nil {
+		return errors.New("No repositories found within the config")
+	}
+	for _, model := range s.Models {
+		if model.Repository == nil {
+			var reponame string
+			if reponame = model.RepositoryName; reponame == "" {
+				log.Debugf("Model: %s config have no Repository nor RepositoryName defined. Setting to default repository", model.Collection)
+				reponame = c.DefaultRepositoryName
+			}
+			repoConfig, ok := c.Repositories[reponame]
+			if !ok {
+				return fmt.Errorf("No repository config definition found for the repository: %s", reponame)
+			}
+			model.Repository = repoConfig
+		}
+	}
+	return nil
+}
+
+// SetDefaultRepository sets the default repository if defined
+func (c *ControllerConfig) SetDefaultRepository() error {
+	repoName := c.DefaultRepositoryName
+	if repoName != "" {
+		repo, ok := c.Repositories[repoName]
+		if !ok {
+			return fmt.Errorf("Default repository: %s not defined in the ControllerConfig.Repository map", repoName)
+		}
+		c.DefaultRepository = repo
+
+	} else {
+
+		if len(c.Repositories) == 1 {
+
+			for repoName, repo := range c.Repositories {
+				c.DefaultRepositoryName = repoName
+				c.DefaultRepository = repo
+			}
+		}
+	}
+
+	return nil
 }

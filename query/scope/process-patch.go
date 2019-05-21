@@ -4,11 +4,11 @@ import (
 	"context"
 	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 	"reflect"
 )
 
@@ -45,9 +45,9 @@ var (
 )
 
 func patchFunc(ctx context.Context, s *Scope) error {
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
-	repo, ok := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
-	if !ok {
+
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Errorf("No repository found for model: %v", s.Struct().Collection())
 		return ErrNoRepositoryFound
 	}
@@ -133,8 +133,8 @@ func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 			if rel.Relationship().Struct().Config() == nil {
 				continue
 			}
-			if conn := rel.Relationship().Struct().Config().Connection; conn != nil {
-				if tm := conn.MaxTimeout; tm != nil {
+			if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
 					if *tm > maxTimeout {
 						maxTimeout = *tm
 					}

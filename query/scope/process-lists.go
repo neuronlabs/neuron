@@ -2,9 +2,9 @@ package scope
 
 import (
 	"context"
-	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 	"reflect"
 )
 
@@ -30,10 +30,9 @@ var (
 
 func listFunc(ctx context.Context, s *Scope) error {
 	log.Debugf("ListFunc")
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
 
-	repo, ok := c.RepositoryByModel(((*scope.Scope)(s).Struct()))
-	if !ok {
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Debug("processList RepositoryByModel failed: %v", s.Struct().Type().Name())
 		return ErrNoRepositoryFound
 	}

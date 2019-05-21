@@ -1,6 +1,6 @@
 {
 	"collection" : "some_model",
-	"repository":"default",
+	"repository_name":"default",
 	"endpoints": {
 		"create": {
 			"preset_filters": ["[collection][field][operator]"],

@@ -3,11 +3,12 @@ package scope
 import (
 	"context"
 	"github.com/kucjac/uni-db"
-	"github.com/neuronlabs/neuron/internal/controller"
+
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 var (
@@ -37,9 +38,9 @@ var (
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
-	repo, ok := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
-	if !ok {
+
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
 		return ErrNoRepositoryFound
 	}
@@ -103,8 +104,8 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 			if rel.Relationship().Struct().Config() == nil {
 				continue
 			}
-			if conn := rel.Relationship().Struct().Config().Connection; conn != nil {
-				if tm := conn.MaxTimeout; tm != nil {
+			if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
 					if *tm > maxTimeout {
 						maxTimeout = *tm
 					}

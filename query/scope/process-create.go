@@ -2,9 +2,8 @@ package scope
 
 import (
 	"context"
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/log"
 
@@ -38,11 +37,10 @@ var (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
-	var c *ctrl.Controller = s.Controller()
 
-	repo, ok := (*controller.Controller)(c).RepositoryByModel((*scope.Scope)(s).Struct())
-	if !ok {
-		log.Errorf("No repository found for the %s model.", s.Struct().Collection())
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
+		log.Errorf("No repository found for the %s model. %v", s.Struct().Collection(), err)
 		return ErrNoRepositoryFound
 	}
 

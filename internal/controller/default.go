@@ -2,26 +2,42 @@ package controller
 
 import (
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repositories/mocks"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 // DefaultConfig is the controller default config used with the Default function
-var DefaultConfig *config.ControllerConfig = config.ReadDefaultControllerConfig()
+var (
+	DefaultConfig        *config.ControllerConfig = config.ReadDefaultControllerConfig()
+	DefaultTestingConfig *config.ControllerConfig
+)
+
+func init() {
+	DefaultTestingConfig = config.ReadDefaultControllerConfig()
+	DefaultTestingConfig.Repositories = map[string]*config.Repository{
+		"mock": &config.Repository{DriverName: "mockery"},
+	}
+
+	DefaultTestingConfig.DefaultRepositoryName = "mock"
+}
 
 // DefaultTesting is the default controller used for testing
-func DefaultTesting(t *testing.T) *Controller {
-	c := NewDefault()
-
-	log.Default()
-
-	if internal.Verbose != nil && *internal.Verbose {
-		c.Config.Debug = true
-
-		log.SetLevel(log.LDEBUG)
+func DefaultTesting(t testing.TB, cfg *config.ControllerConfig) *Controller {
+	if cfg == nil {
+		cfg = DefaultTestingConfig
 	}
-	c.RegisterRepository(&mocks.Repository{})
+	if testing.Verbose() {
+		cfg.Debug = true
+	}
+
+	c, err := newController(cfg)
+	require.NoError(t, err)
+
+	return c
+}
+
+// NewDefault creates new default controller based on the default config
+func NewDefault() *Controller {
+	c, _ := newController(DefaultConfig)
 	return c
 }

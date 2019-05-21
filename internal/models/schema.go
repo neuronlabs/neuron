@@ -70,7 +70,7 @@ func NewModelSchemas(
 	flgs *flags.Container,
 ) (*ModelSchemas, error) {
 	return newModelSchemas(namerFunc, c.Builder.IncludeNestedLimit, c.ModelSchemas,
-		c.DefaultSchema, c.DefaultRepository, flgs)
+		c.DefaultSchema, c.DefaultRepositoryName, flgs)
 }
 
 func newModelSchemas(
@@ -175,24 +175,34 @@ func (m *ModelSchemas) RegisterModels(
 			continue
 		}
 
-		if s.config != nil {
-			log.Debugf("Getting model config from schema: '%s'", schema)
-			modelConfig, ok := s.config.Models[mStruct.collectionType]
-			if ok {
-				if err := mStruct.SetConfig(modelConfig); err != nil {
-					log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())
-					return err
-				}
+		var modelConfig *config.ModelConfig
+
+		if s.config == nil {
+			s.config = &config.Schema{
+				Name:   schema,
+				Models: map[string]*config.ModelConfig{},
+				Local:  true,
 			}
 		}
 
-		if mStruct.repositoryName == "" {
+		modelConfig, ok = s.config.Models[mStruct.collectionType]
+		if !ok {
+			modelConfig = &config.ModelConfig{
+				Collection: mStruct.collectionType,
+			}
+			s.config.Models[mStruct.collectionType] = modelConfig
+		}
+		log.Debugf("Getting model config from schema: '%s'", schema)
+		if err := mStruct.SetConfig(modelConfig); err != nil {
+			log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())
+			return err
+		}
+
+		if modelConfig.RepositoryName == "" {
 			// if the model implements repository Name
-			repositoryName, ok := model.(namer.RepositoryNamer)
+			repositoryNamer, ok := model.(namer.RepositoryNamer)
 			if ok {
-				mStruct.repositoryName = repositoryName.RepositoryName()
-			} else {
-				mStruct.repositoryName = m.defaultRepoName
+				modelConfig.RepositoryName = repositoryNamer.RepositoryName()
 			}
 		}
 

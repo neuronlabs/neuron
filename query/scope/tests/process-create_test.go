@@ -6,10 +6,10 @@ import (
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/kucjac/uni-logger"
-	"github.com/neuronlabs/neuron/internal/repositories"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/scope"
 	"github.com/neuronlabs/neuron/query/scope/mocks"
@@ -21,9 +21,11 @@ import (
 )
 
 var (
-	testCtxKey   = "testCtxKey"
+	testCtxKey   = testKeyStruct{}
 	errNotCalled = errors.New("Not called")
 )
+
+type testKeyStruct struct{}
 
 type createTestModel struct {
 	ID int `neuron:"type=primary"`
@@ -64,9 +66,8 @@ func TestCreate(t *testing.T) {
 		err := log.SetLevel(unilogger.DEBUG)
 		require.NoError(t, err)
 	}
-	repo := &mocks.Repository{}
 
-	c := newController(t, repo)
+	c := newController(t)
 
 	err := c.RegisterModels(&createTestModel{}, &beforeCreateTestModel{}, &afterCreateTestModel{})
 	require.NoError(t, err)
@@ -75,9 +76,9 @@ func TestCreate(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &createTestModel{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -92,9 +93,9 @@ func TestCreate(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &beforeCreateTestModel{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.CreateContext(context.WithValue(context.Background(), testCtxKey, t))
@@ -108,9 +109,9 @@ func TestCreate(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &afterCreateTestModel{})
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
 		err = s.CreateContext(context.WithValue(context.Background(), testCtxKey, t))
@@ -132,9 +133,7 @@ func TestCreate(t *testing.T) {
 			Rel *createTMRelated `neuron:"type=relation;foreign=FK"`
 		}
 
-		repo := &mocks.Repository{}
-
-		c := newController(t, repo)
+		c := newController(t)
 		err := c.RegisterModels(&createTMRelations{}, &createTMRelated{})
 		require.NoError(t, err)
 
@@ -148,9 +147,9 @@ func TestCreate(t *testing.T) {
 
 			s, err := scope.NewC((*ctrl.Controller)(c), tm)
 			require.NoError(t, err)
-			r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-			repo = r.(*mocks.Repository)
+			repo := r.(*mocks.Repository)
 
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Begin on createTMRelations")
@@ -164,13 +163,13 @@ func TestCreate(t *testing.T) {
 				assert.NotNil(t, tx)
 			}).Return(nil)
 
-			// r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+			// r, _ := repository.GetRepository(s.Controller(),s.Struct())
 
 			model, err := c.GetModelStruct(&createTMRelated{})
 			require.NoError(t, err)
 
-			repo2, ok := c.RepositoryByModel(model)
-			require.True(t, ok)
+			repo2, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			require.NoError(t, err)
 
 			mr, ok := repo2.(*mocks.Repository)
 			require.True(t, ok)
@@ -215,10 +214,10 @@ func TestCreate(t *testing.T) {
 
 			s, err := scope.NewC((*ctrl.Controller)(c), tm)
 			require.NoError(t, err)
-			r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
 			// prepare the transaction
-			repo = r.(*mocks.Repository)
+			repo := r.(*mocks.Repository)
 
 			// Begin the transaction
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
@@ -234,8 +233,8 @@ func TestCreate(t *testing.T) {
 			model, err := c.GetModelStruct(&createTMRelated{})
 			require.NoError(t, err)
 
-			m2Repo, ok := c.RepositoryByModel(model)
-			require.True(t, ok)
+			m2Repo, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			require.NoError(t, err)
 
 			repo2, ok := m2Repo.(*mocks.Repository)
 			require.True(t, ok)
@@ -275,16 +274,10 @@ func TestCreate(t *testing.T) {
 
 }
 
-func newController(t testing.TB, repo repositories.Repository) *controller.Controller {
+func newController(t testing.TB) *controller.Controller {
 	t.Helper()
-	cfg := &(*controller.DefaultConfig)
-	cfg.DefaultRepository = repo.RepositoryName()
 
-	c, err := controller.New(cfg, nil)
-	require.NoError(t, err)
-
-	err = c.RegisterRepository(repo)
-	require.NoError(t, err)
+	c := controller.DefaultTesting(t, nil)
 
 	return c
 }

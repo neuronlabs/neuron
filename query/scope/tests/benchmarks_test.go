@@ -3,9 +3,13 @@ package tests
 import (
 	iScope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/query/scope"
-	"github.com/neuronlabs/neuron/query/scope/mocks"
 	"github.com/stretchr/testify/require"
 	"testing"
+)
+
+import (
+	// import and register mocks repository
+	_ "github.com/neuronlabs/neuron/query/scope/mocks"
 )
 
 type benchmarkType struct {
@@ -14,8 +18,7 @@ type benchmarkType struct {
 
 func BenchmarkCastScope(b *testing.B) {
 	b.StopTimer()
-	repo := &mocks.Repository{}
-	c := newController(b, repo)
+	c := newController(b)
 
 	require.NoError(b, c.RegisterModels(&benchmarkType{}))
 
@@ -28,8 +31,8 @@ func BenchmarkCastScope(b *testing.B) {
 
 func BenchmarkNoCastScope(b *testing.B) {
 	b.StopTimer()
-	repo := &mocks.Repository{}
-	c := newController(b, repo)
+
+	c := newController(b)
 
 	require.NoError(b, c.RegisterModels(&benchmarkType{}))
 

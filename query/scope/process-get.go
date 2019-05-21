@@ -2,9 +2,9 @@ package scope
 
 import (
 	"context"
-	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 var (
@@ -29,10 +29,9 @@ var (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
-	var c *controller.Controller = (*controller.Controller)(s.Controller())
 
-	repo, ok := c.RepositoryByModel((*scope.Scope)(s).Struct())
-	if !ok {
+	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	if err != nil {
 		log.Errorf("No repository found for model: %v", (*scope.Scope)(s).Struct().Collection())
 		return ErrNoRepositoryFound
 	}
@@ -44,10 +43,10 @@ func getFunc(ctx context.Context, s *Scope) error {
 	}
 
 	// 	Get the value from the getter
-	err := getter.Get(ctx, s)
-	if err != nil {
+	if err = getter.Get(ctx, s); err != nil {
 		return err
 	}
+
 	return nil
 }
 

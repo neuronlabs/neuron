@@ -6,8 +6,9 @@ import (
 	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query"
-	"github.com/neuronlabs/neuron/internal/repositories"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 
 	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/pkg/errors"
@@ -55,9 +56,6 @@ type Controller struct {
 	// schemas is a mapping for the model schemas
 	schemas *models.ModelSchemas
 
-	// repositories contains mapping between the model's and it's repositories
-	repositories *repositories.Container
-
 	// dbErrMapper error manager for the repositories
 	dbErrMapper *aerrors.ErrorMapper
 
@@ -82,12 +80,6 @@ func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Control
 	}
 
 	return c, nil
-}
-
-// NewDefault creates new default controller based on the default config
-func NewDefault() *Controller {
-	c, _ := newController(DefaultConfig)
-	return c
 }
 
 // SetDefault sets the default controller
@@ -154,8 +146,15 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 		return nil, err
 	}
 
-	// create repository container
-	c.repositories = repositories.New()
+	defaultRepository := c.Config.DefaultRepository
+	if defaultRepository == nil {
+		return nil, errors.Errorf("Default repository: '%s' not found within repositories container", c.Config.DefaultRepository)
+	}
+
+	// set default factory
+	if factory := repository.GetFactory(defaultRepository.DriverName); factory == nil {
+		return nil, errors.Errorf("Repository Factory not found for the repository: %s ", c.Config.DefaultRepositoryName)
+	}
 
 	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.i18nSup)
 	if err != nil {
@@ -183,6 +182,16 @@ func (c *Controller) SetLogger(logger unilogger.LeveledLogger) {
 	log.SetLogger(logger)
 }
 
+// ModelStruct gets the model struct  mapping.
+// Implements repository.ModelStructer
+func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+	m, err := c.getModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+	return (*mapping.ModelStruct)(m), nil
+}
+
 // MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
 // panics if the model does not exists in the map.
 func (c *Controller) MustGetModelStruct(model interface{}) *models.ModelStruct {
@@ -193,23 +202,6 @@ func (c *Controller) MustGetModelStruct(model interface{}) *models.ModelStruct {
 	return mStruct
 }
 
-// RegisterRepositories registers multiple repositories.
-// Returns error if the repository were already registered
-func (c *Controller) RegisterRepositories(repos ...repositories.Repository) error {
-	for _, repo := range repos {
-		if err := c.repositories.RegisterRepository(repo); err != nil {
-			log.Error("RegisterRepository '%s' failed. %v", repo.RepositoryName(), err)
-			return err
-		}
-	}
-	return nil
-}
-
-// RegisterRepository registers the repository
-func (c *Controller) RegisterRepository(repo repositories.Repository) error {
-	return c.repositories.RegisterRepository(repo)
-}
-
 // RegisterModels precomputes provided models, making it easy to check
 // models relationships and  attributes.
 func (c *Controller) RegisterModels(models ...interface{}) error {
@@ -218,12 +210,20 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	}
 
 	for _, schema := range c.schemas.Schemas() {
+
+		if err := c.Config.MapRepositories(schema.Config()); err != nil {
+			log.Debugf("Mapping repositories failed for schema: %s", schema.Name)
+			return err
+		}
+
 		for _, mStruct := range schema.Models() {
-			if err := c.repositories.MapModel(mStruct); err != nil {
+
+			if _, err := repository.GetRepository(c, (*mapping.ModelStruct)(mStruct)); err != nil {
 				log.Errorf("Mapping model: %v to repository failed.", mStruct.Type().Name())
 				return err
 			}
 		}
+
 	}
 
 	return nil
@@ -237,23 +237,6 @@ func (c *Controller) RegisterSchemaModels(schemaName string, models ...interface
 // RegisterModelRecursively registers provided models and it's realtionship fields recursively
 func (c *Controller) RegisterModelRecursively(models ...interface{}) error {
 	return c.ModelSchemas().RegisterModelsRecursively(models...)
-}
-
-// RepositoryByName returns the repository by the provided name.
-// If the repository doesn't exists it returns nil value and false boolean
-func (c *Controller) RepositoryByName(name string) (repositories.Repository, bool) {
-	return c.repositories.RepositoryByName(name)
-}
-
-// RepositoryByModel returns the repository for the provided model.
-// If the repository doesn't exists it returns 'nil' value and 'false' boolean.
-func (c *Controller) RepositoryByModel(model *models.ModelStruct) (repositories.Repository, bool) {
-	return c.repositories.RepositoryByModel(model)
-}
-
-// SetDefaultRepository sets the default repository for the controller
-func (c *Controller) SetDefaultRepository(repo repositories.Repository) {
-	c.repositories.SetDefault(repo)
 }
 
 // GetModelStruct returns the ModelStruct for provided model
@@ -304,6 +287,10 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 
 	if cfg.DefaultSchema == "" {
 		cfg.DefaultSchema = "api"
+	}
+
+	if err := cfg.SetDefaultRepository(); err != nil {
+		return err
 	}
 
 	if cfg.CreateValidatorAlias == "" {

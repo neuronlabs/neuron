@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+import (
+	// mocks import and register mock repository
+	_ "github.com/neuronlabs/neuron/query/scope/mocks"
+)
+
 // UnmarshalModel basic model used to tests in unmarshal
 type UnmarshalModel struct {
 	ID          string     `neuron:"type=primary"`
@@ -24,7 +29,7 @@ type UnmarshalModel struct {
 }
 
 func TestUnmarshalScopeOne(t *testing.T) {
-	c := controller.DefaultTesting(t)
+	c := controller.DefaultTesting(t, nil)
 
 	err := c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.Nil(t, err)
@@ -225,7 +230,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  }
 				}`)
 
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
@@ -254,7 +259,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
@@ -288,7 +293,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
@@ -307,7 +312,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 				  	}
 				  }
 				}`)
-		c := controller.DefaultTesting(t)
+		c := controller.DefaultTesting(t, nil)
 		err := c.RegisterModels(&UnmarshalModel{})
 		require.Nil(t, err)
 
@@ -322,7 +327,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		}
 
 		t.Run("TooManyValues", func(t *testing.T) {
-			c := controller.DefaultTesting(t)
+			c := controller.DefaultTesting(t, nil)
 
 			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162,16.162]}}}`)
 			err := c.RegisterModels(&ArrModel{})
@@ -333,7 +338,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		})
 
 		t.Run("Correct", func(t *testing.T) {
-			c := controller.DefaultTesting(t)
+			c := controller.DefaultTesting(t, nil)
 
 			in := strings.NewReader(`{"data":{"type":"arr_models","id":"1","attributes":{"arr": [1.251,125.162]}}}`)
 			err := c.RegisterModels(&ArrModel{})
@@ -740,7 +745,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
 				t.Helper()
-				c := controller.DefaultTesting(t)
+				c := controller.DefaultTesting(t, nil)
 
 				in := strings.NewReader(test.r)
 				err := c.RegisterModels(test.model)
@@ -811,7 +816,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
-				c := controller.DefaultTesting(t)
+				c := controller.DefaultTesting(t, nil)
 
 				in := strings.NewReader(test.r)
 				err := c.RegisterModels(test.model)
@@ -908,7 +913,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 
 		for name, test := range tests {
 			t.Run(name, func(t *testing.T) {
-				c := controller.DefaultTesting(t)
+				c := controller.DefaultTesting(t, nil)
 
 				in := strings.NewReader(test.r)
 				var err error
@@ -928,7 +933,7 @@ func TestUnmarshalScopeOne(t *testing.T) {
 }
 
 func TestUnmarshalScopeMany(t *testing.T) {
-	c := controller.DefaultTesting(t)
+	c := controller.DefaultTesting(t, nil)
 
 	require.NoError(t, c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{}))
 
@@ -978,7 +983,7 @@ func TestUnmarshalScopeMany(t *testing.T) {
 }
 
 func TestUnmarshalUpdateFields(t *testing.T) {
-	c := controller.DefaultTesting(t)
+	c := controller.DefaultTesting(t, nil)
 
 	require.NoError(t, c.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{}))
 

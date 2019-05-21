@@ -140,8 +140,8 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 			if rel.Relationship().Struct().Config() == nil {
 				continue
 			}
-			if conn := rel.Relationship().Struct().Config().Connection; conn != nil {
-				if tm := conn.MaxTimeout; tm != nil {
+			if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
 					if *tm > maxTimeout {
 						maxTimeout = *tm
 					}

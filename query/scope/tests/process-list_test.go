@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/kucjac/uni-logger"
 	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/repository"
+
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query/scope"
 	"github.com/neuronlabs/neuron/query/scope/mocks"
@@ -50,9 +51,7 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	repo := &mocks.Repository{}
-
-	c := newController(t, repo)
+	c := newController(t)
 
 	err := c.RegisterModels(&beforeLister{}, &afterLister{}, &lister{})
 	require.NoError(t, err)
@@ -62,9 +61,9 @@ func TestList(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
@@ -79,9 +78,9 @@ func TestList(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
@@ -96,9 +95,9 @@ func TestList(t *testing.T) {
 		s, err := scope.NewC((*ctrl.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := c.RepositoryByModel((*models.ModelStruct)(s.Struct()))
+		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
-		repo = r.(*mocks.Repository)
+		repo := r.(*mocks.Repository)
 
 		repo.On("List", mock.Anything, mock.Anything).Return(nil)
 
