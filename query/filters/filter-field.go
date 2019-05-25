@@ -139,7 +139,7 @@ func NewStringFilter(c *controller.Controller, filter string, schemaName string,
 
 		if rel, ok := mStruct.RelationshipField(params[1]); ok {
 			f = filters.NewFilter(rel)
-			relStruct := rel.Struct()
+			relStruct := rel.Relationship().Struct()
 			if params[2] == "id" {
 				field = relStruct.PrimaryField()
 			} else if field, ok = relStruct.Attribute(params[2]); !ok {

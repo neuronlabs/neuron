@@ -26,9 +26,7 @@ func NewDefault() *Controller {
 
 // SetDefault sets the default Controller to the provided
 func SetDefault(c *Controller) {
-	d := Default()
-
-	*d = *c
+	controller.SetDefault((*controller.Controller)(c))
 }
 
 // Controller is the structure that controls whole jsonapi behavior.

@@ -190,13 +190,18 @@ func (m *ModelSchemas) RegisterModels(
 			}
 		}
 
+		if s.config.Models == nil {
+			s.config.Models = map[string]*config.ModelConfig{}
+		}
+
 		modelConfig, ok = s.config.Models[mStruct.collectionType]
 		if !ok {
-			modelConfig = &config.ModelConfig{
-				Collection: mStruct.collectionType,
-			}
+			modelConfig = &config.ModelConfig{}
+
 			s.config.Models[mStruct.collectionType] = modelConfig
 		}
+		modelConfig.Collection = mStruct.Collection()
+
 		log.Debugf("Getting model config from schema: '%s'", schema)
 		if err := mStruct.SetConfig(modelConfig); err != nil {
 			log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())

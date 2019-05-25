@@ -25,6 +25,11 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return s.attributeFilters
 }
 
+// ClearRelationshipFilters clears the relationship filters for the scope
+func (s *Scope) ClearRelationshipFilters() {
+	s.relationshipFilters = []*filters.FilterField{}
+}
+
 // FilterKeyFilters return key filters for the scope
 func (s *Scope) FilterKeyFilters() []*filters.FilterField {
 	return s.keyFilters
@@ -40,6 +45,11 @@ func (s *Scope) GetOrCreateAttributeFilter(
 //GetOrCreateFilterKeyFilter creates or get an existing filter field
 func (s *Scope) GetOrCreateFilterKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
 	return s.getOrCreateFilterKeyFilter(sField)
+}
+
+//GetOrCreateForeignKeyFilter creates or get an existing filter field
+func (s *Scope) GetOrCreateForeignKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
+	return s.getOrCreateForeignKeyFilter(sField)
 }
 
 // GetOrCreateIDFilter gets or creates new filterField
@@ -70,6 +80,21 @@ func (s *Scope) PrimaryFilters() []*filters.FilterField {
 // RelationshipFilters returns scopes relationship filters
 func (s *Scope) RelationshipFilters() []*filters.FilterField {
 	return s.relationshipFilters
+}
+
+// RemoveRelationshipFilter at index
+func (s *Scope) RemoveRelationshipFilter(at int) error {
+	if at > len(s.relationshipFilters)-1 {
+		return errors.New("Removing relationship filter out of possible range")
+	}
+
+	s.relationshipFilters = append(s.relationshipFilters[:at], s.relationshipFilters[at+1:]...)
+	return nil
+}
+
+// SetRelationshipFilters sets the relationship filters
+func (s *Scope) SetRelationshipFilters(fs []*filters.FilterField) {
+	s.relationshipFilters = fs
 }
 
 // SetIDFilters sets the ID Filter for given values.
@@ -255,6 +280,9 @@ func (s *Scope) setPrimaryFilterValues(primField *models.StructField, values ...
 }
 
 func (s *Scope) getOrCreatePrimaryFilter(primField *models.StructField) (filter *filters.FilterField) {
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	if s.primaryFilters == nil {
 		s.primaryFilters = []*filters.FilterField{}
 	}
@@ -280,6 +308,9 @@ func (s *Scope) getOrCreateIDFilter() (filter *filters.FilterField) {
 }
 
 func (s *Scope) getOrCreateLangaugeFilter() (filter *filters.FilterField) {
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	if !s.mStruct.UseI18n() {
 		return nil
 	}
@@ -298,6 +329,9 @@ func (s *Scope) getOrCreateAttributeFilter(
 	sField *models.StructField,
 ) (filter *filters.FilterField) {
 
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	if s.attributeFilters == nil {
 		s.attributeFilters = []*filters.FilterField{}
 	}
@@ -315,6 +349,9 @@ func (s *Scope) getOrCreateAttributeFilter(
 }
 
 func (s *Scope) getOrCreateFilterKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	if s.keyFilters == nil {
 		s.keyFilters = []*filters.FilterField{}
 	}
@@ -334,6 +371,9 @@ func (s *Scope) getOrCreateFilterKeyFilter(sField *models.StructField) (filter *
 // If the filterField already exists for given scope, the function returns the existing one.
 // Otherwise it craetes new filter field and returns it.
 func (s *Scope) getOrCreateForeignKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	if s.foreignFilters == nil {
 		s.foreignFilters = []*filters.FilterField{}
 	}
@@ -350,6 +390,9 @@ func (s *Scope) getOrCreateForeignKeyFilter(sField *models.StructField) (filter 
 }
 
 func (s *Scope) getOrCreateRelationshipFilter(sField *models.StructField) (filter *filters.FilterField) {
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
 	// Create if empty
 	if s.relationshipFilters == nil {
 		s.relationshipFilters = []*filters.FilterField{}

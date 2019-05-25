@@ -16,17 +16,6 @@ func TestAutoSelectFields(t *testing.T) {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	type testRelatedModel struct {
-		ID int `neuron:"type=primary"`
-		FK int `neuron:"type=foreign"`
-	}
-
-	type testModel struct {
-		ID       int               `neuron:"type=primary"`
-		Name     string            `neuron:"type=attribute"`
-		Relation *testRelatedModel `neuron:"type=relation;foreign=FK"`
-	}
-
 	t.Run("NonZeros", func(t *testing.T) {
 		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig(), flags.New())
 		require.NoError(t, err)

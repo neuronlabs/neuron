@@ -473,6 +473,7 @@ func BuildModelStruct(
 						return err
 					}
 					StructAppendField(modelStruct, structField)
+
 					StructSetForeignKey(modelStruct, structField)
 
 				case internal.AnnotationFilterKey:

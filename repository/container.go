@@ -27,13 +27,22 @@ func GetFactory(name string) Factory {
 }
 
 // GetRepository gets the repository instance for the provided model
-func GetRepository(structer ModelStructer, model *mapping.ModelStruct) (Repository, error) {
-	repo, ok := ctr.models[model]
+func GetRepository(structer ModelStructer, model interface{}) (Repository, error) {
+	mstruct, ok := model.(*mapping.ModelStruct)
 	if !ok {
-		if err := ctr.mapModel(structer, model); err != nil {
+		var err error
+		mstruct, err = structer.ModelStruct(model)
+		if err != nil {
 			return nil, err
 		}
-		repo = ctr.models[model]
+	}
+
+	repo, ok := ctr.models[mstruct]
+	if !ok {
+		if err := ctr.mapModel(structer, mstruct); err != nil {
+			return nil, err
+		}
+		repo = ctr.models[mstruct]
 	}
 
 	return repo, nil

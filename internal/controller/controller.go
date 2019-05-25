@@ -72,6 +72,8 @@ func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Control
 
 	if logger != nil {
 		log.SetLogger(logger)
+	} else {
+		log.Default()
 	}
 	log.Debugf("New Controller creating...")
 	c, err := newController(cfg)
@@ -266,6 +268,11 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 	if cfg == nil {
 		return errors.New("Nil config provided")
+	}
+
+	// set level debug
+	if cfg.Debug {
+		log.SetLevel(log.LDEBUG)
 	}
 
 	cfg.NamingConvention = strings.ToLower(cfg.NamingConvention)

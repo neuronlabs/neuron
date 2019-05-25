@@ -47,7 +47,7 @@ type Deleter interface {
 
 /**
 
-TRANSACTIONS (WIP)
+TRANSACTIONS
 
 */
 

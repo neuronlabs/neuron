@@ -14,6 +14,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"golang.org/x/text/language"
+	"sync"
 
 	"net/http"
 	"reflect"
@@ -120,6 +121,8 @@ type Scope struct {
 
 	// subscopeChain is the array of the scope's used for commiting or rolling back the transaction
 	subscopesChain []*Scope
+
+	filterLock sync.Mutex
 }
 
 // AddChainSubscope adds the subscope to the 's' subscopes
@@ -620,43 +623,115 @@ func (s *Scope) getRelatedScope() (relScope *Scope, err error) {
 	return
 }
 
-// getPrimaryFieldValues - gets the primary field values from the scope.
+// GetPrimaryFieldValues - gets the primary field values from the scope.
 // Returns the values within the []interface{} form
 //			returns	- ErrNoValue if no value provided.
 //					- ErrInvalidType if the scope's value is of invalid type
 // 					- *reflect.ValueError if internal occurs.
-func (s *Scope) getPrimaryFieldValues() (values []interface{}, err error) {
+func (s *Scope) GetPrimaryFieldValues() (values []interface{}, err error) {
 	if s.Value == nil {
 		err = ErrNoValue
 		return
 	}
 
-	defer func() {
-		if r := recover(); r != nil {
-			switch vt := r.(type) {
-			case *reflect.ValueError:
-				err = vt
-			default:
-				err = fmt.Errorf("Internal error")
-			}
-		}
-	}()
-
 	primaryIndex := models.StructPrimary(s.mStruct).FieldIndex()
 
 	addPrimaryValue := func(single reflect.Value) {
-		primaryValue := single.Elem().FieldByIndex(primaryIndex)
+		primaryValue := single.FieldByIndex(primaryIndex)
 		values = append(values, primaryValue.Interface())
 	}
+	values = []interface{}{}
 
 	v := reflect.ValueOf(s.Value)
+	if v.Kind() != reflect.Ptr {
+		err = internal.ErrInvalidType
+		return
+	}
+	v = v.Elem()
+
 	switch v.Kind() {
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
-			addPrimaryValue(v.Index(i))
+			single := v.Index(i)
+			if single.Kind() != reflect.Ptr {
+				err = internal.ErrInvalidType
+				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
+				return
+			}
+
+			if single.IsNil() {
+				continue
+			}
+
+			single = single.Elem()
+			if single.Kind() != reflect.Struct {
+				err = internal.ErrInvalidType
+				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
+				return
+			}
+			addPrimaryValue(single)
 		}
-	case reflect.Ptr:
+	case reflect.Struct:
 		addPrimaryValue(v)
+	default:
+		err = internal.ErrInvalidType
+		return
+	}
+	return
+}
+
+// GetForeignKeyValues gets the values of the foreign key struct field
+func (s *Scope) GetForeignKeyValues(foreign *models.StructField) (values []interface{}, err error) {
+	if s.mStruct != foreign.Struct() {
+		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
+		return nil, errors.New("foreign key mismatched ModelStruct")
+	} else if foreign.FieldKind() != models.KindForeignKey {
+		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.FieldKind())
+		return nil, errors.New("foreign key is not a valid ForeignKey")
+	} else if s.Value == nil {
+		return nil, internal.ErrNilValue
+	}
+
+	addForeignKey := func(single reflect.Value) {
+		primaryValue := single.FieldByIndex(foreign.FieldIndex())
+		values = append(values, primaryValue.Interface())
+	}
+
+	// initialize the array
+	values = []interface{}{}
+
+	v := reflect.ValueOf(s.Value)
+	if v.Kind() != reflect.Ptr {
+		err = internal.ErrInvalidType
+		return
+	}
+	v = v.Elem()
+
+	switch v.Kind() {
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			single := v.Index(i)
+
+			if single.Kind() != reflect.Ptr {
+				err = internal.ErrInvalidType
+				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
+				return
+			}
+
+			if single.IsNil() {
+				continue
+			}
+			single = single.Elem()
+			if single.Kind() != reflect.Struct {
+				err = internal.ErrInvalidType
+				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
+				return
+			}
+
+			addForeignKey(single)
+		}
+	case reflect.Struct:
+		addForeignKey(v)
 	default:
 		err = internal.ErrInvalidType
 		return

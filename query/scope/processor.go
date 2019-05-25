@@ -42,13 +42,17 @@ func newQueryProcessor() *QueryProcessor {
 			ProcessAfterCreate,
 		},
 		GetChain: ProcessChain{
+			ProcessConvertRelationshipFilters,
 			ProcessBeforeGet,
+			ProcessConvertRelationshipFilters,
 			ProcessGet,
 			ProcessGetForeignRelationships,
 			ProcessAfterGet,
 		},
 		ListChain: ProcessChain{
+			ProcessConvertRelationshipFilters, // convert the relationship filters that before the 'before' hook
 			ProcessBeforeList,
+			ProcessConvertRelationshipFilters, // convert the relationship filters after 'before' hook
 			ProcessList,
 			ProcessAfterList,
 			ProcessGetForeignRelationships,

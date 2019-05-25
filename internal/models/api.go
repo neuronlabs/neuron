@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/log"
 	"reflect"
 )
 
@@ -43,7 +44,7 @@ func StructFieldByName(m *ModelStruct, name string) *StructField {
 	return nil
 }
 
-// Flags return preset flags for the given model
+// StructFlags return preset flags for the given model
 func StructFlags(m *ModelStruct) *flags.Container {
 	return m.flags
 }
@@ -60,20 +61,21 @@ func StructSetRelField(m *ModelStruct, relField *StructField) {
 
 // StructSetForeignKey sets the foreign key for the model struct
 func StructSetForeignKey(m *ModelStruct, fk *StructField) {
+	log.Debugf("Setting ForeignKey: %s for model: %s", fk.ApiName(), m.Collection())
 	m.foreignKeys[fk.apiName] = fk
 }
 
-// StructSetForeignKey sets the filter key for the model struct
+// StructSetFilterKey sets the filter key for the model struct
 func StructSetFilterKey(m *ModelStruct, fk *StructField) {
 	m.filterKeys[fk.apiName] = fk
 }
 
-// StructSetPrimary
+// StructSetPrimary sets the primary field for the model
 func StructSetPrimary(m *ModelStruct, primary *StructField) {
 	m.primary = primary
 }
 
-// StructSetType
+// StructSetType sets the type for the model struct
 func StructSetType(m *ModelStruct, tp reflect.Type) {
 	m.modelType = tp
 }

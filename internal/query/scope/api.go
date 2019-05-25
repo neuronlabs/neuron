@@ -83,7 +83,7 @@ func GetLangtagValue(s *Scope) (string, error) {
 //					- ErrInvalidType if the scope's value is of invalid type
 // 					- *reflect.ValueError if internal occurs.
 func GetPrimaryFieldValues(s *Scope) ([]interface{}, error) {
-	return s.getPrimaryFieldValues()
+	return s.GetPrimaryFieldValues()
 }
 
 // GetRelatedScope gets the related scope with preset filter values.

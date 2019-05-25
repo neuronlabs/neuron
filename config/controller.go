@@ -64,11 +64,14 @@ func (c *ControllerConfig) MapRepositories(s *Schema) error {
 	if c.Repositories == nil {
 		return errors.New("No repositories found within the config")
 	}
+
+	log.Debugf("Models: %v", s.Models)
 	for _, model := range s.Models {
 		if model.Repository == nil {
 			var reponame string
 			if reponame = model.RepositoryName; reponame == "" {
 				log.Debugf("Model: %s config have no Repository nor RepositoryName defined. Setting to default repository", model.Collection)
+				log.Debugf("Model Config: %s", model)
 				reponame = c.DefaultRepositoryName
 			}
 			repoConfig, ok := c.Repositories[reponame]
@@ -76,8 +79,10 @@ func (c *ControllerConfig) MapRepositories(s *Schema) error {
 				return fmt.Errorf("No repository config definition found for the repository: %s", reponame)
 			}
 			model.Repository = repoConfig
+			log.Debugf("Mapped repositpory: %s for the model: %s", reponame, model.Collection)
 		}
 	}
+
 	return nil
 }
 
