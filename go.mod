@@ -1,0 +1,22 @@
+module github.com/neuronlabs/neuron
+
+go 1.12
+
+require (
+	github.com/gin-gonic/gin v1.4.0
+	github.com/go-playground/locales v0.12.1 // indirect
+	github.com/go-playground/universal-translator v0.16.0 // indirect
+	github.com/google/uuid v1.1.1
+	github.com/gwatts/gin-adapter v0.0.0-20170508204228-c44433c485ad
+	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
+	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
+	github.com/kucjac/uni-db v0.0.0-20190418155906-8f0ec86b2472
+	github.com/kucjac/uni-logger v0.0.0-20190105122526-b6dcb1b3f473
+	github.com/leodido/go-urn v1.1.0 // indirect
+	github.com/pkg/errors v0.8.1
+	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
+	github.com/spf13/viper v1.4.0
+	github.com/stretchr/testify v1.3.0
+	golang.org/x/text v0.3.2
+	gopkg.in/go-playground/validator.v9 v9.29.0
+)
