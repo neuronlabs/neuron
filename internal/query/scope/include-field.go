@@ -29,7 +29,7 @@ func (s *Scope) BuildIncludeList(includedList ...string,
 	var errObj *aerrors.ApiError
 
 	// check if the number of included fields is possible
-	if len(includedList) > models.StructMaxIncludedCount(s.mStruct) {
+	if len(includedList) > s.mStruct.MaxIncludedCount() {
 		errObj = aerrors.ErrOutOfRangeQueryParameterValue.Copy()
 		errObj.Detail = fmt.Sprintf("Too many included parameter values for: '%s' collection.",
 			s.mStruct.Collection())

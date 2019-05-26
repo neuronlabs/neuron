@@ -39,7 +39,7 @@ func (c *Controller) DBErrorMapper() *errors.ErrorMapper {
 }
 
 // MustGetNew gets the
-func MustGetNew(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) *Controller {
+func MustGetNew(cfg *config.Controller, logger ...unilogger.LeveledLogger) *Controller {
 	c, err := new(cfg, logger...)
 	if err != nil {
 		panic(err)
@@ -50,7 +50,7 @@ func MustGetNew(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger)
 }
 
 // New creates new controller for given config
-func New(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*Controller, error) {
+func New(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*Controller, error) {
 	c, err := new(cfg, logger...)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (c *Controller) Schemas() (schemas []*mapping.Schema) {
 	return
 }
 
-func new(cfg *config.ControllerConfig, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {
+func new(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {
 	var l unilogger.LeveledLogger
 
 	if len(logger) == 1 {

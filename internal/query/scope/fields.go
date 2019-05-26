@@ -283,7 +283,7 @@ func (s *Scope) BuildFieldset(fields ...string) (errs []*aerrors.ApiError) {
 		errObj *aerrors.ApiError
 	)
 
-	if len(fields) > models.StructWorkingFieldCount(s.mStruct) {
+	if len(fields) > s.mStruct.FieldCount() {
 		errObj = aerrors.ErrInvalidQueryParameter.Copy()
 		errObj.Detail = fmt.Sprintf("Too many fields to set.")
 		errs = append(errs, errObj)

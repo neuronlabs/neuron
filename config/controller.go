@@ -6,8 +6,8 @@ import (
 	"github.com/neuronlabs/neuron/log"
 )
 
-// ControllerConfig defines the configuration for the Controller
-type ControllerConfig struct {
+// Controller defines the configuration for the Controller
+type Controller struct {
 
 	// NamingConvention is the naming convention used while preparing the models.
 	// Allowed values:
@@ -31,12 +31,6 @@ type ControllerConfig struct {
 	// Debug sets the debug mode for the controller.
 	Debug bool `mapstructure:"debug"`
 
-	// Builder defines the builder config
-	Builder *BuilderConfig `mapstructure:"builder"`
-
-	// I18n defines i18n config
-	I18n *I18nConfig `mapstructure:"i18n"`
-
 	// Flags defines the controller default flags
 	Flags *Flags `mapstructure:"flags"`
 
@@ -49,6 +43,9 @@ type ControllerConfig struct {
 	// DefaultRepository defines controller default repository
 	DefaultRepository *Repository `mapstructure:"default_repository" validate:"-"`
 
+	// Processor is the config used for the scope processor
+	Processor *Processor `mapstructure:"processor" validate:"required"`
+
 	// CreateValidatorAlias is the alias for the create validators
 	CreateValidatorAlias string `mapstructure:"create_validator_alias"`
 
@@ -60,7 +57,7 @@ type ControllerConfig struct {
 }
 
 // MapRepositories maps the repositories definitions from the controller with the model's repositories
-func (c *ControllerConfig) MapRepositories(s *Schema) error {
+func (c *Controller) MapRepositories(s *Schema) error {
 	if c.Repositories == nil {
 		return errors.New("No repositories found within the config")
 	}
@@ -87,7 +84,7 @@ func (c *ControllerConfig) MapRepositories(s *Schema) error {
 }
 
 // SetDefaultRepository sets the default repository if defined
-func (c *ControllerConfig) SetDefaultRepository() error {
+func (c *Controller) SetDefaultRepository() error {
 	if c.DefaultRepository != nil && c.DefaultRepositoryName != "" {
 		if c.Repositories == nil {
 			c.Repositories = map[string]*Repository{}

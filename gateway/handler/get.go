@@ -2,22 +2,21 @@ package handler
 
 import (
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
+
 	"net/http"
 )
 
+// HandleGet handles the Get single object request
 func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		log.Debugf("[GET] begins for model: '%s'", m.Type().String())
 		defer func() { log.Debugf("[GET] finished for model: '%s'.", m.Type().String()) }()
 
-		ic := (*ictrl.Controller)(h.c)
-
-		s, errs, err := ic.QueryBuilder().BuildScopeSingle(req.Context(), (*models.ModelStruct)(m), req.URL, nil)
+		s, errs, err := h.Builder.BuildScopeSingle(req.Context(), (*models.ModelStruct)(m), req.URL, nil)
 		if err != nil {
 			log.Errorf("[GET] Building Scope for the request failed: %v", err)
 			h.internalError(req, rw)
@@ -32,7 +31,7 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 		// set controller into scope's context
 		s.Store[internal.ControllerCtxKey] = h.c
 
-		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())
+		log.Debugf("[REQ-SCOPE-ID] %s", (*query.Scope)(s).ID().String())
 
 		/**
 
@@ -42,11 +41,11 @@ func (h *Handler) HandleGet(m *mapping.ModelStruct) http.HandlerFunc {
 
 		*/
 
-		if err := (*scope.Scope)(s).Get(); err != nil {
+		if err := (*query.Scope)(s).Get(); err != nil {
 			h.handleDBError(req, err, rw)
 			return
 		}
 
-		h.marshalScope((*scope.Scope)(s), req, rw)
+		h.marshalScope((*query.Scope)(s), req, rw)
 	})
 }

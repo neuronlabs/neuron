@@ -177,7 +177,7 @@ func BuildModelStruct(
 		collection = namerFunc(inflection.Plural(modelType.Name()))
 	}
 
-	modelStruct := NewModelStruct(modelType, collection, flgs)
+	modelStruct := newModelStruct(modelType, collection, flgs)
 
 	// Define the function definition
 	var mapFields func(modelType reflect.Type, modelValue reflect.Value, index []int) error

@@ -7,7 +7,7 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
 
 	// ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/errors"
@@ -44,7 +44,7 @@ func (h *Handler) HandleCreate(m *mapping.ModelStruct) http.HandlerFunc {
 		// set controller into scope's context
 		s.Store[internal.ControllerCtxKey] = h.c
 
-		log.Debugf("[REQ-SCOPE-ID] %s", (*scope.Scope)(s).ID().String())
+		log.Debugf("[REQ-SCOPE-ID] %s", (*query.Scope)(s).ID().String())
 
 		// SetFlags
 

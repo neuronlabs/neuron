@@ -1,11 +1,7 @@
 package config
 
-import (
-	"time"
-)
-
-// BuilderConfig is the config used for building the queries on incoming requests
-type BuilderConfig struct {
+// Builder is the config used for building the queries on incoming requests
+type Builder struct {
 
 	// StrictQueriesMode if true sets the strict mode for the query builder, that doesn't allow
 	// unknown query keys
@@ -21,5 +17,6 @@ type BuilderConfig struct {
 	// FilterValueLimit is a maximum length of the filter values
 	FilterValueLimit int `validate:"min=1,max=50" mapstructure:"filter_value_limit"`
 
-	RepositoryTimeout time.Duration `mapstructure:"repository_timeout"`
+	// Processor is the query processor for the query builder
+	Processor *Processor `validate:"required" mapstructure:"processor"`
 }

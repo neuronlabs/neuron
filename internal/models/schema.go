@@ -58,19 +58,15 @@ type ModelSchemas struct {
 
 	// NamerFunc is the function required for naming convenction
 	NamerFunc namer.Namer
-
-	// nestedIncludeLimit is the config used for mapping the models
-	NestedIncludeLimit int
 }
 
 // NewModelSchemas create new ModelSchemas based on the config
 func NewModelSchemas(
 	namerFunc namer.Namer,
-	c *config.ControllerConfig,
+	c *config.Controller,
 	flgs *flags.Container,
 ) (*ModelSchemas, error) {
 	return newModelSchemas(namerFunc,
-		c.Builder.IncludeNestedLimit,
 		c.ModelSchemas,
 		c.DefaultSchema,
 		c.DefaultRepositoryName,
@@ -80,7 +76,6 @@ func NewModelSchemas(
 
 func newModelSchemas(
 	namerFunc namer.Namer,
-	nestedIncludeLimit int,
 	cfg map[string]*config.Schema,
 	defaultSchema string,
 	defaultRepoName string,
@@ -88,11 +83,10 @@ func newModelSchemas(
 ) (*ModelSchemas, error) {
 	log.Debugf("Creating New ModelSchemas...")
 	ms := &ModelSchemas{
-		NestedIncludeLimit: nestedIncludeLimit,
-		Flags:              flgs,
-		NamerFunc:          namerFunc,
-		cfg:                cfg,
-		defaultRepoName:    defaultRepoName,
+		Flags:           flgs,
+		NamerFunc:       namerFunc,
+		cfg:             cfg,
+		defaultRepoName: defaultRepoName,
 	}
 
 	ms.defaultSchema = &Schema{Name: defaultSchema, models: NewModelMap()}
@@ -115,6 +109,22 @@ func newModelSchemas(
 	}
 
 	return ms, nil
+}
+
+// ComputeNestedIncludedCount computes the limits for the nested included count for each model in each schema
+func (m *ModelSchemas) ComputeNestedIncludedCount(limit int) {
+	for _, schema := range m.schemas {
+		for _, model := range schema.Models() {
+			model.initComputeThisIncludedCount()
+		}
+	}
+
+	for _, schema := range m.schemas {
+		for _, model := range schema.Models() {
+			model.computeNestedIncludedCount(limit)
+		}
+	}
+
 }
 
 // DefaultSchema returns default schema for give models
@@ -224,20 +234,12 @@ func (m *ModelSchemas) RegisterModels(
 				return err
 			}
 
-			if err := InitCheckFieldTypes(model); err != nil {
+			if err := model.initCheckFieldTypes(); err != nil {
 				return err
 			}
-			InitComputeSortedFields(model)
-
-			InitComputeThisIncludedCount(model)
+			model.initComputeSortedFields()
 
 			schema.models.SetByCollection(model)
-		}
-	}
-
-	for _, schema := range m.schemas {
-		for _, model := range schema.models.Models() {
-			model.InitComputeNestedIncludedCount(m.NestedIncludeLimit)
 		}
 	}
 

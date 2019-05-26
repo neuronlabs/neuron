@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/neuronlabs/neuron/log"
 	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -23,11 +23,6 @@ func TestReadDefaultConfig(t *testing.T) {
 		assert.Equal(t, "patch", c.Controller.PatchValidatorAlias)
 		assert.Equal(t, "api", c.Controller.DefaultSchema)
 
-		t.Run("Builder", func(t *testing.T) {
-			assert.Equal(t, 5, c.Controller.Builder.ErrorLimits)
-			assert.Equal(t, 3, c.Controller.Builder.IncludeNestedLimit)
-			assert.Equal(t, 50, c.Controller.Builder.FilterValueLimit)
-		})
 		t.Run("Flags", func(t *testing.T) {
 
 			f, err := c.Controller.Flags.Container()
@@ -57,6 +52,12 @@ func TestReadDefaultConfig(t *testing.T) {
 
 		t.Run("Router", func(t *testing.T) {
 			assert.Equal(t, "v1", c.Gateway.Router.Prefix)
+		})
+
+		t.Run("Builder", func(t *testing.T) {
+			assert.Equal(t, 5, c.Gateway.QueryBuilder.ErrorLimits)
+			assert.Equal(t, 3, c.Gateway.QueryBuilder.IncludeNestedLimit)
+			assert.Equal(t, 50, c.Gateway.QueryBuilder.FilterValueLimit)
 		})
 	})
 

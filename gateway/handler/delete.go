@@ -3,13 +3,12 @@ package handler
 import (
 	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/errors"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/gateway/builder"
 	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
 	"net/http"
 )
 
@@ -18,10 +17,10 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		log.Debugf("[DELETE] Begins for model: '%s'", m.Type().String())
 		defer func() { log.Debugf("[DELETE] Finished for model: '%s'", m.Type().String()) }()
-		s := scope.NewModelC(h.c, m, false)
+		s := query.NewModelC(h.c, m, false)
 
 		// Get the ID from the query
-		id, err := query.GetID(req.URL, (*models.ModelStruct)(m))
+		id, err := builder.GetID(req.URL, (*models.ModelStruct)(m))
 		if err != nil {
 			log.Errorf("HandleDelete->GetID for model: '%s' failed. %v", m.Type(), err)
 			h.internalError(req, rw)
@@ -35,7 +34,7 @@ func (h *Handler) HandleDelete(m *mapping.ModelStruct) http.HandlerFunc {
 		errObj := f.SetValues(
 			[]string{id},
 			filters.OpEqual,
-			(*ictrl.Controller)(h.c).QueryBuilder().I18n,
+			h.Builder.I18n,
 		)
 		if errObj != nil {
 			log.Debugf("ClientSide Error. Adding primary filter failed. %v", errObj)

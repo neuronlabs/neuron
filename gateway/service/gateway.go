@@ -6,7 +6,9 @@ import (
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/gateway/routers"
+	"github.com/neuronlabs/neuron/i18n"
 	"github.com/neuronlabs/neuron/log"
+	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,10 +20,12 @@ type GatewayService struct {
 	c *controller.Controller
 
 	// Config is the configuration for teh gateway
-	Config *config.GatewayConfig
+	Config *config.Gateway
 
 	// Server is the default gateway service server
 	Server *http.Server
+
+	I18n *i18n.Support
 }
 
 // New creates new gateway config
@@ -41,7 +45,7 @@ func New(cfg *config.Config) (*GatewayService, error) {
 }
 
 // NewWithC creates new GatewayService with the provided Controller and the GatewayConfig
-func NewWithC(c *controller.Controller, cfg *config.GatewayConfig) (*GatewayService, error) {
+func NewWithC(c *controller.Controller, cfg *config.Gateway) (*GatewayService, error) {
 	return newGatewayService(c, cfg)
 }
 
@@ -50,6 +54,7 @@ func Default(routerName string) *GatewayService {
 	c := controller.Default()
 	cfg := &(*config.ReadDefaultGatewayConfig())
 	cfg.Router.Name = routerName
+	cfg.Hostname = "localhost"
 	g, err := newGatewayService(c, cfg)
 	if err != nil {
 		log.Debugf("NewGatewayService failed: %v", err)
@@ -74,7 +79,7 @@ func (g *GatewayService) RegisterModels(models ...interface{}) error {
 // It is based on the registered models and repositories
 func (g *GatewayService) SetHandlerAndRoutes() (err error) {
 	// set the routes and the router
-	g.Server.Handler, err = routers.GetSettedRouter(g.c, g.Config.Router)
+	g.Server.Handler, err = routers.GetSettedRouter(g.c, g.Config, g.I18n)
 	if err != nil {
 		log.Debugf("Getting Setted Router failed for the router named: '%s'. %v", g.Config.Router.Name, err)
 		return err
@@ -126,25 +131,38 @@ func (g *GatewayService) Run(ctx context.Context) {
 
 // setConfig sets the gateway config
 func (g *GatewayService) setConfig() error {
+	v := validator.New()
+
+	if err := v.Struct(g.Config); err != nil {
+		return err
+	}
+
 	// Get the server setting
 	g.Server.IdleTimeout = g.Config.ShutdownTimeout
 	g.Server.ReadTimeout = g.Config.ReadTimeout
 	g.Server.WriteTimeout = g.Config.WriteTimeout
 	g.Server.ReadHeaderTimeout = g.Config.ReadHeaderTimeout
 
+	i, err := i18n.New(g.Config.I18n)
+	if err != nil {
+		log.Errorf("Creating I18n support failed. %v", err)
+		return err
+	}
+	g.I18n = i
+
 	g.Server.Addr = fmt.Sprintf("%s:%d", g.Config.Hostname, g.Config.Port)
 	return nil
 }
 
-func newGatewayService(c *controller.Controller, cfg *config.GatewayConfig) (*GatewayService, error) {
+func newGatewayService(c *controller.Controller, cfg *config.Gateway) (*GatewayService, error) {
 	g := &GatewayService{
 		c:      c,
 		Config: cfg,
 		Server: &http.Server{},
 	}
+
 	// set the config
-	err := g.setConfig()
-	if err != nil {
+	if err := g.setConfig(); err != nil {
 		log.Errorf("Setting Config failed: %v", err)
 		return nil, err
 	}

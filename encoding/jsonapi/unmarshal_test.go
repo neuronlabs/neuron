@@ -17,7 +17,7 @@ import (
 
 import (
 	// mocks import and register mock repository
-	_ "github.com/neuronlabs/neuron/query/scope/mocks"
+	_ "github.com/neuronlabs/neuron/query/mocks"
 )
 
 // UnmarshalModel basic model used to tests in unmarshal

@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
+
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 		ctx := context.WithValue(req.Context(), internal.ControllerCtxKey, h.c)
 
 		// Build the root scope with the related included field
-		rootScope, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeRelated(
+		rootScope, errs, err := h.Builder.BuildScopeRelated(
 			// Context
 			ctx,
 			// Model
@@ -57,7 +57,7 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 		log.Debugf("Succesfully created RootScope with related field: '%s'", rootScope.IncludedFields()[0].ApiName())
 
 		//	Get the root scope values
-		if err := (*scope.Scope)(rootScope).Get(); err != nil {
+		if err := (*query.Scope)(rootScope).Get(); err != nil {
 			h.handleDBError(req, err, rw)
 			return
 		}
@@ -72,6 +72,6 @@ func (h *Handler) HandleGetRelated(m *mapping.ModelStruct) http.HandlerFunc {
 		relatedScope := includedScopes[0]
 		log.Debugf("Marshaling relatedScope.")
 
-		h.marshalScope((*scope.Scope)(relatedScope), req, rw)
+		h.marshalScope((*query.Scope)(relatedScope), req, rw)
 	})
 }

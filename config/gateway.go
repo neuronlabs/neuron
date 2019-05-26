@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// GatewayConfig defines the configuration for the gateway
-type GatewayConfig struct {
+// Gateway defines the configuration for the gateway
+type Gateway struct {
 	// Port is the port used by the gateway service
 	Port int `mapstructure:"port" validate:"required"`
 
@@ -46,24 +46,10 @@ type GatewayConfig struct {
 	TLSCertPath string `mapstructure:"tls_cert_path"`
 
 	// Router defines the router configuration
-	Router *RouterConfig `mapstructure:"router"`
-}
+	Router *Router `mapstructure:"router"`
 
-// RouterConfig contains information about the router used in the gateway
-type RouterConfig struct {
-	// Name gets the router by it's registered name
-	Name string `mapstructure:"name"`
+	// QueryBuilder contains the query builder config
+	QueryBuilder *Builder `mapstructure:"query_builder"`
 
-	// DefaultMiddlewares are the middlewares used as default for each endpoint
-	// without middlewares set from the
-	DefaultMiddlewares []string `mapstructure:"default_middlewares"`
-
-	// Prefix is the url prefix for the API
-	Prefix string `mapstructure:"prefix"`
-
-	// DefaultPagination defines default ListPagination for the gateway
-	DefaultPagination *Pagination `mapstructure:"default_pagination"`
-
-	// CompressionLevel defines the compression level for the handler function writers
-	CompressionLevel int `mapstructure:"compression_level" validate:"max=9,min=-2"`
+	I18n *I18nConfig `mapstructure:"i18n"`
 }

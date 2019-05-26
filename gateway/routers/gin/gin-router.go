@@ -8,6 +8,7 @@ import (
 	"github.com/neuronlabs/neuron/gateway/handler"
 	mids "github.com/neuronlabs/neuron/gateway/middlewares"
 	"github.com/neuronlabs/neuron/gateway/routers"
+	"github.com/neuronlabs/neuron/i18n"
 	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -21,36 +22,39 @@ func init() {
 	routers.RegisterRouter("gin", newGinRouterSetter())
 }
 
-func defaultGinRouterSetter() routers.RouterSetterFunc {
+func defaultGinRouterSetter() routers.SetterFunc {
 	g := gin.Default()
 	return ginRouterSetter(g)
 }
 
-func newGinRouterSetter() routers.RouterSetterFunc {
+func newGinRouterSetter() routers.SetterFunc {
 	g := gin.New()
 	return ginRouterSetter(g)
 }
 
 // ginRouterSetter is the routers.RouterSetterFunc for the gin Engine
-func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
-	return routers.RouterSetterFunc(func(
+func ginRouterSetter(g *gin.Engine) routers.SetterFunc {
+	return routers.SetterFunc(func(
 		c *controller.Controller,
-		rCfg *config.RouterConfig,
+		cfg *config.Gateway,
+		i *i18n.Support,
 	) (http.Handler, error) {
 
+		routerCfg := cfg.Router
+
 		// get the handler for the routes
-		h := handler.New(c, rCfg)
+		h := handler.New(c, cfg, i)
 
 		for _, schema := range (*ictrl.Controller)(c).ModelSchemas().Schemas() {
 			for _, model := range schema.Models() {
 
 				// Get the url base path = Prefix + schema + model collection
-				urlBasePath := path.Join(rCfg.Prefix, schema.Name, model.Collection())
+				urlBasePath := path.Join(routerCfg.Prefix, schema.Name, model.Collection())
 
 				// get gin middlewares as gin.HandlerChain
 				var (
 					cfg        *config.ModelConfig = model.Config()
-					customMids []string            = rCfg.DefaultMiddlewares
+					customMids []string            = routerCfg.DefaultMiddlewares
 					hc         gin.HandlersChain
 					err        error
 					forbidden  bool
@@ -76,7 +80,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// List endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.List.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.List.Forbidden
@@ -96,7 +100,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// Get endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.Get.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.Get.Forbidden
@@ -116,7 +120,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// Get Related endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.GetRelated.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.GetRelated.Forbidden
@@ -138,7 +142,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// Get Relationship endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.GetRelationship.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.GetRelationship.Forbidden
@@ -160,7 +164,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// Patch endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.Patch.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.Patch.Forbidden
@@ -180,7 +184,7 @@ func ginRouterSetter(g *gin.Engine) routers.RouterSetterFunc {
 				}
 
 				// Delete endpoint
-				customMids = rCfg.DefaultMiddlewares
+				customMids = routerCfg.DefaultMiddlewares
 				if cfg != nil {
 					customMids = append(customMids, cfg.Endpoints.Delete.CustomMiddlewares...)
 					forbidden = cfg.Endpoints.Delete.Forbidden

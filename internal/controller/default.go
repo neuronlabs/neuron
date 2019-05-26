@@ -8,8 +8,8 @@ import (
 
 // DefaultConfig is the controller default config used with the Default function
 var (
-	DefaultConfig        *config.ControllerConfig = config.ReadDefaultControllerConfig()
-	DefaultTestingConfig *config.ControllerConfig
+	DefaultConfig        *config.Controller = config.ReadDefaultControllerConfig()
+	DefaultTestingConfig *config.Controller
 )
 
 func init() {
@@ -22,7 +22,7 @@ func init() {
 }
 
 // DefaultTesting is the default controller used for testing
-func DefaultTesting(t testing.TB, cfg *config.ControllerConfig) *Controller {
+func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
 	if cfg == nil {
 		cfg = DefaultTestingConfig
 	}

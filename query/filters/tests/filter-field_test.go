@@ -7,6 +7,7 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	icontroller "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/log"
+	_ "github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	// import and register mock factory
 	_ "github.com/neuronlabs/neuron/repository/mocks"

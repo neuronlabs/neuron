@@ -2,10 +2,9 @@ package controller
 
 import (
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/i18n"
 	"github.com/neuronlabs/neuron/internal/flags"
 	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
@@ -35,7 +34,7 @@ var (
 // within single API
 type Controller struct {
 	// Config is the configuration struct for the controller
-	Config *config.ControllerConfig
+	Config *config.Controller
 
 	// Namer defines the function strategy how the model's and it's fields are being named
 	NamerFunc namer.Namer
@@ -47,11 +46,10 @@ type Controller struct {
 	// any unknown fields
 	StrictUnmarshalMode bool
 
-	// queryBuilderis the controllers query builder
-	queryBuilder *query.Builder
+	// // queryBuilderis the controllers query builder
+	// queryBuilder *query.Builder
 
-	// i18nSup defines the i18n support for the provided controller
-	i18nSup *i18n.Support
+	processor scope.Processor
 
 	// schemas is a mapping for the model schemas
 	schemas *models.ModelSchemas
@@ -68,7 +66,7 @@ type Controller struct {
 }
 
 // New Creates raw *jsonapi.Controller with no limits and links.
-func New(cfg *config.ControllerConfig, logger unilogger.LeveledLogger) (*Controller, error) {
+func New(cfg *config.Controller, logger unilogger.LeveledLogger) (*Controller, error) {
 
 	if logger != nil {
 		log.SetLogger(logger)
@@ -105,7 +103,7 @@ func Default() *Controller {
 	return defaultController
 }
 
-func newController(cfg *config.ControllerConfig) (*Controller, error) {
+func newController(cfg *config.Controller) (*Controller, error) {
 	var (
 		f   *flags.Container
 		err error
@@ -131,17 +129,6 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 		return nil, errors.Wrap(err, "setConfig failed.")
 	}
 
-	if cfg.I18n != nil {
-		c.i18nSup, err = i18n.New(cfg.I18n)
-		if err != nil {
-			return nil, errors.Wrap(err, "i18n.New failed.")
-		}
-	}
-
-	if c.Config.Builder == nil {
-		return nil, errors.New("No builder within the controller config found")
-	}
-
 	// create model schemas
 	c.schemas, err = models.NewModelSchemas(
 		c.NamerFunc,
@@ -162,11 +149,6 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 		return nil, errors.Errorf("Repository Factory not found for the repository: %s ", defaultRepository.DriverName)
 	}
 
-	c.queryBuilder, err = query.NewBuilder(c.schemas, c.Config.Builder, c.i18nSup)
-	if err != nil {
-		return nil, errors.Wrap(err, "query.NewBuilder failed")
-	}
-
 	// create error manager
 	c.dbErrMapper = aerrors.NewDBMapper()
 
@@ -176,11 +158,6 @@ func newController(cfg *config.ControllerConfig) (*Controller, error) {
 // DBErrorMapper gets the database error manager
 func (c *Controller) DBErrorMapper() *aerrors.ErrorMapper {
 	return c.dbErrMapper
-}
-
-// QueryBuilder returns the controller query builder
-func (c *Controller) QueryBuilder() *query.Builder {
-	return c.queryBuilder
 }
 
 // SetLogger sets the logger for the controller operations
@@ -265,7 +242,7 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 }
 
 // setConfig sets and validates provided config
-func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
+func (c *Controller) setConfig(cfg *config.Controller) error {
 	if cfg == nil {
 		return errors.New("Nil config provided")
 	}
@@ -279,6 +256,10 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 
 	if err := validate.Struct(cfg); err != nil {
 		return errors.Wrap(err, "Validate config failed.")
+	}
+
+	if err := cfg.Processor.Validate(); err != nil {
+		return err
 	}
 
 	c.Config = cfg
@@ -321,4 +302,14 @@ func (c *Controller) setConfig(cfg *config.ControllerConfig) error {
 // ModelSchemas returns model schemas for given controller
 func (c *Controller) ModelSchemas() *models.ModelSchemas {
 	return c.schemas
+}
+
+// Processor returns the query processor for the controller
+func (c *Controller) Processor() scope.Processor {
+	return c.processor
+}
+
+// SetProcessor sets the query processor for the controller
+func (c *Controller) SetProcessor(p scope.Processor) {
+	c.processor = p
 }

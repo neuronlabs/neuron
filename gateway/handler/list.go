@@ -4,14 +4,13 @@ import (
 	"context"
 	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/paginations"
 	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/internal/query/sorts"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
 	"net/http"
 )
 
@@ -28,7 +27,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			h.c,
 		)
 
-		s, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeMany(
+		s, errs, err := h.Builder.BuildScopeMany(
 			ctx,
 			(*models.ModelStruct)(m),
 			req.URL,
@@ -99,7 +98,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 		}
 
 		// List the values for the scope
-		if err := (*scope.Scope)(s).List(); err != nil {
+		if err := (*query.Scope)(s).List(); err != nil {
 			var isNoResult bool
 			if dbErr, ok := err.(*unidb.Error); ok {
 				isNoResult = dbErr.Compare(unidb.ErrNoResult)
@@ -110,7 +109,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			}
 		}
 
-		h.marshalScope((*scope.Scope)(s), req, rw)
+		h.marshalScope((*query.Scope)(s), req, rw)
 		return
 
 	})

@@ -319,7 +319,7 @@ func (s *Scope) getOrCreateLangaugeFilter() (filter *filters.FilterField) {
 		return s.languageFilters
 	}
 
-	filter = filters.NewFilter(models.StructLanguage(s.mStruct))
+	filter = filters.NewFilter(s.mStruct.LanguageField())
 	s.languageFilters = filter
 	return
 

@@ -64,7 +64,7 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 
 // LanguageField returns model's language field
 func (m *ModelStruct) LanguageField() *StructField {
-	lf := models.StructLanguage((*models.ModelStruct)(m))
+	lf := (*models.ModelStruct)(m).LanguageField()
 	if lf == nil {
 		return nil
 	}

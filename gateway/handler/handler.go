@@ -5,20 +5,20 @@ import (
 	"compress/gzip"
 	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/config"
-	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/gateway/builder"
+	"github.com/neuronlabs/neuron/i18n"
 	"github.com/neuronlabs/neuron/internal"
 	ipagination "github.com/neuronlabs/neuron/internal/query/paginations"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/pagination"
-	"github.com/neuronlabs/neuron/query/scope"
 	"io"
+	"net/http"
 	"sort"
 	"strings"
-	// ictrl "github.com/neuronlabs/neuron/internal/controller"
-	// "github.com/neuronlabs/neuron/mapping"
-	"net/http"
 )
 
 const (
@@ -27,21 +27,26 @@ const (
 
 // Handler is the structure that allows the Gateway service to handle API CRUD operations
 type Handler struct {
-	c                *ctrl.Controller
+	c                *controller.Controller
 	ListPagination   *pagination.Pagination
 	CompressionLevel int
 
 	octetTypes [256]octetType
+
+	Builder *builder.JSONAPI
 }
 
 // New creates new route handler for the gateway
-func New(c *ctrl.Controller, cfg *config.RouterConfig) *Handler {
+func New(c *controller.Controller, cfg *config.Gateway, isup *i18n.Support) *Handler {
+
 	h := &Handler{
 		c:                c,
-		CompressionLevel: cfg.CompressionLevel,
+		Builder:          builder.NewJSONAPI(c, cfg.QueryBuilder, isup),
+		CompressionLevel: cfg.Router.CompressionLevel,
 	}
-	if cfg.DefaultPagination != nil {
-		p := ipagination.NewFromConfig(cfg.DefaultPagination)
+
+	if cfg.Router.DefaultPagination != nil {
+		p := ipagination.NewFromConfig(cfg.Router.DefaultPagination)
 		if err := p.Check(); err != nil {
 			log.Errorf("Invalid default pagination provided for the handler.")
 		} else {
@@ -170,7 +175,7 @@ func (h *Handler) marshalErrors(
 }
 
 func (h *Handler) marshalScope(
-	s *scope.Scope,
+	s *query.Scope,
 	req *http.Request,
 	rw http.ResponseWriter,
 ) {
@@ -213,7 +218,7 @@ func (h *Handler) marshalScope(
 	}
 
 	if err := jsonapi.MarshalScopeC(h.c, payloadWriter, s); err != nil {
-		log.Errorf("[REQ-SCOPE-ID][%s] Marshaling Scope failed. Err: %v", (*scope.Scope)(s).ID().String(), err)
+		log.Errorf("[REQ-SCOPE-ID][%s] Marshaling Scope failed. Err: %v", (*query.Scope)(s).ID().String(), err)
 		h.internalError(req, rw)
 		return
 	}

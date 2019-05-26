@@ -3,7 +3,10 @@ package jsonapi
 import (
 	"bytes"
 	"context"
+	"github.com/neuronlabs/neuron/config"
 	ctrl "github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/gateway/builder"
+	"github.com/neuronlabs/neuron/i18n"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/query/scope"
@@ -19,8 +22,10 @@ import (
 
 import (
 	// mocks import and register mock repository
-	_ "github.com/neuronlabs/neuron/query/scope/mocks"
+	_ "github.com/neuronlabs/neuron/query/mocks"
 )
+
+var defaultGWConfig = config.ReadDefaultGatewayConfig()
 
 func TestMarshal(t *testing.T) {
 	buf := bytes.Buffer{}
@@ -268,7 +273,9 @@ func TestMarshalScope(t *testing.T) {
 		u, err := url.Parse("/blogs/3?include=posts,current_post.latest_comment&fields[blogs]=title,created_at,posts&fields[posts]=title,body,comments")
 		require.NoError(t, err)
 
-		s, errs, err := (*controller.Controller)(c).QueryBuilder().BuildScopeSingle(ctx, &internal.Blog{}, u, 3)
+		qb := builder.NewJSONAPI((*ctrl.Controller)(c), defaultGWConfig.QueryBuilder, &i18n.Support{})
+
+		s, errs, err := qb.BuildScopeSingle(ctx, &internal.Blog{}, u, 3)
 
 		if assert.NoError(t, err) && assert.Empty(t, errs) && assert.NotNil(t, s) {
 
@@ -342,7 +349,8 @@ func TestMarshalScope(t *testing.T) {
 		c := controller.DefaultTesting(t, nil)
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		s, err := (*controller.Controller)(c).QueryBuilder().NewScope(&internal.Pet{})
+		qb := builder.NewJSONAPI((*ctrl.Controller)(c), defaultGWConfig.QueryBuilder, &i18n.Support{})
+		s, err := qb.NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
 		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{{ID: 2}, {ID: 3}}}
@@ -384,7 +392,8 @@ func TestMarshalScope(t *testing.T) {
 
 		require.NoError(t, c.RegisterModels(&internal.Pet{}, &internal.User{}))
 
-		s, err := (*controller.Controller)(c).QueryBuilder().NewScope(&internal.Pet{})
+		qb := builder.NewJSONAPI((*ctrl.Controller)(c), defaultGWConfig.QueryBuilder, &i18n.Support{})
+		s, err := qb.NewScope(&internal.Pet{})
 		require.NoError(t, err)
 
 		s.Value = &internal.Pet{ID: 5, Owners: []*internal.User{}}
@@ -428,7 +437,9 @@ func BlogController(t *testing.T) *controller.Controller {
 }
 
 func BlogScope(t *testing.T, c *controller.Controller) *scope.Scope {
-	scope, err := c.QueryBuilder().NewScope(&internal.Blog{})
+
+	qb := builder.NewJSONAPI((*ctrl.Controller)(c), defaultGWConfig.QueryBuilder, &i18n.Support{})
+	scope, err := qb.NewScope(&internal.Blog{})
 	require.NoError(t, err)
 	return scope
 }
@@ -474,7 +485,8 @@ func TestMarshalHiddenScope(t *testing.T) {
 	c := controller.DefaultTesting(t, nil)
 	assert.NoError(t, c.RegisterModels(&HiddenModel{}))
 
-	scope, err := c.QueryBuilder().NewScope(&HiddenModel{})
+	qb := builder.NewJSONAPI((*ctrl.Controller)(c), defaultGWConfig.QueryBuilder, &i18n.Support{})
+	scope, err := qb.NewScope(&HiddenModel{})
 	assert.NoError(t, err)
 
 	scope.Value = &HiddenModel{ID: 1, Visibile: "Visible", HiddenField: "Invisible"}

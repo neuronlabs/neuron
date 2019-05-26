@@ -92,6 +92,9 @@ type Scope struct {
 	// Pagination
 	pagination *paginations.Pagination
 
+	// processor set for given query
+	processor Processor
+
 	isMany bool
 
 	// Flags is the container for all flag variablesF
@@ -283,6 +286,11 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	return nil
 }
 
+// Processor returns the scope's processor
+func (s *Scope) Processor() Processor {
+	return s.processor
+}
+
 // QueryLanguage gets the QueryLanguage tag
 func (s *Scope) QueryLanguage() language.Tag {
 	return s.queryLanguage
@@ -399,6 +407,11 @@ func (s *Scope) SetCollectionValues() error {
 // SetPaginationNoCheck sets the pagination without check
 func (s *Scope) SetPaginationNoCheck(p *paginations.Pagination) {
 	s.pagination = p
+}
+
+// SetProcessor sets the processor for given scope
+func (s *Scope) SetProcessor(p Processor) {
+	s.processor = p
 }
 
 // SetQueryLanguage sets the query language tag
@@ -905,7 +918,7 @@ func (s *Scope) setBelongsToForeignKey() error {
 }
 
 func (s *Scope) checkField(field string) (*models.StructField, *aerrors.ApiError) {
-	sField, err := models.StructCheckField(s.mStruct, field)
+	sField, err := s.mStruct.CheckField(field)
 	if err != nil {
 		return nil, err
 	}
@@ -1110,11 +1123,11 @@ Language
 */
 
 func (s *Scope) getLangtagIndex() (index []int, err error) {
-	if models.StructLanguage(s.mStruct) == nil {
+	if s.mStruct.LanguageField() == nil {
 		err = fmt.Errorf("Model: '%v' does not support i18n langtags.", s.mStruct.Type())
 		return
 	}
-	index = models.StructLanguage(s.mStruct).FieldIndex()
+	index = s.mStruct.LanguageField().FieldIndex()
 	return
 }
 

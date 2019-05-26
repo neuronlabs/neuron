@@ -40,7 +40,7 @@ func (s *Scope) buildSortFields(sortFields ...string) (errs []*aerrors.ApiError)
 	)
 
 	// If the number of sort fields is too long then do not allow
-	if len(sortFields) > models.StructSortScopeCount(s.mStruct) {
+	if len(sortFields) > s.mStruct.SortScopeCount() {
 		err = aerrors.ErrOutOfRangeQueryParameterValue.Copy()
 		err.Detail = fmt.Sprintf("There are too many sort parameters for the '%v' collection.", s.mStruct.Collection())
 		errs = append(errs, err)

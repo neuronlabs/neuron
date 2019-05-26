@@ -10,7 +10,7 @@ import (
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	iscope "github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
 
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -40,39 +40,39 @@ func UnmarshalC(c *ctrl.Controller, r io.Reader, v interface{}) error {
 }
 
 // UnmarshalSingleScopeC unmarshals the value from the reader and creates new scope
-func UnmarshalSingleScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+func UnmarshalSingleScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*query.Scope, error) {
 	s, err := unmarshalScopeOne((*controller.Controller)(c), r, (*models.ModelStruct)(m), true)
 	if err != nil {
 		return nil, err
 	}
-	return (*scope.Scope)(s), nil
+	return (*query.Scope)(s), nil
 }
 
 // UnmarshalSingleScope unmarshals the value from the reader and creates the scope for the default controller
-func UnmarshalSingleScope(r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+func UnmarshalSingleScope(r io.Reader, m *mapping.ModelStruct) (*query.Scope, error) {
 	s, err := unmarshalScopeOne((controller.Default()), r, (*models.ModelStruct)(m), true)
 	if err != nil {
 		return nil, err
 	}
-	return (*scope.Scope)(s), nil
+	return (*query.Scope)(s), nil
 }
 
 // UnmarshalManyScope unmarshals the scope of multiple values for the default controller and given model struct
-func UnmarshalManyScope(r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+func UnmarshalManyScope(r io.Reader, m *mapping.ModelStruct) (*query.Scope, error) {
 	s, err := unmarshalScopeMany(controller.Default(), r, (*models.ModelStruct)(m))
 	if err != nil {
 		return nil, err
 	}
-	return (*scope.Scope)(s), nil
+	return (*query.Scope)(s), nil
 }
 
 // UnmarshalManyScopeC unmarshals the scope of multiple values for the given controller and  model struct
-func UnmarshalManyScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*scope.Scope, error) {
+func UnmarshalManyScopeC(c *ctrl.Controller, r io.Reader, m *mapping.ModelStruct) (*query.Scope, error) {
 	s, err := unmarshalScopeMany((*controller.Controller)(c), r, (*models.ModelStruct)(m))
 	if err != nil {
 		return nil, err
 	}
-	return (*scope.Scope)(s), nil
+	return (*query.Scope)(s), nil
 }
 
 // UnmarshalWithSelected unmarshals the value from io.Reader and returns the selected fields if the value is a single

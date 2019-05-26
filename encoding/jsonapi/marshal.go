@@ -9,7 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/internal/models"
 	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
 	"github.com/pkg/errors"
 
 	"fmt"
@@ -31,7 +31,7 @@ func MarshalC(c *ctrl.Controller, w io.Writer, v interface{}) error {
 }
 
 // MarshalScopeC marshals the scope into the selceted writer for the given controller
-func MarshalScopeC(c *ctrl.Controller, w io.Writer, s *scope.Scope) error {
+func MarshalScopeC(c *ctrl.Controller, w io.Writer, s *query.Scope) error {
 	pl, err := marshalScope((*controller.Controller)(c), (*iscope.Scope)(s))
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func MarshalScopeC(c *ctrl.Controller, w io.Writer, s *scope.Scope) error {
 }
 
 // MarshalScope marshals the scope into the selceted writer for the given controller
-func MarshalScope(w io.Writer, s *scope.Scope) error {
+func MarshalScope(w io.Writer, s *query.Scope) error {
 	pl, err := marshalScope(controller.Default(), (*iscope.Scope)(s))
 	if err != nil {
 		return err

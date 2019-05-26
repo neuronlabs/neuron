@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 	"github.com/neuronlabs/neuron/internal"
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/scope"
+	"github.com/neuronlabs/neuron/query"
+
 	"net/http"
 )
 
@@ -20,7 +20,7 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 
 		// Prepare Context for the scopes
 		ctx := context.WithValue(req.Context(), internal.ControllerCtxKey, h.c)
-		rootScope, errs, err := (*ictrl.Controller)(h.c).QueryBuilder().BuildScopeRelationship(
+		rootScope, errs, err := h.Builder.BuildScopeRelationship(
 			ctx,
 			(*models.ModelStruct)(m),
 			req.URL,
@@ -48,7 +48,7 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 			return
 		}
 
-		if err := (*scope.Scope)(rootScope).Get(); err != nil {
+		if err := (*query.Scope)(rootScope).Get(); err != nil {
 			log.Debugf("Getting the RootScope failed: %v", err)
 			h.handleDBError(req, err, rw)
 			return
@@ -61,6 +61,6 @@ func (h *Handler) HandleGetRelationship(m *mapping.ModelStruct) http.HandlerFunc
 			return
 		}
 
-		h.marshalScope((*scope.Scope)(relScope), req, rw)
+		h.marshalScope((*query.Scope)(relScope), req, rw)
 	})
 }
