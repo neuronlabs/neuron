@@ -3,7 +3,6 @@ package handler
 import (
 	"compress/flate"
 	"compress/gzip"
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
@@ -15,6 +14,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/pagination"
+	"github.com/neuronlabs/uni-db"
 	"io"
 	"net/http"
 	"sort"

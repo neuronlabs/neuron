@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/uni-db"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

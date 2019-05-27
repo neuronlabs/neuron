@@ -3,9 +3,9 @@ package query
 import (
 	"context"
 	"fmt"
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/uni-db"
 	"sync"
 
 	"github.com/neuronlabs/neuron/internal/query/filters"

@@ -2,12 +2,12 @@ package handler
 
 import (
 	"github.com/google/uuid"
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/encoding/jsonapi"
 	"github.com/neuronlabs/neuron/internal"
 	iscope "github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/uni-db"
 
 	// ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/errors"

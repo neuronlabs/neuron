@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/paginations"
@@ -11,6 +10,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/uni-db"
 	"net/http"
 )
 

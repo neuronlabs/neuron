@@ -7,7 +7,7 @@ import (
 
 	"github.com/neuronlabs/neuron/log"
 
-	// "github.com/kucjac/uni-db"
+	// "github.com/neuronlabs/uni-db"
 	"github.com/pkg/errors"
 )
 

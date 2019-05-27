@@ -2,7 +2,7 @@ package query
 
 import (
 	"context"
-	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/uni-db"
 
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"

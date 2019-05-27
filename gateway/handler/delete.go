@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/gateway/builder"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -9,6 +8,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/uni-db"
 	"net/http"
 )
 

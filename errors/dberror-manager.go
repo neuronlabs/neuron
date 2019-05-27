@@ -2,37 +2,42 @@ package errors
 
 import (
 	"errors"
-	"github.com/kucjac/uni-db"
+	"github.com/neuronlabs/uni-db"
 	"sync"
 )
 
 // DefaultErrorMap contain default mapping of unidb.Error prototype into
 // Error. It is used by default by 'ErrorMapper' if created using New() function.
 var DefaultErrorMap map[unidb.Error]ApiError = map[unidb.Error]ApiError{
-	unidb.ErrNoResult:              ErrResourceNotFound,
-	unidb.ErrConnExc:               ErrInternalError,
-	unidb.ErrCardinalityViolation:  ErrInternalError,
-	unidb.ErrDataException:         ErrInvalidInput,
-	unidb.ErrIntegrConstViolation:  ErrInvalidInput,
-	unidb.ErrRestrictViolation:     ErrInvalidInput,
-	unidb.ErrNotNullViolation:      ErrInvalidInput,
-	unidb.ErrForeignKeyViolation:   ErrInvalidInput,
-	unidb.ErrUniqueViolation:       ErrResourceAlreadyExists,
-	unidb.ErrCheckViolation:        ErrInvalidInput,
-	unidb.ErrInvalidTransState:     ErrInternalError,
-	unidb.ErrInvalidTransTerm:      ErrInternalError,
-	unidb.ErrTransRollback:         ErrInternalError,
-	unidb.ErrTxDone:                ErrInternalError,
-	unidb.ErrInvalidAuthorization:  ErrInsufficientAccPerm,
-	unidb.ErrInvalidPassword:       ErrInternalError,
-	unidb.ErrInvalidSchemaName:     ErrInternalError,
-	unidb.ErrInvalidSyntax:         ErrInternalError,
-	unidb.ErrInsufficientPrivilege: ErrInsufficientAccPerm,
-	unidb.ErrInsufficientResources: ErrInternalError,
-	unidb.ErrProgramLimitExceeded:  ErrInternalError,
-	unidb.ErrSystemError:           ErrInternalError,
-	unidb.ErrInternalError:         ErrInternalError,
-	unidb.ErrUnspecifiedError:      ErrInternalError,
+	unidb.ErrNoResult:                     ErrResourceNotFound,
+	unidb.ErrConnection:                   ErrInternalError,
+	unidb.ErrCardinalityViolation:         ErrInternalError,
+	unidb.ErrDataException:                ErrInvalidInput,
+	unidb.ErrIntegrityConstraintViolation: ErrInvalidInput,
+	unidb.ErrRestrictViolation:            ErrInvalidInput,
+	unidb.ErrNotNullViolation:             ErrInvalidInput,
+	unidb.ErrForeignKeyViolation:          ErrInvalidInput,
+	unidb.ErrUniqueViolation:              ErrResourceAlreadyExists,
+	unidb.ErrCheckViolation:               ErrInvalidInput,
+	unidb.ErrTxState:                      ErrInternalError,
+	unidb.ErrTxTermination:                ErrInternalError,
+	unidb.ErrTxRollback:                   ErrInternalError,
+	unidb.ErrTxNotFound:                   ErrInternalError,
+	unidb.ErrTxBeginInProgress:            ErrInternalError,
+	unidb.ErrTxDone:                       ErrInternalError,
+	unidb.ErrAuthorizationFailed:          ErrInsufficientAccPerm,
+	unidb.ErrAuthenticationFailed:         ErrAuthenticationFailed,
+	unidb.ErrInvalidSchemaName:            ErrInternalError, // schema in the repository should be checked and defined by neuron
+	unidb.ErrInvalidResourceName:          ErrInternalError, // resource in the repository should be defined by the neuron
+	unidb.ErrInvalidSyntax:                ErrInternalError,
+	unidb.ErrInsufficientPrivilege:        ErrInsufficientAccPerm,
+	unidb.ErrInsufficientResources:        ErrInternalError,
+	unidb.ErrProgramLimitExceeded:         ErrInternalError,
+	unidb.ErrSystemError:                  ErrInternalError,
+	unidb.ErrInternalError:                ErrInternalError,
+	unidb.ErrUnspecifiedError:             ErrInternalError,
+	unidb.ErrTimedOut:                     ErrOperationTimedOut,
+	unidb.ErrShutdown:                     ErrServerBusy1,
 }
 
 // ErrorMapper defines the database unidb.Error one-to-one mapping

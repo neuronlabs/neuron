@@ -2,13 +2,13 @@ package query
 
 import (
 	"context"
-	"github.com/kucjac/uni-db"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-db"
 	"reflect"
 )
 
