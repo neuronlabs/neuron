@@ -12,9 +12,9 @@ require (
 	github.com/gwatts/gin-adapter v0.0.0-20170508204228-c44433c485ad
 	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
-	github.com/neuronlabs/uni-db v0.0.0-20190418155906-8f0ec86b2472
 	github.com/kucjac/uni-logger v0.0.0-20190105122526-b6dcb1b3f473
 	github.com/leodido/go-urn v1.1.0 // indirect
+	github.com/neuronlabs/uni-db v0.1.1
 	github.com/pkg/errors v0.8.1
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
 	github.com/spf13/viper v1.4.0
