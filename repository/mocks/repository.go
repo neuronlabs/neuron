@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"github.com/neuronlabs/neuron/repository"
 	"github.com/stretchr/testify/mock"
 )
@@ -16,4 +17,9 @@ type Repository struct {
 // Implements repositories.RepositoryNamer interface
 func (r *Repository) RepositoryName() string {
 	return "mocks"
+}
+
+// Close closes the repository connection
+func (r *Repository) Close(ctx context.Context) error {
+	return nil
 }

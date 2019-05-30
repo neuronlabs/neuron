@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
 	"github.com/stretchr/testify/mock"
@@ -29,4 +30,10 @@ func (f *Factory) New(s repository.ModelStructer, model *mapping.ModelStruct) (r
 // Implements repository.Repository
 func (f *Factory) RepositoryName() string {
 	return repoName
+}
+
+// Close closes the factory
+func (f *Factory) Close(ctx context.Context, done chan<- interface{}) {
+	done <- struct{}{}
+	return
 }

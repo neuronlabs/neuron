@@ -6,6 +6,7 @@ import (
 	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/flags"
+	"github.com/neuronlabs/neuron/internal/namer"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"reflect"
@@ -16,6 +17,7 @@ import (
 const (
 	nestedIncludedCountKey = "neuron:nested_included_count"
 	thisIncludedCountKey   = "neuron:this_included_count"
+	namerFuncKey           = "neuron:namer_func"
 )
 
 // ModelStruct is a computed representation of the jsonapi models.
@@ -184,6 +186,13 @@ func (m *ModelStruct) MaxIncludedCount() int {
 	}
 
 	return thisIncluded + nestedIncludedInterface.(int)
+}
+
+// NamerFunc returns namer func for the given Model
+func (m *ModelStruct) NamerFunc() namer.Namer {
+	v, _ := m.StoreGet(namerFuncKey)
+	return v.(namer.Namer)
+
 }
 
 // NewValueSingle creates and returns new value for the given model type

@@ -27,6 +27,11 @@ func (_m *Repository) Begin(ctx context.Context, s *query.Scope) error {
 	return r0
 }
 
+// Close closes the repository connection
+func (_m *Repository) Close(ctx context.Context) error {
+	return nil
+}
+
 // Commit provides a mock function with given fields: ctx, s
 func (_m *Repository) Commit(ctx context.Context, s *query.Scope) error {
 	ret := _m.Called(ctx, s)

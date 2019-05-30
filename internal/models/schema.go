@@ -226,6 +226,7 @@ func (m *ModelSchemas) RegisterModels(
 			}
 		}
 
+		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
 	}
 
 	for _, schema := range m.schemas {

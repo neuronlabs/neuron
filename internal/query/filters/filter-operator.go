@@ -149,6 +149,7 @@ var defaultOperators []*Operator = []*Operator{
 	OpStartsWith,
 	OpEndsWith,
 	OpIsNull,
+	OpNotNull,
 	OpExists,
 	OpNotExists,
 }

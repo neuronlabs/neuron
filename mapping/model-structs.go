@@ -3,6 +3,7 @@ package mapping
 import (
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron/namer"
 	"reflect"
 )
 
@@ -69,6 +70,11 @@ func (m *ModelStruct) LanguageField() *StructField {
 		return nil
 	}
 	return (*StructField)(lf)
+}
+
+// NamerFunc returns the namer func used by the given model
+func (m *ModelStruct) NamerFunc() namer.Namer {
+	return (namer.Namer)((*models.ModelStruct)(m).NamerFunc())
 }
 
 // Primary returns model's primary field

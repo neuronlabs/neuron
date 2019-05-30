@@ -2,7 +2,11 @@
 
 package mocks
 
-import mapping "github.com/neuronlabs/neuron/mapping"
+import (
+	"context"
+
+	mapping "github.com/neuronlabs/neuron/mapping"
+)
 import mock "github.com/stretchr/testify/mock"
 import "github.com/neuronlabs/neuron/repository"
 
@@ -23,4 +27,9 @@ func (_m *Factory) New(structer repository.ModelStructer, model *mapping.ModelSt
 // RepositoryName provides a mock function with given fields:
 func (_m *Factory) RepositoryName() string {
 	return "mocks"
+}
+
+// Close implements repository.Closer interface
+func (_m *Factory) Close(ctx context.Context, done chan<- interface{}) {
+	done <- struct{}{}
 }

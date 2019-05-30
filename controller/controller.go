@@ -1,11 +1,14 @@
 package controller
 
 import (
+	"context"
 	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
+	"time"
 )
 
 // DefaultController is the Default controller used if no 'controller' is provided for operations
@@ -88,6 +91,13 @@ func (c *Controller) Schemas() (schemas []*mapping.Schema) {
 		schemas = append(schemas, (*mapping.Schema)(s))
 	}
 	return
+}
+
+// Close closes all repositories
+func (c *Controller) Close() error {
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	repository.CloseAll(ctx)
+	return nil
 }
 
 func new(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {

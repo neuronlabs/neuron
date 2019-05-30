@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -113,5 +114,32 @@ func (c *container) mapModel(structer ModelStructer, model *mapping.ModelStruct)
 	c.models[model] = repo
 
 	log.Debugf("Model %s mapped, to repository: %s", model.Collection(), repoName)
+	return nil
+}
+
+// CloseAll closes all repositories
+func CloseAll(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan interface{}, len(ctr.factories))
+	for _, factory := range ctr.factories {
+		go factory.Close(ctx, done)
+	}
+	var ct int
+fl:
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case v := <-done:
+			if err, ok := v.(error); ok {
+				return err
+			}
+			ct++
+			if ct == len(ctr.factories) {
+				break fl
+			}
+		}
+	}
 	return nil
 }
