@@ -6,7 +6,6 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
-	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -135,7 +134,7 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.SetPagination(pagination.NewLimitOffset(12, 0))
+		s.SetPagination(query.LimitOffsetPagination(12, 0))
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 

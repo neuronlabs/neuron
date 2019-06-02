@@ -1,6 +1,8 @@
 package sorts
 
 import (
+	"fmt"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 )
@@ -44,12 +46,12 @@ func (s *SortField) copy() *SortField {
 }
 
 // SetSubfield sets the subfield for given sortfield
-func SetSubfield(s *SortField, sortSplitted []string, order Order) (invalidField bool) {
-	return s.setSubfield(sortSplitted, order)
+func (s *SortField) SetSubfield(sortSplitted []string, order Order, disallowFK bool) error {
+	return s.setSubfield(sortSplitted, order, disallowFK)
 }
 
 // setSubfield sets sortfield for subfield of given relationship field.
-func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidField bool) {
+func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK bool) (err error) {
 	var (
 		subField *SortField
 		sField   *models.StructField
@@ -57,7 +59,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 	// Subfields are available only for the relationships
 	if !s.structField.IsRelationship() {
-		invalidField = true
+		err = errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Sort: field '%s' is not a relationship in the model: '%s'", s.structField.ApiName(), s.structField.Struct().Collection()))
 		return
 	}
 
@@ -65,29 +67,41 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 	// i.e. a sort query for
 	switch len(sortSplitted) {
 	case 0:
-		invalidField = true
+		err = errors.ErrInternalError.Copy().WithDetail("Sort: setting sub sortfield failed")
 		return
 	case 1:
 		// if len is equal to one then it should be primary or attribute field
+
+		relatedModel := s.structField.Relationship().Struct()
 		sort := sortSplitted[0]
+
 		if sort == internal.AnnotationID {
-			sField = models.StructPrimary(models.FieldsRelatedModelStruct(s.structField))
+			sField = relatedModel.PrimaryField()
 		} else {
 			var ok bool
-			sField, ok = models.StructAttr(models.FieldsRelatedModelStruct(s.structField), sortSplitted[0])
+			sField, ok = relatedModel.Attribute(sort)
 			if !ok {
-				invalidField = true
-				return
+				if disallowFK {
+					err = errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection()))
+					return
+				}
+				sField, ok = relatedModel.ForeignKey(sort)
+				if !ok {
+					err = errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection()))
+					return
+				}
 			}
 		}
 
 		s.subFields = append(s.subFields, &SortField{structField: sField, order: order})
 	default:
 		// if length is more than one -> there is a relationship
+		relatedModel := s.structField.Relationship().Struct()
 		var ok bool
-		sField, ok := models.StructRelField(models.FieldsRelatedModelStruct(s.structField), sortSplitted[0])
+
+		sField, ok = relatedModel.RelationshipField(sortSplitted[0])
 		if !ok {
-			invalidField = true
+			err = errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Sort: field '%s' not found in the model: '%s'", sortSplitted[0], relatedModel.Collection()))
 			return
 		}
 
@@ -101,15 +115,17 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order) (invalidFiel
 
 		// if none found create new
 		if subField == nil {
-			subField = &SortField{structField: sField}
+			subField = &SortField{structField: sField, order: order}
 		}
 
 		//
-		invalidField = subField.setSubfield(sortSplitted[1:], order)
-		if !invalidField {
-			// if found keep the subfield in subfields
-			s.subFields = append(s.subFields, subField)
+		err = subField.setSubfield(sortSplitted[1:], order, disallowFK)
+		if err != nil {
+			return
 		}
+		// if found keep the subfield in subfields
+		s.subFields = append(s.subFields, subField)
+
 	}
 	return
 }

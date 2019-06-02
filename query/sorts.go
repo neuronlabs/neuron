@@ -1,4 +1,4 @@
-package sorts
+package query
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ func (s *SortField) StructField() *mapping.StructField {
 }
 
 // Order returns sortfield's order
-func (s *SortField) Order() Order {
-	return Order((*sorts.SortField)(s).Order())
+func (s *SortField) Order() SortOrder {
+	return SortOrder((*sorts.SortField)(s).Order())
 }
 
 // FormatQuery returns the sort field formatted for url query.
@@ -57,4 +57,24 @@ func (s *SortField) FormatQuery(q ...url.Values) url.Values {
 	query.Set(internal.QueryParamSort, v)
 
 	return query
+}
+
+// SortOrder is the enum used for the sorting values
+type SortOrder int
+
+const (
+	// AscendingOrder defines the sorting ascending order
+	AscendingOrder SortOrder = iota
+
+	// DescendingOrder defines the sorting descending order
+	DescendingOrder
+)
+
+// String implements Stringer interface
+func (o SortOrder) String() string {
+	if o == AscendingOrder {
+		return "ascending"
+	}
+
+	return "descending"
 }

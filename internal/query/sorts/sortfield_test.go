@@ -51,29 +51,29 @@ func TestSetRelationScopeSort(t *testing.T) {
 	require.NoError(t, err)
 
 	sortField := &SortField{structField: mStruct.PrimaryField()}
-	invalidSortField := sortField.setSubfield([]string{}, AscendingOrder)
-	assert.True(t, invalidSortField)
+	err = sortField.setSubfield([]string{}, AscendingOrder, true)
+	assert.Error(t, err)
 
 	postField, ok := mStruct.RelationshipField("posts")
 	require.True(t, ok)
 
 	sortField = &SortField{structField: postField}
-	invalidSortField = sortField.setSubfield([]string{}, AscendingOrder)
-	assert.True(t, invalidSortField)
+	err = sortField.setSubfield([]string{}, AscendingOrder, true)
+	assert.Error(t, err)
 
-	invalidSortField = sortField.setSubfield([]string{"posts", "some", "id"}, AscendingOrder)
-	assert.True(t, invalidSortField)
+	err = sortField.setSubfield([]string{"posts", "some", "id"}, AscendingOrder, true)
+	assert.Error(t, err)
 
-	invalidSortField = sortField.setSubfield([]string{"comments", "id", "desc"}, AscendingOrder)
-	assert.True(t, invalidSortField)
+	err = sortField.setSubfield([]string{"comments", "id", "desc"}, AscendingOrder, true)
+	assert.Error(t, err)
 
-	inv := sortField.setSubfield([]string{"comments", "id"}, AscendingOrder)
-	assert.False(t, inv)
+	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
+	assert.NoError(t, err)
 
-	inv = sortField.setSubfield([]string{"comments", "body"}, AscendingOrder)
-	assert.False(t, inv)
+	err = sortField.setSubfield([]string{"comments", "body"}, AscendingOrder, true)
+	assert.NoError(t, err)
 
-	inv = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder)
-	assert.False(t, inv)
+	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
+	assert.NoError(t, err)
 
 }

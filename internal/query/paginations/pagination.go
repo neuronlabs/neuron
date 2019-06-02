@@ -13,7 +13,6 @@ type Type int
 const (
 	TpOffset Type = iota
 	TpPage
-	TpCursor
 )
 
 func (t Type) String() string {
@@ -22,8 +21,6 @@ func (t Type) String() string {
 		return "Offset"
 	case TpPage:
 		return "Page"
-	case TpCursor:
-		return "Cursor"
 	default:
 		return "Unknown"
 	}
@@ -42,13 +39,8 @@ const (
 
 // Pagination is a struct that keeps variables used to paginate the result
 type Pagination struct {
-	Limit      int
-	Offset     int
-	PageNumber int
-	PageSize   int
-
-	UseTotal bool
-	Total    int
+	first  int // first is the limit, or page number
+	second int // second is the offset or page size
 
 	// Describes which pagination type to use.
 	tp Type
@@ -56,14 +48,37 @@ type Pagination struct {
 
 // NewFromConfig creates new pagination based on the provided config
 func NewFromConfig(p *config.Pagination) *Pagination {
-	pg := &Pagination{
-		Limit:      p.Limit,
-		Offset:     p.Offset,
-		PageNumber: p.PageNumber,
-		PageSize:   p.PageSize,
+	var pg *Pagination
+	if p.Limit != 0 || p.Offset != 0 {
+		pg = &Pagination{
+			first:  p.Limit,
+			second: p.Offset,
+		}
+	} else {
+		pg = &Pagination{
+			first:  p.PageNumber,
+			second: p.PageSize,
+		}
 	}
-
 	return pg
+}
+
+// NewLimitOffset creates new limit offset pagination
+func NewLimitOffset(limit, offset int) *Pagination {
+	return &Pagination{
+		first:  limit,
+		second: offset,
+		tp:     TpOffset,
+	}
+}
+
+// NewPaged creates new pagination of TpPage type
+func NewPaged(pageNumber, pageSize int) *Pagination {
+	return &Pagination{
+		first:  pageNumber,
+		second: pageSize,
+		tp:     TpPage,
+	}
 }
 
 // CheckPagination checks if the given pagination is valid
@@ -76,9 +91,33 @@ func (p *Pagination) Check() error {
 	return p.check()
 }
 
+// IsZero checks if the pagination were already set
+func (p *Pagination) IsZero() bool {
+	return p.first == 0 && p.second == 0 && p.tp == 0
+}
+
 // SetType sets the pagination type
 func (p *Pagination) SetType(tp Type) {
 	p.tp = tp
+}
+
+// SetLimitOffset sets the Pagination from the PageType into  OffsetType
+func (p *Pagination) SetLimitOffset() {
+	if p.tp == TpPage {
+		p.first = p.second
+		p.second = p.first * p.second
+		p.tp = TpOffset
+	}
+}
+
+// SetValue sets the pagination value for given parameter
+func (p *Pagination) SetValue(val int, parameter Parameter) {
+	switch parameter {
+	case ParamLimit, ParamNumber:
+		p.first = val
+	case ParamOffset, ParamSize:
+		p.second = val
+	}
 }
 
 // Type gets the pagination type
@@ -90,11 +129,9 @@ func (p *Pagination) Type() Type {
 func (p *Pagination) String() string {
 	switch p.tp {
 	case TpOffset:
-		return fmt.Sprintf("Offset Pagination. Limit: %d, Offset: %d", p.Limit, p.Offset)
+		return fmt.Sprintf("Offset Pagination. Limit: %d, Offset: %d", p.first, p.second)
 	case TpPage:
-		return fmt.Sprintf("PageType Pagination. PageSize: %d, PageNumber: %d", p.PageSize, p.PageNumber)
-	case TpCursor:
-		return fmt.Sprintf("Cursor Pagination. Limit: %d, Offset: %d", p.Limit, p.Offset)
+		return fmt.Sprintf("PageType Pagination. PageSize: %d, PageNumber: %d", p.second, p.first)
 	default:
 		return "Unknown Pagination"
 	}
@@ -104,29 +141,53 @@ func (p *Pagination) String() string {
 func (p *Pagination) GetLimitOffset() (limit, offset int) {
 	switch p.tp {
 	case TpOffset:
-		limit = p.Limit
-		offset = p.Offset
+		limit = p.first
+		offset = p.second
 	case TpPage:
-		limit = p.PageSize
-		offset = p.PageNumber * p.PageSize
-	case TpCursor:
-		// not implemented yet
+		limit = p.second
+		offset = p.second * p.first
+	}
+	return
+}
+
+// GetNumberSize gets the page number and size
+func (p *Pagination) GetNumberSize() (pageNumber, pageSize int) {
+	switch p.tp {
+	case TpOffset:
+		pageSize = p.second
+		pageNumber = p.second / p.first
+	case TpPage:
+		pageNumber = p.first
+		pageSize = p.second
 	}
 	return
 }
 
 func (p *Pagination) check() error {
-	var offsetBased, pageBased bool
-	if p.Limit != 0 || p.Offset != 0 {
-		offsetBased = true
+	if err := p.checkValues(); err != nil {
+		return err
 	}
-	if p.PageNumber != 0 || p.PageSize != 0 {
-		pageBased = true
+	return nil
+}
+
+func (p *Pagination) checkValues() error {
+	if p.tp == TpOffset {
+		if p.first < 0 {
+			return errors.New("Pagination limit lower than -1")
+		}
+
+		if p.second < 0 {
+			return errors.New("Pagination offset lower than 0")
+		}
+		return nil
 	}
 
-	if offsetBased && pageBased {
-		err := errors.New("Both offset-based and page-based pagination are set.")
-		return err
+	if p.first < 0 {
+		return errors.New("Pagination page-number lower than 0")
+	}
+
+	if p.second < 0 {
+		return errors.New("Pagination page-size lower than 0")
 	}
 	return nil
 }

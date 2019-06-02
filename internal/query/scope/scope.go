@@ -269,18 +269,31 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	if s.pagination == nil {
 		s.pagination = &paginations.Pagination{}
 	}
+
 	switch index {
 	case 0:
-		s.pagination.Limit = val
+		if s.pagination.Type() == paginations.TpPage {
+			return aerrors.ErrInvalidQueryParameter.Copy().WithDetail("Multiple pagination types in the query")
+		}
+		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpOffset)
 	case 1:
-		s.pagination.Offset = val
+		if s.pagination.Type() == paginations.TpPage {
+			return aerrors.ErrInvalidQueryParameter.Copy().WithDetail("Multiple pagination types in the query")
+		}
+		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpOffset)
 	case 2:
-		s.pagination.PageNumber = val
+		if s.pagination.Type() == paginations.TpOffset && !s.pagination.IsZero() {
+			return aerrors.ErrInvalidQueryParameter.Copy().WithDetail("Multiple pagination types in the query")
+		}
+		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpPage)
 	case 3:
-		s.pagination.PageSize = val
+		if s.pagination.Type() == paginations.TpOffset && !s.pagination.IsZero() {
+			return aerrors.ErrInvalidQueryParameter.Copy().WithDetail("Multiple pagination types in the query")
+		}
+		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpPage)
 	}
 	return nil

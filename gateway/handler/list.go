@@ -75,7 +75,7 @@ func (h *Handler) HandleList(m *mapping.ModelStruct) http.HandlerFunc {
 			if len(eCfg.PresetSorts) != 0 {
 				var sortFields []*sorts.SortField
 				for _, sort := range eCfg.PresetSorts {
-					sortField, err := sorts.NewRawSortField((*models.ModelStruct)(m), sort)
+					sortField, err := sorts.NewRawSortField((*models.ModelStruct)(m), sort, true)
 					if err != nil {
 						log.Errorf("Preset sort creation failed. Err: %v", err)
 						h.internalError(req, rw)

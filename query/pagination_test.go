@@ -1,4 +1,4 @@
-package pagination
+package query
 
 import (
 	"github.com/neuronlabs/neuron/internal"
@@ -12,7 +12,8 @@ import (
 func TestFormatQuery(t *testing.T) {
 
 	t.Run("Paged", func(t *testing.T) {
-		p := NewPaged(10, 2)
+
+		p := PagedPagination(10, 2)
 
 		require.NoError(t, p.Check())
 
@@ -27,7 +28,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Limited", func(t *testing.T) {
-		p := NewLimitOffset(10, 0)
+		p := LimitOffsetPagination(10, 0)
 
 		require.NoError(t, p.Check())
 
@@ -39,7 +40,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Offseted", func(t *testing.T) {
-		p := NewLimitOffset(0, 10)
+		p := LimitOffsetPagination(0, 10)
 
 		require.NoError(t, p.Check())
 
@@ -51,7 +52,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("LimitOffset", func(t *testing.T) {
-		p := NewLimitOffset(10, 140)
+		p := LimitOffsetPagination(10, 140)
 
 		require.NoError(t, p.Check())
 

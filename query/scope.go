@@ -16,8 +16,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/filters"
-	"github.com/neuronlabs/neuron/query/pagination"
-	"github.com/neuronlabs/neuron/query/sorts"
 	"github.com/neuronlabs/neuron/repository"
 	"gopkg.in/go-playground/validator.v9"
 	"net/url"
@@ -294,9 +292,31 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 	return (*filters.FilterField)((*scope.Scope)(s).LanguageFilter())
 }
 
+// Limit sets the maximum number of objects returned by the List process,
+// Offset sets the query result's offset. It says to skip as many object's from the repository
+// before beginning to return the result. 'Offset' 0 is the same as ommitting the 'Offset' clause.
+func (s *Scope) Limit(limit, offset int) error {
+	if (*scope.Scope)(s).Pagination() != nil {
+		return errors.ErrInvalidQueryParameter.Copy().WithDetail("Pagination already set.")
+	}
+
+	p := newLimitOffset(limit, offset)
+	if err := p.Check(); err != nil {
+		return err
+	}
+	(*scope.Scope)(s).SetPaginationNoCheck((*paginations.Pagination)(p))
+
+	return nil
+}
+
 // List gets the values from the repository taking into account the scope
 // filters and parameters
 func (s *Scope) List() error {
+	// Check the scope's values is an array
+	if !(*scope.Scope)(s).IsMany() {
+		return errors.ErrInvalidInput.Copy().WithDetail("Single value provided for the List process")
+	}
+	// list from the processor
 	if err := s.defaultProcessor().List(context.Background(), (*scope.Scope)(s)); err != nil {
 		return err
 	}
@@ -350,9 +370,24 @@ func (s *Scope) PatchContext(ctx context.Context) error {
 	return s.patch(ctx)
 }
 
+// Page sets the list's pagination of the TpPage
+func (s *Scope) Page(number, size int) error {
+	if (*scope.Scope)(s).Pagination() != nil {
+		return errors.ErrInvalidQueryParameter.Copy().WithDetail("Pagination already set.")
+	}
+
+	p := newPaged(number, size)
+	if err := p.Check(); err != nil {
+		return err
+	}
+
+	(*scope.Scope)(s).SetPaginationNoCheck((*paginations.Pagination)(p))
+	return nil
+}
+
 // Pagination returns the pagination for given scope
-func (s *Scope) Pagination() *pagination.Pagination {
-	return (*pagination.Pagination)((*scope.Scope)(s).Pagination())
+func (s *Scope) Pagination() *Pagination {
+	return (*Pagination)((*scope.Scope)(s).Pagination())
 }
 
 // PrimaryFilters returns scope's primary iFilters
@@ -384,7 +419,7 @@ func (s *Scope) RollbackContext(ctx context.Context) error {
 }
 
 // SetPagination sets the Pagination for the scope.
-func (s *Scope) SetPagination(p *pagination.Pagination) error {
+func (s *Scope) SetPagination(p *Pagination) error {
 	return scope.SetPagination((*scope.Scope)(s), (*paginations.Pagination)(p))
 }
 
@@ -423,20 +458,32 @@ func (s *Scope) SetFieldset(fields ...interface{}) error {
 }
 
 // SortBy adds the sort fields into given scope
+// If the scope already have any
 func (s *Scope) SortBy(fields ...string) error {
+	if s.internal().HaveSortFields() {
+		sortFields, err := (*scope.Scope)(s).CreateSortFields(false, fields...)
+		if err != nil {
+			return err
+		}
+		s.internal().AppendSortFields(true, sortFields...)
+		return nil
+	}
+
 	errs := (*scope.Scope)(s).BuildSortFields(fields...)
 	if len(errs) > 0 {
 		return errors.MultipleErrors(errs)
 	}
+
 	return nil
 }
 
 // SortFields returns the sorts used in the scope
-func (s *Scope) SortFields() []*sorts.SortField {
-	var sortFields []*sorts.SortField
+func (s *Scope) SortFields() []*SortField {
+	var sortFields []*SortField
+
 	sfs := (*scope.Scope)(s).SortFields()
 	for _, sf := range sfs {
-		sortFields = append(sortFields, (*sorts.SortField)(sf))
+		sortFields = append(sortFields, (*SortField)(sf))
 	}
 	return sortFields
 }
@@ -603,6 +650,11 @@ func (s *Scope) commit(ctx context.Context) error {
 }
 
 func (s *Scope) createContext(ctx context.Context) error {
+	if (*scope.Scope)(s).IsMany() {
+		// TODO: add create many
+		return fmt.Errorf("Create failed, multiple values in the scope")
+	}
+
 	// if no fields were selected set automatically non zero
 	if err := (*scope.Scope)(s).AutoSelectFields(); err != nil {
 		return err
@@ -673,6 +725,10 @@ func (s *Scope) formatQuery() url.Values {
 	return q
 }
 
+func (s *Scope) internal() *scope.Scope {
+	return (*scope.Scope)(s)
+}
+
 func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, error) {
 	sub, err := newScope((*controller.Controller)(s.Controller()), value)
 	if err != nil {
@@ -695,6 +751,11 @@ func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, err
 }
 
 func (s *Scope) patch(ctx context.Context) error {
+	// check if scope's value is single
+	if (*scope.Scope)(s).IsMany() {
+		return fmt.Errorf("Patching failed, multiples values within scope")
+	}
+
 	// if no fields were selected set automatically non zero
 	if err := (*scope.Scope)(s).AutoSelectFields(); err != nil {
 		return err

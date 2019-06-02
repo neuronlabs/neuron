@@ -6,7 +6,7 @@ import (
 )
 
 // Operators contains all the registered operators
-var Operators *OperatorContainer = NewOpContainer()
+var Operators = NewOpContainer()
 
 // Operator is the operator used while filtering the query
 type Operator struct {
@@ -114,29 +114,30 @@ func (c *OperatorContainer) registerOperator(op *Operator, nextID uint16) error 
 	return nil
 }
 
+// Operator definitions
 var (
 	// Logical Operators
-	OpEqual        *Operator = &Operator{Raw: AnnotationOperatorEqual, Name: "Equal"}
-	OpIn           *Operator = &Operator{Raw: AnnotationOperatorIn, Name: "In"}
-	OpNotEqual     *Operator = &Operator{Raw: AnnotationOperatorNotEqual, Name: "NotEqual"}
-	OpNotIn        *Operator = &Operator{Raw: AnnotationOperatorNotIn, Name: "NotIn"}
-	OpGreaterThan  *Operator = &Operator{Raw: AnnotationOperatorGreaterThan, Name: "GreaterThan"}
-	OpGreaterEqual *Operator = &Operator{Raw: AnnotationOperatorGreaterEqual, Name: "GreaterThanOrEqualTo"}
-	OpLessThan     *Operator = &Operator{Raw: AnnotationOperatorLessThan, Name: "LessThan"}
-	OpLessEqual    *Operator = &Operator{Raw: AnnotationOperatorLessEqual, Name: "LessThanOrEqualTo"}
+	OpEqual        = &Operator{Raw: AnnotationOperatorEqual, Name: "Equal"}
+	OpIn           = &Operator{Raw: AnnotationOperatorIn, Name: "In"}
+	OpNotEqual     = &Operator{Raw: AnnotationOperatorNotEqual, Name: "NotEqual"}
+	OpNotIn        = &Operator{Raw: AnnotationOperatorNotIn, Name: "NotIn"}
+	OpGreaterThan  = &Operator{Raw: AnnotationOperatorGreaterThan, Name: "GreaterThan"}
+	OpGreaterEqual = &Operator{Raw: AnnotationOperatorGreaterEqual, Name: "GreaterThanOrEqualTo"}
+	OpLessThan     = &Operator{Raw: AnnotationOperatorLessThan, Name: "LessThan"}
+	OpLessEqual    = &Operator{Raw: AnnotationOperatorLessEqual, Name: "LessThanOrEqualTo"}
 
 	// Strings Only operators
 	OpContains   = &Operator{Raw: AnnotationOperatorContains, Name: "Contains"}
 	OpStartsWith = &Operator{Raw: AnnotationOperatorStartsWith, Name: "StartsWith"}
 	OpEndsWith   = &Operator{Raw: AnnotationOperatorEndsWith, Name: "EndsWith"}
 
-	OpIsNull    *Operator = &Operator{Raw: AnnotationOperatorIsNull, Name: "IsNull"}
-	OpNotNull   *Operator = &Operator{Raw: AnnotationOperatorNotNull, Name: "NotNull"}
-	OpExists    *Operator = &Operator{Raw: AnnotationOperatorExists, Name: "Exists"}
-	OpNotExists *Operator = &Operator{Raw: AnnotationOperatorNotExists, Name: "NotExists"}
+	OpIsNull    = &Operator{Raw: AnnotationOperatorIsNull, Name: "IsNull"}
+	OpNotNull   = &Operator{Raw: AnnotationOperatorNotNull, Name: "NotNull"}
+	OpExists    = &Operator{Raw: AnnotationOperatorExists, Name: "Exists"}
+	OpNotExists = &Operator{Raw: AnnotationOperatorNotExists, Name: "NotExists"}
 )
 
-var defaultOperators []*Operator = []*Operator{
+var defaultOperators = []*Operator{
 	OpEqual,
 	OpIn,
 	OpNotEqual,

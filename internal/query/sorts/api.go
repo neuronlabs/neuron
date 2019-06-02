@@ -1,8 +1,8 @@
 package sorts
 
 import (
-	"errors"
 	"fmt"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"strings"
@@ -34,7 +34,7 @@ func newSortField(sField *models.StructField, o Order, subs ...*SortField) *Sort
 }
 
 // NewRawSortField returns raw sortfield
-func NewRawSortField(m *models.ModelStruct, sort string) (*SortField, error) {
+func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*SortField, error) {
 	var (
 		sField    *models.StructField
 		sortField *SortField
@@ -78,12 +78,12 @@ func NewRawSortField(m *models.ModelStruct, sort string) (*SortField, error) {
 
 		sortField = newSortField(sField, AscendingOrder)
 
-		invalidField := sortField.setSubfield(splitted[1:], order)
-		if !invalidField {
-			return nil, &SortError{FieldName: strings.Join(splitted[1:], "."), Err: "Nested field no found."}
+		err := sortField.setSubfield(splitted[1:], order, disallowFK)
+		if err != nil {
+			return nil, err
 		}
 	default:
-		return nil, errors.New("No field found.")
+		return nil, errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection()))
 	}
 
 	return sortField, nil

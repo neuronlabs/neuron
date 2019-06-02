@@ -13,7 +13,6 @@ import (
 	ipagination "github.com/neuronlabs/neuron/internal/query/paginations"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/pagination"
 	"github.com/neuronlabs/uni-db"
 	"io"
 	"net/http"
@@ -28,7 +27,7 @@ const (
 // Handler is the structure that allows the Gateway service to handle API CRUD operations
 type Handler struct {
 	c                *controller.Controller
-	ListPagination   *pagination.Pagination
+	ListPagination   *query.Pagination
 	CompressionLevel int
 
 	octetTypes [256]octetType
@@ -50,7 +49,7 @@ func New(c *controller.Controller, cfg *config.Gateway, isup *i18n.Support) *Han
 		if err := p.Check(); err != nil {
 			log.Errorf("Invalid default pagination provided for the handler.")
 		} else {
-			h.ListPagination = (*pagination.Pagination)(p)
+			h.ListPagination = (*query.Pagination)(p)
 			log.Debugf("Handler set default Pagination to: %s", h.ListPagination)
 		}
 	}

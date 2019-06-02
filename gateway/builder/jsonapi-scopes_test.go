@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/internal/query/paginations"
 	"github.com/neuronlabs/neuron/internal/query/sorts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,9 +129,10 @@ func TestBuildScopeMany(t *testing.T) {
 
 			if assert.NotNil(t, s) {
 
-				if pagination := s.Pagination(); assert.NotNil(t, pagination) {
-					assert.Equal(t, 4, pagination.PageSize)
-					assert.Equal(t, 5, pagination.PageNumber)
+				if p := s.Pagination(); assert.NotNil(t, p) {
+					number, size := (*paginations.Pagination)(p).GetNumberSize()
+					assert.Equal(t, 4, size)
+					assert.Equal(t, 5, number)
 				}
 			}
 		})
@@ -146,9 +148,10 @@ func TestBuildScopeMany(t *testing.T) {
 
 			if assert.NotNil(t, s) {
 
-				if pagination := s.Pagination(); assert.NotNil(t, pagination) {
-					assert.Equal(t, 10, pagination.Limit)
-					assert.Equal(t, 5, pagination.Offset)
+				if p := s.Pagination(); assert.NotNil(t, p) {
+					limit, offset := p.GetLimitOffset()
+					assert.Equal(t, 10, limit)
+					assert.Equal(t, 5, offset)
 				}
 			}
 		})

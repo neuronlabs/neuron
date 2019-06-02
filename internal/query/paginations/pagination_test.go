@@ -7,17 +7,15 @@ import (
 
 // TestGetLimitOffset tests the pagination GetLimitOffset method
 func TestGetLimitOffset(t *testing.T) {
-	p := &Pagination{tp: TpOffset, Offset: 1, Limit: 10}
+	p := &Pagination{tp: TpOffset, second: 1, first: 10}
 	limit, offset := p.GetLimitOffset()
-	assert.Equal(t, p.Limit, limit)
-	assert.Equal(t, p.Offset, offset)
+	assert.Equal(t, p.first, limit)
+	assert.Equal(t, p.second, offset)
 
-	p = &Pagination{tp: TpPage, PageNumber: 3, PageSize: 9}
+	p = &Pagination{tp: TpPage, first: 3, second: 9}
 	limit, offset = p.GetLimitOffset()
 
-	assert.Equal(t, p.PageNumber*p.PageSize, offset)
-	assert.Equal(t, p.PageSize, limit)
+	assert.Equal(t, p.first*p.second, offset)
+	assert.Equal(t, p.second, limit)
 
-	p = &Pagination{tp: TpCursor}
-	p.GetLimitOffset()
 }

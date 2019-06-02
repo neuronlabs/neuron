@@ -137,7 +137,7 @@ func TestListRelationFilters(t *testing.T) {
 
 		t.Run("MixedFilters", func(t *testing.T) {
 
-			s, err := query.NewC((*ctrl.Controller)(c), &relationModel{})
+			s, err := query.NewC((*ctrl.Controller)(c), &[]*relationModel{})
 			require.NoError(t, err)
 
 			require.NoError(t, s.AddStringFilter("[relation_models][relation][some_attr][$eq]", "test-value"))

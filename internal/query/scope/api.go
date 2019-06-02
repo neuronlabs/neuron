@@ -5,21 +5,11 @@ import (
 	"github.com/neuronlabs/neuron/internal/namer/dialect"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/paginations"
-	"github.com/neuronlabs/neuron/internal/query/sorts"
 )
 
 // AddFilterField adds the filter field for given scope
 func AddFilterField(s *Scope, filter *filters.FilterField) error {
 	return s.addFilterField(filter)
-}
-
-// AppendSortFields appends the sortfield to the given scope
-func (s *Scope) AppendSortFields(fromStart bool, sortFields ...*sorts.SortField) {
-	if fromStart {
-		s.sortFields = append(sortFields, s.sortFields...)
-	} else {
-		s.sortFields = append(s.sortFields, sortFields...)
-	}
 }
 
 // CopyScope copies provided scope and sets its root
