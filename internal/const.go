@@ -30,9 +30,7 @@ const (
 	AnnotationNestedField = "nested"
 
 	// relation tag
-	AnnotationManyToMany     = "many2many"
-	AnnotationRelationNoSync = "nosync"
-	AnnotationRelationSync   = "sync"
+	AnnotationManyToMany = "many2many"
 
 	AnnotationRelationRestrict = "restrict"
 	AnnotationRelationNoAction = "no-action"

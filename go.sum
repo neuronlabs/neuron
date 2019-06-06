@@ -124,6 +124,8 @@ github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3Rllmb
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/neuronlabs/uni-db v0.1.1 h1:PulTwUFrAamzyJML3SFQ2lE2BB4RpTcIyhq/ZbsiamM=
 github.com/neuronlabs/uni-db v0.1.1/go.mod h1:aJYBHPDBLP1w3+paXYY1Elon5PCeAmILW2o5HKFNYWA=
+github.com/neuronlabs/uni-logger v1.0.1 h1:B0vzVZaTSIRx1ujec3Ug1eLJvBjIfY/C99OAPBff+gM=
+github.com/neuronlabs/uni-logger v1.0.1/go.mod h1:vhPFBuAMP6fuJryZ+szEjR37hmT59jtZiKo/JgkIldg=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=

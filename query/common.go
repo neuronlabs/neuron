@@ -1,6 +1,7 @@
 package query
 
 import (
+	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/pkg/errors"
 )
 
@@ -15,3 +16,7 @@ var (
 	ErrNoDeleterFound             error = errors.New("The repository doesn't implement Deleter interface")
 	ErrTransactionAlreadyResolved error = errors.New("Transaction already resolved")
 )
+
+func queryS(s *scope.Scope) *Scope {
+	return (*Scope)(s)
+}

@@ -68,7 +68,6 @@ func (c *Controller) MapRepositories(s *Schema) error {
 			var reponame string
 			if reponame = model.RepositoryName; reponame == "" {
 				log.Debugf("Model: %s config have no Repository nor RepositoryName defined. Setting to default repository", model.Collection)
-				log.Debugf("Model Config: %s", model)
 				reponame = c.DefaultRepositoryName
 			}
 			repoConfig, ok := c.Repositories[reponame]

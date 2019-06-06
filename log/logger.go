@@ -2,7 +2,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/kucjac/uni-logger"
+	"github.com/neuronlabs/uni-logger"
 	"github.com/pkg/errors"
 	"io"
 	"log"
@@ -33,8 +33,10 @@ var (
 )
 
 var (
-	logger       unilogger.LeveledLogger
-	currentLevel unilogger.Level = LINFO
+	logger         unilogger.LeveledLogger
+	currentLevel   unilogger.Level = LINFO
+	debugLeveled   unilogger.DebugLeveledLogger
+	isDebugLeveled bool
 )
 
 // Logger returns default logger
@@ -78,6 +80,8 @@ func SetLogger(log unilogger.LeveledLogger) {
 	if lvlSetter, ok := log.(unilogger.LevelSetter); ok {
 		lvlSetter.SetLevel(currentLevel)
 	}
+
+	debugLeveled, isDebugLeveled = log.(unilogger.DebugLeveledLogger)
 }
 
 // New creates new logger on the base of the provided values
@@ -85,6 +89,7 @@ func New(out io.Writer, prefix string, flags int) {
 	basic := unilogger.NewBasicLogger(out, prefix, flags)
 	basic.SetOutputDepth(4)
 	logger = basic
+	debugLeveled, isDebugLeveled = logger.(unilogger.DebugLeveledLogger)
 }
 
 // Default creates default logger
@@ -92,6 +97,33 @@ func Default() {
 	basic := unilogger.NewBasicLogger(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile)
 	basic.SetOutputDepth(4)
 	logger = basic
+	debugLeveled, isDebugLeveled = logger.(unilogger.DebugLeveledLogger)
+}
+
+// Debug3f writes the formated debug log
+func Debug3f(format string, args ...interface{}) {
+	if !isDebugLeveled {
+		if logger != nil {
+			logger.Debugf(format, args...)
+		}
+	} else {
+		if debugLeveled != nil {
+			debugLeveled.Debug3f(format, args...)
+		}
+	}
+}
+
+// Debug2f writes the formated debug log
+func Debug2f(format string, args ...interface{}) {
+	if !isDebugLeveled {
+		if logger != nil {
+			logger.Debugf(format, args...)
+		}
+	} else {
+		if debugLeveled != nil {
+			debugLeveled.Debug2f(format, args...)
+		}
+	}
 }
 
 // Debugf writes the formated debug log
@@ -138,6 +170,32 @@ func Panicf(format string, args ...interface{}) {
 		logger.Panicf(format, args...)
 	} else {
 		panic(fmt.Sprintf(format, args...))
+	}
+}
+
+// Debug3 writes the debug3 level logs
+func Debug3(args ...interface{}) {
+	if !isDebugLeveled {
+		if logger != nil {
+			logger.Debug(args...)
+		}
+	} else {
+		if debugLeveled != nil {
+			debugLeveled.Debug3(args...)
+		}
+	}
+}
+
+// Debug2 writes the debug2 level logs
+func Debug2(args ...interface{}) {
+	if !isDebugLeveled {
+		if logger != nil {
+			logger.Debug(args...)
+		}
+	} else {
+		if debugLeveled != nil {
+			debugLeveled.Debug2(args...)
+		}
 	}
 }
 

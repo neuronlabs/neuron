@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/uni-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"

@@ -18,6 +18,11 @@ const (
 	nestedIncludedCountKey = "neuron:nested_included_count"
 	thisIncludedCountKey   = "neuron:this_included_count"
 	namerFuncKey           = "neuron:namer_func"
+
+	afterListerKey  = "neuron:is_after_lister"
+	beforeListerKey = "neuron:is_before_lister"
+
+	hasForeignRelationships = "neuron:has_foreign_keys"
 )
 
 // ModelStruct is a computed representation of the jsonapi models.
@@ -72,8 +77,7 @@ type ModelStruct struct {
 
 	flags *flags.Container
 
-	isAfterLister  bool
-	isBeforeLister bool
+	isJoin bool
 
 	cfg *config.ModelConfig
 
@@ -149,21 +153,32 @@ func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 	return StructFilterKeyField(m, fk)
 }
 
+// HasForeignRelationships defines if the model has any foreign relationships (not a BelongsTo relationship)
+func (m *ModelStruct) HasForeignRelationships() bool {
+	_, ok := m.store[hasForeignRelationships]
+	return ok
+}
+
 // ID returns model structs index number
 func (m ModelStruct) ID() int {
 	return m.id
 }
 
-// IsAfterLister returns the boolean if the given model implements
-// AfterListerR interface
-func (m *ModelStruct) IsAfterLister() bool {
-	return m.isAfterLister
+// IsJoin defines if the model is a join table for the Many2Many relationship
+func (m *ModelStruct) IsJoin() bool {
+	return m.isJoin
 }
 
-// IsBeforeLister returns the boolean if the given model implements
-// BeforeListerR interface
+// IsAfterLister defines if the model implements AfterLister interface
+func (m *ModelStruct) IsAfterLister() bool {
+	_, ok := m.StoreGet(afterListerKey)
+	return ok
+}
+
+// IsBeforeLister defines if the model implements BeforeLister interface
 func (m *ModelStruct) IsBeforeLister() bool {
-	return m.isBeforeLister
+	_, ok := m.StoreGet(beforeListerKey)
+	return ok
 }
 
 // LanguageField returns model's Language
@@ -225,7 +240,27 @@ func (m *ModelStruct) PrimaryField() *StructField {
 }
 
 // PrimaryValues gets the primary values for the provided value
-func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Value, err error) {
+func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{}, err error) {
+	if value.IsNil() {
+		err = internal.ErrNilValue
+		return
+	}
+
+	value = value.Elem()
+
+	zero := reflect.Zero(m.primary.ReflectField().Type).Interface()
+
+	appendPrimary := func(primary reflect.Value) bool {
+		if primary.IsValid() {
+			pv := primary.Interface()
+			if !reflect.DeepEqual(pv, zero) {
+				primaries = append(primaries, pv)
+			}
+			return true
+		}
+		return false
+	}
+
 	primaryIndex := m.primary.getFieldIndex()
 	switch value.Type().Kind() {
 	case reflect.Slice:
@@ -234,7 +269,6 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 			return
 		}
 		// create slice of values
-		primaries = reflect.MakeSlice(reflect.SliceOf(m.primary.FieldType()), 0, value.Len())
 		for i := 0; i < value.Len(); i++ {
 			single := value.Index(i)
 			if single.IsNil() {
@@ -242,15 +276,12 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 			}
 			single = single.Elem()
 			primaryValue := single.FieldByIndex(primaryIndex)
-			if primaryValue.IsValid() {
-				primaries = reflect.Append(primaries, primaryValue)
-			}
+			appendPrimary(primaryValue)
 		}
-	case reflect.Ptr:
-		primaryValue := value.Elem().FieldByIndex(primaryIndex)
-		if primaryValue.IsValid() {
-			primaries = primaryValue
-		} else {
+	case reflect.Struct:
+		primaryValue := value.FieldByIndex(primaryIndex)
+
+		if !appendPrimary(primaryValue) {
 			err = fmt.Errorf("Provided invalid Value for model: %v", m.Type())
 		}
 	default:
@@ -261,7 +292,20 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries reflect.Valu
 
 // RelationshipField returns the StructField for given raw field
 func (m *ModelStruct) RelationshipField(field string) (*StructField, bool) {
-	return StructRelField(m, field)
+	return m.relationshipField(field)
+}
+
+func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
+	f, ok := m.relationships[field]
+	if !ok {
+		for _, f = range m.relationships {
+			if f.Name() == field {
+				return f, true
+			}
+		}
+		return nil, false
+	}
+	return f, true
 }
 
 // RelationshipFields return structfields that are matched as relatinoships
@@ -284,7 +328,7 @@ func (m *ModelStruct) SchemaName() string {
 
 // SetConfig sets the config for given ModelStruct
 func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
-	log.Debugf("Setting Config: %v for model: %s", cfg, m.Collection())
+	log.Debugf("Setting Config for model: %s", m.Collection())
 	m.cfg = cfg
 
 	if m.store == nil {

@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"errors"
-	"github.com/kucjac/uni-logger"
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/log"
@@ -11,6 +10,7 @@ import (
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -128,9 +128,6 @@ func TestDelete(t *testing.T) {
 
 			tm := &deleteTMRelations{
 				ID: 2,
-				Rel: &deleteTMRelated{
-					ID: 1,
-				},
 			}
 
 			s, err := query.NewC((*ctrl.Controller)(c), tm)
@@ -152,8 +149,8 @@ func TestDelete(t *testing.T) {
 				log.Debug("Delete on deleteTMRelations")
 				s := a[1].(*query.Scope)
 
-				tx := s.Store[internal.TxStateCtxKey]
-				assert.NotNil(t, tx)
+				_, ok := s.StoreGet(internal.TxStateCtxKey)
+				assert.True(t, ok)
 			}).Once().Return(nil)
 
 			// get the related model
@@ -173,6 +170,11 @@ func TestDelete(t *testing.T) {
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				log.Debug("Begin on deleteTMRelated")
 			}).Return(nil)
+			repo2.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+				s := a[1].(*query.Scope)
+				values := []*deleteTMRelated{{ID: 2}}
+				s.Value = &values
+			}).Once().Return(nil)
 
 			require.NoError(t, s.Delete())
 
@@ -233,6 +235,12 @@ func TestDelete(t *testing.T) {
 			// Begin the transaction on subquery
 			repo2.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Begin on deleteTMRelated")
+			}).Return(nil)
+
+			repo2.On("List", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
+				s := a[1].(*query.Scope)
+				values := []*deleteTMRelated{{ID: 1}}
+				s.Value = &values
 			}).Return(nil)
 			repo2.On("Patch", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Patch on deleteTMRelated")

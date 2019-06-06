@@ -43,14 +43,14 @@ type Scope struct {
 	// Value is the values or / value of the queried object / objects
 	Value interface{}
 
-	// Store stores the scope's related key values
-	Store map[interface{}]interface{}
-
 	// Struct is a modelStruct this scope is based on
 	mStruct *models.ModelStruct
 
 	// selectedFields are the fields that were updated
 	selectedFields []*models.StructField
+
+	// store stores the scope's related key values
+	store map[interface{}]interface{}
 
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
@@ -437,6 +437,17 @@ func (s *Scope) Struct() *models.ModelStruct {
 	return s.mStruct
 }
 
+// StoreSet sets the store value with the key and it's value
+func (s *Scope) StoreSet(key, value interface{}) {
+	s.store[key] = value
+}
+
+// StoreGet gets the store value and checks if exists such key in the store
+func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
+	value, ok = s.store[key]
+	return
+}
+
 // UseI18n is a bool that defines if given scope uses the i18n field.
 // I.e. it allows to predefine if model should set language filter.
 func (s *Scope) UseI18n() bool {
@@ -605,7 +616,7 @@ func (s *Scope) getRelatedScope() (relScope *Scope, err error) {
 	}
 
 	fieldValue := scopeValue.Elem().FieldByIndex(relatedField.FieldIndex())
-	var primaries reflect.Value
+	var primaries []interface{}
 
 	// if no values are present within given field
 	// return nil scope.Value
@@ -614,35 +625,29 @@ func (s *Scope) getRelatedScope() (relScope *Scope, err error) {
 	} else if fieldValue.Kind() == reflect.Slice && fieldValue.Len() == 0 {
 		relScope.isMany = true
 		return
-	} else {
+	}
 
-		primaries, err = models.FieldsRelatedModelStruct(relatedField.StructField).PrimaryValues(fieldValue)
-		if err != nil {
-			return
-		}
-		if primaries.Kind() == reflect.Slice {
-			if primaries.Len() == 0 {
-				return
-			}
-		}
+	primaries, err = models.FieldsRelatedModelStruct(relatedField.StructField).PrimaryValues(fieldValue)
+	if err != nil {
+		return
+	}
+	if len(primaries) == 0 {
+		return
 	}
 
 	filterValue := &filters.OpValuePair{}
 
 	if relatedField.FieldKind() == models.KindRelationshipSingle {
 		filterValue.SetOperator(filters.OpEqual)
-		filterValue.Values = append(filterValue.Values, primaries.Interface())
+		filterValue.Values = append(filterValue.Values, primaries...)
 		relScope.newValueSingle()
 	} else {
 		filterValue.SetOperator(filters.OpIn)
-		var values []interface{}
-		for i := 0; i < primaries.Len(); i++ {
-			values = append(values, primaries.Index(i).Interface())
-		}
-		filterValue.Values = values
+		filterValue.Values = primaries
 		relScope.isMany = true
 		relScope.newValueMany()
 	}
+
 	primaryFilter := filters.NewFilter(relatedField.StructField, filterValue)
 
 	relScope.primaryFilters = append(relScope.primaryFilters, primaryFilter)
@@ -775,7 +780,7 @@ func newScope(modelStruct *models.ModelStruct) *Scope {
 		fieldset:                  make(map[string]*models.StructField),
 		currentIncludedFieldIndex: -1,
 		fContainer:                flags.New(),
-		Store:                     map[interface{}]interface{}{},
+		store:                     map[interface{}]interface{}{},
 	}
 
 	for _, sf := range internal.ScopeCtxFlags {
@@ -821,7 +826,7 @@ func (s *Scope) NonRootScope(mStruct *models.ModelStruct) *Scope {
 // createsModelsScope
 func (s *Scope) createModelsScope(mStruct *models.ModelStruct) *Scope {
 	scope := newScope(mStruct)
-	scope.Store[internal.ControllerCtxKey] = s.Store[internal.ControllerCtxKey]
+	scope.store[internal.ControllerCtxKey] = s.store[internal.ControllerCtxKey]
 
 	if s.rootScope == nil {
 		scope.rootScope = s

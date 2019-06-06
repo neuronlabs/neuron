@@ -2,9 +2,11 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"github.com/neuronlabs/neuron/internal/query/scope"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-db"
 	"reflect"
 )
 
@@ -29,8 +31,6 @@ var (
 )
 
 func listFunc(ctx context.Context, s *Scope) error {
-	log.Debugf("ListFunc")
-
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Debug("processList RepositoryByModel failed: %v", s.Struct().Type().Name())
@@ -54,12 +54,14 @@ func listFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterListFunc(ctx context.Context, s *Scope) error {
-	log.Debugf("AfterListFunc")
 	if !(*scope.Scope)(s).Struct().IsAfterLister() {
 		return nil
 	}
 
-	afterLister := reflect.New(s.Struct().Type()).Interface().(AfterLister)
+	afterLister, ok := reflect.New(s.Struct().Type()).Interface().(AfterLister)
+	if !ok {
+		return unidb.ErrInternalError.NewWithError(fmt.Errorf("Model: '%s' doesn't cast to AfterLister interface", s.Struct().Type().Name()))
+	}
 
 	if err := afterLister.HAfterList(ctx, s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
@@ -70,12 +72,14 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeListFunc(ctx context.Context, s *Scope) error {
-	log.Debugf("BeforeListFunc")
-	if !(*scope.Scope)(s).Struct().IsAfterLister() {
+	if !(*scope.Scope)(s).Struct().IsBeforeLister() {
 		return nil
 	}
 
-	beforeLister := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
+	beforeLister, ok := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
+	if !ok {
+		return unidb.ErrInternalError.NewWithError(fmt.Errorf("Model: '%s' doesn't cast to BeforeLister interface", s.Struct().Type().Name()))
+	}
 
 	if err := beforeLister.HBeforeList(ctx, s); err != nil {
 		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)

@@ -155,8 +155,9 @@ func (s *Scope) CommitContext(ctx context.Context) error {
 
 // Controller getsthe scope's predefined controller
 func (s *Scope) Controller() *ctrl.Controller {
-	c := s.Store[internal.ControllerCtxKey].(*ctrl.Controller)
-	return c
+	cval, _ := s.StoreGet(internal.ControllerCtxKey)
+	return cval.(*ctrl.Controller)
+
 }
 
 // Create creates the scope values
@@ -494,6 +495,16 @@ func (s *Scope) Struct() *mapping.ModelStruct {
 	return (*mapping.ModelStruct)(mStruct)
 }
 
+// StoreGet gets the value from the scope's store for given key
+func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
+	return s.internal().StoreGet(key)
+}
+
+// StoreSet sets the key and value in the given scope's store
+func (s *Scope) StoreSet(key, value interface{}) {
+	s.internal().StoreSet(key, value)
+}
+
 // Tx returns the transaction for the given scope if exists
 func (s *Scope) Tx() *Tx {
 	return s.tx()
@@ -515,7 +526,7 @@ func (s *Scope) ValidatePatch() []*errors.ApiError {
 func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (err error) {
 
 	// check if the context contains the transaction
-	if v := s.Store[internal.TxStateCtxKey]; v != nil {
+	if v, ok := s.StoreGet(internal.TxStateCtxKey); ok {
 		txn := v.(*Tx)
 		if checkError {
 			if txn.State != TxDone {
@@ -545,7 +556,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (er
 	txn.State = TxBegin
 
 	// set the transaction to the context
-	s.Store[internal.TxStateCtxKey] = txn
+	s.StoreSet(internal.TxStateCtxKey, txn)
 
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
@@ -569,14 +580,16 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (er
 
 func (s *Scope) commit(ctx context.Context) error {
 
-	txV, ok := s.Store[internal.TxStateCtxKey].(*Tx)
+	txV, ok := s.StoreGet(internal.TxStateCtxKey)
 	if txV == nil || !ok {
 		log.Debugf("COMMIT: No transaction found for the scope")
 		return stdErrors.New("Nothing to commit")
 	}
 
-	if txV != nil && ok && txV.State != TxBegin {
-		log.Debugf("COMMIT: Transaction already resolved: %s", txV.State)
+	tx := txV.(*Tx)
+
+	if tx != nil && ok && tx.State != TxBegin {
+		log.Debugf("COMMIT: Transaction already resolved: %s", tx.State)
 		return stdErrors.New("Transaction already resolved")
 	}
 
@@ -651,7 +664,9 @@ func (s *Scope) commit(ctx context.Context) error {
 
 func (s *Scope) createContext(ctx context.Context) error {
 	if (*scope.Scope)(s).IsMany() {
+
 		// TODO: add create many
+
 		return fmt.Errorf("Create failed, multiple values in the scope")
 	}
 
@@ -769,20 +784,21 @@ func (s *Scope) patch(ctx context.Context) error {
 
 func (s *Scope) rollback(ctx context.Context) error {
 
-	txV, ok := s.Store[internal.TxStateCtxKey].(*Tx)
+	txV, ok := s.StoreGet(internal.TxStateCtxKey)
 	if txV == nil || !ok {
 		log.Debugf("ROLLBACK: No transaction found for the scope")
 		return stdErrors.New("Nothing to commit")
 	}
 
-	if txV != nil && ok && txV.State != TxBegin {
-		log.Debugf("ROLLBACK: Transaction already resolved: %s", txV.State)
+	tx := txV.(*Tx)
+	if tx != nil && ok && tx.State != TxBegin {
+		log.Debugf("ROLLBACK: Transaction already resolved: %s", tx.State)
 		return ErrTransactionAlreadyResolved
 	}
 
 	log.Debugf("s.Rollback: %s for model: %s rolling back", s.ID().String(), s.Struct().Collection())
 
-	chain := (*scope.Scope)(s).Chain()
+	chain := s.internal().Chain()
 
 	if len(chain) > 0 {
 
@@ -936,8 +952,11 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 }
 
 func (s *Scope) tx() *Tx {
-	txn, _ := s.Store[internal.TxStateCtxKey].(*Tx)
-	return txn
+	txV, ok := s.StoreGet(internal.TxStateCtxKey)
+	if ok {
+		return txV.(*Tx)
+	}
+	return nil
 }
 
 func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
@@ -947,7 +966,7 @@ func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
 	}
 
 	s := scope.New(mStruct)
-	s.Store[internal.ControllerCtxKey] = (*ctrl.Controller)(c)
+	s.StoreSet(internal.ControllerCtxKey, (*ctrl.Controller)(c))
 
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
@@ -970,7 +989,7 @@ func newScope(c *controller.Controller, model interface{}) (*Scope, error) {
 func newScopeWithModel(c *ctrl.Controller, m *models.ModelStruct, isMany bool) *scope.Scope {
 	s := scope.NewRootScope(m)
 
-	s.Store[internal.ControllerCtxKey] = (*ctrl.Controller)(c)
+	s.StoreSet(internal.ControllerCtxKey, (*ctrl.Controller)(c))
 
 	if isMany {
 		s.Value = m.NewValueMany()
@@ -980,11 +999,4 @@ func newScopeWithModel(c *ctrl.Controller, m *models.ModelStruct, isMany bool) *
 	}
 
 	return s
-}
-
-func copyStore(s *Scope, store map[interface{}]interface{}) {
-	for k, v := range store {
-		// TODO:
-		s.Store[k] = v
-	}
 }

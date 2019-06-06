@@ -54,6 +54,11 @@ func (r *Relationship) ModelStruct() *ModelStruct {
 	return (*ModelStruct)(mStruct)
 }
 
+// JoinModel is the join model for the many2many relationship
+func (r *Relationship) JoinModel() *ModelStruct {
+	return (*ModelStruct)((*models.Relationship)(r).JoinModel())
+}
+
 // Kind returns relationship Kind
 func (r *Relationship) Kind() RelationshipKind {
 	k := models.RelationshipGetKind((*models.Relationship)(r))
@@ -67,10 +72,4 @@ func (r *Relationship) ForeignKey() *StructField {
 		return nil
 	}
 	return (*StructField)(fk)
-}
-
-// Sync returns the synced flag
-func (r *Relationship) Sync() *bool {
-	return (*models.Relationship)(r).Sync()
-
 }

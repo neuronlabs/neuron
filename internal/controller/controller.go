@@ -12,8 +12,8 @@ import (
 	aerrors "github.com/neuronlabs/neuron/errors"
 	"github.com/pkg/errors"
 
-	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/uni-logger"
 
 	// "golang.org/x/text/language"
 	// "golang.org/x/text/language/display"

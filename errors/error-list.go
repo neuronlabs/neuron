@@ -53,7 +53,7 @@ var (
 
 	ErrInvalidQueryParameter = ApiError{
 		Code:   "BRQ006",
-		Title:  "An invalid value was specified for one of the query parameters in the request URI.",
+		Title:  "An invalid value was specified for one of the query parameters.",
 		Status: "400",
 		status: 400,
 	}

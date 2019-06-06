@@ -25,6 +25,12 @@ var (
 		Name: "neuron:hook_after_get",
 		Func: afterGetFunc,
 	}
+
+	// ProcessFillEmptyFieldset fills the fieldset if it is empty
+	ProcessFillEmptyFieldset = &Process{
+		Name: "neuron:fill_empty_fieldset",
+		Func: fillEmptyFieldset,
+	}
 )
 
 // get returns the single value for the provided scope
@@ -57,8 +63,6 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	log.Debugf("hookBeforeGetter: %T", hookBeforeGetter)
-
 	if err := hookBeforeGetter.HBeforeGet(ctx, s); err != nil {
 		return err
 	}
@@ -76,5 +80,11 @@ func afterGetFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 
+	return nil
+}
+
+// fillEmptyFieldset fills the fieldset for the given query if none fields are already set
+func fillEmptyFieldset(ctx context.Context, s *Scope) error {
+	s.internal().FillFieldsetIfNotSet()
 	return nil
 }

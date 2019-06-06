@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/pkg/errors"
 	"net/url"
 	"reflect"
 	"strings"
@@ -209,11 +208,6 @@ func FieldRelationship(s *StructField) *Relationship {
 	return s.relationship
 }
 
-// FieldSetRelationship sets the relationship for the given field
-func FieldSetRelationship(s *StructField, r *Relationship) {
-	s.relationship = r
-}
-
 // Name returns the StructFields Golang Name
 func (s *StructField) Name() string {
 	return s.reflectField.Name
@@ -295,10 +289,10 @@ func FieldSetFieldKind(s *StructField, fieldKind FieldKind) {
 	s.fieldKind = fieldKind
 }
 
-// FieldSetRelatedType sets the related type for the provided structField
-func FieldSetRelatedType(sField *StructField) error {
+// fieldSetRelatedType sets the related type for the provided structField
+func (s *StructField) fieldSetRelatedType() error {
 
-	modelType := sField.reflectField.Type
+	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
 		return fmt.Errorf("Incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
@@ -312,7 +306,7 @@ func FieldSetRelatedType(sField *StructField) error {
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
 		if modelType.Kind() == reflect.Slice {
-			sField.fieldKind = KindRelationshipMultiple
+			s.fieldKind = KindRelationshipMultiple
 		}
 		modelType = modelType.Elem()
 	}
@@ -322,14 +316,14 @@ func FieldSetRelatedType(sField *StructField) error {
 		return err
 	}
 
-	if sField.fieldKind == UnknownType {
-		sField.fieldKind = KindRelationshipSingle
+	if s.fieldKind == UnknownType {
+		s.fieldKind = KindRelationshipSingle
 	}
-	if sField.relationship == nil {
-		sField.relationship = &Relationship{}
+	if s.relationship == nil {
+		s.relationship = &Relationship{}
 	}
 
-	sField.relationship.modelType = modelType
+	s.relationship.modelType = modelType
 
 	return nil
 }
@@ -351,12 +345,12 @@ func (s *StructField) SetRelatedModel(relModel *ModelStruct) {
 // }
 
 // FieldTagValues gets field's tag values
-func FieldTagValues(s *StructField, tag string) (url.Values, error) {
+func FieldTagValues(s *StructField, tag string) url.Values {
 	return s.getTagValues(tag)
 }
 
 // TagValues returns the url.Values for the specific tag
-func (s *StructField) TagValues(tag string) (url.Values, error) {
+func (s *StructField) TagValues(tag string) url.Values {
 	return s.getTagValues(tag)
 }
 
@@ -408,22 +402,23 @@ func (s *StructField) getFieldIndex() []int {
 	return s.fieldIndex
 }
 
-func (s *StructField) getTagValues(tag string) (url.Values, error) {
+func (s *StructField) getTagValues(tag string) url.Values {
 	mp := url.Values{}
 	seperated := strings.Split(tag, internal.AnnotationTagSeperator)
 	for _, option := range seperated {
 		i := strings.IndexRune(option, internal.AnnotationTagEqual)
+		var values []string
 		if i == -1 {
-			return nil, errors.Errorf("No annotation tag equal found for tag value: %v", option)
+			mp[option] = values
+			continue
 		}
 		key := option[:i]
-		var values []string
 		if i != len(option)-1 {
 			values = strings.Split(option[i+1:], internal.AnnotationSeperator)
 		}
 		mp[key] = values
 	}
-	return mp, nil
+	return mp
 }
 
 func (s *StructField) initCheckFieldType() error {

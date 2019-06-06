@@ -106,6 +106,7 @@ func StructSetLanguage(m *ModelStruct, f *StructField) {
 	m.language = f
 }
 
+// StructSetBelongsToForeigns sets the belongs to foreing key
 func StructSetBelongsToForeigns(m *ModelStruct, v reflect.Value) error {
 	return m.setBelongsToForeigns(v)
 }

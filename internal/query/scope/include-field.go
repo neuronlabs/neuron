@@ -479,7 +479,7 @@ func (i *IncludeField) copyScopeBoundaries() {
 		i.Scope.fContainer.Set(flags.ReturnPatchContent, f)
 	}
 
-	i.Scope.Store[internal.ControllerCtxKey] = i.Scope.collectionScope.Store[internal.ControllerCtxKey]
+	i.Scope.store[internal.ControllerCtxKey] = i.Scope.collectionScope.store[internal.ControllerCtxKey]
 
 	for _, nested := range i.Scope.includedFields {
 		// if the nested include is not found within the collection fieldset
@@ -546,7 +546,7 @@ func (i *IncludeField) copyPresetFullParameters() {
 		i.Scope.fContainer.Set(flags.ReturnPatchContent, f)
 	}
 
-	i.Scope.Store[internal.ControllerCtxKey] = i.Scope.collectionScope.Store[internal.ControllerCtxKey]
+	i.Scope.store[internal.ControllerCtxKey] = i.Scope.collectionScope.store[internal.ControllerCtxKey]
 
 	for _, nested := range i.Scope.includedFields {
 		// if the nested include is not found within the collection fieldset

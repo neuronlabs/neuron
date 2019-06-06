@@ -82,31 +82,31 @@ func (s *Scope) AutoSelectFields() error {
 	return nil
 }
 
+// UnselectFields unselects provided fields
+func (s *Scope) UnselectFields(fields ...*models.StructField) error {
+	return unselectFields(s, fields...)
+}
+
 // DeleteselectedFields deletes the models.StructFields from the given scope Fieldset
 func DeleteselectedFields(s *Scope, fields ...*models.StructField) error {
+	return unselectFields(s, fields...)
+}
 
-	erease := func(sFields *[]*models.StructField, i int) {
-		if i < len(*sFields)-1 {
-			(*sFields)[i] = (*sFields)[len(*sFields)-1]
-		}
-		(*sFields) = (*sFields)[:len(*sFields)-1]
-		return
-	}
+func unselectFields(s *Scope, fields ...*models.StructField) error {
 
 scopeFields:
-	for i := len(s.selectedFields) - 1; i >= 0; i-- {
+	for i := 0; i < len(s.selectedFields); i++ {
 		if len(fields) == 0 {
 			break scopeFields
 		}
 
-		for j, field := range fields {
-			if s.selectedFields[i] == field {
-				// found the field
-				// erease from fields
-				erease(&fields, j)
-
+		for j := 0; j < len(fields); j++ {
+			if s.selectedFields[i] == fields[j] {
+				fields = append(fields[:j], fields[j+1:]...)
+				j--
 				// Erease from Selected fields
 				s.selectedFields = append(s.selectedFields[:i], s.selectedFields[i+1:]...)
+				i--
 				continue scopeFields
 			}
 		}

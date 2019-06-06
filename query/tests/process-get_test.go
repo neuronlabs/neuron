@@ -2,9 +2,9 @@ package tests
 
 import (
 	"context"
-	"github.com/kucjac/uni-logger"
 	ctrl "github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-logger"
 
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query"

@@ -213,8 +213,6 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 
 	}()
 
-	log.Debugf("Scope: %s, tx state: %s", s.ID().String(), s.tx().State)
-
 	if txn := s.tx(); txn.State == TxRollback {
 		return
 	}

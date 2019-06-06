@@ -2,12 +2,12 @@ package controller
 
 import (
 	"context"
-	"github.com/kucjac/uni-logger"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-logger"
 	"time"
 )
 

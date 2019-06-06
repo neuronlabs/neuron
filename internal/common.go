@@ -17,11 +17,19 @@ type ControllerKeyCtx struct{}
 // TransactionStateCtx is the common struct used as a transaction state key in the scope's context
 type TransactionStateCtx struct{}
 
+// ReducedPrimariesCtx is the context key that keeps the primary values in the patch scope
+type ReducedPrimariesCtx struct{}
+
+// PreviousProcess is a struct used as the context key for getting the previous process
+type PreviousProcess struct{}
+
 // Context
 var (
-	ScopeIDCtxKey    = ScopeIDCtx{}
-	ControllerCtxKey = ControllerKeyCtx{}
-	TxStateCtxKey    = TransactionStateCtx{}
+	ScopeIDCtxKey          = ScopeIDCtx{}
+	ControllerCtxKey       = ControllerKeyCtx{}
+	TxStateCtxKey          = TransactionStateCtx{}
+	ReducedPrimariesCtxKey = ReducedPrimariesCtx{}
+	PreviousProcessCtxKey  = PreviousProcess{}
 )
 
 // Errors used in by the internal packages

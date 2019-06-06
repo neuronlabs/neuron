@@ -6,7 +6,6 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/uni-db"
-	"sync"
 
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	scope "github.com/neuronlabs/neuron/internal/query/scope"
@@ -42,14 +41,12 @@ var (
 )
 
 func convertRelationshipFilters(ctx context.Context, s *Scope) error {
-	log.Debugf("SCOPE[%s] convertRelationshipFilters", s.ID())
-	relationshipFilters := (*scope.Scope)(s).RelationshipFilters()
+	relationshipFilters := s.internal().RelationshipFilters()
 
 	if len(relationshipFilters) == 0 {
+		// end fast if no relationship filters
 		return nil
 	}
-
-	wg := &sync.WaitGroup{}
 
 	bufSize := 10
 
@@ -96,11 +93,7 @@ func convertRelationshipFilters(ctx context.Context, s *Scope) error {
 			go handleHasOneRelationshipFilter(ctx, s, i, filter, results)
 
 		case models.RelMany2Many:
-			// TODO: finish the many2many relationship
-			results <- i
-			wg.Done()
-
-			log.Debugf("RelMany2Many filters not implemented yet!")
+			go handleMany2ManyRelationshipFilter(ctx, s, i, filter, results)
 		}
 	}
 
@@ -129,7 +122,6 @@ fl:
 }
 
 func handleBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int, filter *filters.FilterField, results chan<- interface{}) {
-	log.Debugf("SCOPE[%s] handleBelongsToRelationshipFilter", s.ID())
 	// for the belongs to relationships if the relationship filters only over the relations primary
 	// key then we can change the filter from relationship into the foreign key for the root scope
 	// otherwise we need to get the
@@ -344,9 +336,132 @@ func handleHasOneRelationshipFilter(ctx context.Context, s *Scope, index int, fi
 	results <- index
 }
 
+func handleMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int, filter *filters.FilterField, results chan<- interface{}) {
+	// if filter is only on the 'id' field then
+
+	// if all the nested filters are the primary key of the related model
+	// the only query should be used on the join model foreign key
+	var onlyPrimaries = true
+
+	relatedPrimaryKey := filter.StructField().Relationship().Struct().PrimaryField()
+	joinModelForeignKey := filter.StructField().Relationship().ForeignKey()
+
+	for _, nested := range filter.NestedFields() {
+		if nested.StructField() != relatedPrimaryKey && nested.StructField() != joinModelForeignKey {
+			onlyPrimaries = false
+			break
+		}
+	}
+
+	// if only the primaries of the related model were used list only the values from the join table
+	if onlyPrimaries {
+
+		// convert the foreign into root scope primary key filter
+		joinScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField().Relationship().JoinModel()), true)
+
+		// create the joinScope foreign key filter with the values of the original filter
+		fkFilter := (*scope.Scope)(joinScope).GetOrCreateForeignKeyFilter(filter.StructField().Relationship().ForeignKey())
+		for _, nested := range filter.NestedFields() {
+			fkFilter.AddValues(nested.Values()...)
+		}
+
+		// the fieldset should contain only a backreference field
+		joinScope.SetFieldset(filter.StructField().Relationship().BackreferenceForeignKey())
+
+		// Do the ListProcess with the context
+		if err := joinScope.ListContext(ctx); err != nil {
+			results <- err
+			return
+		}
+
+		// get the foreign key values for the given joinScope
+		fkValues, err := (*scope.Scope)(joinScope).GetForeignKeyValues(filter.StructField().Relationship().BackreferenceForeignKey())
+		if err != nil {
+			results <- err
+			return
+		}
+
+		// Add (or get) the ID filter for the primary key in the root scope
+		rootIDFilter := (*scope.Scope)(s).GetOrCreateIDFilter()
+
+		// add the backreference field values into primary key filter
+		rootIDFilter.AddValues(filters.NewOpValuePair(filters.OpIn, fkValues...))
+
+		results <- index
+		return
+	}
+
+	// create the scope for the related model
+	relScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField().Relationship().Struct()), true)
+
+	// add then nested fields from the filter field into the
+	for _, nested := range filter.NestedFields() {
+		var nestedFilter *filters.FilterField
+		switch nested.StructField().FieldKind() {
+		case models.KindPrimary:
+			nestedFilter = (*scope.Scope)(relScope).GetOrCreateIDFilter()
+		case models.KindAttribute:
+			if nested.StructField().IsLanguage() {
+				nestedFilter = (*scope.Scope)(relScope).GetOrCreateLanguageFilter()
+			} else {
+				nestedFilter = (*scope.Scope)(relScope).GetOrCreateAttributeFilter(nested.StructField())
+			}
+		case models.KindForeignKey:
+			nestedFilter = (*scope.Scope)(relScope).GetOrCreateForeignKeyFilter(nested.StructField())
+		case models.KindFilterKey:
+			nestedFilter = (*scope.Scope)(relScope).GetOrCreateFilterKeyFilter(nested.StructField())
+		case models.KindRelationshipMultiple, models.KindRelationshipSingle:
+			nestedFilter = (*scope.Scope)(relScope).GetOrCreateRelationshipFilter(nested.StructField())
+		default:
+			log.Debugf("Nested Filter for field of unknown type: %v", nested.StructField().ApiName())
+			continue
+		}
+
+		nestedFilter.AddValues(nested.Values()...)
+	}
+
+	// only the primary field should be in a fieldset
+	relScope.internal().SetEmptyFieldset()
+	(*scope.Scope)(relScope).SetFieldsetNoCheck((*models.StructField)(relScope.Struct().Primary()))
+
+	if err := relScope.ListContext(ctx); err != nil {
+		results <- err
+		return
+	}
+
+	primaries, err := relScope.internal().GetPrimaryFieldValues()
+	if err != nil {
+		results <- err
+		return
+	}
+
+	joinScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField().Relationship().JoinModel()), true)
+
+	idFilter := joinScope.internal().GetOrCreateIDFilter()
+	idFilter.AddValues(filters.NewOpValuePair(filters.OpIn, primaries...))
+
+	joinScope.internal().SetNilFieldset()
+	joinScope.internal().SetFieldsetNoCheck(filter.StructField().Relationship().BackreferenceForeignKey())
+	if err := joinScope.ListContext(ctx); err != nil {
+		results <- err
+		return
+	}
+
+	fkValues, err := joinScope.internal().GetForeignKeyValues(filter.StructField().Relationship().BackreferenceForeignKey())
+	if err != nil {
+		results <- err
+		return
+	}
+
+	rootIDFilter := s.internal().GetOrCreateIDFilter()
+	rootIDFilter.AddValues(filters.NewOpValuePair(filters.OpIn, fkValues...))
+
+	results <- index
+
+}
+
 // processGetIncluded gets the included fields for the
 func getIncludedFunc(ctx context.Context, s *Scope) error {
-	log.Debugf("getIncludedFunc")
 	iScope := (*scope.Scope)(s)
 
 	if iScope.IsRoot() && len(iScope.IncludedScopes()) == 0 {
@@ -434,7 +549,6 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 }
 
 func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	log.Debugf("Scope: %s, getForeignRelationship", s.ID().String())
 
 	relations := map[string]*models.StructField{}
 
@@ -546,11 +660,6 @@ func getForeignRelationshipValue(
 			op           *filters.Operator
 			filterValues []interface{}
 		)
-
-		sync := rel.Sync()
-		if sync != nil && !*sync {
-			return
-		}
 
 		if !(*scope.Scope)(s).IsMany() {
 
@@ -707,11 +816,6 @@ func getForeignRelationshipValue(
 			primIndex = s.Struct().Primary().ReflectField().Index
 		)
 
-		sync := rel.Sync()
-		if sync != nil && !*sync {
-			return
-		}
-
 		// If is single scope's value
 		if !(*scope.Scope)(s).IsMany() {
 
@@ -786,7 +890,7 @@ func getForeignRelationshipValue(
 					return
 				}
 			}
-			log.Debugf("Error while getting foreign field: '%s'. Err: %v", rel.BackrefernceFieldName(), err)
+			log.Debugf("Error while getting foreign field: '%s'. Err: %v", rel.BackreferenceForeignKeyName(), err)
 			return
 		}
 
@@ -835,185 +939,171 @@ func getForeignRelationshipValue(
 
 	case models.RelMany2Many:
 		// if the relationship is synced get the values from the relationship
-		sync := rel.Sync()
-		if sync != nil && *sync {
-			// when sync get the relationships value from the backreference relationship
-			var (
-				filterValues = []interface{}{}
-				primMap      map[interface{}]int
-				primIndex    = s.Struct().Primary().ReflectField().Index
-				op           *filters.Operator
-			)
 
-			if !(*scope.Scope)(s).IsMany() {
-				// set isMany to false just to see the difference
+		// when sync get the relationships value from the backreference relationship
+		var (
+			filterValues = []interface{}{}
+			primMap      map[interface{}]int
+			primIndex    = s.Struct().Primary().ReflectField().Index
+			op           *filters.Operator
+		)
 
-				op = filters.OpEqual
+		if !(*scope.Scope)(s).IsMany() {
+			// set isMany to false just to see the difference
 
-				pkVal := v.FieldByIndex(primIndex)
+			op = filters.OpEqual
+
+			pkVal := v.FieldByIndex(primIndex)
+			pk := pkVal.Interface()
+
+			if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
+				err = fmt.Errorf("Error no primary valoue set for the scope value.  Scope %#v. Value: %+v", s, s.Value)
+				return
+			}
+
+			filterValues = append(filterValues, pk)
+
+		} else {
+			// if the scope is 'many' valued map the primary keys with their indexes
+			// Operator is 'in'
+			op = filters.OpIn
+
+			// primMap contains the index of the proper scope value for
+			//given primary key value
+			primMap = map[interface{}]int{}
+			for i := 0; i < v.Len(); i++ {
+
+				elem := v.Index(i)
+
+				if elem.Kind() == reflect.Ptr {
+					if elem.IsNil() {
+						continue
+					}
+					elem = elem.Elem()
+				}
+
+				pkVal := elem.FieldByIndex(primIndex)
 				pk := pkVal.Interface()
 
+				// if the value is Zero like continue
 				if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
-					err = fmt.Errorf("Error no primary valoue set for the scope value.  Scope %#v. Value: %+v", s, s.Value)
-					return
-				}
-
-				filterValues = append(filterValues, pk)
-
-			} else {
-
-				// Operator is 'in'
-				op = filters.OpIn
-
-				// primMap contains the index of the proper scope value for
-				//given primary key value
-				primMap = map[interface{}]int{}
-				for i := 0; i < v.Len(); i++ {
-					elem := v.Index(i)
-
-					if elem.Kind() == reflect.Ptr {
-						if elem.IsNil() {
-							continue
-						}
-						elem = elem.Elem()
-					}
-
-					pkVal := elem.FieldByIndex(primIndex)
-					pk := pkVal.Interface()
-
-					// if the value is Zero like continue
-					if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
-						continue
-					}
-
-					primMap[pk] = i
-
-					filterValues = append(filterValues, pk)
-				}
-			}
-
-			backReference := rel.BackreferenceField()
-
-			backRefRelPrimary := backReference.Relationship().Struct().PrimaryField()
-
-			// prepare new scope
-			relatedScope := newScopeWithModel(s.Controller(), rel.Struct(), true)
-
-			relatedScope.SetEmptyFieldset()
-			relatedScope.SetFieldsetNoCheck(backReference)
-			relatedScope.SetCollectionScope(relatedScope)
-
-			// Add filter
-			filterField := filters.NewFilter(backReference, filters.NewOpValuePair(op, filterValues...))
-			relatedScope.AddFilterField(filterField)
-
-			if err = (*Scope)(relatedScope).ListContext(ctx); err != nil {
-				dberr, ok := err.(*unidb.Error)
-				if ok {
-					if dberr.Compare(unidb.ErrNoResult) {
-						err = nil
-						return
-					}
-				}
-				return
-			}
-
-			relVal := reflect.ValueOf(relatedScope.Value)
-			if relVal.IsNil() {
-				log.Errorf("Related Field scope: %s is nil after getting m2m relationships.", relField.ApiName())
-				err = internal.ErrNilValue
-				return
-			}
-
-			relVal = relVal.Elem()
-
-			// iterate over relatedScoep Value
-			for i := 0; i < relVal.Len(); i++ {
-				// Get Each element from the relatedScope Value
-				relElem := relVal.Index(i)
-
-				// Dereference the ptr
-				if relElem.Kind() == reflect.Ptr {
-					if relElem.IsNil() {
-						continue
-					}
-					relElem = relElem.Elem()
-				}
-
-				relPrimVal := relElem.FieldByIndex(relatedScope.Struct().PrimaryField().ReflectField().Index)
-
-				// continue if empty
-				if reflect.DeepEqual(relPrimVal.Interface(), reflect.Zero(relPrimVal.Type()).Interface()) {
 					continue
 				}
 
-				backRefVal := relElem.FieldByIndex(backReference.ReflectField().Index)
-				if backRefVal.Kind() == reflect.Ptr {
-					if backRefVal.IsNil() {
-						backRefVal.Set(reflect.New(backRefVal.Type().Elem()))
-					}
+				primMap[pk] = i
+
+				filterValues = append(filterValues, pk)
+			}
+		}
+
+		// backReference Foreign Key
+		backReference := rel.BackreferenceForeignKey()
+
+		// Foreign Key in the join model
+		fk := backReference.Relationship().ForeignKey()
+
+		// prepare new scope
+		joinScope := newScopeWithModel(s.Controller(), rel.JoinModel(), true)
+
+		joinScope.SetEmptyFieldset()
+		joinScope.SetFieldsetNoCheck(backReference, fk)
+
+		joinScope.SetCollectionScope(joinScope)
+
+		// Add filter on the backreference foreign key (root scope primary keys) to the join scope
+		filterField := filters.NewFilter(backReference, filters.NewOpValuePair(op, filterValues...))
+		joinScope.AddFilterField(filterField)
+
+		// do the List process on the join scope
+		if err = (*Scope)(joinScope).ListContext(ctx); err != nil {
+			dberr, ok := err.(*unidb.Error)
+			if ok {
+				// if the error is ErrNoResult don't throw an error - no relationship values
+				if dberr.Compare(unidb.ErrNoResult) {
+					err = nil
+					return
 				}
-				backRefVal.Elem()
+			}
+			return
+		}
 
-				// iterate over backreference elems
-			backRefLoop:
-				for j := 0; j < backRefVal.Len(); j++ {
-					// BackRefPrimary would be root primary
-					backRefElem := backRefVal.Index(j)
+		// get the joinScope value reflection
+		relVal := reflect.ValueOf(joinScope.Value)
+		if relVal.IsNil() {
+			log.Errorf("Related Field scope: %s is nil after getting m2m relationships.", relField.ApiName())
+			err = unidb.ErrInternalError.NewWithMessage("get many2Many foreign relationship - nil value after list")
+			return
+		}
 
-					if backRefElem.Kind() == reflect.Ptr {
-						if backRefElem.IsNil() {
-							continue
-						}
+		relVal = relVal.Elem()
 
-						backRefElem = backRefElem.Elem()
-					}
+		// iterate over relatedScoep Value
+		for i := 0; i < relVal.Len(); i++ {
+			// Get Each element from the relatedScope Value
+			relElem := relVal.Index(i)
 
-					backRefPrimVal := backRefElem.FieldByIndex(backRefRelPrimary.ReflectField().Index)
-
-					backRefPrim := backRefPrimVal.Interface()
-
-					if reflect.DeepEqual(backRefPrim, reflect.Zero(backRefPrimVal.Type()).Interface()) {
-						log.Warningf("Backreference Relationship Many2Many contains zero valued primary key. Scope: %#v, RelatedScope: %#v. Relationship: %#v", s, relatedScope, rel)
-						continue backRefLoop
-					}
-
-					var val reflect.Value
-					if (*scope.Scope)(s).IsMany() {
-						index, ok := primMap[backRefPrim]
-						if !ok {
-							log.Warningf("Relationship Many2Many contains backreference primaries that doesn't match the root scope value. Scope: %#v. Relationship: %v", s, rel)
-							continue backRefLoop
-						}
-
-						val = v.Index(index)
-					} else {
-						val = v
-					}
-
-					m2mElem := reflect.New(rel.Struct().Type())
-					m2mElem.Elem().FieldByIndex(rel.Struct().PrimaryField().ReflectField().Index).Set(relPrimVal)
-
-					relationField := val.FieldByIndex(relField.ReflectField().Index)
-					relationField.Set(reflect.Append(relationField, m2mElem))
+			// Dereference the ptr
+			if relElem.Kind() == reflect.Ptr {
+				if relElem.IsNil() {
+					continue
 				}
-
+				relElem = relElem.Elem()
 			}
 
+			// get the backreference foreign key value - which in fact is our root scope's primary key value
+			backReferenceValue := relElem.FieldByIndex(backReference.ReflectField().Index)
+			backReferenceID := backReferenceValue.Interface()
+
+			// if the value is Zero continue
+			if reflect.DeepEqual(backReferenceID, reflect.Zero(backReferenceValue.Type()).Interface()) {
+				continue
+			}
+
+			// get the join model foreign key value which is the relation's foreign key
+			fk := relElem.FieldByIndex(fk.ReflectField().Index)
+
+			var relationField reflect.Value
+
+			// get scope's value at index
+			if s.internal().IsMany() {
+
+				index, ok := primMap[backReferenceID]
+				if !ok {
+					log.Errorf("Get Many2Many relationship. Can't find primary field within the mapping, for ID: %v", backReferenceID)
+					continue
+				}
+
+				single := relVal.Index(index).Elem()
+				relationField = single.FieldByIndex(relField.ReflectField().Index)
+			} else {
+				relationField = relVal.FieldByIndex(relField.ReflectField().Index)
+			}
+
+			// create new instance of the relationship's model that would be appended into the relationships value
+			toAppend := relField.Relationship().Struct().NewReflectValueSingle()
+
+			// set the primary field value for the newly created instance
+			prim := toAppend.Elem().FieldByIndex(relField.Relationship().Struct().PrimaryField().ReflectField().Index)
+
+			// the primary key would be the value of foreign key in join model ('fk')
+			prim.Set(fk)
+
+			// type check if the relation is a ptr to slice
+			if relationField.Kind() == reflect.Ptr {
+				// if the relation is ptr to slice - dereference it
+				relationField = relationField.Elem()
+			}
+
+			// append the newly created instance to the relationship field
+			relationField.Set(reflect.Append(relationField, toAppend))
 		}
+
 	case models.RelBelongsTo:
 
 		// if scope value is a slice
 		// iterate over all entries and transfer all foreign keys into relationship primaries.
 
 		// for single value scope do it once
-
-		sync := rel.Sync()
-		if sync != nil && *sync {
-			// don't know what to do now
-			// Get it from the backreference ? and
-			log.Warningf("Synced BelongsTo relationship. Scope: %#v, Relation: %#v", s, rel)
-		}
 
 		fkField := rel.ForeignKey()
 

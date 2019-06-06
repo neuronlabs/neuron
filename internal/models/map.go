@@ -31,7 +31,7 @@ type ModelMap struct {
 
 // NewModelMap creates new model map
 func NewModelMap() *ModelMap {
-	var modelMap *ModelMap = &ModelMap{
+	var modelMap = &ModelMap{
 		models:      make(map[reflect.Type]*ModelStruct),
 		collections: make(map[string]reflect.Type),
 	}
@@ -68,6 +68,7 @@ func (m *ModelMap) Get(model reflect.Type) *ModelStruct {
 	return m.models[model]
 }
 
+// GetByCollection gets model by collection name
 func (m *ModelMap) GetByCollection(collection string) *ModelStruct {
 	m.RLock()
 	defer m.RUnlock()
@@ -166,6 +167,9 @@ func BuildModelStruct(
 		return nil, err
 	}
 
+	// check and set the interfaces
+	ptrValue := reflect.New(modelType)
+
 	modelValue := reflect.New(modelType).Elem()
 
 	var collection string
@@ -240,10 +244,8 @@ func BuildModelStruct(
 			var tagValues url.Values
 
 			structField := NewStructField(tField, modelStruct)
-			tagValues, err = FieldTagValues(structField, tag)
-			if err != nil {
-				return errors.Wrapf(err, "Getting tag values failed. Model: %s, SField: %s", modelStruct.modelType.Name(), tField.Name)
-			}
+			tagValues = structField.TagValues(tag)
+
 			structField.fieldIndex = make([]int, len(fieldIndex))
 			copy(structField.fieldIndex, fieldIndex)
 
@@ -281,13 +283,13 @@ func BuildModelStruct(
 					StructAppendField(modelStruct, structField)
 
 					// set related type
-					err = FieldSetRelatedType(structField)
+					err = structField.fieldSetRelatedType()
 					if err != nil {
 						return errors.Wrap(err, "FieldSetRelatedType failed")
 					}
 
 					// check duplicates
-					_, ok := StructRelField(modelStruct, apiName)
+					_, ok := modelStruct.RelationshipField(apiName)
 					if ok {
 						err = errors.Errorf("Duplicated jsonapi relationship field name: '%s' for model: '%v'.", apiName, modelType.Name())
 						return err
@@ -519,33 +521,41 @@ func BuildModelStruct(
 
 						}
 					}
-				case internal.AnnotationRelation:
-					// if relationship match the type e.t.c
+				case internal.AnnotationManyToMany:
 
-					r := FieldRelationship(structField)
+					if !structField.isRelationship() {
+						err = fmt.Errorf("Field: %s tagged with: %s is not a relationship.", structField.ReflectField().Name, internal.AnnotationManyToMany)
+						log.Debugf("%v", err)
+						return err
+					}
+					r := structField.relationship
 					if r == nil {
-						r := &Relationship{}
-						FieldSetRelationship(structField, r)
+						r = &Relationship{}
+						structField.relationship = r
 					}
 
-					for _, value := range values {
-						switch value {
-						case internal.AnnotationRelationNoSync:
-							b := false
-							r.SetSync(&b)
-						case internal.AnnotationManyToMany:
-							r.SetKind(RelMany2Many)
-						case internal.AnnotationRelationSync:
-							b := true
-							r.SetSync(&b)
-						default:
-							log.Debugf("Backreference field tag for relation: %s in model: %s. Value: %s", modelStruct.Type().Name(), structField.Name(), value)
-							RelationshipSetBackrefFieldName(r, value)
+					r.kind = RelMany2Many
+
+					// first value is join model
+					// the second is the backreference field
+					switch len(values) {
+					case 2:
+						if values[0] != "_" {
+							r.joinModelName = values[0]
 						}
-					}
-					// if field is foreign key match with relationship
-				case internal.AnnotationForeignKey:
 
+						if values[1] != "_" {
+							r.backReferenceForeignKeyName = values[1]
+						}
+					case 1:
+						if values[0] != "_" {
+							r.joinModelName = values[0]
+						}
+					case 0:
+					default:
+						err = fmt.Errorf("Too many many2many tag values")
+						return err
+					}
 				}
 			}
 		}
@@ -565,6 +575,14 @@ func BuildModelStruct(
 	if StructPrimary(modelStruct) == nil {
 		err = fmt.Errorf("Model: %v must have a correct primary field.", modelType)
 		return nil, err
+	}
+
+	if ptrValue.MethodByName("HBeforeList").IsValid() {
+		modelStruct.StoreSet(beforeListerKey, struct{}{})
+	}
+
+	if ptrValue.MethodByName("HAfterList").IsValid() {
+		modelStruct.StoreSet(afterListerKey, struct{}{})
 	}
 
 	return modelStruct, nil
@@ -602,12 +620,8 @@ func getNestedStruct(
 				continue
 			}
 
-			tagValues, err := FieldTagValues(nestedField.structField, tag)
-			if err != nil {
-				log.Debugf("nestedField: '%s', getTagValues failed. %v", nestedField.structField.Name())
-				return nil, err
-			}
-
+			tagValues := nestedField.structField.TagValues(tag)
+			var err error
 			for tKey, tValue := range tagValues {
 				switch tKey {
 				case internal.AnnotationName:

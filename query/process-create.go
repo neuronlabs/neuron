@@ -2,12 +2,11 @@ package query
 
 import (
 	"context"
+	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/repository"
-
 	"github.com/neuronlabs/neuron/log"
-
-	// "github.com/neuronlabs/uni-db"
+	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/uni-db"
 	"github.com/pkg/errors"
 )
 
@@ -33,6 +32,13 @@ var (
 	ProcessAfterCreate = &Process{
 		Name: "neuron:hook_after_create",
 		Func: afterCreateFunc,
+	}
+
+	// ProcessStoreScopePrimaries gets the primary field values and sets into scope's store
+	// under key: internal.ReducedPrimariesKeyCtx
+	ProcessStoreScopePrimaries = &Process{
+		Name: "neuron:store_scope_primaries",
+		Func: storeScopePrimaries,
 	}
 )
 
@@ -84,5 +90,17 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func storeScopePrimaries(ctx context.Context, s *Scope) error {
+
+	primaryValues, err := s.internal().GetPrimaryFieldValues()
+	if err != nil {
+		return unidb.ErrInternalError.NewWithError(err)
+	}
+
+	s.StoreSet(internal.ReducedPrimariesCtxKey, primaryValues)
+
 	return nil
 }

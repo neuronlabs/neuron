@@ -6,14 +6,51 @@ import (
 	"testing"
 )
 
-type model1WithMany2Many struct {
+// definining many2many requires join model, backref field, and foreign key
+// join model is the join table model used for getting the many 2 many relationships values
+// backref field is a field in the join model
+
+// foreign key is the related model's backref field in the join model
+
+type Model1WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*model2WithMany2Many `neuron:"type=relation;relation=many2many,sync,Synced"`
+	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=SecondForeign"`
 }
 
-type model2WithMany2Many struct {
+type Model2WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*model1WithMany2Many `neuron:"type=relation;relation=many2many,sync,Synced"`
+	Synced []*Model1WithMany2Many `neuron:"type=relation;many2many=joinModel,SecondForeign;foreign=model1WithMany2ManyID"`
+}
+
+type joinModel struct {
+	ID int `neuron:"type=primary"`
+
+	// First model
+	First                 *Model1WithMany2Many `neuron:"type=relation;foreign=Model1WithMany2ManyID"`
+	Model1WithMany2ManyID int                  `neuron:"type=foreign"`
+
+	// Second
+	Second        *Model2WithMany2Many `neuron:"type=foreign;foreign=SecondForeign"`
+	SecondForeign int                  `neuron:"type=foreign"`
+}
+
+// First is the many2many model
+type First struct {
+	ID   int       `neuron:"type=primary"`
+	Many []*Second `neuron:"type=relation;many2many"`
+}
+
+// Second is the many2many model
+type Second struct {
+	ID     int      `neuron:"type=primary"`
+	Firsts []*First `neuron:"type=relation;many2many"`
+}
+
+// FirstSeconds is the join table
+type FirstSeconds struct {
+	ID       int `neuron:"type=primary"`
+	FirstID  int `neuron:"type=foreign"`
+	SecondID int `neuron:"type=foreign"`
 }
 
 type modelWithHasMany struct {
@@ -40,32 +77,108 @@ type modelWithHasOne struct {
 func TestMappedRelationships(t *testing.T) {
 
 	t.Run("many2many", func(t *testing.T) {
-		t.Run("sync", func(t *testing.T) {
+
+		t.Run("PredefinedFields", func(t *testing.T) {
 			s := testingSchemas(t)
-			err := s.RegisterModels(model1WithMany2Many{}, model2WithMany2Many{})
+
+			err := s.RegisterModels(Model1WithMany2Many{}, Model2WithMany2Many{}, joinModel{})
 			require.NoError(t, err)
 
-			model, err := s.GetModelStruct(model1WithMany2Many{})
+			join, err := s.GetModelStruct(joinModel{})
 			require.NoError(t, err)
 
-			m2m2, ok := model.relationships["synced"]
+			assert.True(t, join.isJoin)
+
+			first, err := s.GetModelStruct(Model1WithMany2Many{})
+			require.NoError(t, err)
+
+			second, err := s.GetModelStruct(Model2WithMany2Many{})
+			require.NoError(t, err)
+			t.Run("First", func(t *testing.T) {
+
+				relField, ok := first.relationships["synced"]
+				require.True(t, ok)
+
+				require.NotNil(t, relField.relationship)
+				require.Equal(t, RelMany2Many, relField.relationship.kind)
+
+				assert.Equal(t, second, relField.relationship.mStruct)
+
+				firstBackref, ok := join.ForeignKey("Model1WithMany2ManyID")
+				require.True(t, ok)
+
+				assert.Equal(t, firstBackref, relField.relationship.backReferenceForeignKey)
+
+				secondFK, ok := join.ForeignKey("SecondForeign")
+				require.True(t, ok)
+
+				assert.Equal(t, secondFK, relField.relationship.foreignKey)
+			})
+
+			t.Run("Second", func(t *testing.T) {
+				relField, ok := second.relationships["synced"]
+				require.True(t, ok)
+
+				rel := relField.relationship
+				require.NotNil(t, rel)
+				require.Equal(t, RelMany2Many, rel.kind)
+
+				assert.Equal(t, first, rel.mStruct)
+
+				// check the backreference key
+				secondBackRef, ok := join.ForeignKey("SecondForeign")
+				require.True(t, ok)
+
+				assert.Equal(t, secondBackRef, rel.backReferenceForeignKey)
+
+				// check the foreign key
+				firstFK, ok := join.ForeignKey("Model1WithMany2ManyID")
+				require.True(t, ok)
+
+				assert.Equal(t, firstFK, rel.foreignKey)
+			})
+		})
+
+		t.Run("DefaultSettings", func(t *testing.T) {
+			s := testingSchemas(t)
+
+			err := s.RegisterModels(First{}, Second{}, FirstSeconds{})
+			require.NoError(t, err)
+
+			first, err := s.GetModelStruct(First{})
+			require.NoError(t, err)
+
+			second, err := s.GetModelStruct(Second{})
+			require.NoError(t, err)
+
+			firstSeconds, err := s.GetModelStruct(FirstSeconds{})
+			require.NoError(t, err)
+
+			firstRel, ok := first.RelationshipField("Many")
 			require.True(t, ok)
 
-			require.NotNil(t, m2m2.relationship)
-			assert.Equal(t, RelMany2Many, m2m2.relationship.kind)
-			if assert.NotNil(t, m2m2.relationship.sync) {
-				assert.True(t, *m2m2.relationship.sync)
+			fID, ok := firstSeconds.ForeignKey("FirstID")
+			require.True(t, ok)
+
+			sID, ok := firstSeconds.ForeignKey("SecondID")
+			require.True(t, ok)
+
+			relFirst := firstRel.relationship
+			if assert.NotNil(t, relFirst) {
+				assert.Equal(t, fID, relFirst.backReferenceForeignKey)
+				assert.Equal(t, sID, relFirst.foreignKey)
+				assert.Equal(t, RelMany2Many, relFirst.kind)
 			}
 
-			// check the other direction
-			model2, err := s.GetModelStruct(model2WithMany2Many{})
-			require.NoError(t, err)
-
-			m2m1, ok := model2.relationships["synced"]
+			secondRel, ok := second.RelationshipField("Firsts")
 			require.True(t, ok)
 
-			assert.Equal(t, m2m2, m2m1.relationship.backReferenceField)
-			assert.Equal(t, m2m1, m2m2.relationship.backReferenceField)
+			relSecond := secondRel.relationship
+			if assert.NotNil(t, relSecond) {
+				assert.Equal(t, sID, relSecond.backReferenceForeignKey)
+				assert.Equal(t, fID, relSecond.foreignKey)
+				assert.Equal(t, RelMany2Many, relSecond.kind)
+			}
 		})
 
 	})
@@ -93,9 +206,8 @@ func TestMappedRelationships(t *testing.T) {
 			if assert.NotNil(t, hasManyField.relationship) {
 				assert.Equal(t, fk, hasManyField.relationship.foreignKey)
 				assert.Equal(t, RelHasMany, hasManyField.relationship.kind)
-				if assert.NotNil(t, hasManyField.relationship.sync) {
-					assert.True(t, *hasManyField.relationship.sync)
-				}
+				assert.Equal(t, fkModel, hasManyField.relationship.mStruct)
+
 			}
 		})
 	})
@@ -113,7 +225,6 @@ func TestMappedRelationships(t *testing.T) {
 
 		if assert.NotNil(t, belongsToField.relationship) {
 			assert.Equal(t, RelBelongsTo, belongsToField.relationship.kind)
-			assert.Nil(t, belongsToField.relationship.sync)
 		}
 	})
 

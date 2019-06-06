@@ -29,7 +29,7 @@ type FilterField struct {
 	raw string
 }
 
-// ToRaw returns raw string filter
+// Raw returns raw string filter
 func (f *FilterField) Raw() string {
 	return ""
 }

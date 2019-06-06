@@ -7,6 +7,7 @@ import (
 // RelationshipKind is the enum of the Relationship kinds
 type RelationshipKind int
 
+// Relationship Kinds defined as the enums
 const (
 	RelUnknown RelationshipKind = iota
 	RelBelongsTo
@@ -33,6 +34,7 @@ func (r RelationshipKind) String() string {
 // RelationshipOption defines the option on how to treat the relationship
 type RelationshipOption int
 
+// Relationship options
 const (
 	Restrict RelationshipOption = iota
 	NoAction
@@ -47,23 +49,23 @@ const (
 
 // Relationship is the structure that uses
 type Relationship struct {
+
 	// kind is a relationship kind
 	kind RelationshipKind
 
 	// ForeignKey represtents the foreignkey field
 	foreignKey *StructField
 
-	// Sync is a flag that defines if the relationship opertaions
-	// should be synced with the related many2many relationship
-	// or the foreignkey in related foreign model
-	sync *bool
-
 	// BackReference Fieldname is a field name that is back-reference
 	// relationship in many2many relationships
-	backReferenceFieldname string
+	backReferenceForeignKeyName string
 
-	// BackReferenceField
-	backReferenceField *StructField
+	// BackReferenceField is the backreferenced field in the many2many join model
+	backReferenceForeignKey *StructField
+
+	// joinModel is the join model used for the many2many relationships
+	joinModel     *ModelStruct
+	joinModelName string
 
 	// OnUpdate is a relationship option which determines
 	// how the relationship should operate while updating the root object
@@ -81,14 +83,14 @@ type Relationship struct {
 	modelType reflect.Type
 }
 
-// BackreferenceField returns the field that is backrefereneced in relationships models
-func (r *Relationship) BackreferenceField() *StructField {
-	return r.backReferenceField
+// BackreferenceForeignKey returns the field that is backrefereneced in relationships models
+func (r *Relationship) BackreferenceForeignKey() *StructField {
+	return r.backReferenceForeignKey
 }
 
-// BackreferenceFieldName returns relationships  backrefernce field name
-func (r *Relationship) BackrefernceFieldName() string {
-	return r.backReferenceFieldname
+// BackreferenceForeignKeyName returns relationships  backrefernce field name
+func (r *Relationship) BackreferenceForeignKeyName() string {
+	return r.backReferenceForeignKeyName
 }
 
 // ForeignKey returns relationships foreign key
@@ -96,25 +98,25 @@ func (r *Relationship) ForeignKey() *StructField {
 	return r.foreignKey
 }
 
+// JoinModel returns the join model for the given many2many relationship
+func (r *Relationship) JoinModel() *ModelStruct {
+	return r.joinModel
+}
+
 // Kind returns relationships kind
 func (r *Relationship) Kind() RelationshipKind {
 	return r.kind
 }
 
-// SetBackreferenceField sets the Backreference Field for the relationship
-func (r *Relationship) SetBackreferenceField(s *StructField) {
-	r.backReferenceField = s
-	r.backReferenceFieldname = s.Name()
+// SetBackreferenceForeignKey sets the Backreference Field for the relationship
+func (r *Relationship) SetBackreferenceForeignKey(s *StructField) {
+	r.backReferenceForeignKey = s
+	r.backReferenceForeignKeyName = s.Name()
 }
 
 // SetForeignKey sets foreign key structfield
 func (r *Relationship) SetForeignKey(s *StructField) {
 	r.foreignKey = s
-}
-
-// SetSync sets the relationship sync
-func (r *Relationship) SetSync(b *bool) {
-	r.sync = b
 }
 
 // SetKind sets the relationship kind
@@ -127,14 +129,9 @@ func (r *Relationship) Struct() *ModelStruct {
 	return r.mStruct
 }
 
-// Sync checks if the relationships syncs values with the repositories
-func (r *Relationship) Sync() *bool {
-	return r.sync
-}
-
 // RelationshipSetBackrefField sets the backreference field for the relationship
 func RelationshipSetBackrefField(r *Relationship, backref *StructField) {
-	r.backReferenceField = backref
+	r.backReferenceForeignKey = backref
 }
 
 // RelationshipMStruct returns relationship's modelstruc
@@ -142,7 +139,7 @@ func RelationshipMStruct(r *Relationship) *ModelStruct {
 	return r.mStruct
 }
 
-// RelationshipGetKing returns relationship kind
+// RelationshipGetKind returns relationship kind
 func RelationshipGetKind(r *Relationship) RelationshipKind {
 	return r.kind
 }
@@ -152,11 +149,7 @@ func RelationshipForeignKey(r *Relationship) *StructField {
 	return r.foreignKey
 }
 
-// RelationshipSetBackrefFieldName sets the backreference fieldname
-func RelationshipSetBackrefFieldName(r *Relationship, backrefName string) {
-	r.backReferenceFieldname = backrefName
-}
-
+// IsToOne defines if the relationship is of to one type
 func (r Relationship) IsToOne() bool {
 	return r.isToOne()
 }
@@ -169,6 +162,7 @@ func (r Relationship) isToOne() bool {
 	return false
 }
 
+// IsToMany defines if the relationship is of ToMany kind
 func (r Relationship) IsToMany() bool {
 	return r.isToMany()
 }
@@ -181,6 +175,7 @@ func (r Relationship) isToMany() bool {
 	return true
 }
 
+// IsManyToMany defines if the relaitonship is of ManyToMany type
 func (r Relationship) IsManyToMany() bool {
 	return r.isMany2Many()
 }

@@ -72,10 +72,12 @@ func defaultProcessorConfig() map[string]interface{} {
 			"neuron:hook_before_create",
 			"neuron:set_belongs_to_relationships",
 			"neuron:create",
-			"neuron:hook_after_create",
+			"neuron:store_scope_primaries",
 			"neuron:patch_foreign_relationships",
+			"neuron:hook_after_create",
 		},
 		"get_processes": []string{
+			"neuron:fill_empty_fieldset",
 			"neuron:convert_relationship_filters",
 			"neuron:hook_before_get",
 			"neuron:convert_relationship_filters",
@@ -83,6 +85,7 @@ func defaultProcessorConfig() map[string]interface{} {
 			"neuron:get_foreign_relationships",
 		},
 		"list_processes": []string{
+			"neuron:fill_empty_fieldset",
 			"neuron:convert_relationship_filters",
 			"neuron:hook_before_list",
 			"neuron:convert_relationship_filters",
@@ -92,19 +95,21 @@ func defaultProcessorConfig() map[string]interface{} {
 			"neuron:get_included",
 		},
 		"patch_processes": []string{
+			"neuron:reduce_primary_filters",
 			"neuron:hook_before_patch",
+			"neuron:reduce_primary_filters",
 			"neuron:patch_belongs_to_relationships",
 			"neuron:patch",
 			"neuron:patch_foreign_relationships",
 			"neuron:hook_after_patch",
 		},
 		"delete_processes": []string{
-			"neuron:convert_relationship_filters",
+			"neuron:reduce_primary_filters",
 			"neuron:hook_before_delete",
-			"neuron:convert_relationship_filters",
+			"neuron:reduce_primary_filters",
 			"neuron:delete",
-			"neuron:hook_after_delete",
 			"neuron:delete_foreign_relationships",
+			"neuron:hook_after_delete",
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/pkg/errors"
 	"reflect"
 )
@@ -25,14 +26,71 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return s.attributeFilters
 }
 
+// ClearAllFilters clears all filters within the scope
+func (s *Scope) ClearAllFilters() {
+	s.clearAttributeFilters()
+	s.clearForeignKeyFilters()
+	s.clearFilterKeyFilters()
+	s.clearLanguageFilters()
+	s.clearPrimaryFilters()
+	s.clearRelationshipFilters()
+}
+
+// ClearAttributeFilters clears all the attribute filters
+func (s *Scope) ClearAttributeFilters() {
+	s.clearAttributeFilters()
+}
+
+// ClearForeignKeyFilters clears the foreign key filters
+func (s *Scope) ClearForeignKeyFilters() {
+	s.clearForeignKeyFilters()
+}
+
+// ClearFilterKeyFilters clears the filter key filters
+func (s *Scope) ClearFilterKeyFilters() {
+	s.clearFilterKeyFilters()
+}
+
+// ClearLanguageFilters clears the language filters
+func (s *Scope) ClearLanguageFilters() {
+	s.clearLanguageFilters()
+}
+
+// ClearPrimaryFilters clears the primary field filters
+func (s *Scope) ClearPrimaryFilters() {
+	s.clearPrimaryFilters()
+}
+
 // ClearRelationshipFilters clears the relationship filters for the scope
 func (s *Scope) ClearRelationshipFilters() {
-	s.relationshipFilters = []*filters.FilterField{}
+	s.clearRelationshipFilters()
+}
+
+// SetFiltersTo set the filters to the scope with the same struct base
+func (s *Scope) SetFiltersTo(to *Scope) error {
+	if s.mStruct != to.mStruct {
+		log.Errorf("SetFiltersTo mismatch scope's structs. Is: '%s' should be: '%s'", to.mStruct.Collection(), s.mStruct.Collection())
+		return errors.New("SetToFilters struct mismatch")
+	}
+
+	to.primaryFilters = s.primaryFilters
+	to.attributeFilters = s.attributeFilters
+	to.languageFilters = s.languageFilters
+	to.relationshipFilters = s.relationshipFilters
+	to.foreignFilters = s.foreignFilters
+	to.keyFilters = s.keyFilters
+
+	return nil
 }
 
 // FilterKeyFilters return key filters for the scope
 func (s *Scope) FilterKeyFilters() []*filters.FilterField {
 	return s.keyFilters
+}
+
+// ForeignKeyFilters are the filters for the foreign key fields
+func (s *Scope) ForeignKeyFilters() []*filters.FilterField {
+	return s.foreignFilters
 }
 
 // GetOrCreateAttributeFilter creates or gets existing attribute filter for given sField
@@ -251,6 +309,25 @@ func (s *Scope) addFilterField(filter *filters.FilterField) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Scope) clearAttributeFilters() {
+	s.attributeFilters = []*filters.FilterField{}
+}
+func (s *Scope) clearForeignKeyFilters() {
+	s.foreignFilters = []*filters.FilterField{}
+}
+func (s *Scope) clearFilterKeyFilters() {
+	s.keyFilters = []*filters.FilterField{}
+}
+func (s *Scope) clearLanguageFilters() {
+	s.languageFilters = nil
+}
+func (s *Scope) clearPrimaryFilters() {
+	s.primaryFilters = []*filters.FilterField{}
+}
+func (s *Scope) clearRelationshipFilters() {
+	s.relationshipFilters = []*filters.FilterField{}
 }
 
 func (s *Scope) setIDFilterValues(values ...interface{}) {
