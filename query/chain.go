@@ -1,13 +1,14 @@
 package query
 
 import (
-	"fmt"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 )
 
-// ProcessChain is the chain of processes
+// ProcessChain is the slice (chain) of processes.
 type ProcessChain []*Process
 
-// InsertBefore adds the process before the process name
+// InsertBefore adds the process before the process with the 'before' name.
 func (c *ProcessChain) InsertBefore(before string, processes ...*Process) error {
 	var (
 		index int
@@ -21,7 +22,7 @@ func (c *ProcessChain) InsertBefore(before string, processes ...*Process) error 
 		}
 	}
 	if !found {
-		return fmt.Errorf("Process: '%s', not found.", before)
+		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", before)
 	}
 
 	var chain = ProcessChain{}
@@ -52,7 +53,7 @@ func (c *ProcessChain) InsertAfter(after string, processes ...*Process) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("Process: '%s', not found.", after)
+		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", after)
 	}
 
 	var chain = ProcessChain{}
@@ -83,7 +84,7 @@ func (c *ProcessChain) Replace(toReplace string, process *Process) error {
 	}
 
 	if !found {
-		return fmt.Errorf("Process: '%s' not found.", toReplace)
+		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", toReplace)
 	}
 
 	(*c)[index] = process
@@ -106,7 +107,7 @@ func (c *ProcessChain) DeleteProcess(processName string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("Process: '%s' not found.", processName)
+		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", processName)
 	}
 
 	chain := ProcessChain{}

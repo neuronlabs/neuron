@@ -1,15 +1,15 @@
 package models
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/log"
-	// "github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/namer"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	// "reflect"
-	"testing"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+
+	"github.com/neuronlabs/neuron/internal/namer"
 )
 
 const (
@@ -21,7 +21,7 @@ func testingSchemas(t *testing.T) *ModelSchemas {
 	t.Helper()
 
 	cfg := config.ReadDefaultControllerConfig()
-	m, err := NewModelSchemas(namer.NamingSnake, cfg, flags.New())
+	m, err := NewModelSchemas(namer.NamingSnake, cfg)
 	require.NoError(t, err)
 	return m
 }

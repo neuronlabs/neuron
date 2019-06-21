@@ -3,21 +3,22 @@ package tests
 import (
 	"context"
 	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-logger"
-	"github.com/stretchr/testify/mock"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"testing"
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/controller"
 )
 
 var (
@@ -43,7 +44,7 @@ type afterCreateTestModel struct {
 
 var _ query.AfterCreator = &afterCreateTestModel{}
 
-func (c *beforeCreateTestModel) HBeforeCreate(ctx context.Context, s *query.Scope) error {
+func (c *beforeCreateTestModel) BeforeCreate(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -52,7 +53,7 @@ func (c *beforeCreateTestModel) HBeforeCreate(ctx context.Context, s *query.Scop
 	return nil
 }
 
-func (c *afterCreateTestModel) HAfterCreate(ctx context.Context, s *query.Scope) error {
+func (c *afterCreateTestModel) AfterCreate(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errors.New("Not called")
@@ -63,11 +64,6 @@ func (c *afterCreateTestModel) HAfterCreate(ctx context.Context, s *query.Scope)
 
 // TestCreate tests the create Queries with default processor
 func TestCreate(t *testing.T) {
-	if testing.Verbose() {
-		err := log.SetLevel(unilogger.DEBUG)
-		require.NoError(t, err)
-	}
-
 	c := newController(t)
 
 	err := c.RegisterModels(&createTestModel{}, &beforeCreateTestModel{}, &afterCreateTestModel{})
@@ -217,7 +213,7 @@ func TestCreateTransactions(t *testing.T) {
 				repo.On("Create", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 					log.Debug("Create on hasOneModel")
 					s := a[1].(*query.Scope)
-					_, ok := s.StoreGet(internal.TxStateCtxKey)
+					_, ok := s.StoreGet(internal.TxStateStoreKey)
 					assert.True(t, ok)
 
 					sv := s.Value.(*hasOneModel)
@@ -466,6 +462,9 @@ func newController(t testing.TB) *controller.Controller {
 	t.Helper()
 
 	c := controller.DefaultTesting(t, nil)
+	if testing.Verbose() {
+		log.SetLevel(log.LDEBUG2)
+	}
 
 	return c
 }

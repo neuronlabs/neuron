@@ -2,8 +2,10 @@ package mocks
 
 import (
 	"context"
-	"github.com/neuronlabs/neuron/repository"
+
 	"github.com/stretchr/testify/mock"
+
+	"github.com/neuronlabs/neuron/repository"
 )
 
 var _ repository.Repository = &Repository{}

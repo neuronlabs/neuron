@@ -2,16 +2,17 @@ package query
 
 import (
 	"context"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/uni-db"
 	"reflect"
 
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
+
+	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
 )
 
 var (
@@ -27,13 +28,13 @@ var (
 		Func: reducePrimaryFilters,
 	}
 
-	// ProcessBeforeDelete is the Process that does the HBeforeDelete hook
+	// ProcessBeforeDelete is the Process that does the BeforeDelete hook
 	ProcessBeforeDelete = &Process{
 		Name: "neuron:hook_before_delete",
 		Func: beforeDeleteFunc,
 	}
 
-	// ProcessAfterDelete is the Process that does the HAfterDelete hook
+	// ProcessAfterDelete is the Process that does the AfterDelete hook
 	ProcessAfterDelete = &Process{
 		Name: "neuron:hook_after_delete",
 		Func: afterDeleteFunc,
@@ -47,17 +48,16 @@ var (
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
-
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
-		return ErrNoRepositoryFound
+		return err
 	}
 
 	dRepo, ok := repo.(Deleter)
 	if !ok {
 		log.Warningf("Repository for model: '%v' doesn't implement Deleter interface", s.Struct().Type().Name())
-		return ErrNoDeleterFound
+		return errors.Newf(class.RepositoryNotImplementsDeleter, "repository: %T doesn't implement Deleter interface", repo)
 	}
 
 	// do the delete operation
@@ -74,7 +74,7 @@ func beforeDeleteFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if err := beforeDeleter.HBeforeDelete(ctx, s); err != nil {
+	if err := beforeDeleter.BeforeDelete(ctx, s); err != nil {
 		return err
 	}
 	return nil
@@ -86,7 +86,7 @@ func afterDeleteFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if err := afterDeleter.HAfterDelete(ctx, s); err != nil {
+	if err := afterDeleter.AfterDelete(ctx, s); err != nil {
 		return err
 	}
 	return nil
@@ -203,8 +203,8 @@ func deleteForeignRelationships(ctx context.Context, iScope *scope.Scope, field 
 		// patch the clearScope
 		if err = queryS(clearScope).PatchContext(ctx); err != nil {
 			switch e := err.(type) {
-			case *unidb.Error:
-				if e.Compare(unidb.ErrNoResult) {
+			case *errors.Error:
+				if e.Class == class.QueryValueNoResult {
 					err = nil
 					return
 				}
@@ -212,21 +212,19 @@ func deleteForeignRelationships(ctx context.Context, iScope *scope.Scope, field 
 			return
 		}
 	case models.RelMany2Many:
-
 		// there is assumption that only the primary filters exists on the delete scope
-
 		// delete the many2many rows within the join model
 		clearScope := newScopeWithModel((*Scope)(iScope).Controller(), rel.JoinModel(), false)
 
 		// add the backreference filter
-		backReferenceFilter := filters.NewFilter(rel.BackreferenceForeignKey())
+		foreignKeyFilter := filters.NewFilter(rel.ForeignKey())
 
 		// with the values of the primary filter
 		for _, prim := range iScope.PrimaryFilters() {
-			backReferenceFilter.AddValues(prim.Values()...)
+			foreignKeyFilter.AddValues(prim.Values()...)
 		}
 
-		if err = clearScope.AddFilterField(backReferenceFilter); err != nil {
+		if err = clearScope.AddFilterField(foreignKeyFilter); err != nil {
 			log.Debugf("Deleting relationship: '%s' AddFilterField failed: %v ", field.Name(), err)
 			return
 		}
@@ -242,8 +240,8 @@ func deleteForeignRelationships(ctx context.Context, iScope *scope.Scope, field 
 		// delete the entries in the join model
 		if err = (*Scope)(clearScope).DeleteContext(ctx); err != nil {
 			switch e := err.(type) {
-			case *unidb.Error:
-				if e.Compare(unidb.ErrNoResult) {
+			case *errors.Error:
+				if e.Class == class.QueryValueNoResult {
 					err = nil
 					return
 				}
@@ -257,9 +255,9 @@ func deleteForeignRelationships(ctx context.Context, iScope *scope.Scope, field 
 // reducePrimaryFilters is the process func that changes the delete scope filters so that
 // if the root model contains any nonBelongsTo relationship then the filters must be converted into primary field filter
 func reducePrimaryFilters(ctx context.Context, s *Scope) error {
-	reducedPrimariesInterface, alreadyReduced := s.internal().StoreGet(internal.ReducedPrimariesCtxKey)
+	reducedPrimariesInterface, alreadyReduced := s.internal().StoreGet(internal.ReducedPrimariesStoreKey)
 	if alreadyReduced {
-		previousProcess, ok := s.StoreGet(internal.PreviousProcessCtxKey)
+		previousProcess, ok := s.StoreGet(internal.PreviousProcessStoreKey)
 		if ok {
 
 			switch previousProcess.(*Process) {
@@ -284,7 +282,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 		primaryValues, err := s.internal().Struct().PrimaryValues(reflect.ValueOf(s.Value))
 		if err != nil {
-			return unidb.ErrInternalError.NewWithError(err)
+			return err
 		}
 
 		if len(primaryValues) > 0 {
@@ -293,7 +291,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 			primaryFilter := s.internal().GetOrCreateIDFilter()
 			if s.internal().IsPrimaryFieldSelected() {
 				if err = s.internal().UnselectFields(s.internal().Struct().PrimaryField()); err != nil {
-					return unidb.ErrInternalError.NewWithError(err)
+					return err
 				}
 			}
 			primaryFilter.AddValues(filters.NewOpValuePair(filters.OpIn, primaryValues...))
@@ -355,13 +353,13 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	}
 
 	if len(primaries) == 0 && !reduce {
-		return errors.ErrMissingRequiredQueryParam.Copy().WithDetail("No primary field nor primary filters provided while patching the model")
+		return errors.New(class.QueryFilterMissingRequired, "no primary filter or values provided").SetDetail("No primary field nor primary filters provided while patching the model")
 	}
 
 	// if no reduction needed just add the primary filter and deselect the
 	if !reduce {
 		// just set the primary values in the store and finish
-		s.StoreSet(internal.ReducedPrimariesCtxKey, primaries)
+		s.StoreSet(internal.ReducedPrimariesStoreKey, primaries)
 		return nil
 	}
 
@@ -373,7 +371,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// set the filters to the primary scope - they would get cleared after
 	if err := s.internal().SetFiltersTo(primaryScope.internal()); err != nil {
-		return unidb.ErrInternalError.NewWithError(err)
+		return err
 	}
 
 	// list the primary fields
@@ -385,11 +383,11 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	primaries, err := primaryScope.internal().GetPrimaryFieldValues()
 	if err != nil {
 		log.Errorf("Getting primary field values failed: %v", err)
-		return unidb.ErrInternalError.NewWithError(err)
+		return err
 	}
 
 	if len(primaries) == 0 {
-		return unidb.ErrNoResult.New()
+		return errors.New(class.QueryValueNoResult, "query value no results")
 	}
 
 	// clear all filters in the root scope
@@ -399,7 +397,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	primaryFilter := s.internal().GetOrCreateIDFilter()
 	primaryFilter.AddValues(filters.NewOpValuePair(filters.OpIn, primaries...))
 
-	s.StoreSet(internal.ReducedPrimariesCtxKey, primaries)
+	s.StoreSet(internal.ReducedPrimariesStoreKey, primaries)
 
 	return nil
 }

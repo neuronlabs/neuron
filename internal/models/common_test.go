@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/neuronlabs/neuron/log"
 	"testing"
+
+	"github.com/neuronlabs/neuron/log"
 )
 
 type baseModel struct {

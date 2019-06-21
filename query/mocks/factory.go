@@ -2,9 +2,11 @@ package mocks
 
 import (
 	"context"
+
+	"github.com/stretchr/testify/mock"
+
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/stretchr/testify/mock"
 )
 
 const (

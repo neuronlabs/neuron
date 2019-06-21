@@ -2,12 +2,13 @@ package config
 
 import (
 	"errors"
-	"github.com/neuronlabs/neuron/internal"
 	"strings"
 	"time"
+
+	"github.com/neuronlabs/neuron/internal"
 )
 
-// Processor is the config used for the scope processor
+// Processor is the config used for the scope processor.
 type Processor struct {
 	DefaultTimeout time.Duration `mapstructure:"default_timeout"`
 
@@ -27,7 +28,7 @@ type Processor struct {
 	PatchProcesses ProcessList `mapstructure:"patch_processes"`
 }
 
-// Validate validates the processor values
+// Validate validates the processor values.
 func (p *Processor) Validate() error {
 	err := &multiProcessError{}
 
@@ -60,12 +61,11 @@ func (p *Processor) Validate() error {
 	if len(err.processes) == 0 {
 		return nil
 	}
-
 	return err
 }
 
-func defaultProcessorConfig() map[string]interface{} {
-
+// DefaultProcessorConfig creates default config for the Processor.
+func DefaultProcessorConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"default_timeout": time.Second * 30,
 		"create_processes": []string{
@@ -114,7 +114,7 @@ func defaultProcessorConfig() map[string]interface{} {
 	}
 }
 
-// ProcessList is a list of the processes
+// ProcessList is a list of the processes.
 type ProcessList []string
 
 func (p ProcessList) validate(err *multiProcessError) {
@@ -132,7 +132,7 @@ type multiProcessError struct {
 func (m *multiProcessError) Error() string {
 	sb := &strings.Builder{}
 
-	sb.WriteString(strings.Join(m.processes, "l"))
+	sb.WriteString(strings.Join(m.processes, ","))
 
 	if len(m.processes) > 1 {
 		sb.WriteString(" query processes are")

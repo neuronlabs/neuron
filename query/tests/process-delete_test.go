@@ -3,18 +3,20 @@ package tests
 import (
 	"context"
 	"errors"
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-logger"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/internal"
 )
 
 type testDeleter struct {
@@ -25,7 +27,7 @@ type testBeforeDeleter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (b *testBeforeDeleter) HBeforeDelete(ctx context.Context, s *query.Scope) error {
+func (b *testBeforeDeleter) BeforeDelete(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -38,7 +40,7 @@ type testAfterDeleter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *testAfterDeleter) HAfterDelete(ctx context.Context, s *query.Scope) error {
+func (a *testAfterDeleter) AfterDelete(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -47,26 +49,21 @@ func (a *testAfterDeleter) HAfterDelete(ctx context.Context, s *query.Scope) err
 	return nil
 }
 
+// TestDelete test the Delete Processes.
 func TestDelete(t *testing.T) {
-	if testing.Verbose() {
-		err := log.SetLevel(unilogger.DEBUG)
-		require.NoError(t, err)
-	}
-
 	c := newController(t)
 
 	err := c.RegisterModels(&testDeleter{}, &testAfterDeleter{}, &testBeforeDeleter{})
 	require.NoError(t, err)
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testDeleter{})
+		s, err := query.NewC((*controller.Controller)(c), &testDeleter{ID: 1})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
 		repo := r.(*mocks.Repository)
-
-		repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
+		repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.Delete()
 		if assert.NoError(t, err) {
@@ -75,14 +72,14 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("HookBefore", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testBeforeDeleter{})
+		s, err := query.NewC((*controller.Controller)(c), &testBeforeDeleter{ID: 1})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
 		repo := r.(*mocks.Repository)
 
-		repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
+		repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.DeleteContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
@@ -91,7 +88,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("HookAfter", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testAfterDeleter{})
+		s, err := query.NewC((*controller.Controller)(c), &testAfterDeleter{ID: 1})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -130,7 +127,7 @@ func TestDelete(t *testing.T) {
 				ID: 2,
 			}
 
-			s, err := query.NewC((*ctrl.Controller)(c), tm)
+			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
 
 			r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -149,7 +146,7 @@ func TestDelete(t *testing.T) {
 				log.Debug("Delete on deleteTMRelations")
 				s := a[1].(*query.Scope)
 
-				_, ok := s.StoreGet(internal.TxStateCtxKey)
+				_, ok := s.StoreGet(internal.TxStateStoreKey)
 				assert.True(t, ok)
 			}).Once().Return(nil)
 
@@ -203,7 +200,7 @@ func TestDelete(t *testing.T) {
 				},
 			}
 
-			s, err := query.NewC((*ctrl.Controller)(c), tm)
+			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
 			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
@@ -266,6 +263,5 @@ func TestDelete(t *testing.T) {
 			repo.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 		})
-
 	})
 }

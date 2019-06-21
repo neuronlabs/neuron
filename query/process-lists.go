@@ -2,28 +2,30 @@ package query
 
 import (
 	"context"
-	"fmt"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"reflect"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-db"
-	"reflect"
+
+	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 var (
-	// ProcessList is the Process that do the Repository List method
+	// ProcessList is the Process that do the Repository List method.
 	ProcessList = &Process{
 		Name: "neuron:list",
 		Func: listFunc,
 	}
 
-	// ProcessBeforeList is the Process that do the Hook Before List
+	// ProcessBeforeList is the Process that do the Hook Before List.
 	ProcessBeforeList = &Process{
 		Name: "neuron:hook_before_list",
 		Func: beforeListFunc,
 	}
 
-	// ProcessAfterList is the Process that do the Hook After List
+	// ProcessAfterList is the Process that do the Hook After List.
 	ProcessAfterList = &Process{
 		Name: "neuron:hook_after_list",
 		Func: afterListFunc,
@@ -33,20 +35,20 @@ var (
 func listFunc(ctx context.Context, s *Scope) error {
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
-		log.Debug("processList RepositoryByModel failed: %v", s.Struct().Type().Name())
-		return ErrNoRepositoryFound
+		log.Debug("RepositoryByModel failed: %v", s.Struct().Type().Name())
+		return err
 	}
 
 	// Cast repository as Lister interface
 	listerRepo, ok := repo.(Lister)
 	if !ok {
-		log.Debug("processList repository is not a Lister repository.")
-		return ErrNoListerRepoFound
+		log.Debug("Repository: %T is not a Lister repository.", repo)
+		return errors.New(class.RepositoryNotImplementsLister, "repository doesn't implement Lister interface")
 	}
 
 	// List the
 	if err := listerRepo.List(ctx, s); err != nil {
-		log.Debugf("processList listerRepo.List failed for model %v. Err: %v", s.Struct().Collection(), err)
+		log.Debugf("List failed for model %v. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
@@ -60,11 +62,11 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 
 	afterLister, ok := reflect.New(s.Struct().Type()).Interface().(AfterLister)
 	if !ok {
-		return unidb.ErrInternalError.NewWithError(fmt.Errorf("Model: '%s' doesn't cast to AfterLister interface", s.Struct().Type().Name()))
+		return errors.Newf(class.InternalModelNotCast, "Model: %s should cast into AfterLister interface.", s.Struct().Type().Name())
 	}
 
-	if err := afterLister.HAfterList(ctx, s); err != nil {
-		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
+	if err := afterLister.AfterList(ctx, s); err != nil {
+		log.Debug("AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}
 
@@ -78,11 +80,11 @@ func beforeListFunc(ctx context.Context, s *Scope) error {
 
 	beforeLister, ok := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
 	if !ok {
-		return unidb.ErrInternalError.NewWithError(fmt.Errorf("Model: '%s' doesn't cast to BeforeLister interface", s.Struct().Type().Name()))
+		return errors.Newf(class.InternalModelNotCast, "Model: %s should cast into BeforeLister interface.", s.Struct().Type().Name())
 	}
 
-	if err := beforeLister.HBeforeList(ctx, s); err != nil {
-		log.Debug("processHookAfterList AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
+	if err := beforeLister.BeforeList(ctx, s); err != nil {
+		log.Debug("AfterListR for model: %v. Failed: %v", s.Struct().Collection(), err)
 		return err
 	}
 

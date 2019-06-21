@@ -3,19 +3,21 @@ package tests
 import (
 	"context"
 	"errors"
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-logger"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/internal"
 )
 
 type testPatcher struct {
@@ -27,7 +29,7 @@ type testBeforePatcher struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (b *testBeforePatcher) HBeforePatch(ctx context.Context, s *query.Scope) error {
+func (b *testBeforePatcher) BeforePatch(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -40,7 +42,7 @@ type testAfterPatcher struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *testAfterPatcher) HAfterPatch(ctx context.Context, s *query.Scope) error {
+func (a *testAfterPatcher) AfterPatch(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -50,18 +52,13 @@ func (a *testAfterPatcher) HAfterPatch(ctx context.Context, s *query.Scope) erro
 }
 
 func TestPatch(t *testing.T) {
-	if testing.Verbose() {
-		err := log.SetLevel(unilogger.DEBUG)
-		require.NoError(t, err)
-	}
-
 	c := newController(t)
 
 	err := c.RegisterModels(&testPatcher{}, &testAfterPatcher{}, &testBeforePatcher{})
 	require.NoError(t, err)
 
 	t.Run("NoSelectedValues", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testPatcher{ID: 5})
+		s, err := query.NewC((*controller.Controller)(c), &testPatcher{ID: 5})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -77,7 +74,7 @@ func TestPatch(t *testing.T) {
 	})
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testPatcher{ID: 5, Field: "Something"})
+		s, err := query.NewC((*controller.Controller)(c), &testPatcher{ID: 5, Field: "Something"})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -93,7 +90,7 @@ func TestPatch(t *testing.T) {
 	})
 
 	t.Run("HookBefore", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testBeforePatcher{})
+		s, err := query.NewC((*controller.Controller)(c), &testBeforePatcher{ID: 1})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -107,7 +104,7 @@ func TestPatch(t *testing.T) {
 	})
 
 	t.Run("HookAfter", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &testAfterPatcher{})
+		s, err := query.NewC((*controller.Controller)(c), &testAfterPatcher{ID: 2})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -147,7 +144,7 @@ func TestPatch(t *testing.T) {
 				},
 			}
 
-			s, err := query.NewC((*ctrl.Controller)(c), tm)
+			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
 
 			r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -165,7 +162,7 @@ func TestPatch(t *testing.T) {
 			repo.On("Patch", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Patch on patchTMRelations")
 				s := a[1].(*query.Scope)
-				_, ok := s.StoreGet(internal.TxStateCtxKey)
+				_, ok := s.StoreGet(internal.TxStateStoreKey)
 				assert.True(t, ok)
 			}).Once().Return(nil)
 
@@ -214,7 +211,7 @@ func TestPatch(t *testing.T) {
 				},
 			}
 
-			s, err := query.NewC((*ctrl.Controller)(c), tm)
+			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
 			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
@@ -287,16 +284,16 @@ func TestPatch(t *testing.T) {
 					HasOne: &ForeignModel{ID: 5},
 				}
 
-				s, err := query.NewC((*ctrl.Controller)(c), model)
+				s, err := query.NewC((*controller.Controller)(c), model)
 				require.NoError(t, err)
 
-				hasOneRepo, err := repository.GetRepository((*ctrl.Controller)(c), model)
+				hasOneRepo, err := repository.GetRepository((*controller.Controller)(c), model)
 				require.NoError(t, err)
 
 				repo, ok := hasOneRepo.(*mocks.Repository)
 				require.True(t, ok)
 
-				foreignRepo, err := repository.GetRepository((*ctrl.Controller)(c), model.HasOne)
+				foreignRepo, err := repository.GetRepository((*controller.Controller)(c), model.HasOne)
 				require.NoError(t, err)
 
 				frepo, ok := foreignRepo.(*mocks.Repository)
@@ -328,10 +325,10 @@ func TestPatch(t *testing.T) {
 			})
 		})
 		t.Run("HasMany", func(t *testing.T) {
-			t.Skip("not implemented yet")
+			// TODO: patch hasMany tests
 		})
 		t.Run("Many2Many", func(t *testing.T) {
-			t.Skip("not implemented yet")
+			// TODO: patch many2many tests
 		})
 	})
 }

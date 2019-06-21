@@ -4,18 +4,40 @@ import (
 	"reflect"
 )
 
-// RelationshipKind is the enum of the Relationship kinds
+// RelationshipKind is the enum used to define the Relationship's kind.
 type RelationshipKind int
 
-// Relationship Kinds defined as the enums
 const (
+	// RelUnknown is the unknown default relationship kind. States for the relationship internal errors.
 	RelUnknown RelationshipKind = iota
+
+	// RelBelongsTo is the enum value for the 'Belongs To' relationship.
+	// This relationship kind states that the model containing the relationship field
+	// contains also the foreign key of the related models.
+	// The foreign key is a related model's primary field.
 	RelBelongsTo
+
+	// RelHasOne is the enum value for the 'Has One' relationship.
+	// This relationship kind states that the model is in a one to one relationship with
+	// the related model. It also states that the foreign key is located in the related model.
 	RelHasOne
+
+	// RelHasMany is the enum value for the 'Has Many' relationship.
+	// This relationship kind states that the model is in a many to one relationship with the
+	// related model. It also states that the foreign key is located in the related model.
 	RelHasMany
+
+	// RelMany2Many is the enum value for the 'Many To Many' relationship.
+	// This relationship kind states that the model is in a many to many relationship with the
+	// related model. This relationship requires the usage of the join model structure that contains
+	// foreign keys of both related model types. The 'Relationship' struct foreign key should relate to the
+	// model where the related field is stored - i.e. model 'user' has relationship field 'pets' to the model 'pet'
+	// then the relationship pets foreign key should be a 'user id'. In order to get the foreign key of the related model
+	// the relationship has also a field 'MtmForeignKey' which should be a 'pet id'.
 	RelMany2Many
 )
 
+// String implements fmt.Stringer interface.
 func (r RelationshipKind) String() string {
 	switch r {
 	case RelUnknown:
@@ -31,10 +53,11 @@ func (r RelationshipKind) String() string {
 	return "Unknown"
 }
 
-// RelationshipOption defines the option on how to treat the relationship
+// RelationshipOption defines the option on how to process the relationship.
 type RelationshipOption int
 
 // Relationship options
+// TODO: prepare and define relationship options
 const (
 	Restrict RelationshipOption = iota
 	NoAction
@@ -42,29 +65,24 @@ const (
 	SetNull
 )
 
-// By default the relationship many2many is local
-// it can be synced with back-referenced relationship using the 'sync' flag
-// The HasOne and HasMany is the relationship that by default is 'synced'
-// The BelongsTo relationship is local by default.
-
-// Relationship is the structure that uses
+// Relationship is the structure that contains the relation's required field's
+// kind, join model (if exists) and the process option (onDelete, onUpdate) as well
+// as the definition for the related model's type 'mStruct'.
 type Relationship struct {
-
 	// kind is a relationship kind
 	kind RelationshipKind
 
-	// ForeignKey represtents the foreignkey field
+	// foreignKey represtents the foreign key field
 	foreignKey *StructField
 
-	// BackReference Fieldname is a field name that is back-reference
-	// relationship in many2many relationships
-	backReferenceForeignKeyName string
-
-	// BackReferenceField is the backreferenced field in the many2many join model
-	backReferenceForeignKey *StructField
+	// mtmRelatedForeignKey is the foreign key of the many2many related model.
+	// The field is only used on the many2many relationships
+	mtmRelatedForeignKey *StructField
 
 	// joinModel is the join model used for the many2many relationships
-	joinModel     *ModelStruct
+	joinModel *ModelStruct
+
+	// joinModelName is the collection name of the join model.
 	joinModelName string
 
 	// OnUpdate is a relationship option which determines
@@ -83,75 +101,44 @@ type Relationship struct {
 	modelType reflect.Type
 }
 
-// BackreferenceForeignKey returns the field that is backrefereneced in relationships models
-func (r *Relationship) BackreferenceForeignKey() *StructField {
-	return r.backReferenceForeignKey
-}
-
-// BackreferenceForeignKeyName returns relationships  backrefernce field name
-func (r *Relationship) BackreferenceForeignKeyName() string {
-	return r.backReferenceForeignKeyName
-}
-
-// ForeignKey returns relationships foreign key
+// ForeignKey returns relationships foreign key.
 func (r *Relationship) ForeignKey() *StructField {
 	return r.foreignKey
 }
 
-// JoinModel returns the join model for the given many2many relationship
+// IsManyToMany defines if the relaitonship is of many to many type.
+func (r Relationship) IsManyToMany() bool {
+	return r.isMany2Many()
+}
+
+// IsToMany defines if the relationship is of to many kind.
+func (r Relationship) IsToMany() bool {
+	return r.isToMany()
+}
+
+// IsToOne defines if the relationship is of to one type.
+func (r Relationship) IsToOne() bool {
+	return r.isToOne()
+}
+
+// JoinModel returns the join model for the given many2many relationship.
 func (r *Relationship) JoinModel() *ModelStruct {
 	return r.joinModel
 }
 
-// Kind returns relationships kind
+// Kind returns relationship's kind.
 func (r *Relationship) Kind() RelationshipKind {
 	return r.kind
 }
 
-// SetBackreferenceForeignKey sets the Backreference Field for the relationship
-func (r *Relationship) SetBackreferenceForeignKey(s *StructField) {
-	r.backReferenceForeignKey = s
-	r.backReferenceForeignKeyName = s.Name()
-}
-
-// SetForeignKey sets foreign key structfield
-func (r *Relationship) SetForeignKey(s *StructField) {
-	r.foreignKey = s
-}
-
-// SetKind sets the relationship kind
-func (r *Relationship) SetKind(kind RelationshipKind) {
-	r.kind = kind
+// ManyToManyForeignKey returns the foreign key of the many2many related model's.
+func (r *Relationship) ManyToManyForeignKey() *StructField {
+	return r.mtmRelatedForeignKey
 }
 
 // Struct returns relationship model *ModelStruct
 func (r *Relationship) Struct() *ModelStruct {
 	return r.mStruct
-}
-
-// RelationshipSetBackrefField sets the backreference field for the relationship
-func RelationshipSetBackrefField(r *Relationship, backref *StructField) {
-	r.backReferenceForeignKey = backref
-}
-
-// RelationshipMStruct returns relationship's modelstruc
-func RelationshipMStruct(r *Relationship) *ModelStruct {
-	return r.mStruct
-}
-
-// RelationshipGetKind returns relationship kind
-func RelationshipGetKind(r *Relationship) RelationshipKind {
-	return r.kind
-}
-
-// RelationshipForeignKey returns given relationship foreign key
-func RelationshipForeignKey(r *Relationship) *StructField {
-	return r.foreignKey
-}
-
-// IsToOne defines if the relationship is of to one type
-func (r Relationship) IsToOne() bool {
-	return r.isToOne()
 }
 
 func (r Relationship) isToOne() bool {
@@ -162,11 +149,6 @@ func (r Relationship) isToOne() bool {
 	return false
 }
 
-// IsToMany defines if the relationship is of ToMany kind
-func (r Relationship) IsToMany() bool {
-	return r.isToMany()
-}
-
 func (r Relationship) isToMany() bool {
 	switch r.kind {
 	case RelHasOne, RelBelongsTo, RelUnknown:
@@ -175,15 +157,16 @@ func (r Relationship) isToMany() bool {
 	return true
 }
 
-// IsManyToMany defines if the relaitonship is of ManyToMany type
-func (r Relationship) IsManyToMany() bool {
-	return r.isMany2Many()
+func (r Relationship) isMany2Many() bool {
+	return r.kind == RelMany2Many
 }
 
-func (r Relationship) isMany2Many() bool {
-	switch r.kind {
-	case RelMany2Many:
-		return true
-	}
-	return false
+// setForeignKey sets foreign key structfield.
+func (r *Relationship) setForeignKey(s *StructField) {
+	r.foreignKey = s
+}
+
+// SetKind sets the relationship kind
+func (r *Relationship) setKind(kind RelationshipKind) {
+	r.kind = kind
 }

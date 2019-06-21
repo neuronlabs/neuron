@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-// SafeHashMap is a concurrent safe Set interface implementation based on the hashmap
+// SafeHashMap is a concurrent safe Set interface implementation based on the hashmap.
 type SafeHashMap struct {
 	values map[interface{}]interface{}
 	sync.Mutex

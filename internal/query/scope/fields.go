@@ -1,44 +1,70 @@
 package scope
 
 import (
-	"fmt"
-	aerrors "github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/internal"
+	"reflect"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/namer/dialect"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/pkg/errors"
-	"reflect"
 )
-
-/**
-
-SELECTED FIELDS
-
-*/
 
 // AddselectedFields adds provided fields into given Scope's selectedFields Container
 func AddselectedFields(s *Scope, fields ...string) error {
 	for _, addField := range fields {
-
-		field := models.StructFieldByName(s.mStruct, addField)
+		field := s.mStruct.FieldByName(addField)
 		if field == nil {
-			return errors.Errorf("Field: '%s' not found within model: %s", addField, s.mStruct.Collection())
+			err := errors.New(class.QuerySelectedFieldsNotFound, "selected field not found")
+			err.SetDetailf("Field: '%s' not found within model: %s", addField, s.mStruct.Collection())
+			return err
 		}
+
 		s.selectedFields = append(s.selectedFields, field)
 
 	}
 	return nil
 }
 
-// AddToSelectedFields adds the fields to the scope's selected fields
-func (s *Scope) AddToSelectedFields(fields ...interface{}) error {
+// AddSelectedFields adds the fields to the scope's selected fields
+func (s *Scope) AddSelectedFields(fields ...interface{}) error {
 	return s.addToSelectedFields(fields...)
 }
 
 // AddSelectedField adds the selected field to the selected field's array
 func (s *Scope) AddSelectedField(field *models.StructField) {
 	s.selectedFields = append(s.selectedFields, field)
+}
+
+// AreSelected iterates over all selected fields within given scope and returns
+// boolean statement all of provided 'fields' are already selected.
+// Returns an error if any of the 'fields' are not found within given model
+// or are of invalid type.
+// Function accepts field in a following formats:
+// 	- NeuronName - string
+//	- Name - string
+//	- models.StructField
+func (s *Scope) AreSelected(fields ...interface{}) (bool, error) {
+	if len(s.selectedFields) == 0 {
+		return false, nil
+	}
+
+	selectedFields := make([]*models.StructField, len(s.selectedFields))
+	copy(selectedFields, s.selectedFields)
+
+	for _, field := range fields {
+		isSelected, err := s.isSelected(field, &selectedFields, true)
+		if err != nil {
+			return false, err
+		}
+
+		if !isSelected {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // AutoSelectFields selects the fields automatically if none of the select field method were called
@@ -48,14 +74,15 @@ func (s *Scope) AutoSelectFields() error {
 	}
 
 	if s.Value == nil {
-		return ErrNoValue
+		return errors.New(class.QueryNoValue, "no value provided for scope")
 	}
 
+	// TODO: type check the scope's value
 	v := reflect.ValueOf(s.Value).Elem()
 
 	// check if the value is a struct
 	if v.Kind() != reflect.Struct {
-		return internal.ErrInvalidType
+		return errors.New(class.QuerySelectedFieldsInvalidModel, "auto select fields model is not a single struct model")
 	}
 
 	for _, field := range s.mStruct.StructFields() {
@@ -84,53 +111,25 @@ func (s *Scope) AutoSelectFields() error {
 
 // UnselectFields unselects provided fields
 func (s *Scope) UnselectFields(fields ...*models.StructField) error {
-	return unselectFields(s, fields...)
+	return s.unselectFields(fields...)
 }
 
 // DeleteselectedFields deletes the models.StructFields from the given scope Fieldset
 func DeleteselectedFields(s *Scope, fields ...*models.StructField) error {
-	return unselectFields(s, fields...)
+	return s.unselectFields(fields...)
 }
 
-func unselectFields(s *Scope, fields ...*models.StructField) error {
-
-scopeFields:
-	for i := 0; i < len(s.selectedFields); i++ {
-		if len(fields) == 0 {
-			break scopeFields
-		}
-
-		for j := 0; j < len(fields); j++ {
-			if s.selectedFields[i] == fields[j] {
-				fields = append(fields[:j], fields[j+1:]...)
-				j--
-				// Erease from Selected fields
-				s.selectedFields = append(s.selectedFields[:i], s.selectedFields[i+1:]...)
-				i--
-				continue scopeFields
-			}
-		}
-	}
-
-	if len(fields) > 0 {
-		var notEreased string
-		for _, field := range fields {
-			notEreased += field.ApiName() + " "
-		}
-		return errors.Errorf("The following fields were not in the Selected fields scope: '%v'", notEreased)
-	}
-
-	return nil
-}
-
-// IsPrimaryFieldSelected checks if the Scopes primary field is selected
-func (s *Scope) IsPrimaryFieldSelected() bool {
-	for _, field := range s.selectedFields {
-		if field == models.StructPrimary(s.mStruct) {
-			return true
-		}
-	}
-	return false
+// IsSelected iterates over all selected fields within given scope and returns
+// boolean statement if provided 'field' is already selected.
+// Returns an error if the 'field' is not found within given model
+// or it is of invalid type.
+// Function accepts field in a following formats:
+// 	- NeuronName - string
+//	- Name - string
+//	- models.StructField
+func (s *Scope) IsSelected(field interface{}) (bool, error) {
+	selectedFields := &s.selectedFields
+	return s.isSelected(field, selectedFields, false)
 }
 
 // NotSelectedFields lists all the fields that are not selected within the scope
@@ -165,17 +164,16 @@ func (s *Scope) SelectedFields() []*models.StructField {
 }
 
 func (s *Scope) addToSelectedFields(fields ...interface{}) error {
-	var selectedFields map[*models.StructField]struct{} = make(map[*models.StructField]struct{})
-
+	var selectedFields = make(map[*models.StructField]struct{})
 	var sfields []*models.StructField
 
 	for _, field := range fields {
 		var found bool
+
 		switch f := field.(type) {
 		case string:
-
-			for _, sField := range models.StructAllFields(s.mStruct) {
-				if sField.ApiName() == f || sField.Name() == f {
+			for _, sField := range s.mStruct.Fields() {
+				if sField.NeuronName() == f || sField.Name() == f {
 					selectedFields[sField] = struct{}{}
 					sfields = append(sfields, sField)
 					found = true
@@ -184,11 +182,10 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 			}
 			if !found {
 				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-				return internal.ErrFieldNotFound
+				return errors.Newf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f, s.mStruct.Type().Name())
 			}
-
 		case *models.StructField:
-			for _, sField := range models.StructAllFields(s.mStruct) {
+			for _, sField := range s.mStruct.Fields() {
 				if sField == f {
 					found = true
 					selectedFields[sField] = struct{}{}
@@ -198,11 +195,11 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 			}
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
-				return internal.ErrFieldNotFound
+				return errors.Newf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f.Name(), s.mStruct.Type().Name())
 			}
 		default:
 			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
-			return internal.ErrInvalidType
+			return errors.Newf(class.QuerySelectedFieldInvalid, "unknown selected field type: %T", f)
 		}
 	}
 
@@ -211,7 +208,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 		_, ok := selectedFields[alreadySelected]
 		if ok {
 			log.Errorf("Field: %s already set for the given scope.", alreadySelected.Name())
-			return internal.ErrFieldAlreadySelected
+			return errors.Newf(class.QuerySelectedFieldAlreadyUsed, "field: '%s' were already selected", alreadySelected.Name())
 		}
 	}
 
@@ -223,7 +220,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 
 func (s *Scope) deleteSelectedField(index int) error {
 	if index > len(s.selectedFields)-1 {
-		return errors.Errorf("Index out of range: %v", index)
+		return errors.Newf(class.InternalQuerySelectedField, "deleting selected field is out of range: %d", index).SetOperation("deleteSelectedField")
 	}
 
 	// copy the last element
@@ -235,17 +232,41 @@ func (s *Scope) deleteSelectedField(index int) error {
 	return nil
 }
 
+func (s *Scope) isSelected(field interface{}, selectedFields *[]*models.StructField, erease bool) (bool, error) {
+	switch typedField := field.(type) {
+	case string:
+		for i, selectedField := range *selectedFields {
+			if selectedField.NeuronName() == typedField || selectedField.Name() == typedField {
+				if erease {
+					(*selectedFields) = append((*selectedFields)[:i], (*selectedFields)[i+1:]...)
+				}
+				return true, nil
+			}
+		}
+	case *models.StructField:
+		if typedField.Struct() != s.Struct() {
+			return false, errors.New(class.QuerySelectedFieldsInvalidModel, "selected field's model doesn't match query model")
+		}
+		for i := 0; i < len(*selectedFields); i++ {
+			selectedField := (*selectedFields)[i]
+			if typedField == selectedField {
+				if erease {
+					(*selectedFields) = append((*selectedFields)[:i], (*selectedFields)[i+1:]...)
+				}
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 // selectedFieldValues gets the values for given
-func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (
-	values map[string]interface{}, err error,
-) {
+func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (map[string]interface{}, error) {
 	if s.Value == nil {
-		err = internal.ErrNilValue
-		return
+		return nil, errors.New(class.QueryNoValue, "nil query value provided")
 	}
 
-	values = map[string]interface{}{}
-
+	values := make(map[string]interface{})
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -259,7 +280,38 @@ func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (
 		}
 		values[fieldName] = v.FieldByIndex(field.ReflectField().Index).Interface()
 	}
-	return
+	return values, nil
+}
+
+func (s *Scope) unselectFields(fields ...*models.StructField) error {
+
+scopeFields:
+	for i := 0; i < len(s.selectedFields); i++ {
+		if len(fields) == 0 {
+			break scopeFields
+		}
+
+		for j := 0; j < len(fields); j++ {
+			if s.selectedFields[i] == fields[j] {
+				fields = append(fields[:j], fields[j+1:]...)
+				j--
+				// Erease from Selected fields
+				s.selectedFields = append(s.selectedFields[:i], s.selectedFields[i+1:]...)
+				i--
+				continue scopeFields
+			}
+		}
+	}
+
+	if len(fields) > 0 {
+		var notEreased string
+		for _, field := range fields {
+			notEreased += field.NeuronName() + " "
+		}
+		return errors.Newf(class.QuerySelectedFieldsNotSelected, "unselecting non selected fields: '%s'", notEreased)
+	}
+
+	return nil
 }
 
 /**
@@ -277,20 +329,22 @@ func (s *Scope) AddToFieldset(fields ...interface{}) error {
 	return s.addToFieldset(fields...)
 }
 
-// BuildFieldset builds the fieldset for the provided scope fields[collection] = field1, field2
-func (s *Scope) BuildFieldset(fields ...string) (errs []*aerrors.ApiError) {
+// BuildFieldset builds the fieldset for the provided scope's string fields in an NeuronName form field1, field2.
+func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 	var (
-		errObj *aerrors.ApiError
+		errObj *errors.Error
+		errs   []*errors.Error
 	)
 
+	// check if the length of the fields in the fieldset is not bigger then the fields number for the model.
 	if len(fields) > s.mStruct.FieldCount() {
-		errObj = aerrors.ErrInvalidQueryParameter.Copy()
-		errObj.Detail = fmt.Sprintf("Too many fields to set.")
+		errObj = errors.New(class.QueryFieldsetTooBig, "too many fields to set for the query")
+		errObj.SetDetailf("Too many fields to set for the model: '%s'.", s.mStruct.Collection())
 		errs = append(errs, errObj)
-		return
+		return errs
 	}
 
-	prim := models.StructPrimary(s.mStruct)
+	prim := s.mStruct.PrimaryField()
 	s.fieldset = map[string]*models.StructField{
 		prim.Name(): prim,
 	}
@@ -302,39 +356,33 @@ func (s *Scope) BuildFieldset(fields ...string) (errs []*aerrors.ApiError) {
 
 		sField, err := s.checkField(field)
 		if err != nil {
-			if field == "id" {
-				err = aerrors.ErrInvalidQueryParameter.Copy()
-				err.Detail = "Invalid fields parameter. 'id' is not a field - it is primary key."
-			}
 			errs = append(errs, err)
 			continue
 		}
 
-		_, ok := s.fieldset[sField.ApiName()]
+		_, ok := s.fieldset[sField.NeuronName()]
 		if ok {
 			// duplicate
-			errObj = aerrors.ErrInvalidQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
+			errObj = errors.New(class.QueryFieldsetDuplicate, "unknown field provided")
+			errObj.SetDetailf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
 			errs = append(errs, errObj)
 			if len(errs) > MaxPermissibleDuplicates {
-				return
+				return errs
 			}
 			continue
 		}
-		s.fieldset[sField.ApiName()] = sField
+		s.fieldset[sField.NeuronName()] = sField
 
 		if sField.IsRelationship() {
-
 			r := models.FieldRelationship(sField)
-			if r != nil && models.RelationshipGetKind(r) == models.RelBelongsTo {
-				if fk := models.RelationshipForeignKey(r); fk != nil {
-					s.fieldset[fk.ApiName()] = fk
+			if r != nil && r.Kind() == models.RelBelongsTo {
+				if fk := r.ForeignKey(); fk != nil {
+					s.fieldset[fk.NeuronName()] = fk
 				}
 			}
 		}
 	}
-
-	return
+	return errs
 
 }
 
@@ -370,6 +418,14 @@ func (s *Scope) FillFieldsetIfNotSet() {
 // InFieldset checks if the field is in Fieldset
 func (s *Scope) InFieldset(field string) (*models.StructField, bool) {
 	f, ok := s.fieldset[field]
+	if !ok {
+		for _, f := range s.fieldset {
+			if f.Name() == field {
+				return f, true
+			}
+		}
+		return nil, false
+	}
 	return f, ok
 }
 
@@ -381,7 +437,7 @@ func (s *Scope) SetAllFields() {
 // SetFieldsetNoCheck adds fields to the scope without checking if the fields are correct.
 func (s *Scope) SetFieldsetNoCheck(fields ...*models.StructField) {
 	for _, field := range fields {
-		s.fieldset[field.ApiName()] = field
+		s.fieldset[field.NeuronName()] = field
 	}
 }
 
@@ -402,55 +458,67 @@ func (s *Scope) SetFields(fields ...interface{}) error {
 	return nil
 }
 
-func (s *Scope) setAllFields() {
-	fieldset := map[string]*models.StructField{}
-
-	for _, field := range models.StructAllFields(s.mStruct) {
-		fieldset[field.ApiName()] = field
-	}
-	s.fieldset = fieldset
-}
-
 func (s *Scope) addToFieldset(fields ...interface{}) error {
 	for _, field := range fields {
 		var found bool
 		switch f := field.(type) {
 		case string:
-
 			if "*" == f {
 				for _, sField := range s.mStruct.Fields() {
-					s.fieldset[sField.ApiName()] = sField
+					s.fieldset[sField.NeuronName()] = sField
 				}
 			} else {
-				for _, sField := range models.StructAllFields(s.mStruct) {
-					if sField.ApiName() == f || sField.Name() == f {
-						s.fieldset[sField.ApiName()] = sField
+				for _, sField := range s.mStruct.Fields() {
+					if sField.NeuronName() == f || sField.Name() == f {
+						s.fieldset[sField.NeuronName()] = sField
 						found = true
 						break
 					}
 				}
 				if !found {
 					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-					return internal.ErrFieldNotFound
+					err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
+					err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+					return err
 				}
 			}
-
 		case *models.StructField:
-			for _, sField := range models.StructAllFields(s.mStruct) {
+			for _, sField := range s.mStruct.Fields() {
 				if sField == f {
-					s.fieldset[sField.ApiName()] = f
+					s.fieldset[sField.NeuronName()] = f
 					found = true
 					break
 				}
 			}
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
-				return internal.ErrFieldNotFound
+				err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
+				err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				return err
 			}
 		default:
 			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
-			return internal.ErrInvalidType
+			return errors.Newf(class.QueryFieldsetInvalid, "provided invalid field type: '%T'", f)
 		}
 	}
 	return nil
+}
+
+func (s *Scope) setAllFields() {
+	fieldset := map[string]*models.StructField{}
+
+	for _, field := range s.mStruct.Fields() {
+		fieldset[field.NeuronName()] = field
+	}
+	s.fieldset = fieldset
+}
+
+// IsPrimaryFieldSelected checks if the Scopes primary field is selected
+func (s *Scope) IsPrimaryFieldSelected() bool {
+	for _, field := range s.selectedFields {
+		if field == s.mStruct.PrimaryField() {
+			return true
+		}
+	}
+	return false
 }

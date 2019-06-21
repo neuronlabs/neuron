@@ -1,11 +1,12 @@
 package paginations
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-// TestGetLimitOffset tests the pagination GetLimitOffset method
+// TestGetLimitOffset tests the pagination GetLimitOffset method.
 func TestGetLimitOffset(t *testing.T) {
 	p := &Pagination{tp: TpOffset, second: 1, first: 10}
 	limit, offset := p.GetLimitOffset()

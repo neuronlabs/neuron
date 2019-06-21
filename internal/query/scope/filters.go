@@ -1,32 +1,27 @@
 package scope
 
 import (
-	"fmt"
-	"github.com/neuronlabs/neuron/internal"
+	"reflect"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/pkg/errors"
-	"reflect"
 )
 
-/**
-
-FILTERS
-
-*/
-
-// AddFilterField adds the filter to the given scope
+// AddFilterField adds the 'filter' to the given scope.
 func (s *Scope) AddFilterField(filter *filters.FilterField) error {
 	return s.addFilterField(filter)
 }
 
-// AttributeFilters returns scopes attribute filters
+// AttributeFilters returns scope's attribute filters.
 func (s *Scope) AttributeFilters() []*filters.FilterField {
 	return s.attributeFilters
 }
 
-// ClearAllFilters clears all filters within the scope
+// ClearAllFilters clears all filters within the scope.
 func (s *Scope) ClearAllFilters() {
 	s.clearAttributeFilters()
 	s.clearForeignKeyFilters()
@@ -36,41 +31,41 @@ func (s *Scope) ClearAllFilters() {
 	s.clearRelationshipFilters()
 }
 
-// ClearAttributeFilters clears all the attribute filters
+// ClearAttributeFilters clears all the attribute filters.
 func (s *Scope) ClearAttributeFilters() {
 	s.clearAttributeFilters()
 }
 
-// ClearForeignKeyFilters clears the foreign key filters
+// ClearForeignKeyFilters clears the foreign key filters.
 func (s *Scope) ClearForeignKeyFilters() {
 	s.clearForeignKeyFilters()
 }
 
-// ClearFilterKeyFilters clears the filter key filters
+// ClearFilterKeyFilters clears the filter key filters.
 func (s *Scope) ClearFilterKeyFilters() {
 	s.clearFilterKeyFilters()
 }
 
-// ClearLanguageFilters clears the language filters
+// ClearLanguageFilters clears the language filters.
 func (s *Scope) ClearLanguageFilters() {
 	s.clearLanguageFilters()
 }
 
-// ClearPrimaryFilters clears the primary field filters
+// ClearPrimaryFilters clears the primary field filters.
 func (s *Scope) ClearPrimaryFilters() {
 	s.clearPrimaryFilters()
 }
 
-// ClearRelationshipFilters clears the relationship filters for the scope
+// ClearRelationshipFilters clears the relationship filters.
 func (s *Scope) ClearRelationshipFilters() {
 	s.clearRelationshipFilters()
 }
 
-// SetFiltersTo set the filters to the scope with the same struct base
+// SetFiltersTo set the filters to the scope with the same model struct.
 func (s *Scope) SetFiltersTo(to *Scope) error {
 	if s.mStruct != to.mStruct {
 		log.Errorf("SetFiltersTo mismatch scope's structs. Is: '%s' should be: '%s'", to.mStruct.Collection(), s.mStruct.Collection())
-		return errors.New("SetToFilters struct mismatch")
+		return errors.New(class.InternalQueryModelMismatch, "scope's model mismatch").SetOperation("SetFiltersTo")
 	}
 
 	to.primaryFilters = s.primaryFilters
@@ -83,98 +78,96 @@ func (s *Scope) SetFiltersTo(to *Scope) error {
 	return nil
 }
 
-// FilterKeyFilters return key filters for the scope
+// FilterKeyFilters returns all key filters.
 func (s *Scope) FilterKeyFilters() []*filters.FilterField {
 	return s.keyFilters
 }
 
-// ForeignKeyFilters are the filters for the foreign key fields
+// ForeignKeyFilters returns all the foreign key filters.
 func (s *Scope) ForeignKeyFilters() []*filters.FilterField {
 	return s.foreignFilters
 }
 
-// GetOrCreateAttributeFilter creates or gets existing attribute filter for given sField
-func (s *Scope) GetOrCreateAttributeFilter(
-	sField *models.StructField,
-) (filter *filters.FilterField) {
+// GetOrCreateAttributeFilter creates or gets existing attribute filter for given 'sField' *model.StructField.
+func (s *Scope) GetOrCreateAttributeFilter(sField *models.StructField) (filter *filters.FilterField) {
 	return s.getOrCreateAttributeFilter(sField)
 }
 
-//GetOrCreateFilterKeyFilter creates or get an existing filter field
+//GetOrCreateFilterKeyFilter creates or get an existing filter key filter for given 'sField' *models.StructField.
 func (s *Scope) GetOrCreateFilterKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
 	return s.getOrCreateFilterKeyFilter(sField)
 }
 
-//GetOrCreateForeignKeyFilter creates or get an existing filter field
+//GetOrCreateForeignKeyFilter creates or get an existing foreign key filter for given 'sField' *models.StructField.
 func (s *Scope) GetOrCreateForeignKeyFilter(sField *models.StructField) (filter *filters.FilterField) {
 	return s.getOrCreateForeignKeyFilter(sField)
 }
 
-// GetOrCreateIDFilter gets or creates new filterField
+// GetOrCreateIDFilter creates or gets an exististing primary field filter.
 func (s *Scope) GetOrCreateIDFilter() *filters.FilterField {
 	return s.getOrCreateIDFilter()
 }
 
-// GetOrCreateLanguageFilter used to get or if yet not found create the language filter field
+// GetOrCreateLanguageFilter creates or gets an existing language language field filter.
 func (s *Scope) GetOrCreateLanguageFilter() (filter *filters.FilterField) {
 	return s.getOrCreateLangaugeFilter()
 }
 
-// GetOrCreateRelationshipFilter creates or gets existing fitler field for given struct field.
+// GetOrCreateRelationshipFilter creates or gets existing relationship field fitler for the 'sField' *models.StructField.
 func (s *Scope) GetOrCreateRelationshipFilter(sField *models.StructField) (filter *filters.FilterField) {
 	return s.getOrCreateRelationshipFilter(sField)
 }
 
-// LanguageFilter return language filters for given scope
+// LanguageFilter returns language field filter.
 func (s *Scope) LanguageFilter() *filters.FilterField {
 	return s.languageFilters
 }
 
-// PrimaryFilters returns scopes primary filter values
+// PrimaryFilters returns scope's primary filters.
 func (s *Scope) PrimaryFilters() []*filters.FilterField {
 	return s.primaryFilters
 }
 
-// RelationshipFilters returns scopes relationship filters
+// RelationshipFilters returns scope's relationship filters.
 func (s *Scope) RelationshipFilters() []*filters.FilterField {
 	return s.relationshipFilters
 }
 
-// RemoveRelationshipFilter at index
+// RemoveRelationshipFilter removes the relationship filter 'at' index in relationshipFilters array.
 func (s *Scope) RemoveRelationshipFilter(at int) error {
 	if at > len(s.relationshipFilters)-1 {
-		return errors.New("Removing relationship filter out of possible range")
+		return errors.New(class.InternalQueryFilter, "removing relationship filter out of possible range").SetOperation("RemoveRelationshipFilter")
 	}
 
 	s.relationshipFilters = append(s.relationshipFilters[:at], s.relationshipFilters[at+1:]...)
 	return nil
 }
 
-// SetRelationshipFilters sets the relationship filters
+// SetRelationshipFilters sets the relationship filters for 'fs' filter fields.
 func (s *Scope) SetRelationshipFilters(fs []*filters.FilterField) {
 	s.relationshipFilters = fs
 }
 
-// SetIDFilters sets the ID Filter for given values.
+// SetIDFilters sets the primary field filter with the operator OpIn for given 'idValues'.
 func (s *Scope) SetIDFilters(idValues ...interface{}) {
 	s.setIDFilterValues(idValues...)
 }
 
-// SetPrimaryFilters sets the primary filter for given values.
+// SetPrimaryFilters sets the primary field filter with the operator OpIn for given 'idValues'.
 func (s *Scope) SetPrimaryFilters(values ...interface{}) {
 	s.setIDFilterValues(values...)
 }
 
-// SetLanguageFilter the LanguageFilter for given scope.
+// SetLanguageFilter the language filter with the OpIn filter operator and 'languages' values.
 // If the scope's model does not support i18n it does not create language filter, and ends fast.
 func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 	s.setLanguageFilterValues(languages...)
 }
 
-// SetBelongsToForeignKeyFields sets the fields of type foreign key to the belongs of relaitonships
+// SetBelongsToForeignKeyFields sets the foreign key fields for the 'belongs to' relationships.
 func (s *Scope) SetBelongsToForeignKeyFields() error {
 	if s.Value == nil {
-		return internal.ErrNilValue
+		return errors.New(class.QueryNoValue, "nil query scope value provided")
 	}
 
 	setField := func(v reflect.Value) ([]*models.StructField, error) {
@@ -183,12 +176,12 @@ func (s *Scope) SetBelongsToForeignKeyFields() error {
 		}
 
 		if v.Type() != s.Struct().Type() {
-			return nil, internal.ErrInvalidType
+			return nil, errors.New(class.QueryValueType, "model's struct mismatch")
 		}
 
 		var fks []*models.StructField
 		for _, field := range s.selectedFields {
-			relField, ok := s.mStruct.RelationshipField(field.ApiName())
+			relField, ok := s.mStruct.RelationshipField(field.NeuronName())
 			if ok {
 				rel := relField.Relationship()
 				if rel != nil && rel.Kind() == models.RelBelongsTo {
@@ -228,14 +221,12 @@ func (s *Scope) SetBelongsToForeignKeyFields() error {
 	}
 	switch v.Kind() {
 	case reflect.Struct:
-
 		fks, err := setField(v)
 		if err != nil {
 			return err
 		}
 		for _, fk := range fks {
 			var found bool
-
 		inner:
 			for _, selected := range s.selectedFields {
 				if fk == selected {
@@ -247,13 +238,15 @@ func (s *Scope) SetBelongsToForeignKeyFields() error {
 				s.selectedFields = append(s.selectedFields, fk)
 			}
 		}
-
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
-			fks, err := setField(v)
+			if elem.IsNil() {
+				continue
+			}
+			fks, err := setField(elem)
 			if err != nil {
-				return errors.Wrapf(err, "At index: %d. Value: %v", i, elem.Interface())
+				return err
 			}
 			for _, fk := range fks {
 				var found bool
@@ -281,7 +274,8 @@ PRIVATE METHODS
 
 func (s *Scope) addFilterField(filter *filters.FilterField) error {
 	if models.FieldsStruct(filter.StructField()).ID() != s.mStruct.ID() {
-		err := fmt.Errorf("Filter Struct does not match with the scope. Model: %v, filterField: %v", s.mStruct.Type().Name(), filter.StructField().Name())
+		log.Debugf("Filter's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField().Name(), filter.StructField().Struct().Type().Name())
+		err := errors.New(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
 		return err
 	}
 	switch filter.StructField().FieldKind() {
@@ -303,9 +297,8 @@ func (s *Scope) addFilterField(filter *filters.FilterField) error {
 		s.relationshipFilters = append(s.relationshipFilters, filter)
 	case models.KindFilterKey:
 		s.keyFilters = append(s.keyFilters, filter)
-
 	default:
-		err := fmt.Errorf("Provided filter field of invalid kind. Model: %v. FilterField: %v", s.mStruct.Type().Name(), filter.StructField().Name())
+		err := errors.Newf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField().FieldKind())
 		return err
 	}
 	return nil
@@ -331,7 +324,7 @@ func (s *Scope) clearRelationshipFilters() {
 }
 
 func (s *Scope) setIDFilterValues(values ...interface{}) {
-	s.setPrimaryFilterValues(models.StructPrimary(s.mStruct), values...)
+	s.setPrimaryFilterValues(s.mStruct.PrimaryField(), values...)
 	return
 }
 
@@ -345,15 +338,13 @@ func (s *Scope) setLanguageFilterValues(values ...interface{}) {
 	fv.SetOperator(filters.OpIn)
 
 	fv.Values = append(fv.Values, values...)
-	filters.FilterAppendValues(filter, fv)
-
+	filter.AppendValues(fv)
 	return
 }
 
 func (s *Scope) setPrimaryFilterValues(primField *models.StructField, values ...interface{}) {
 	filter := s.getOrCreatePrimaryFilter(primField)
-
-	filters.FilterAppendValues(filter, filters.NewOpValuePair(filters.OpIn, values...))
+	filter.AppendValues(filters.NewOpValuePair(filters.OpIn, values...))
 }
 
 func (s *Scope) getOrCreatePrimaryFilter(primField *models.StructField) (filter *filters.FilterField) {
@@ -365,23 +356,19 @@ func (s *Scope) getOrCreatePrimaryFilter(primField *models.StructField) (filter 
 	}
 
 	for _, pf := range s.primaryFilters {
-
 		if pf.StructField() == primField {
-			filter = pf
-			return
+			return pf
 		}
 	}
 
 	// if not found within primary filters
 	filter = filters.NewFilter(primField)
-
 	s.primaryFilters = append(s.primaryFilters, filter)
-
 	return filter
 }
 
 func (s *Scope) getOrCreateIDFilter() (filter *filters.FilterField) {
-	return s.getOrCreatePrimaryFilter(models.StructPrimary(s.mStruct))
+	return s.getOrCreatePrimaryFilter(s.mStruct.PrimaryField())
 }
 
 func (s *Scope) getOrCreateLangaugeFilter() (filter *filters.FilterField) {
@@ -398,14 +385,11 @@ func (s *Scope) getOrCreateLangaugeFilter() (filter *filters.FilterField) {
 
 	filter = filters.NewFilter(s.mStruct.LanguageField())
 	s.languageFilters = filter
-	return
+	return filter
 
 }
 
-func (s *Scope) getOrCreateAttributeFilter(
-	sField *models.StructField,
-) (filter *filters.FilterField) {
-
+func (s *Scope) getOrCreateAttributeFilter(sField *models.StructField) (filter *filters.FilterField) {
 	s.filterLock.Lock()
 	defer s.filterLock.Unlock()
 
@@ -416,12 +400,11 @@ func (s *Scope) getOrCreateAttributeFilter(
 	for _, attrFilter := range s.attributeFilters {
 		if attrFilter.StructField() == sField {
 			filter = attrFilter
-			return
+			return filter
 		}
 	}
 	filter = filters.NewFilter(sField)
 	s.attributeFilters = append(s.attributeFilters, filter)
-
 	return filter
 }
 
@@ -436,7 +419,7 @@ func (s *Scope) getOrCreateFilterKeyFilter(sField *models.StructField) (filter *
 	for _, fkFilter := range s.keyFilters {
 		if fkFilter.StructField() == sField {
 			filter = fkFilter
-			return
+			return filter
 		}
 	}
 	filter = filters.NewFilter(sField)
@@ -458,7 +441,7 @@ func (s *Scope) getOrCreateForeignKeyFilter(sField *models.StructField) (filter 
 	for _, fkFilter := range s.foreignFilters {
 		if fkFilter.StructField() == sField {
 			filter = fkFilter
-			return
+			return filter
 		}
 	}
 	filter = filters.NewFilter(sField)
@@ -479,8 +462,7 @@ func (s *Scope) getOrCreateRelationshipFilter(sField *models.StructField) (filte
 	for _, relFilter := range s.relationshipFilters {
 		if relFilter.StructField() == sField {
 			filter = relFilter
-
-			return
+			return filter
 		}
 	}
 

@@ -1,32 +1,26 @@
 package controller
 
 import (
+	"strings"
+
+	"gopkg.in/go-playground/validator.v9"
+
+	"github.com/neuronlabs/uni-logger"
+
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
 
-	aerrors "github.com/neuronlabs/neuron/errors"
-	"github.com/pkg/errors"
-
+	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/namer"
-	"github.com/neuronlabs/uni-logger"
-
-	// "golang.org/x/text/language"
-	// "golang.org/x/text/language/display"
-	"gopkg.in/go-playground/validator.v9"
-	// "net/http"
-	// "net/url"
-
-	// "strconv"
-	"strings"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 var (
-	validate          *validator.Validate = validator.New()
+	validate          = validator.New()
 	defaultController *Controller
 )
 
@@ -38,9 +32,6 @@ type Controller struct {
 
 	// Namer defines the function strategy how the model's and it's fields are being named
 	NamerFunc namer.Namer
-
-	// Flags defines the controller config flags
-	Flags *flags.Container
 
 	// StrictUnmarshalMode if set to true, the incoming data cannot contain
 	// any unknown fields
@@ -54,9 +45,6 @@ type Controller struct {
 	// schemas is a mapping for the model schemas
 	schemas *models.ModelSchemas
 
-	// dbErrMapper error manager for the repositories
-	dbErrMapper *aerrors.ErrorMapper
-
 	// Validators
 	// CreateValidator is used as a validator for the Create processes
 	CreateValidator *validator.Validate
@@ -67,12 +55,12 @@ type Controller struct {
 
 // New Creates raw *jsonapi.Controller with no limits and links.
 func New(cfg *config.Controller, logger unilogger.LeveledLogger) (*Controller, error) {
-
 	if logger != nil {
 		log.SetLogger(logger)
 	} else {
 		log.Default()
 	}
+
 	log.Debugf("New Controller creating...")
 	c, err := newController(cfg)
 	if err != nil {
@@ -104,21 +92,8 @@ func Default() *Controller {
 }
 
 func newController(cfg *config.Controller) (*Controller, error) {
-	var (
-		f   *flags.Container
-		err error
-	)
-	if cfg.Flags == nil {
-		f = flags.New()
-	} else {
-		f, err = cfg.Flags.Container()
-		if err != nil {
-			return nil, err
-		}
-	}
-
+	var err error
 	c := &Controller{
-		Flags:           f,
 		CreateValidator: validator.New(),
 		PatchValidator:  validator.New(),
 	}
@@ -126,14 +101,13 @@ func newController(cfg *config.Controller) (*Controller, error) {
 	log.Debugf("Creating Controller with config: %+v", cfg)
 
 	if err = c.setConfig(cfg); err != nil {
-		return nil, errors.Wrap(err, "setConfig failed.")
+		return nil, err
 	}
 
 	// create model schemas
 	c.schemas, err = models.NewModelSchemas(
 		c.NamerFunc,
 		c.Config,
-		c.Flags,
 	)
 	if err != nil {
 		return nil, err
@@ -141,23 +115,15 @@ func newController(cfg *config.Controller) (*Controller, error) {
 
 	defaultRepository := c.Config.DefaultRepository
 	if defaultRepository == nil {
-		return nil, errors.Errorf("Default repository: '%s' not found within repositories container", c.Config.DefaultRepository)
+		return nil, errors.New(class.ModelSchemaNotFound, "default repository not found")
 	}
 
 	// set default factory
 	if factory := repository.GetFactory(defaultRepository.DriverName); factory == nil {
-		return nil, errors.Errorf("Repository Factory not found for the repository: %s ", defaultRepository.DriverName)
+		return nil, errors.Newf(class.RepositoryNotFound, "repository Factory not found for the repository: %s", defaultRepository.DriverName)
 	}
 
-	// create error manager
-	c.dbErrMapper = aerrors.NewDBMapper()
-
 	return c, nil
-}
-
-// DBErrorMapper gets the database error manager
-func (c *Controller) DBErrorMapper() *aerrors.ErrorMapper {
-	return c.dbErrMapper
 }
 
 // SetLogger sets the logger for the controller operations
@@ -193,22 +159,18 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	}
 
 	for _, schema := range c.schemas.Schemas() {
-
 		if err := c.Config.MapRepositories(schema.Config()); err != nil {
 			log.Debugf("Mapping repositories failed for schema: %s", schema.Name)
 			return err
 		}
 
 		for _, mStruct := range schema.Models() {
-
 			if _, err := repository.GetRepository(c, (*mapping.ModelStruct)(mStruct)); err != nil {
 				log.Errorf("Mapping model: %v to repository failed.", mStruct.Type().Name())
 				return err
 			}
 		}
-
 	}
-
 	return nil
 }
 
@@ -230,7 +192,7 @@ func (c *Controller) GetModelStruct(model interface{}) (*models.ModelStruct, err
 
 func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, error) {
 	if model == nil {
-		return nil, errors.New("Nil model provided.")
+		return nil, errors.New(class.ModelValueNil, "provided nil model value")
 	}
 
 	mStruct, err := c.schemas.GetModelStruct(model)
@@ -244,7 +206,7 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 // setConfig sets and validates provided config
 func (c *Controller) setConfig(cfg *config.Controller) error {
 	if cfg == nil {
-		return errors.New("Nil config provided")
+		return errors.New(class.ConfigValueNil, "provided nil config value")
 	}
 
 	// set level debug
@@ -255,7 +217,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	cfg.NamingConvention = strings.ToLower(cfg.NamingConvention)
 
 	if err := validate.Struct(cfg); err != nil {
-		return errors.Wrap(err, "Validate config failed.")
+		return errors.New(class.ConfigValueInvalid, "validating config failed")
 	}
 
 	if err := cfg.Processor.Validate(); err != nil {

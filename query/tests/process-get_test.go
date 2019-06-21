@@ -2,24 +2,23 @@ package tests
 
 import (
 	"context"
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-logger"
+	"testing"
 
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 type beforeGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (b *beforeGetter) HBeforeGet(ctx context.Context, s *query.Scope) error {
+func (b *beforeGetter) BeforeGet(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -32,7 +31,7 @@ type afterGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *afterGetter) HAfterGet(ctx context.Context, s *query.Scope) error {
+func (a *afterGetter) AfterGet(ctx context.Context, s *query.Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -46,18 +45,13 @@ type getter struct {
 }
 
 func TestGet(t *testing.T) {
-	if testing.Verbose() {
-		err := log.SetLevel(unilogger.DEBUG)
-		require.NoError(t, err)
-	}
-
 	c := newController(t)
 
 	err := c.RegisterModels(&beforeGetter{}, &afterGetter{}, &getter{})
 	require.NoError(t, err)
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &getter{})
+		s, err := query.NewC((*controller.Controller)(c), &getter{})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())
@@ -73,7 +67,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("BeforeGet", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &beforeGetter{})
+		s, err := query.NewC((*controller.Controller)(c), &beforeGetter{})
 		require.NoError(t, err)
 
 		require.NotNil(t, s.Value)
@@ -91,7 +85,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("AfterGet", func(t *testing.T) {
-		s, err := query.NewC((*ctrl.Controller)(c), &afterGetter{})
+		s, err := query.NewC((*controller.Controller)(c), &afterGetter{})
 		require.NoError(t, err)
 
 		r, _ := repository.GetRepository(s.Controller(), s.Struct())

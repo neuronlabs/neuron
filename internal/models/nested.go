@@ -54,14 +54,14 @@ func NestedStructAttr(n *NestedStruct) *StructField {
 
 // NestedStructSetSubfield sets the subfield for the nestedStructr
 func NestedStructSetSubfield(s *NestedStruct, n *NestedField) {
-	s.fields[n.structField.apiName] = n
+	s.fields[n.structField.neuronName] = n
 }
 
 func (n *NestedStruct) attr() *StructField {
 	var attr *StructField
 	sFielder := n.structField
 	for {
-		if nested, ok := sFielder.(NestedStructFielder); ok {
+		if nested, ok := sFielder.(nestedStructFielder); ok {
 			sFielder = nested.SelfNested().root.structField
 		} else {
 			attr = sFielder.Self()
@@ -155,7 +155,7 @@ func (n *NestedField) attr() *StructField {
 	var attr *StructField
 	sFielder := n.root.structField
 	for {
-		if nested, ok := sFielder.(NestedStructFielder); ok {
+		if nested, ok := sFielder.(nestedStructFielder); ok {
 			sFielder = nested.SelfNested().root.structField
 		} else {
 			attr = sFielder.Self()
@@ -170,7 +170,7 @@ type StructFielder interface {
 	Self() *StructField
 }
 
-type NestedStructFielder interface {
+type nestedStructFielder interface {
 	StructFielder
 	SelfNested() *NestedField
 }

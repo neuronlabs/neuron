@@ -1,10 +1,13 @@
 package tests
 
 import (
-	iScope "github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/query"
+
+	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 import (
@@ -25,7 +28,7 @@ func BenchmarkCastScope(b *testing.B) {
 	mStruct := c.MustGetModelStruct(&benchmarkType{})
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_ = (*query.Scope)(iScope.New(mStruct))
+		_ = (*query.Scope)(scope.New(mStruct))
 	}
 }
 
@@ -39,6 +42,6 @@ func BenchmarkNoCastScope(b *testing.B) {
 	mStruct := c.MustGetModelStruct(&benchmarkType{})
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_ = iScope.New(mStruct)
+		_ = scope.New(mStruct)
 	}
 }

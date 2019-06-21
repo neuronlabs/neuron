@@ -2,40 +2,37 @@ package query
 
 import (
 	"context"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-db"
-	"github.com/pkg/errors"
+
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
-// ErrNoCreateRepository is thrown when the repository doesn't implement the creator interface
-var ErrNoCreateRepository = errors.New("No create repository for model found.")
-
-// CREATE process
-
 var (
-	// ProcessCreate is the process that does the Repository Create method
+	// ProcessCreate is the process that does the Repository Create method.
 	ProcessCreate = &Process{
 		Name: "neuron:create",
 		Func: createFunc,
 	}
 
-	// ProcessBeforeCreate is the process that does the hook HBeforeCreate
+	// ProcessBeforeCreate is the process that does the hook BeforeCreate.
 	ProcessBeforeCreate = &Process{
 		Name: "neuron:hook_before_create",
 		Func: beforeCreateFunc,
 	}
 
-	// ProcessAfterCreate is the Process that does the hook HAfterCreate
+	// ProcessAfterCreate is the Process that does the hook AfterCreate.
 	ProcessAfterCreate = &Process{
 		Name: "neuron:hook_after_create",
 		Func: afterCreateFunc,
 	}
 
 	// ProcessStoreScopePrimaries gets the primary field values and sets into scope's store
-	// under key: internal.ReducedPrimariesKeyCtx
+	// under key: internal.ReducedPrimariesKeyCtx.
 	ProcessStoreScopePrimaries = &Process{
 		Name: "neuron:store_scope_primaries",
 		Func: storeScopePrimaries,
@@ -43,17 +40,15 @@ var (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
-
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
-		log.Errorf("No repository found for the %s model. %v", s.Struct().Collection(), err)
-		return ErrNoRepositoryFound
+		return err
 	}
 
 	creater, ok := repo.(Creater)
 	if !ok {
 		log.Errorf("The repository deosn't implement Creater interface for model: %s", (*scope.Scope)(s).Struct().Collection())
-		return ErrNoCreateRepository
+		return errors.New(class.RepositoryNotImplementsCreater, "repository doesn't implement Creator interface")
 	}
 
 	if err := creater.Create(ctx, s); err != nil {
@@ -71,7 +66,7 @@ func beforeCreateFunc(ctx context.Context, s *Scope) error {
 	}
 
 	// Use the hook function before create
-	err := beforeCreator.HBeforeCreate(ctx, s)
+	err := beforeCreator.BeforeCreate(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -86,7 +81,7 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	err := afterCreator.HAfterCreate(ctx, s)
+	err := afterCreator.AfterCreate(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -94,13 +89,12 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 }
 
 func storeScopePrimaries(ctx context.Context, s *Scope) error {
-
 	primaryValues, err := s.internal().GetPrimaryFieldValues()
 	if err != nil {
-		return unidb.ErrInternalError.NewWithError(err)
+		return err
 	}
 
-	s.StoreSet(internal.ReducedPrimariesCtxKey, primaryValues)
+	s.StoreSet(internal.ReducedPrimariesStoreKey, primaryValues)
 
 	return nil
 }

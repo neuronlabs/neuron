@@ -2,17 +2,14 @@ package query
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
 	"github.com/google/uuid"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
-)
-
-// ErrRepositoryNotACommiter is an error returned when the repository doesn't implement Commiter interface
-var (
-	ErrRepositoryNotACommiter   = errors.New("Repository doesn't implement Commiter interface")
-	ErrRepositoryNotARollbacker = errors.New("Repository doesn't implement Rollbacker interface")
 )
 
 // Tx is the scope's defined transaction
@@ -78,15 +75,10 @@ func (s *TxState) UnmarshalJSON(data []byte) error {
 		*s = 0
 	default:
 		log.Errorf("Unknown transaction state: %s", str)
-		return errors.New("Unknown transaction state")
+		return errors.New(class.QueryTxUnknownState, "unknown transaction state")
 	}
 	return nil
 }
-
-var (
-	// ErrTxAlreadyBegan notifies that the transaction had already began
-	ErrTxAlreadyBegan = errors.New("Transaction already began")
-)
 
 // IsolationLevel is the
 type IsolationLevel int
@@ -154,7 +146,7 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 		*i = LevelLinearizable
 	default:
 		log.Debugf("Unknown transaction isolation level: %s", string(data))
-		return errors.New("Unknown isolation level")
+		return errors.Newf(class.QueryTxUnknownIsolationLevel, "unknown transaction isolation level: %s", string(data))
 	}
 
 	return nil
@@ -181,17 +173,17 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 	}
 	log.Debugf("Scope: %s for model: %s commiting tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	var repo repository.Repository
+	repo, err = repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
-		err = ErrNoRepositoryFound
 		return
 	}
 
-	cm, ok := repo.(Committer)
+	cm, ok := repo.(Transactioner)
 	if !ok {
 		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.RepositoryName())
-		err = ErrRepositoryNotACommiter
+		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement Transactioner")
 		return
 	}
 
@@ -218,17 +210,17 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 	}
 
 	log.Debugf("Scope: %s for model: %s rolling back tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	var repo repository.Repository
+	repo, err = repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
-		err = ErrNoRepositoryFound
 		return
 	}
 
-	rb, ok := repo.(Rollbacker)
+	rb, ok := repo.(Transactioner)
 	if !ok {
 		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.RepositoryName())
-		err = ErrRepositoryNotARollbacker
+		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
 		return
 	}
 

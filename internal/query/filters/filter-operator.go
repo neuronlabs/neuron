@@ -1,120 +1,16 @@
 package filters
 
 import (
-	"github.com/pkg/errors"
 	"sync"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 )
 
-// Operators contains all the registered operators
+// Operators contains all the registered operators.
 var Operators = NewOpContainer()
 
-// Operator is the operator used while filtering the query
-type Operator struct {
-	// Id is the filter operator id used for comparing the operator type
-	Id uint16
-
-	// Raw is the raw value of the current operator
-	Raw string
-
-	// Name is the human readable filter operator string value
-	Name string
-}
-
-// OperatorContainer is the container for the filter operators
-// It registers new operators and checks if no operator with provided Raw value already
-// exists inside.
-type OperatorContainer struct {
-	operators map[string]*Operator
-	*sync.Mutex
-	lastID uint16
-
-	lastStandardID uint16
-}
-
-// NewOpContainer creates new container operator
-func NewOpContainer() *OperatorContainer {
-	o := &OperatorContainer{
-		operators: make(map[string]*Operator),
-		Mutex:     &sync.Mutex{},
-	}
-
-	err := o.registerManyOperators(defaultOperators...)
-	if err != nil {
-		panic(err)
-	}
-
-	o.lastStandardID = o.lastID
-
-	return o
-}
-
-// Get gets the operator on the base of the raw value
-func (c *OperatorContainer) Get(raw string) (*Operator, bool) {
-	op, ok := c.operators[raw]
-	return op, ok
-}
-
-// GetByName gets the operator by the name
-func (c *OperatorContainer) GetByName(name string) (*Operator, bool) {
-	for _, o := range c.operators {
-		if o.Name == name {
-			return o, true
-		}
-	}
-	return nil, false
-}
-
-// RegisterOperators registers multiple operators
-func (c *OperatorContainer) RegisterOperators(ops ...*Operator) error {
-	return c.registerManyOperators(ops...)
-}
-
-// nextID generates next operator ID
-func (c *OperatorContainer) nextID() uint16 {
-	c.lastID += 1
-	return c.lastID
-}
-
-// RegisterOperator registers single operator
-func (c *OperatorContainer) RegisterOperator(op *Operator) error {
-	c.Lock()
-	defer c.Unlock()
-	id := c.nextID()
-
-	return c.registerOperator(op, id)
-}
-
-func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
-	c.Lock()
-	defer c.Unlock()
-
-	for _, op := range ops {
-		nextID := c.nextID()
-		err := c.registerOperator(op, nextID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *OperatorContainer) registerOperator(op *Operator, nextID uint16) error {
-	for _, o := range c.operators {
-		if o.Name == op.Name {
-			return errors.Errorf("Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
-		}
-		if o.Raw == op.Raw {
-			return errors.Errorf("Operator already registered. %+v", op)
-		}
-	}
-
-	op.Id = nextID
-
-	c.operators[op.Raw] = op
-	return nil
-}
-
-// Operator definitions
+// Operator definitions variables.
 var (
 	// Logical Operators
 	OpEqual        = &Operator{Raw: AnnotationOperatorEqual, Name: "Equal"}
@@ -155,24 +51,130 @@ var defaultOperators = []*Operator{
 	OpNotExists,
 }
 
-// String implements Stringer interface
-func (f Operator) String() string {
-	return f.Name
+// Operator is the operator used for filtering the query.
+type Operator struct {
+	// ID is the filter operator id used for comparing the operator type
+	ID uint16
+
+	// Raw is the filtering string value of the current operator
+	Raw string
+
+	// Name is the human readable filter operator name
+	Name string
+}
+
+// OperatorContainer is the container for the filter operators.
+// It registers new operators and checks if no operator with
+// provided Raw value already exists inside.
+type OperatorContainer struct {
+	operators map[string]*Operator
+	*sync.Mutex
+	lastID uint16
+
+	lastStandardID uint16
+}
+
+// NewOpContainer creates new container operator.
+func NewOpContainer() *OperatorContainer {
+	o := &OperatorContainer{
+		operators: make(map[string]*Operator),
+		Mutex:     &sync.Mutex{},
+	}
+
+	err := o.registerManyOperators(defaultOperators...)
+	if err != nil {
+		panic(err)
+	}
+
+	o.lastStandardID = o.lastID
+
+	return o
+}
+
+// Get gets the operator on the base of the raw value.
+func (c *OperatorContainer) Get(raw string) (*Operator, bool) {
+	op, ok := c.operators[raw]
+	return op, ok
+}
+
+// GetByName gets the operator by it's name.
+func (c *OperatorContainer) GetByName(name string) (*Operator, bool) {
+	for _, o := range c.operators {
+		if o.Name == name {
+			return o, true
+		}
+	}
+	return nil, false
 }
 
 // IsStandard checks if the operator is standard
 func (f Operator) IsStandard() bool {
-	return f.Id <= Operators.lastStandardID
+	return f.ID <= Operators.lastStandardID
+}
+
+// RegisterOperators registers multiple operators.
+func (c *OperatorContainer) RegisterOperators(ops ...*Operator) error {
+	return c.registerManyOperators(ops...)
+}
+
+// RegisterOperator registers single operator.
+func (c *OperatorContainer) RegisterOperator(op *Operator) error {
+	c.Lock()
+	defer c.Unlock()
+	id := c.nextID()
+
+	return c.registerOperator(op, id)
+}
+
+// String implements Stringer interface.
+func (f Operator) String() string {
+	return f.Name
+}
+
+// nextID generates next operator ID.
+func (c *OperatorContainer) nextID() uint16 {
+	c.lastID++
+	return c.lastID
+}
+
+func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
+	c.Lock()
+	defer c.Unlock()
+
+	for _, op := range ops {
+		nextID := c.nextID()
+		err := c.registerOperator(op, nextID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *OperatorContainer) registerOperator(op *Operator, nextID uint16) error {
+	for _, o := range c.operators {
+		if o.Name == op.Name {
+			return errors.Newf(class.InternalQueryFilter, "Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
+		}
+		if o.Raw == op.Raw {
+			return errors.Newf(class.InternalQueryFilter, "Operator already registered. %+v", op)
+		}
+	}
+
+	op.ID = nextID
+
+	c.operators[op.Raw] = op
+	return nil
 }
 
 func (f Operator) isBasic() bool {
-	return f.Id == OpEqual.Id || f.Id == OpNotEqual.Id
+	return f.ID == OpEqual.ID || f.ID == OpNotEqual.ID
 }
 
 func (f Operator) isRangable() bool {
-	return f.Id >= OpGreaterThan.Id && f.Id <= OpLessEqual.Id
+	return f.ID >= OpGreaterThan.ID && f.ID <= OpLessEqual.ID
 }
 
 func (f Operator) isStringOnly() bool {
-	return f.Id >= OpContains.Id && f.Id <= OpEndsWith.Id
+	return f.ID >= OpContains.ID && f.ID <= OpEndsWith.ID
 }

@@ -2,23 +2,25 @@ package query
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/query/sorts"
-	"github.com/neuronlabs/neuron/mapping"
 	"net/url"
+
+	"github.com/neuronlabs/neuron/common"
+	"github.com/neuronlabs/neuron/mapping"
+
+	"github.com/neuronlabs/neuron/internal/query/sorts"
 )
 
-// SortField is a field that contains sorting information
+// SortField is a field that contains sorting information.
 type SortField sorts.SortField
 
-// StructField returns sortfield's structure
+// StructField returns sortfield's structure.
 func (s *SortField) StructField() *mapping.StructField {
 	sField := (*sorts.SortField)(s).StructField()
 
 	return (*mapping.StructField)(sField)
 }
 
-// Order returns sortfield's order
+// Order returns sortfield's order.
 func (s *SortField) Order() SortOrder {
 	return SortOrder((*sorts.SortField)(s).Order())
 }
@@ -36,45 +38,45 @@ func (s *SortField) FormatQuery(q ...url.Values) url.Values {
 	if query == nil {
 		query = url.Values{}
 	}
+
 	var sign string
 	if s.Order() == DescendingOrder {
 		sign = "-"
 	}
+
 	var v string
-
-	if vals, ok := query[internal.QueryParamSort]; ok {
-
+	if vals, ok := query[common.QueryParamSort]; ok {
 		if len(vals) > 0 {
 			v = vals[0]
 		}
+
 		if len(v) > 0 {
 			v += ","
 		}
-
 	}
-	v += fmt.Sprintf("%s%s", sign, s.StructField().ApiName())
 
-	query.Set(internal.QueryParamSort, v)
+	v += fmt.Sprintf("%s%s", sign, s.StructField().NeuronName())
+
+	query.Set(common.QueryParamSort, v)
 
 	return query
 }
 
-// SortOrder is the enum used for the sorting values
+// SortOrder is the enum used as the sorting values order.
 type SortOrder int
 
 const (
-	// AscendingOrder defines the sorting ascending order
+	// AscendingOrder defines the sorting ascending order.
 	AscendingOrder SortOrder = iota
 
-	// DescendingOrder defines the sorting descending order
+	// DescendingOrder defines the sorting descending order.
 	DescendingOrder
 )
 
-// String implements Stringer interface
+// String implements fmt.Stringer interface.
 func (o SortOrder) String() string {
 	if o == AscendingOrder {
 		return "ascending"
 	}
-
 	return "descending"
 }

@@ -1,20 +1,22 @@
 package mapping
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/namer"
 	"reflect"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/namer"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-// ModelStruct is the struct definition for the imported models
+// ModelStruct is the structure definition for the imported models.
+// It contains all the collection name, fields, config, store and a model type.
 type ModelStruct models.ModelStruct
 
 // Attr returns the attribute for the provided ModelStruct
 // If the attribute doesn't exists
 func (m *ModelStruct) Attr(attr string) (*StructField, bool) {
-
-	s, ok := models.StructAttr((*models.ModelStruct)(m), attr)
+	s, ok := m.internal().Attribute(attr)
 	if !ok {
 		return nil, ok
 	}
@@ -29,7 +31,7 @@ func (m *ModelStruct) Config() *config.ModelConfig {
 
 // ForeignKey returns model's foreign key field if exists
 func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
-	s, ok := models.StructForeignKeyField((*models.ModelStruct)(m), fk)
+	s, ok := m.internal().ForeignKey(fk)
 	if !ok {
 		return nil, ok
 	}
@@ -38,7 +40,7 @@ func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 
 // FilterKey returns model's filter key if exists
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
-	s, ok := models.StructFilterKeyField((*models.ModelStruct)(m), fk)
+	s, ok := m.internal().FilterKey(fk)
 	if !ok {
 		return nil, ok
 	}
@@ -46,9 +48,9 @@ func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 }
 
 // FieldByName gets the StructField by the 'name' argument.
-// The 'name' may be a StructField's Name or ApiName
+// The 'name' may be a StructField's Name or NeuronName
 func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
-	field := models.StructFieldByName((*models.ModelStruct)(m), name)
+	field := m.internal().FieldByName(name)
 	if field == nil {
 		return nil, false
 	}
@@ -79,7 +81,7 @@ func (m *ModelStruct) NamerFunc() namer.Namer {
 
 // Primary returns model's primary field
 func (m *ModelStruct) Primary() *StructField {
-	p := models.StructPrimary((*models.ModelStruct)(m))
+	p := m.internal().PrimaryField()
 	if p == nil {
 		return nil
 	}
@@ -89,7 +91,7 @@ func (m *ModelStruct) Primary() *StructField {
 // RelationField gets the relationship field for the provided string
 // If the relationship field doesn't exists returns nil and false
 func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
-	s, ok := models.StructRelField((*models.ModelStruct)(m), rel)
+	s, ok := m.internal().RelationshipField(rel)
 	if !ok {
 		return nil, ok
 	}
@@ -122,7 +124,7 @@ func (m *ModelStruct) StructFields() []*StructField {
 	// init StructField
 	var mFields []*StructField
 
-	fields := models.StructAllFields((*models.ModelStruct)(m))
+	fields := (*models.ModelStruct)(m).StructFields()
 	for _, f := range fields {
 		mFields = append(mFields, (*StructField)(f))
 	}
@@ -143,4 +145,8 @@ func (m *ModelStruct) Type() reflect.Type {
 // Collection returns model's collection
 func (m *ModelStruct) Collection() string {
 	return (*models.ModelStruct)(m).Collection()
+}
+
+func (m *ModelStruct) internal() *models.ModelStruct {
+	return (*models.ModelStruct)(m)
 }

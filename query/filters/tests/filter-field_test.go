@@ -2,20 +2,28 @@ package filters
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal"
-	icontroller "github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/log"
-	_ "github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/filters"
-	// import and register mock factory
-	_ "github.com/neuronlabs/neuron/repository/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/query/filters"
+
+	"github.com/neuronlabs/neuron/internal"
+	internalController "github.com/neuronlabs/neuron/internal/controller"
+)
+
+import (
+	// register processes
+	_ "github.com/neuronlabs/neuron/query"
+
+	// import and register mock factory
+	_ "github.com/neuronlabs/neuron/repository/mocks"
 )
 
 type testingModel struct {
@@ -35,15 +43,15 @@ type nestedModel struct {
 	Field string
 }
 
-//TestParseQuery tests parsing the query
+//TestParseQuery tests parsing the query into a string.
 func TestParseQuery(t *testing.T) {
-
-	cfg := icontroller.DefaultConfig
+	cfg := internalController.DefaultConfig
 	cfg.Repositories = map[string]*config.Repository{
 		"mocks": &config.Repository{DriverName: "mocks"},
 	}
 	cfg.DefaultRepositoryName = "mocks"
-	c := (*controller.Controller)(icontroller.DefaultTesting(t, nil))
+
+	c := (*controller.Controller)(internalController.DefaultTesting(t, nil))
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
 	t.Run("Attribute", func(t *testing.T) {
@@ -55,9 +63,8 @@ func TestParseQuery(t *testing.T) {
 	})
 }
 
-// TestNewStringFilter tests the NewStringFilter function
+// TestNewStringFilter tests the NewStringFilter function.
 func TestNewStringFilter(t *testing.T) {
-
 	c := controller.NewDefault()
 
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
@@ -78,6 +85,7 @@ func TestNewStringFilter(t *testing.T) {
 			require.Len(t, fv.Values, 1)
 			assert.Equal(t, 521, fv.Values[0])
 		})
+
 		t.Run("WithoutFilterWord", func(t *testing.T) {
 			filter, err := filters.NewStringFilter(c, "[testing_models][id][$ne]", "", "some string value")
 			require.NoError(t, err)
@@ -112,6 +120,7 @@ func TestNewStringFilter(t *testing.T) {
 	t.Run("Attribute", func(t *testing.T) {
 		filter, err := filters.NewStringFilter(c, "[testing_models][attr][$ne]", "", "some string value")
 		require.NoError(t, err)
+
 		attrField, ok := mStruct.FieldByName("Attr")
 		require.True(t, ok)
 
@@ -127,6 +136,7 @@ func TestNewStringFilter(t *testing.T) {
 	t.Run("FilterKey", func(t *testing.T) {
 		filter, err := filters.NewStringFilter(c, "[testing_models][filter_key][$ne]", "", "some string value")
 		require.NoError(t, err)
+
 		attrField, ok := mStruct.FieldByName("FilterKey")
 		require.True(t, ok)
 
@@ -137,12 +147,15 @@ func TestNewStringFilter(t *testing.T) {
 		assert.Equal(t, filters.OpNotEqual, fv.Operator())
 		require.Len(t, fv.Values, 1)
 		assert.Equal(t, "some string value", fv.Values[0])
-
 	})
 
 	t.Run("ForeignKey", func(t *testing.T) {
 		filter, err := filters.NewStringFilter(c, "[testing_models][foreign_key][$ne]", "", "some string value")
+		require.Error(t, err)
+
+		filter, err = filters.NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "", "some string value")
 		require.NoError(t, err)
+
 		attrField, ok := mStruct.FieldByName("ForeignKey")
 		require.True(t, ok)
 
@@ -179,7 +192,6 @@ func TestNewStringFilter(t *testing.T) {
 
 // TestFormatQuery checks the FormatQuery function
 func TestFormatQuery(t *testing.T) {
-
 	c := controller.NewDefault()
 
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
@@ -200,7 +212,7 @@ func TestFormatQuery(t *testing.T) {
 		for k, v = range q {
 		}
 
-		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().ApiName(), filters.OpIn.Raw), k)
+		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), filters.OpIn.Raw), k)
 		if assert.Len(t, v, 1) {
 			v = strings.Split(v[0], internal.AnnotationSeperator)
 			assert.Equal(t, "1", v[0])
@@ -213,7 +225,6 @@ func TestFormatQuery(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%d", tm.Unix()), v[7])
 			assert.Equal(t, fmt.Sprintf("%d", tm.Unix()), v[8])
 		}
-
 	})
 
 	t.Run("WithNested", func(t *testing.T) {
@@ -231,7 +242,7 @@ func TestFormatQuery(t *testing.T) {
 		for k, v = range q {
 		}
 
-		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField().ApiName(), relFilter.StructField().Relationship().ModelStruct().Primary().ApiName(), filters.OpIn.Raw), k)
+		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField().NeuronName(), relFilter.StructField().Relationship().ModelStruct().Primary().NeuronName(), filters.OpIn.Raw), k)
 		if assert.Len(t, v, 1) {
 			v = strings.Split(v[0], internal.AnnotationSeperator)
 
@@ -239,5 +250,4 @@ func TestFormatQuery(t *testing.T) {
 			assert.Equal(t, "2", v[1])
 		}
 	})
-
 }

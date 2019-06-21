@@ -4,18 +4,18 @@ import (
 	"strings"
 )
 
-// FieldTag is the key: values pair for the given field struct's tag
+// FieldTag is the key: values pair for the given field struct's tag.
 type FieldTag struct {
 	Key    string
 	Values []string
 }
 
 // ExtractFieldTags extracts the []*mapping.FieldTag from the given *mapping.StructField
-// for given StructField reflect tag
+// for given StructField reflect tag.
 func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 	tag, ok := s.ReflectField().Tag.Lookup(fieldTag)
 	if !ok {
-		// if there is no tag struct tag return nil
+		// if there is no struct tag with name 'fieldTag' return nil
 		return nil
 	}
 
@@ -31,9 +31,7 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 	)
 	// find all the seperators
 	for i, r := range tag {
-
 		if i != 0 && r == ';' {
-
 			// check if the  rune before is not an 'escape'
 			if tag[i-1] != '\\' {
 				seperators = append(seperators, i)
@@ -61,7 +59,6 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 	// options should be now a legal values defined for the struct tag
 
 	for _, o := range options {
-
 		var equalIndex int
 
 		// find the equalIndex
@@ -86,10 +83,8 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 			// in that case only the key should exists
 			tag.Key = o
 		}
-
 		tags = append(tags, tag)
 
 	}
-
 	return tags
 }

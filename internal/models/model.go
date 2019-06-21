@@ -1,17 +1,15 @@
 package models
 
 import (
-	"fmt"
-	"github.com/neuronlabs/neuron/config"
-	aerrors "github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/namer"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/pkg/errors"
 	"reflect"
-	"strings"
 	"sync"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+
+	"github.com/neuronlabs/neuron/internal/namer"
 )
 
 const (
@@ -72,11 +70,6 @@ type ModelStruct struct {
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
 
-	modelURL           string
-	collectionURLIndex int
-
-	flags *flags.Container
-
 	isJoin bool
 
 	cfg *config.ModelConfig
@@ -84,58 +77,88 @@ type ModelStruct struct {
 	store map[string]interface{}
 }
 
-// newModelStruct creates new model struct for given type
-func newModelStruct(tp reflect.Type, collection string, flg *flags.Container) *ModelStruct {
-	m := &ModelStruct{id: ctr.next(), modelType: tp, collectionType: collection, flags: flg}
+// newModelStruct creates new model struct for given type.
+func newModelStruct(tp reflect.Type, collection string) *ModelStruct {
+	m := &ModelStruct{id: ctr.next(), modelType: tp, collectionType: collection}
 	m.attributes = make(map[string]*StructField)
 	m.relationships = make(map[string]*StructField)
 	m.foreignKeys = make(map[string]*StructField)
 	m.filterKeys = make(map[string]*StructField)
-	m.collectionURLIndex = -1
 	return m
 }
 
-// AllowClientID returns boolean if the client settable id is allowed
+// AllowClientID returns boolean if the client settable id is allowed.
 func (m *ModelStruct) AllowClientID() bool {
 	return m.primary.allowClientID()
 }
 
-// Attribute returns the attribute field for given string
+// Attribute returns the attribute field for given string.
 func (m *ModelStruct) Attribute(field string) (*StructField, bool) {
-	return StructAttr(m, field)
+	s, ok := m.attributes[field]
+	if !ok {
+		for _, attrField := range m.attributes {
+			if field == attrField.Name() {
+				return attrField, true
+			}
+		}
+		return nil, false
+	}
+	return s, ok
 }
 
-// CheckField checks if the field exists within given modelstruct
-func (m *ModelStruct) CheckField(field string) (sField *StructField, err *aerrors.ApiError) {
+// CheckField checks if the field exists within given modelstruct.
+func (m *ModelStruct) CheckField(field string) (sField *StructField, err *errors.Error) {
 	return m.checkField(field)
 }
 
-// Collection returns model's collection type
+// Collection returns model's collection name.
 func (m ModelStruct) Collection() string {
 	return m.collectionType
 }
 
-// Config returns config for the model
+// Config returns model's *config.ModelConfig.
 func (m *ModelStruct) Config() *config.ModelConfig {
 	return m.cfg
 }
 
-// Fields returns model's fields
+// FieldByName returns field for provided name.
+// It matches both name and neuronName.
+func (m *ModelStruct) FieldByName(name string) *StructField {
+	for _, field := range m.fields {
+		if field.neuronName == name || field.Name() == name {
+			return field
+		}
+	}
+
+	for _, fk := range m.filterKeys {
+		if fk.neuronName == name || fk.Name() == name {
+			return fk
+		}
+	}
+	return nil
+}
+
+// Fields returns model's fields - relationships and attributes.
 func (m *ModelStruct) Fields() []*StructField {
 	return m.fields
 }
 
-// Flags return model's flags
-func (m *ModelStruct) Flags() *flags.Container {
-	return m.flags
-}
-
-// ForeignKey return model's foreign key
+// ForeignKey return model's foreign key.
 func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
-	return StructForeignKeyField(m, fk)
+	s, ok := m.foreignKeys[fk]
+	if !ok {
+		// If no APIname provided, check if this isn't the struct field name
+		for _, field := range m.foreignKeys {
+			if field.Name() == fk {
+				return field, true
+			}
+		}
+		return nil, false
+	}
+	return s, true
 }
 
-// ForeignKeys return ForeignKey Structfields for the given model
+// ForeignKeys return ForeignKey Structfields for the given model.
 func (m *ModelStruct) ForeignKeys() (fks []*StructField) {
 	for _, f := range m.foreignKeys {
 		fks = append(fks, f)
@@ -143,50 +166,59 @@ func (m *ModelStruct) ForeignKeys() (fks []*StructField) {
 	return
 }
 
-// FieldCount gets the field count for given model
+// FieldCount gets the field number for given model.
 func (m *ModelStruct) FieldCount() int {
 	return len(m.attributes) + len(m.relationships)
 }
 
-// FilterKey return model's fitler key
+// FilterKey return model's fitler key.
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
-	return StructFilterKeyField(m, fk)
+	s, ok := m.filterKeys[fk]
+	if !ok {
+		for _, field := range m.filterKeys {
+			if field.Name() == fk {
+				return field, true
+			}
+		}
+		return nil, false
+	}
+	return s, ok
 }
 
-// HasForeignRelationships defines if the model has any foreign relationships (not a BelongsTo relationship)
+// HasForeignRelationships defines if the model has any foreign relationships (not a BelongsTo relationship).
 func (m *ModelStruct) HasForeignRelationships() bool {
 	_, ok := m.store[hasForeignRelationships]
 	return ok
 }
 
-// ID returns model structs index number
+// ID returns model structs identity number.
 func (m ModelStruct) ID() int {
 	return m.id
 }
 
-// IsJoin defines if the model is a join table for the Many2Many relationship
+// IsJoin defines if the model is a join table for the Many2Many relationship.
 func (m *ModelStruct) IsJoin() bool {
 	return m.isJoin
 }
 
-// IsAfterLister defines if the model implements AfterLister interface
+// IsAfterLister defines if the model implements query.AfterLister interface.
 func (m *ModelStruct) IsAfterLister() bool {
 	_, ok := m.StoreGet(afterListerKey)
 	return ok
 }
 
-// IsBeforeLister defines if the model implements BeforeLister interface
+// IsBeforeLister defines if the model implements query.BeforeLister interface.
 func (m *ModelStruct) IsBeforeLister() bool {
 	_, ok := m.StoreGet(beforeListerKey)
 	return ok
 }
 
-// LanguageField returns model's Language
+// LanguageField returns model's language field.
 func (m *ModelStruct) LanguageField() *StructField {
 	return m.language
 }
 
-// MaxIncludedCount gets the maximum included count prepared for given model
+// MaxIncludedCount gets the maximum included field number prepared for given model.
 func (m *ModelStruct) MaxIncludedCount() int {
 	thisIncludedInterface, ok := m.StoreGet(thisIncludedCountKey)
 	if !ok {
@@ -194,7 +226,6 @@ func (m *ModelStruct) MaxIncludedCount() int {
 	}
 
 	thisIncluded := thisIncludedInterface.(int)
-
 	nestedIncludedInterface, ok := m.StoreGet(nestedIncludedCountKey)
 	if !ok {
 		return thisIncluded
@@ -203,29 +234,29 @@ func (m *ModelStruct) MaxIncludedCount() int {
 	return thisIncluded + nestedIncludedInterface.(int)
 }
 
-// NamerFunc returns namer func for the given Model
+// NamerFunc returns namer func for the given Model.
 func (m *ModelStruct) NamerFunc() namer.Namer {
 	v, _ := m.StoreGet(namerFuncKey)
 	return v.(namer.Namer)
 
 }
 
-// NewValueSingle creates and returns new value for the given model type
+// NewValueSingle creates and returns new value for the given model type.
 func (m *ModelStruct) NewValueSingle() interface{} {
 	return m.newReflectValueSingle().Interface()
 }
 
-// NewValueMany creates and returns a model's new slice of pointers to values
+// NewValueMany creates and returns a model's new slice of pointers to values.
 func (m *ModelStruct) NewValueMany() interface{} {
 	return m.NewReflectValueMany().Interface()
 }
 
-// NewReflectValueSingle creates and returns a model's new single value
+// NewReflectValueSingle creates and returns a model's new single value.
 func (m *ModelStruct) NewReflectValueSingle() reflect.Value {
 	return m.newReflectValueSingle()
 }
 
-// NewReflectValueMany creates the *[]*m.Type reflect.Value
+// NewReflectValueMany creates the *[]*m.Type reflect.Value.
 func (m *ModelStruct) NewReflectValueMany() reflect.Value {
 	return reflect.New(reflect.SliceOf(reflect.PtrTo(m.Type())))
 }
@@ -239,15 +270,14 @@ func (m *ModelStruct) PrimaryField() *StructField {
 	return m.primary
 }
 
-// PrimaryValues gets the primary values for the provided value
+// PrimaryValues gets the primary values for the provided value.
 func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{}, err error) {
 	if value.IsNil() {
-		err = internal.ErrNilValue
-		return
+		err = errors.New(class.QueryNoValue, "nil value provided")
+		return nil, err
 	}
 
 	value = value.Elem()
-
 	zero := reflect.Zero(m.primary.ReflectField().Type).Interface()
 
 	appendPrimary := func(primary reflect.Value) bool {
@@ -265,9 +295,10 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{
 	switch value.Type().Kind() {
 	case reflect.Slice:
 		if value.Type().Elem().Kind() != reflect.Ptr {
-			err = internal.ErrUnexpectedType
-			return
+			err = errors.New(class.QueryValueType, "provided invalid value - the slice doesn't contain pointers to models")
+			return nil, err
 		}
+
 		// create slice of values
 		for i := 0; i < value.Len(); i++ {
 			single := value.Index(i)
@@ -280,14 +311,16 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{
 		}
 	case reflect.Struct:
 		primaryValue := value.FieldByIndex(primaryIndex)
-
 		if !appendPrimary(primaryValue) {
-			err = fmt.Errorf("Provided invalid Value for model: %v", m.Type())
+			err = errors.Newf(class.QueryValueType, "provided invalid value for model: %v", m.Type())
+			return nil, err
 		}
 	default:
-		err = internal.ErrUnexpectedType
+		err = errors.New(class.QueryValueType, "unknown value type")
+		return nil, err
 	}
-	return
+
+	return primaries, nil
 }
 
 // RelationshipField returns the StructField for given raw field
@@ -439,112 +472,55 @@ PRIVATE METHODS
 
 */
 
-func (m *ModelStruct) checkField(field string) (sField *StructField, err *aerrors.ApiError) {
-	var hasAttribute, hasRelationship bool
+func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
+	var (
+		hasAttribute, hasRelationship bool
+		sField                        *StructField
+	)
+
 	sField, hasAttribute = m.attributes[field]
 	if hasAttribute {
 		return sField, nil
 	}
+
 	sField, hasRelationship = m.relationships[field]
 	if !hasRelationship {
-		errObject := aerrors.ErrInvalidQueryParameter.Copy()
-		errObject.Detail = fmt.Sprintf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
-		return nil, errObject
+		err := errors.Newf(class.ModelFieldNotFound, "field: '%s' not found", field)
+		err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		return nil, err
 	}
+
 	return sField, nil
 }
 
-func (m *ModelStruct) checkFields(fields ...string) (errs []*aerrors.ApiError) {
+func (m *ModelStruct) checkFields(fields ...string) []*errors.Error {
+	var errs []*errors.Error
 	for _, field := range fields {
 		_, err := m.checkField(field)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	return
+
+	return errs
 }
 
-func (m *ModelStruct) setBelongsToForeigns(v reflect.Value) error {
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// func (m *ModelStruct) setModelURL(url string) error {
+// 	splitted := strings.Split(url, "/")
+// 	for i, v := range splitted {
+// 		if v == m.collectionType {
+// 			m.collectionURLIndex = i
+// 			break
+// 		}
+// 	}
+// 	if m.collectionURLIndex == -1 {
+// 		err := fmt.Errorf("The url provided for model struct does not contain collection name. URL: '%s'. Collection: '%s'.", url, m.collectionType)
+// 		return err
+// 	}
+// 	m.modelURL = url
 
-	if v.Type() != m.modelType {
-		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
-	}
-	for _, rel := range m.relationships {
-
-		if rel.relationship != nil && rel.relationship.kind == RelBelongsTo {
-
-			relVal := v.FieldByIndex(rel.reflectField.Index)
-			if reflect.DeepEqual(relVal.Interface(), reflect.Zero(relVal.Type()).Interface()) {
-				continue
-			}
-			if relVal.Kind() == reflect.Ptr {
-				relVal = relVal.Elem()
-			}
-			fkVal := v.FieldByIndex(rel.relationship.foreignKey.reflectField.Index)
-			relPrim := rel.relationship.mStruct.primary
-			relPrimVal := relVal.FieldByIndex(relPrim.reflectField.Index)
-			fkVal.Set(relPrimVal)
-		}
-	}
-	return nil
-}
-
-func (m *ModelStruct) setBelongsToRelationWithFields(
-	v reflect.Value,
-	fields ...*StructField,
-) error {
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	if v.Type() != m.modelType {
-		return errors.Errorf("Invalid model type. Wanted: %v. Actual: %v", m.modelType.Name(), v.Type().Name())
-	}
-
-	for _, field := range fields {
-
-		rel, ok := m.relationships[field.apiName]
-		if ok && rel.relationship != nil &&
-			rel.relationship.kind == RelBelongsTo {
-
-			fkVal := v.FieldByIndex(rel.relationship.foreignKey.reflectField.Index)
-			relVal := v.FieldByIndex(rel.reflectField.Index)
-			relType := relVal.Type()
-			if relType.Kind() == reflect.Ptr {
-				relType = relType.Elem()
-			}
-
-			if relVal.IsNil() {
-				relVal.Set(reflect.New(relType))
-			}
-			relVal = relVal.Elem()
-
-			relPrim := relVal.FieldByIndex(rel.relationship.mStruct.primary.reflectField.Index)
-			relPrim.Set(fkVal)
-		}
-	}
-	return nil
-}
-
-func (m *ModelStruct) setModelURL(url string) error {
-	splitted := strings.Split(url, "/")
-	for i, v := range splitted {
-		if v == m.collectionType {
-			m.collectionURLIndex = i
-			break
-		}
-	}
-	if m.collectionURLIndex == -1 {
-		err := fmt.Errorf("The url provided for model struct does not contain collection name. URL: '%s'. Collection: '%s'.", url, m.collectionType)
-		return err
-	}
-	m.modelURL = url
-
-	return nil
-}
+// 	return nil
+// }
 
 func (m *ModelStruct) initComputeSortedFields() {
 	for _, sField := range m.fields {
@@ -596,6 +572,11 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 		}
 	}
 	return nil
+}
+
+func (m *ModelStruct) setLanguage(f *StructField) {
+	f.fieldFlags = f.fieldFlags | FLanguage
+	m.language = f
 }
 
 var ctr = &counter{}

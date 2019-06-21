@@ -3,7 +3,6 @@ package paginations
 import (
 	"errors"
 	"fmt"
-	"github.com/neuronlabs/neuron/config"
 )
 
 // Type is the pagination type definition enum
@@ -44,23 +43,6 @@ type Pagination struct {
 
 	// Describes which pagination type to use.
 	tp Type
-}
-
-// NewFromConfig creates new pagination based on the provided config
-func NewFromConfig(p *config.Pagination) *Pagination {
-	var pg *Pagination
-	if p.Limit != 0 || p.Offset != 0 {
-		pg = &Pagination{
-			first:  p.Limit,
-			second: p.Offset,
-		}
-	} else {
-		pg = &Pagination{
-			first:  p.PageNumber,
-			second: p.PageSize,
-		}
-	}
-	return pg
 }
 
 // NewLimitOffset creates new limit offset pagination

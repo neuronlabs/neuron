@@ -1,25 +1,25 @@
 package models
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 )
 
-// definining many2many requires join model, backref field, and foreign key
-// join model is the join table model used for getting the many 2 many relationships values
-// backref field is a field in the join model
-
-// foreign key is the related model's backref field in the join model
-
+// Model1WithMany2Many is the model with the many2many relationship.
 type Model1WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=SecondForeign"`
+	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=_,SecondForeign"`
 }
 
+// Model2WithMany2Many is the second model with the many2many relationship.
 type Model2WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*Model1WithMany2Many `neuron:"type=relation;many2many=joinModel,SecondForeign;foreign=model1WithMany2ManyID"`
+	Synced []*Model1WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=SecondForeign"`
 }
 
 type joinModel struct {
@@ -64,20 +64,29 @@ type modelWithForeignKey struct {
 }
 
 type modelWithBelongsTo struct {
-	ID         int              `neuron:"type=primary"`
-	ForeignKey int              `neuron:"type=foreign"`
-	BelongsTo  *modelWithHasOne `neuron:"type=relation;foreign=ForeignKey"`
+	ID         int `neuron:"type=primary"`
+	ForeignKey int `neuron:"type=foreign"`
+	// in belongs to relationship - foreign key must be the primary of the relation field
+	BelongsTo *modelWithHasOne `neuron:"type=relation;foreign=ForeignKey"`
 }
 
 type modelWithHasOne struct {
-	ID     int                 `neuron:"type=primary"`
+	ID int `neuron:"type=primary"`
+	// in has one relatinship - foreign key must be the field that is the same
 	HasOne *modelWithBelongsTo `neuron:"type=relation;foreign=ForeignKey"`
 }
 
+type manyWithoutJoin struct {
+	ID     int                   `neuron:"type=primary"`
+	Firsts []*manyWithoutJoinTwo `neuron:"type=relation;many2many"`
+}
+
+type manyWithoutJoinTwo struct {
+	ID int `neuron:"type=primary"`
+}
+
 func TestMappedRelationships(t *testing.T) {
-
 	t.Run("many2many", func(t *testing.T) {
-
 		t.Run("PredefinedFields", func(t *testing.T) {
 			s := testingSchemas(t)
 
@@ -104,15 +113,15 @@ func TestMappedRelationships(t *testing.T) {
 
 				assert.Equal(t, second, relField.relationship.mStruct)
 
-				firstBackref, ok := join.ForeignKey("Model1WithMany2ManyID")
+				firstForeign, ok := join.ForeignKey("Model1WithMany2ManyID")
 				require.True(t, ok)
 
-				assert.Equal(t, firstBackref, relField.relationship.backReferenceForeignKey)
+				assert.Equal(t, firstForeign, relField.relationship.foreignKey)
 
 				secondFK, ok := join.ForeignKey("SecondForeign")
 				require.True(t, ok)
 
-				assert.Equal(t, secondFK, relField.relationship.foreignKey)
+				assert.Equal(t, secondFK, relField.relationship.mtmRelatedForeignKey)
 			})
 
 			t.Run("Second", func(t *testing.T) {
@@ -126,16 +135,16 @@ func TestMappedRelationships(t *testing.T) {
 				assert.Equal(t, first, rel.mStruct)
 
 				// check the backreference key
-				secondBackRef, ok := join.ForeignKey("SecondForeign")
+				secondForeign, ok := join.ForeignKey("SecondForeign")
 				require.True(t, ok)
 
-				assert.Equal(t, secondBackRef, rel.backReferenceForeignKey)
+				assert.Equal(t, secondForeign, rel.foreignKey)
 
 				// check the foreign key
 				firstFK, ok := join.ForeignKey("Model1WithMany2ManyID")
 				require.True(t, ok)
 
-				assert.Equal(t, firstFK, rel.foreignKey)
+				assert.Equal(t, firstFK, rel.mtmRelatedForeignKey)
 			})
 		})
 
@@ -165,8 +174,8 @@ func TestMappedRelationships(t *testing.T) {
 
 			relFirst := firstRel.relationship
 			if assert.NotNil(t, relFirst) {
-				assert.Equal(t, fID, relFirst.backReferenceForeignKey)
-				assert.Equal(t, sID, relFirst.foreignKey)
+				assert.Equal(t, fID, relFirst.foreignKey)
+				assert.Equal(t, sID, relFirst.mtmRelatedForeignKey)
 				assert.Equal(t, RelMany2Many, relFirst.kind)
 			}
 
@@ -175,12 +184,27 @@ func TestMappedRelationships(t *testing.T) {
 
 			relSecond := secondRel.relationship
 			if assert.NotNil(t, relSecond) {
-				assert.Equal(t, sID, relSecond.backReferenceForeignKey)
-				assert.Equal(t, fID, relSecond.foreignKey)
+				assert.Equal(t, sID, relSecond.foreignKey)
+				assert.Equal(t, fID, relSecond.mtmRelatedForeignKey)
 				assert.Equal(t, RelMany2Many, relSecond.kind)
 			}
 		})
 
+		t.Run("WithoutJoinTable", func(t *testing.T) {
+			t.Run("NotRegistered", func(t *testing.T) {
+				s := testingSchemas(t)
+
+				err := s.RegisterModels(First{}, Second{})
+				require.Error(t, err)
+
+				e := err.(*errors.Error)
+				assert.Equal(t, class.ModelRelationshipJoinModel, e.Class)
+			})
+
+			t.Run("NotDefinedInTag", func(t *testing.T) {
+
+			})
+		})
 	})
 
 	t.Run("hasMany", func(t *testing.T) {

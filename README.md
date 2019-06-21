@@ -1,6 +1,6 @@
 ghttps://github.com/neuronlabs/neuron
 
-Neuron is the cloud-native, modular API Gateway and Composer that implements the [JSONAPI v1.0 specification](https://jsonapi.org/format/).
+Neuron is the golang cloud-native, distributed ORM implementation.
 
 * [What is Neuron?](#what-is-neuron)
 * [Install](#install)
@@ -11,7 +11,7 @@ Neuron is the cloud-native, modular API Gateway and Composer that implements the
 
 ## What is Neuron?
 
-Neuron is the API Gateway, Composer 
+
 
 
 

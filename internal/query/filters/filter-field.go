@@ -1,24 +1,26 @@
 package filters
 
 import (
-	"fmt"
-	aerrors "github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/i18n"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/models"
-	"golang.org/x/text/language"
 	"reflect"
-	"strings"
+
+	"golang.org/x/text/language"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/i18n"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-// FilterField is a field that contains information about filters
+// FilterField is a structure that contains filtering information about given field
+// or it's subfields (in case of relationships).
 type FilterField struct {
 	structField *models.StructField
 
-	// Key is used for the map type filters as a nested argument
+	// key is used for the map type filters as a nested argument.
 	key string
 
-	// AttrFilters are the filter values for given attribute FilterField
+	// values are the filter values for given attribute FilterField
 	values []*OpValuePair
 
 	// if given filterField is a relationship type it should be filter by it's
@@ -29,69 +31,56 @@ type FilterField struct {
 	raw string
 }
 
-// Raw returns raw string filter
-func (f *FilterField) Raw() string {
-	return ""
-}
-
-// Key returns the filter key if set
+// Key returns the filter key if set.
 func (f *FilterField) Key() string {
 	return f.key
 }
 
-// AddValues adds provided values to the filter values
+// AddNestedField adds the nested field value.
+func (f *FilterField) AddNestedField(nested *FilterField) {
+	addNestedField(f, nested)
+}
+
+// AddValues adds given operator value pairs to the filter values.
 func (f *FilterField) AddValues(values ...*OpValuePair) {
 	f.values = append(f.values, values...)
 }
 
-// StructField returns the filter's StructField
-func (f *FilterField) StructField() *models.StructField {
-	return f.structField
-}
-
-// NestedFields returns nested fields for given filter
-func (f *FilterField) NestedFields() []*FilterField {
-	return f.nested
-}
-
-// Values return filter values
-func (f *FilterField) Values() []*OpValuePair {
-	return f.values
-}
-
-// NewFilter creates the filterField for given stuct field and values
-func NewFilter(s *models.StructField, values ...*OpValuePair) *FilterField {
-	return &FilterField{structField: s, values: values}
-}
-
-// FilterAppendvalues adds the values to the given filter field
-func FilterAppendValues(f *FilterField, values ...*OpValuePair) {
+// AppendValues adds the values to the given filter field.
+func (f *FilterField) AppendValues(values ...*OpValuePair) {
 	f.values = append(f.values, values...)
-}
-
-// FilterOpValuePairs returns the values of the provided filter field.
-func FilterOpValuePairs(f *FilterField) []*OpValuePair {
-	return f.values
-}
-
-// CopyFilter copies given FilterField with it's values
-func CopyFilter(f *FilterField) *FilterField {
-	return f.copy()
 }
 
 // GetOrCreateNestedFilter gets the filter field for given field
 // If the field is a key returns the filter by key
-func GetOrCreateNestedFilter(f *FilterField, field interface{}) *FilterField {
+func (f *FilterField) GetOrCreateNestedFilter(field interface{}) *FilterField {
 	return f.getOrCreateNested(field)
 }
 
-func NestedFields(f *FilterField) []*FilterField {
+// NestedFields returns nested fields for given filter.
+func (f *FilterField) NestedFields() []*FilterField {
 	return f.nested
 }
 
-// AddNestedField adds the nested field value
-func (f *FilterField) AddNestedField(nested *FilterField) {
-	addNestedField(f, nested)
+// StructField returns the filter's StructField.
+func (f *FilterField) StructField() *models.StructField {
+	return f.structField
+}
+
+// Values returns filter operator value pairs.
+func (f *FilterField) Values() []*OpValuePair {
+	return f.values
+}
+
+// CopyFilter deeply copies given FilterField with it's values.
+func CopyFilter(f *FilterField) *FilterField {
+	return f.copy()
+}
+
+// NewFilter creates the filterField for given models.StructField 's' and operator
+// value pairs 'values'.
+func NewFilter(s *models.StructField, values ...*OpValuePair) *FilterField {
+	return &FilterField{structField: s, values: values}
 }
 
 // AddNestedField adds nested filterfield for the filter 'f'
@@ -117,67 +106,68 @@ func addNestedField(f, nested *FilterField) {
 
 }
 
-// SetValues sets the filter values for provided field, it's operator and possible i18n Support
+// SetValues sets the filter values for provided field, it's operator and possible i18n Support.
 func (f *FilterField) SetValues(
 	values []string,
 	op *Operator,
 	sup *i18n.Support,
-) (errObj *aerrors.ApiError) {
-	var (
-		er error
-
-		opInvalid = func() {
-			errObj = aerrors.ErrUnsupportedQueryParameter.Copy()
-			errObj.Detail = fmt.Sprintf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.ApiName())
-		}
-	)
-
+) error {
 	t := f.structField.GetDereferencedType()
+
 	// create new FilterValue
 	fv := new(OpValuePair)
-
 	fv.operator = op
 
-	// Add and check all values for given field type
+	// Check all values for given field type
 	switch f.structField.FieldKind() {
 	case models.KindPrimary, models.KindForeignKey:
 		switch t.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			if op.Id > OpLessEqual.Id {
-				opInvalid()
-				return
+			// check if id is of proper type
+			if op.isStringOnly() || op == OpIsNull || op == OpNotNull || op == OpNotExists || op == OpExists {
+				// operations over
+				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
+				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				return err
 			}
 		case reflect.String:
 			if !op.isBasic() {
-				opInvalid()
-				return
+				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
+				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				return err
 			}
 		}
 
 		for _, value := range values {
-
 			fieldValue := reflect.New(t).Elem()
-			er = setPrimaryField(value, fieldValue)
-			if er != nil {
-				errObj = aerrors.ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Invalid filter value for primary field in collection: '%s'. %s. ", f.structField.Struct().Collection(), er)
-				return
+
+			err := setPrimaryField(value, fieldValue)
+			if err != nil {
+				if err.Class.IsMajor(class.MjrInternal) {
+					return err
+				}
+				err.WrapDetailf("Invalid filter value for primary field in collection: '%s'.", f.structField.Struct().Collection())
+				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
 		}
 		f.values = append(f.values, fv)
 
+	case models.KindAttribute, models.KindFilterKey:
 		// if it is of integer type check which kind of it
-	case models.KindAttribute:
 		switch t.Kind() {
 		case reflect.String:
 		default:
+			// check if the operator is the string only - doesn't allow other types of values
 			if op.isStringOnly() {
-				opInvalid()
-				return
+				err := errors.Newf(class.QueryFilterUnsupportedOperator, "string filter operator is not supported: '%s' for non string field", op)
+				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				return err
 			}
 		}
+
+		// if the field is a language
 		if f.structField.IsLanguage() {
 			switch op {
 			case OpIn, OpEqual, OpNotIn, OpNotEqual:
@@ -187,25 +177,21 @@ func (f *FilterField) SetValues(
 						if err != nil {
 							switch v := err.(type) {
 							case language.ValueError:
-								errObj = aerrors.ErrLanguageNotAcceptable.Copy()
-								errObj.Detail = fmt.Sprintf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.ApiName(),
+								err := errors.New(class.QueryFilterLanguage, v.Error())
+								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.NeuronName(),
 									f.structField.Struct().Collection(), v.Subtag())
-								return
+								return err
 							default:
-								errObj = aerrors.ErrInvalidQueryParameter.Copy()
-								errObj.Detail = fmt.Sprintf("The value: '%v' for the '%s' filter field within the collection '%s' is not syntetatically valid.", value, f.structField.ApiName(), f.structField.Struct().Collection())
-								return
+								return errors.New(class.QueryFilterLanguage, err.Error())
 							}
 						}
 						if op == OpEqual {
 							var confidence language.Confidence
 							tag, _, confidence = sup.Matcher.Match(tag)
 							if confidence <= language.Low {
-								errObj = aerrors.ErrLanguageNotAcceptable.Copy()
-								errObj.Detail = fmt.Sprintf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported langauges. The server supports following langauges: %s", value, f.structField.ApiName(), f.structField.Struct().Collection(),
-									strings.Join(sup.PrettyLanguages(), internal.AnnotationSeperator),
-								)
-								return
+								err := errors.New(class.QueryFilterLanguage, err.Error())
+								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported langauges.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
+								return err
 							}
 						}
 						b, _ := tag.Base()
@@ -213,27 +199,32 @@ func (f *FilterField) SetValues(
 					}
 				}
 			default:
-				errObj = aerrors.ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Provided operator: '%s' for the language field is not acceptable", op.String())
-				return
+				err := errors.New(class.QueryFilterLanguage, "invalid query language filter operator")
+				err.SetDetailf("Provided operator: '%s' for the language field is not acceptable", op.String())
+				return err
 			}
 		}
+
+		// iterate over filter values and check if they're correct
 		for _, value := range values {
 			fieldValue := reflect.New(t).Elem()
-			er = setAttributeField(value, fieldValue)
-			if er != nil {
-				errObj = aerrors.ErrInvalidQueryParameter.Copy()
-				errObj.Detail = fmt.Sprintf("Invalid filter value for the attribute field: '%s' for collection: '%s'. %s.", f.structField.ApiName(), f.structField.Struct().Collection(), er)
-				return
+			err := setAttributeField(value, fieldValue)
+			if err != nil {
+				if err.Class.IsMajor(class.MjrInternal) {
+					return err
+				}
+
+				err.WrapDetailf("Invalid filter value for the attribute field: '%s' for collection: '%s'.", f.structField.NeuronName(), f.structField.Struct().Collection())
+				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
 		}
 
 		f.values = append(f.values, fv)
 	default:
-
+		return errors.Newf(class.InternalQueryFilter, "setting filter values for invalid field: '%s'", f.structField.Name())
 	}
-	return
+	return nil
 }
 
 func (f *FilterField) copy() *FilterField {
@@ -278,11 +269,6 @@ func (f *FilterField) getOrCreateNested(field interface{}) *FilterField {
 		nested := &FilterField{structField: t}
 		f.nested = append(f.nested, nested)
 		return nested
-
-	default:
-		return nil
-		// invalid field type
 	}
-
 	return nil
 }

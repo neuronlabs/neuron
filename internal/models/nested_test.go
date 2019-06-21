@@ -1,12 +1,11 @@
 package models
 
 import (
-	"github.com/stretchr/testify/assert"
 	"reflect"
-	// "github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	// "reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type subNested struct {
@@ -105,7 +104,7 @@ func TestNestedFields(t *testing.T) {
 				if assert.NotNil(t, nStructFielder) {
 					assert.Equal(t, nestedField.structField, nStructFielder.Self())
 
-					nestedFieldInterface, ok := nStructFielder.(NestedStructFielder)
+					nestedFieldInterface, ok := nStructFielder.(nestedStructFielder)
 					if assert.True(t, ok) {
 						assert.Equal(t, nestedField, nestedFieldInterface.SelfNested())
 					}

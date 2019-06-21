@@ -2,26 +2,29 @@ package i18n
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron/config"
-	"github.com/pkg/errors"
+
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 )
 
-// Support defines the i18n coverage
+// Support defines the internationalization coverage.
 type Support struct {
 	Matcher language.Matcher
 	Locale  language.Coverage
 }
 
-// New creates new I18n Support
+// New creates new I18n Support.
 func New(cfg *config.I18nConfig) (*Support, error) {
 	var tags []interface{}
 
 	for _, langTag := range cfg.SupportedLanguages {
 		tag, err := language.Parse(langTag)
 		if err != nil {
-			return nil, errors.Wrapf(err, "language.Parse langtag: '%s' failed.", langTag)
+			return nil, errors.Newf(class.LanguageParsingFailed, "parsing language: '%s' failed. %s'", langTag, err.Error())
 		}
 		tags = append(tags, tag)
 	}
@@ -33,13 +36,12 @@ func New(cfg *config.I18nConfig) (*Support, error) {
 	return s, nil
 }
 
-// PrettyLangauges return prettiefied supported languages strings
+// PrettyLanguages return prettified supported languages strings.
 func (s *Support) PrettyLanguages() []string {
 	namer := display.Tags(language.English)
-	var names []string = make([]string, len(s.Locale.Tags()))
+	names := make([]string, len(s.Locale.Tags()))
 	for i, lang := range s.Locale.Tags() {
 		names[i] = fmt.Sprintf("%s - '%s'", namer.Name(lang), lang.String())
 	}
-
 	return names
 }

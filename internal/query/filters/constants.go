@@ -1,8 +1,7 @@
 package filters
 
-// Operators
+// Constants that define operator raw values.
 const (
-	// logical filters
 	AnnotationOperatorEqual        = "$eq"
 	AnnotationOperatorIn           = "$in"
 	AnnotationOperatorNotEqual     = "$ne"

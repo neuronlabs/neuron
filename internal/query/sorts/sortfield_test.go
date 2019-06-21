@@ -1,47 +1,26 @@
 package sorts
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/namer"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/namer"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-type blog struct {
-	ID            int       `neuron:"type=primary"`
-	Title         string    `neuron:"type=attr;name=title"`
-	Posts         []*post   `neuron:"type=relation;name=posts;foreign=BlogID"`
-	CurrentPost   *post     `neuron:"type=relation;name=current_post"`
-	CurrentPostID uint64    `neuron:"type=foreign"`
-	CreatedAt     time.Time `neuron:"type=attr;name=created_at;flags=iso8601"`
-	ViewCount     int       `neuron:"type=attr;name=view_count;flags=omitempty"`
-}
-
-type post struct {
-	ID            uint64     `neuron:"type=primary"`
-	BlogID        int        `neuron:"type=foreign"`
-	Title         string     `neuron:"type=attr;name=title"`
-	Body          string     `neuron:"type=attr;name=body"`
-	Comments      []*comment `neuron:"type=relation;name=comments;foreign=PostID"`
-	LatestComment *comment   `neuron:"type=relation;name=latest_comment;foreign=PostID"`
-}
-
-type comment struct {
-	ID     int    `neuron:"type=primary"`
-	PostID uint64 `neuron:"type=foreign"`
-	Body   string `neuron:"type=attr;name=body"`
-}
-
+// TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
 	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
+		log.SetLevel(log.LDEBUG2)
 	}
-	ms, err := models.NewModelSchemas(namer.NamingKebab, config.ReadDefaultControllerConfig(), flags.New())
+
+	ms, err := models.NewModelSchemas(namer.NamingKebab, config.ReadDefaultControllerConfig())
 	require.NoError(t, err)
 
 	err = ms.RegisterModels(&blog{}, &post{}, &comment{})
@@ -68,12 +47,36 @@ func TestSetRelationScopeSort(t *testing.T) {
 	assert.Error(t, err)
 
 	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	err = sortField.setSubfield([]string{"comments", "body"}, AscendingOrder, true)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 
 	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
+}
 
+type blog struct {
+	ID            int       `neuron:"type=primary"`
+	Title         string    `neuron:"type=attr;name=title"`
+	Posts         []*post   `neuron:"type=relation;name=posts;foreign=BlogID"`
+	CurrentPost   *post     `neuron:"type=relation;name=current_post"`
+	CurrentPostID uint64    `neuron:"type=foreign"`
+	CreatedAt     time.Time `neuron:"type=attr;name=created_at;flags=iso8601"`
+	ViewCount     int       `neuron:"type=attr;name=view_count;flags=omitempty"`
+}
+
+type post struct {
+	ID            uint64     `neuron:"type=primary"`
+	BlogID        int        `neuron:"type=foreign"`
+	Title         string     `neuron:"type=attr;name=title"`
+	Body          string     `neuron:"type=attr;name=body"`
+	Comments      []*comment `neuron:"type=relation;name=comments;foreign=PostID"`
+	LatestComment *comment   `neuron:"type=relation;name=latest_comment;foreign=PostID"`
+}
+
+type comment struct {
+	ID     int    `neuron:"type=primary"`
+	PostID uint64 `neuron:"type=foreign"`
+	Body   string `neuron:"type=attr;name=body"`
 }

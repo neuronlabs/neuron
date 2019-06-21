@@ -2,44 +2,45 @@ package query
 
 import (
 	"context"
-	"fmt"
+	"reflect"
+
 	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
+
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
 	"github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/uni-db"
-	"reflect"
 )
 
 var (
-	// ProcessPatch is the Process that does the repository Patch method
+	// ProcessPatch is the Process that does the repository Patch method.
 	ProcessPatch = &Process{
 		Name: "neuron:patch",
 		Func: patchFunc,
 	}
 
-	// ProcessBeforePatch is the Process that does the hook HBeforePatch
+	// ProcessBeforePatch is the Process that does the hook BeforePatch.
 	ProcessBeforePatch = &Process{
 		Name: "neuron:hook_before_patch",
 		Func: beforePatchFunc,
 	}
 
-	// ProcessAfterPatch is the Process that does the hook HAfterPatch
+	// ProcessAfterPatch is the Process that does the hook AfterPatch.
 	ProcessAfterPatch = &Process{
 		Name: "neuron:hook_after_patch",
 		Func: afterPatchFunc,
 	}
 
-	// ProcessPatchBelongsToRelationships is the process that patches the belongs to relationships
+	// ProcessPatchBelongsToRelationships is the process that patches the belongs to relationships.
 	ProcessPatchBelongsToRelationships = &Process{
 		Name: "neuron:patch_belongs_to_relationships",
 		Func: patchBelongsToRelationshipsFunc,
 	}
 
-	// ProcessPatchForeignRelationships is the Process that patches the foreign relationships
+	// ProcessPatchForeignRelationships is the Process that patches the foreign relationships.
 	ProcessPatchForeignRelationships = &Process{
 		Name: "neuron:patch_foreign_relationships",
 		Func: patchForeignRelationshipsFunc,
@@ -47,17 +48,16 @@ var (
 )
 
 func patchFunc(ctx context.Context, s *Scope) error {
-
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Errorf("No repository found for model: %v", s.Struct().Collection())
-		return ErrNoRepositoryFound
+		return err
 	}
 
 	patchRepo, ok := repo.(Patcher)
 	if !ok {
 		log.Errorf("Repository for current model: '%s' doesn't support Patch method", s.Struct().Type().Name())
-		return ErrNoPatcherFound
+		return errors.Newf(class.RepositoryNotImplementsPatcher, "repository: '%T' doesn't implement Patcher interface", repo)
 	}
 
 	var onlyForeignRelationships = true
@@ -91,7 +91,7 @@ func beforePatchFunc(ctx context.Context, s *Scope) error {
 	if !ok {
 		return nil
 	}
-	if err := beforePatcher.HBeforePatch(ctx, s); err != nil {
+	if err := beforePatcher.BeforePatch(ctx, s); err != nil {
 		log.Debugf("AfterPatcher failed for scope value: %v", s.Value)
 		return err
 	}
@@ -105,7 +105,7 @@ func afterPatchFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if err := afterPatcher.HAfterPatch(ctx, s); err != nil {
+	if err := afterPatcher.AfterPatch(ctx, s); err != nil {
 		log.Debugf("AfterPatcher failed for scope value: %v", s.Value)
 		return err
 	}
@@ -123,7 +123,6 @@ func patchBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-
 	var relationships []*models.StructField
 
 	for _, relField := range s.internal().SelectedFields() {
@@ -139,15 +138,18 @@ func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 	}
 
 	if len(relationships) > 0 {
-
-		primaryValues, ok := s.internal().StoreGet(internal.ReducedPrimariesCtxKey)
+		primaryValues, ok := s.internal().StoreGet(internal.ReducedPrimariesStoreKey)
 		if !ok {
-			return unidb.ErrInternalError.NewWithError(fmt.Errorf("Scope[%s] has no primaries context key set in the store", s.ID()))
+			err := errors.New(class.InternalQueryNoStoredValue, "no primaries context key set in the store")
+			log.Errorf("Scope[%s] %s", s.ID(), err.Error())
+			return err
 		}
 
 		primaries, ok := primaryValues.([]interface{})
 		if !ok {
-			return unidb.ErrInternalError.NewWithError(fmt.Errorf("Scope[%s]  primaries not of a type []interface{}  ", s.ID()))
+			err := errors.Newf(class.InternalQueryNoStoredValue, "primaries not of a type []interface{}")
+			log.Errorf("Scope[%s]  %s", s.ID(), err.Error())
+			return err
 		}
 
 		var results = make(chan interface{}, len(relationships))
@@ -207,12 +209,12 @@ func patchHasOneRelationship(
 	ctx context.Context, s *Scope, relField *models.StructField,
 	primaries []interface{}, results chan<- interface{},
 ) {
-
 	// if the len primaries are greater than one
 	// the foreign key must be in a join model
 	if len(primaries) > 1 {
 		log.Debugf("SCOPE[%s] Patching multiple primary with HasOne relationship is unsupported.", s.ID())
-		err := errors.ErrInvalidQueryParameter.Copy().WithDetail(fmt.Sprintf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.ApiName()))
+		err := errors.New(class.QueryValuePrimary, "patching has one relationship for many primaries")
+		err.SetDetailf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
 		results <- err
 		return
 	}
@@ -238,7 +240,7 @@ func patchHasOneRelationship(
 	relScope, err := NewC(s.Controller(), relScopeValue)
 	if err != nil {
 		log.Errorf("Cannot create related scope for HasOne patch relationship: %v of type: %T", err, relScopeValue)
-		err = unidb.ErrInternalError.NewWithError(err)
+		err = errors.New(class.InternalModelRelationNotMapped, err.Error())
 		results <- err
 		return
 	}
@@ -258,14 +260,16 @@ func patchHasOneRelationship(
 	// the primary field filter would be added by the process makePrimaryFilters
 	if err = relScope.PatchContext(ctx); err != nil {
 		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
-		if dberr, ok := err.(*unidb.Error); ok {
-			if dberr.Compare(unidb.ErrNoResult) {
-				err = errors.ErrResourceNotFound.Copy().WithDetail(fmt.Sprintf("Patching relationship: '%s' failed. Related resource not found.", relField.ApiName()))
+
+		if e, ok := err.(*errors.Error); ok {
+			if e.Class == class.QueryValueNoResult {
+				e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
 			}
 		}
 		results <- err
 		return
 	}
+
 	// send the struct to the counter
 	results <- struct{}{}
 	return
@@ -275,7 +279,6 @@ func patchHasManyRelationship(
 	ctx context.Context, s *Scope, relField *models.StructField,
 	primaries []interface{}, results chan<- interface{},
 ) {
-
 	// 1) for related field with values
 	// i.e. model with field hasMany = []*relatedModel{{ID: 4},{ID: 5}}
 	//
@@ -334,7 +337,8 @@ func patchHasManyRelationship(
 
 		// check if there are multiple primaries
 		if len(primaries) > 1 {
-			err := errors.ErrInvalidQueryParameter.Copy().WithDetail("Can't patch multiple instances with the relation of type hasMany")
+			err := errors.New(class.QueryValuePrimary, "multiple query primaries while patching has many relationship")
+			err.SetDetail("Can't patch multiple instances with the relation of type hasMany")
 			results <- err
 			return
 		}
@@ -354,7 +358,7 @@ func patchHasManyRelationship(
 		// create the related scope that patches the relatedPrimaries
 		relatedScope, err := NewC(s.Controller(), relatedValue.Interface())
 		if err != nil {
-			results <- unidb.ErrInternalError.NewWithError(err)
+			results <- errors.New(class.InternalModelRelationNotMapped, err.Error())
 			return
 		}
 
@@ -363,7 +367,6 @@ func patchHasManyRelationship(
 			filters.NewOpValuePair(filters.OpIn, relatedPrimaries...),
 		))
 		if err != nil {
-			err = unidb.ErrInternalError.NewWithError(err)
 			results <- err
 			return
 		}
@@ -379,20 +382,18 @@ func patchHasManyRelationship(
 
 		// patch the related Scope
 		if err := relatedScope.PatchContext(ctx); err != nil {
-			if dberr, ok := err.(*unidb.Error); ok {
-				if dberr.Compare(unidb.ErrNoResult) {
-					err := errors.ErrResourceNotFound.Copy().WithDetail(fmt.Sprintf("Patching related field: '%s' failed - no related resources found", relField.ApiName()))
-					results <- err
+			if e, ok := err.(*errors.Error); ok {
+				if e.Class == class.QueryValueNoResult {
+					e.WrapDetailf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
+					results <- e
 					return
 				}
 			}
 			results <- err
 			return
 		}
-
 	} else {
 		// 2) for the empty related field
-
 		// clear the related scope
 		if err := patchClearRelationshipWithForeignKey(ctx, s, relField, primaries); err != nil {
 			results <- err
@@ -407,12 +408,11 @@ func patchMany2ManyRelationship(
 	ctx context.Context, s *Scope, relField *models.StructField,
 	primaries []interface{}, results chan<- interface{},
 ) {
-
 	// by patching the many2many relationship the join model entries are required to be patched
-
+	//
 	// if the patching is used to clear the relationships (the relationship field value is zero)
 	// remove all the entries in the join model where the primary fields are in the backreference foreign key field
-
+	//
 	// if the patched relationship field contains any values
 	// then all the current join model entries should be clear
 	// and new entries from the model's relationship value should be inserted
@@ -456,11 +456,10 @@ func patchMany2ManyRelationship(
 	}
 
 	if isEmpty {
-
 		// create the scope for clearing the relationship
 		clearScope := newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false)
 
-		f := filters.NewFilter(relField.Relationship().BackreferenceForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
+		f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
 		err := clearScope.AddFilterField(f)
 		if err != nil {
 			results <- err
@@ -479,11 +478,12 @@ func patchMany2ManyRelationship(
 		// delete the rows in the many2many relationship containing provided values
 		if err = queryS(clearScope).DeleteContext(ctx); err != nil {
 			switch t := err.(type) {
-			case *unidb.Error:
-				if t.Compare(unidb.ErrNoResult) {
+			case *errors.Error:
+				if t.Class == class.QueryValueNoResult {
 					err = nil
 				}
 			}
+
 			if err != nil {
 				results <- err
 				return
@@ -495,14 +495,14 @@ func patchMany2ManyRelationship(
 	}
 
 	// 1) clear the join model values
-
+	//
 	// create the clearScope based on the join model
 	clearScope := newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false)
 
 	// it also should get all 'old' entries matched with root.primary
 	// value as the backreference primary field
 	// copy the root scope primary filters into backreference foreign key
-	f := filters.NewFilter(relField.Relationship().BackreferenceForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
+	f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
 	if err := clearScope.AddFilterField(f); err != nil {
 		results <- err
 		return
@@ -519,9 +519,9 @@ func patchMany2ManyRelationship(
 
 	// delete the entries in the join model
 	if err := queryS(clearScope).DeleteContext(ctx); err != nil {
-		if dberr, ok := err.(*unidb.Error); ok {
+		if e, ok := err.(*errors.Error); ok {
 			// if the err is no result
-			if dberr.Compare(unidb.ErrNoResult) {
+			if e.Class == class.QueryValueNoResult {
 				err = nil
 			}
 		}
@@ -553,11 +553,12 @@ func patchMany2ManyRelationship(
 
 	// get the values from the checkScope
 	if err := queryS(checkScope).ListContext(ctx); err != nil {
-		if dberr, ok := err.(*unidb.Error); ok {
-			if dberr.Compare(unidb.ErrNoResult) {
-				err = errors.ErrResourceNotFound.Copy().WithDetail("No many2many relationship values found with the provided ids")
+		if e, ok := err.(*errors.Error); ok {
+			if e.Class == class.QueryValueNoResult {
+				e.WrapDetail("No many2many relationship values found with the provided ids")
 			}
 		}
+		results <- err
 		return
 	}
 
@@ -570,7 +571,7 @@ func patchMany2ManyRelationship(
 
 	checkPrimaries, err := checkScope.GetPrimaryFieldValues()
 	if err != nil {
-		err = unidb.ErrInternalError.NewWithError(err)
+		results <- err
 		return
 	}
 
@@ -588,7 +589,9 @@ func patchMany2ManyRelationship(
 	}
 
 	if len(nonExistsPrimaries) > 0 {
-		err = errors.ErrInvalidInput.Copy().WithDetail(fmt.Sprintf("Patching relationship field: '%s' failed. The relationships: %v doesn't exists", relField.ApiName(), nonExistsPrimaries))
+		// violation integrity constraint erorr
+		err = errors.New(class.QueryViolationIntegrityConstraint, "relationship values doesn't exists").SetDetailf("Patching relationship field: '%s' failed. The relationships: %v doesn't exists", relField.NeuronName(), nonExistsPrimaries)
+		results <- err
 		return
 	}
 
@@ -598,7 +601,6 @@ func patchMany2ManyRelationship(
 
 	// 3) when all the primaries exists in the relation model
 	// insert the relation values into the join model
-
 	instances := relField.Relationship().JoinModel().NewReflectValueMany()
 	dereferencedInstances := instances.Elem()
 
@@ -608,13 +610,13 @@ func patchMany2ManyRelationship(
 			joinModelInstance := relField.Relationship().JoinModel().NewReflectValueSingle()
 
 			// get the join model foreign key
-			fk := joinModelInstance.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index)
+			mtmFK := joinModelInstance.Elem().FieldByIndex(relField.Relationship().ManyToManyForeignKey().ReflectField().Index)
 			// set it's value to primary value
-			fk.Set(reflect.ValueOf(relPrimary))
+			mtmFK.Set(reflect.ValueOf(relPrimary))
 
 			// get the join model backreference key and set it with primary value
-			backReferenceFK := joinModelInstance.Elem().FieldByIndex(relField.Relationship().BackreferenceForeignKey().ReflectField().Index)
-			backReferenceFK.Set(reflect.ValueOf(primary))
+			fk := joinModelInstance.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index)
+			fk.Set(reflect.ValueOf(primary))
 			dereferencedInstances.Set(reflect.Append(dereferencedInstances, joinModelInstance))
 		}
 	}
@@ -625,16 +627,16 @@ func patchMany2ManyRelationship(
 		return
 	}
 
+	insertScope.internal().AddSelectedField(relField.Relationship().ManyToManyForeignKey())
 	insertScope.internal().AddSelectedField(relField.Relationship().ForeignKey())
-	insertScope.internal().AddSelectedField(relField.Relationship().BackreferenceForeignKey())
 
 	// create the newly created relationships
 	if err = insertScope.CreateContext(ctx); err != nil {
 		results <- err
 		return
 	}
-	results <- struct{}{}
 
+	results <- struct{}{}
 }
 
 func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relField *models.StructField, primaries []interface{}) error {
@@ -664,15 +666,16 @@ func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relFiel
 
 	// clear the related scope
 	if err = queryS(clearScope).PatchContext(ctx); err != nil {
-		if dberr, ok := err.(*unidb.Error); ok {
-			if dberr.Compare(unidb.ErrNoResult) {
+		if e, ok := err.(*errors.Error); ok {
+			// if the error is no value result clear the error
+			if e.Class == class.QueryValueNoResult {
 				err = nil
 			}
 		}
+
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

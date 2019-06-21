@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Repository defines the repository configuration variables
+// Repository defines the repository configuration variables.
 type Repository struct {
 	// DriverName defines the name for the repository driver
 	DriverName string `mapstructure:"driver_name"`

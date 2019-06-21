@@ -3,14 +3,16 @@ package query
 import (
 	"context"
 	"fmt"
+
 	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/query/scope"
-	"github.com/neuronlabs/neuron/log"
 )
 
 // processes contains registered processes by their name
-var processes = map[string]*Process{}
+var processes = make(map[string]*Process)
 
 // RegisterProcess registers the process. If the process is already registered the function panics
 func RegisterProcess(p *Process) error {
@@ -18,6 +20,7 @@ func RegisterProcess(p *Process) error {
 	if ok {
 		panic(fmt.Errorf("Process: '%s' already registered", p.Name))
 	}
+	log.Debugf("Registered process: '%s'.", p.Name)
 	processes[p.Name] = p
 	internal.Processes[p.Name] = struct{}{}
 
@@ -25,7 +28,6 @@ func RegisterProcess(p *Process) error {
 }
 
 func init() {
-
 	// create processes
 	RegisterProcess(ProcessBeforeCreate)
 	RegisterProcess(ProcessSetBelongsToRelationships)
@@ -82,7 +84,6 @@ type Processor struct {
 
 // New creates the query processor
 func newProcessor(cfg *config.Processor) *Processor {
-
 	p := &Processor{}
 
 	for _, processName := range cfg.CreateProcesses {
@@ -137,7 +138,6 @@ var _ scope.Processor = &Processor{}
 
 // Create is the initializes the Create Process Chain for the Scope
 func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
-
 	for _, f := range p.CreateChain {
 		log.Debug2f("Scope[%s] %s", s.ID(), f.Name)
 		ts := queryS(s)
@@ -149,7 +149,7 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 			return err
 		}
 
-		s.StoreSet(internal.PreviousProcessCtxKey, f)
+		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 
 	return nil
@@ -157,9 +157,9 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 
 // Get initializes the Get Process chain for the scope
 func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
-
 	for _, f := range p.GetChain {
 		log.Debug2f("Scope[%s] %s", s.ID(), f.Name)
+
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debugf("Scope[%s] Getting failed on process: %s. %v", s.ID(), f.Name, err)
@@ -168,7 +168,7 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 			}
 			return err
 		}
-		s.StoreSet(internal.PreviousProcessCtxKey, f)
+		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 
 	return nil
@@ -176,9 +176,9 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 
 // List initializes the List Process Chain for the scope
 func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
-
 	for _, f := range p.ListChain {
 		log.Debug2f("Scope[%s] %s", s.ID(), f.Name)
+
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debugf("Scope[%s] Listing failed on process: %s. %v", s.ID(), f.Name, err)
@@ -187,7 +187,7 @@ func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 			}
 			return err
 		}
-		s.StoreSet(internal.PreviousProcessCtxKey, f)
+		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 	return nil
 }
@@ -196,6 +196,7 @@ func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 	for _, f := range p.PatchChain {
 		log.Debug2f("Scope[%s] %s", s.ID(), f.Name)
+
 		ts := (*Scope)(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debugf("Scope[%s] Patching failed on process: %s. %v", s.ID(), f.Name, err)
@@ -204,7 +205,7 @@ func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 			}
 			return err
 		}
-		s.StoreSet(internal.PreviousProcessCtxKey, f)
+		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 
 	return nil
@@ -214,7 +215,8 @@ func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
 	for _, f := range p.DeleteChain {
 		log.Debug2f("Scope[%s] %s", s.ID(), f.Name)
-		ts := (*Scope)(s)
+
+		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debugf("Scope[%s] Deleting failed on process: %s. %v", s.ID(), f.Name, err)
 			if ts.tx() != nil {
@@ -222,7 +224,7 @@ func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
 			}
 			return err
 		}
-		s.StoreSet(internal.PreviousProcessCtxKey, f)
+		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 
 	return nil

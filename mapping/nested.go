@@ -1,14 +1,15 @@
 package mapping
 
 import (
-	"github.com/neuronlabs/neuron/internal/models"
 	"reflect"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-// NestedStruct is the structure that represtents nested attribute structure
+// NestedStruct is the structure that represtents nested attribute structure.
 type NestedStruct models.NestedStruct
 
-// Attribute returns the attribute on the level of the 'ModelStruct' fields
+// Attribute returns the attribute on the level of the 'ModelStruct' fields.
 func (s *NestedStruct) Attribute() *StructField {
 	return (*StructField)((*models.NestedStruct)(s).Attr())
 }
@@ -18,7 +19,7 @@ func (s *NestedStruct) StoreGet(key string) (interface{}, bool) {
 	return (*models.NestedStruct)(s).StructField().Self().StoreGet(key)
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'
+// StoreSet sets into the store the value 'value' for given 'key'.
 func (s *NestedStruct) StoreSet(key string, value interface{}) {
 	(*models.NestedStruct)(s).StructField().Self().StoreSet(key, value)
 }
@@ -30,7 +31,7 @@ func (s *NestedStruct) StructField() *StructField {
 	return (*StructField)((*models.NestedStruct)(s).StructField().Self())
 }
 
-// Fields returns all nested fields within the nested struct
+// Fields returns all nested fields within the nested struct.
 func (s *NestedStruct) Fields() []*NestedField {
 	var fields []*NestedField
 
@@ -41,20 +42,20 @@ func (s *NestedStruct) Fields() []*NestedField {
 	return fields
 }
 
-// Type returns the reflect.Type of the model within the nested struct
+// Type returns the reflect.Type of the model within the nested struct.
 func (s *NestedStruct) Type() reflect.Type {
 	return (*models.NestedStruct)(s).Type()
 }
 
-// NestedField is the nested field within the NestedStruct
+// NestedField is the nested field within the NestedStruct.
 type NestedField models.NestedField
 
-// StructField gets the structField for provided NestedFieldvalue
+// StructField gets the structField for provided NestedFieldvalue.
 func (s *NestedField) StructField() *StructField {
 	return (*StructField)((*models.NestedField)(s).StructField())
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'
+// StoreSet sets into the store the value 'value' for given 'key'.
 func (s *NestedField) StoreSet(key string, value interface{}) {
 	(*models.NestedField)(s).Self().StoreSet(key, value)
 }

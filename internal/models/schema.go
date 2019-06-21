@@ -1,15 +1,17 @@
 package models
 
 import (
-	"fmt"
-	"github.com/jinzhu/inflection"
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/namer"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/pkg/errors"
 	"reflect"
+
+	"github.com/jinzhu/inflection"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+
+	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron/internal/namer"
 )
 
 // Schema is a container for the given
@@ -64,9 +66,6 @@ type ModelSchemas struct {
 	defaultSchema   *Schema
 	defaultRepoName string
 
-	// Flags contains the config flags for given schema
-	Flags *flags.Container
-
 	// NamerFunc is the function required for naming convenction
 	NamerFunc namer.Namer
 }
@@ -75,13 +74,11 @@ type ModelSchemas struct {
 func NewModelSchemas(
 	namerFunc namer.Namer,
 	c *config.Controller,
-	flgs *flags.Container,
 ) (*ModelSchemas, error) {
 	return newModelSchemas(namerFunc,
 		c.ModelSchemas,
 		c.DefaultSchema,
 		c.DefaultRepositoryName,
-		flgs,
 	)
 }
 
@@ -90,11 +87,9 @@ func newModelSchemas(
 	cfg map[string]*config.Schema,
 	defaultSchema string,
 	defaultRepoName string,
-	flgs *flags.Container,
 ) (*ModelSchemas, error) {
 	log.Debugf("Creating New ModelSchemas...")
 	ms := &ModelSchemas{
-		Flags:           flgs,
 		NamerFunc:       namerFunc,
 		cfg:             cfg,
 		defaultRepoName: defaultRepoName,
@@ -190,7 +185,7 @@ func (m *ModelSchemas) RegisterModels(
 		}
 
 		// build the model's structure and set into schema's model map
-		mStruct, err := BuildModelStruct(model, m.NamerFunc, m.Flags)
+		mStruct, err := buildModelStruct(model, m.NamerFunc)
 		if err != nil {
 			return err
 		}
@@ -291,7 +286,7 @@ func (m *ModelSchemas) RegisterModelsRecursively(models ...interface{}) error {
 	return nil
 }
 
-func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
+func (m *ModelSchemas) setModelRelationships(model *ModelStruct) error {
 	schema := m.schemas[model.SchemaName()]
 
 	for _, relField := range model.RelationshipFields() {
@@ -299,8 +294,7 @@ func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
 
 		val := schema.models.Get(relType)
 		if val == nil {
-			err = fmt.Errorf("Model: %v, not precalculated but is used in relationships for: %v field in %v model.", relType, relField.FieldName(), model.Type().Name())
-			return err
+			return errors.Newf(class.InternalModelRelationNotMapped, "model: %v, not precalculated but is used in relationships for: %v field in %v model", relType, relField.FieldName(), model.Type().Name())
 		}
 
 		relField.SetRelatedModel(val)
@@ -333,44 +327,20 @@ func (m *ModelSchemas) setModelRelationships(model *ModelStruct) (err error) {
 			}
 
 			if rel.joinModel == nil {
-				err = fmt.Errorf("Join Model not found for model: '%s' relationship: '%s'", model.Type().Name(), relField.Name())
-				return
+				return errors.Newf(class.ModelRelationshipJoinModel, "Join Model not found for model: '%s' relationship: '%s'", model.Type().Name(), relField.Name())
 			}
 
 			rel.joinModel.isJoin = true
-
-			// check if the name was preset before if not set it to the model's type name + ID
-			var isDefault bool
-			if rel.backReferenceForeignKeyName == "" {
-				rel.backReferenceForeignKeyName = model.Type().Name() + "ID"
-				isDefault = true
-			}
-
-			fk, ok := rel.joinModel.ForeignKey(rel.backReferenceForeignKeyName)
-			if !ok {
-				if isDefault {
-					err = fmt.Errorf("Backreference foreign key with default name: '%s' not found within the join model: '%s' ", rel.backReferenceForeignKeyName, rel.joinModel.Type().Name())
-				} else {
-					err = fmt.Errorf("Backreference foreign key: '%s' not found within the join model: '%s' ", rel.backReferenceForeignKeyName, rel.joinModel.Type().Name())
-				}
-				return
-			}
-
-			rel.backReferenceForeignKey = fk
 		}
 	}
-
-	return
+	return nil
 }
 
-func (m *ModelSchemas) setRelationships() (err error) {
+func (m *ModelSchemas) setRelationships() error {
 	for _, schema := range m.schemas {
-
 		// iterate over all models from schema
 		for _, model := range schema.models.Models() {
-
 			for _, relField := range model.RelationshipFields() {
-
 				// relationship gets the relationship between the fields
 				relationship := relField.Relationship()
 
@@ -378,113 +348,157 @@ func (m *ModelSchemas) setRelationships() (err error) {
 				tags := relField.TagValues(relField.ReflectField().Tag.Get(internal.AnnotationNeuron))
 
 				// get proper foreign key field name
-				fkeyFieldName := tags.Get(internal.AnnotationForeignKey)
-
-				log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), fkeyFieldName)
+				fkeyFieldNames := tags[internal.AnnotationForeignKey]
+				log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), fkeyFieldNames)
 				// check field type
+				var foreignKey, m2mForeignKey string
+				switch len(fkeyFieldNames) {
+				case 0:
+				case 1:
+					foreignKey = fkeyFieldNames[0]
+				case 2:
+					foreignKey = fkeyFieldNames[0]
+					if foreignKey == "_" {
+						foreignKey = ""
+					}
+
+					m2mForeignKey = fkeyFieldNames[1]
+					if m2mForeignKey == "_" {
+						m2mForeignKey = ""
+					}
+				default:
+					log.Errorf("Too many foreign key tag values for the relationship field: '%s' in model: '%s' ", relField.Name(), model.Type().Name())
+					return errors.New(class.ModelRelationshipForeign, "relationship field tag 'foreign key' has too values")
+				}
+				log.Debugf("ForeignKeys: %v", fkeyFieldNames)
 
 				switch relField.ReflectField().Type.Kind() {
 				case reflect.Slice:
+					if relationship.isMany2Many() {
+						// check if foreign key has it's name
+						if foreignKey == "" {
+							foreignKey = model.modelType.Name() + "ID"
+						}
 
-					// get the foreign key name
-					if fkeyFieldName == "" {
-						fkeyFieldName = relField.relationship.modelType.Name() + "ID"
-					}
+						// get the foreign keys from the join model
+						modelWithFK := relationship.joinModel
 
-					var modelWithFK *ModelStruct
-					if relationship.IsManyToMany() {
-						modelWithFK = relationship.joinModel
+						// get the name from the NamerFunc.
+						fkeyName := m.NamerFunc(foreignKey)
+
+						// check if given FK exists in the model's definitions.
+						fk, ok := modelWithFK.ForeignKey(fkeyName)
+						if !ok {
+							log.Errorf("Foreign key: '%s' not found within Model: '%s'", foreignKey, modelWithFK.Type().Name())
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKey, relField.Name(), model.Type().Name())
+						}
+						// the primary field type of the model should match current's model type.
+						if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
+							log.Errorf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
+							return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						}
+						relationship.setForeignKey(fk)
+
+						// check if m2mForeignKey is set
+						if m2mForeignKey == "" {
+							m2mForeignKey = relationship.modelType.Name() + "ID"
+						}
+
+						// get the name from the NamerFunc.
+						m2mForeignKeyName := m.NamerFunc(m2mForeignKey)
+
+						// check if given FK exists in the model's definitions.
+						m2mFK, ok := modelWithFK.ForeignKey(m2mForeignKeyName)
+						if !ok {
+							log.Debugf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "Related Model Foreign Key: '%s' not found for the relationship: '%s'. Model: '%s'", m2mForeignKeyName, relField.Name(), model.Type().Name())
+						}
+
+						// the primary field type of the model should match current's model type.
+						if relationship.mStruct.PrimaryField().ReflectField().Type != m2mFK.ReflectField().Type {
+							log.Debugf("the foreign key of the related model: '%v' for the many-to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", relationship.mStruct.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
+							return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						}
+
+						relationship.mtmRelatedForeignKey = m2mFK
 					} else {
-						modelWithFK = relField.relationship.mStruct
-					}
+						relationship.setKind(RelHasMany)
+						if foreignKey == "" {
+							// the foreign key for any of the slice relationships should be
+							// model's that contains the relationship name concantated with the 'ID'.
+							foreignKey = model.modelType.Name() + "ID"
+						}
+						modelWithFK := relationship.mStruct
+						// get the name from the NamerFunc.
+						fkeyName := m.NamerFunc(foreignKey)
 
-					fkeyName := m.NamerFunc(fkeyFieldName)
-					fk, ok := modelWithFK.ForeignKey(fkeyName)
-					if !ok {
-						err = errors.Errorf("Foreign key not found for the relationship: '%s'. Model: '%s'", relField.Name(), model.Type().Name())
-						return
+						// check if given FK exists in the model's definitions.
+						fk, ok := modelWithFK.ForeignKey(fkeyName)
+						if !ok {
+							log.Errorf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+						}
+						// the primary field type of the model should match current's model type.
+						if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
+							log.Debugf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
+							return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						}
+						relationship.setForeignKey(fk)
 					}
-
-					if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
-
-						err = errors.Errorf("The foreign key in model: %v for the has-many relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
-							FieldsRelatedModelType(fk).Name(),
-							relField.Name(),
-							model.Type().Name(),
-							model.PrimaryField().ReflectField().Type,
-							fk.ReflectField().Type,
-						)
-						return
-					}
-					relationship.SetForeignKey(fk)
-					if relationship.Kind() != RelMany2Many {
-						relationship.kind = RelHasMany
-					}
-
 				case reflect.Ptr, reflect.Struct:
-
 					// check if it is belongs_to or has_one relationship
-					// at first search for foreign key as
-					if fkeyFieldName == "" {
-						// if foreign key has no predefined name
-						// the default value is the relationship field name + ID
-						fkeyFieldName = relField.ReflectField().Name + "ID"
+					if foreignKey == "" {
+						// if foreign key has no given name the default value
+						// is the relationship field name concantated with 'ID'
+						foreignKey = relField.ReflectField().Name + "ID"
 					}
 
-					// get the foreign key name
-					fkeyName := m.NamerFunc(fkeyFieldName)
+					// use the NamerFunc to get the field's name
+					fkeyName := m.NamerFunc(foreignKey)
 
 					// search for the foreign key within the given model
 					fk, ok := model.ForeignKey(fkeyName)
 					if !ok {
-
 						// if the foreign key is not found it must be a has one model or an invalid field name was provided
-						relationship.SetKind(RelHasOne)
+						relationship.setKind(RelHasOne)
 
 						fk, ok = relationship.mStruct.ForeignKey(fkeyName)
 						if !ok {
 							// provided invalid foreign field name
-							err = errors.Errorf("Foreign key not found for the relationship: '%s'. Model: '%s'", relField.Name(), model.Type().Name())
-							return
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
 						}
 
 						// then the check if the current model's primary field is of the same type as the foreign key
 						if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
-							err = errors.Errorf("The foreign key in model: %v for the has-one relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
+							log.Errorf("foreign key in model: %v for the has-one relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
 								fk.Struct().Type().Name(),
 								relField.Name(),
 								model.Type().Name(),
 								model.PrimaryField().ReflectField().Type,
 								fk.ReflectField().Type)
-							return
+							return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model with has one relationship primary key type")
 						}
-
 					} else {
 						// relationship is of BelongsTo kind
-
 						// check if the related model struct primary field is of the same type as the given foreing key
 						if relationship.mStruct.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
-							err = errors.Errorf("The foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
+							log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
 								relField.Name(),
 								FieldsRelatedModelType(relField).Name(),
 								FieldsRelatedModelStruct(relField).PrimaryField().ReflectField().Type,
-								fk.ReflectField().Type,
-							)
-							return
+								fk.ReflectField().Type)
+							return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model's with belongs to relationship primary key type")
 						}
-
 						relationship.kind = RelBelongsTo
 					}
 					// set the foreign key for the given relationship
 					relationship.foreignKey = fk
-
 				}
 			}
 		}
 	}
 
 	for _, schema := range m.schemas {
-
 	modelLoop:
 		for _, model := range schema.models.Models() {
 			for _, relField := range model.relationships {
@@ -535,12 +549,12 @@ func (m *ModelSchemas) getByType(t reflect.Type) (*ModelStruct, error) {
 
 	schema, ok := m.schemas[schemaName]
 	if !ok {
-		return nil, internal.ErrModelNotMapped
+		return nil, errors.Newf(class.ModelSchemaNotFound, "schema: '%s' not found", schemaName)
 	}
 
 	mStruct := schema.models.Get(t)
 	if mStruct == nil {
-		return nil, internal.ErrModelNotMapped
+		return nil, errors.Newf(class.ModelNotMappedInSchema, "model: '%s' is not found within schema: '%s'", t.Name(), schemaName)
 	}
 
 	return mStruct, nil
@@ -572,7 +586,7 @@ func (m *ModelSchemas) getSchemaByType(t reflect.Type) (*Schema, error) {
 
 	schema, ok := m.schemas[schemaName]
 	if !ok {
-		return nil, internal.ErrModelNotMapped
+		return nil, errors.Newf(class.ModelSchemaNotFound, "model schema: '%s' not found", schemaName)
 	}
 	return schema, nil
 }

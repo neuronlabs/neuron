@@ -1,4 +1,4 @@
 package internal
 
-// Processes is a validation struct helper for all packages
-var Processes = map[string]struct{}{}
+// Processes is a mapping of the already registered query processes name.
+var Processes = make(map[string]struct{})

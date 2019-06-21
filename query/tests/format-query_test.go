@@ -2,13 +2,15 @@ package tests
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/filters"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/common"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron/query/filters"
 )
 
 import (
@@ -49,7 +51,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().ApiName(), filters.OpEqual.Raw)))
+			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), filters.OpEqual.Raw)))
 		})
 
 		t.Run("Foreign", func(t *testing.T) {
@@ -64,7 +66,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.ApiName(), filters.OpEqual.Raw)))
+			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
 
 		t.Run("Attribute", func(t *testing.T) {
@@ -79,7 +81,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "some-value", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.ApiName(), filters.OpEqual.Raw)))
+			assert.Equal(t, "some-value", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
 
 		t.Run("Relationship", func(t *testing.T) {
@@ -96,7 +98,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "12", q.Get(fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), field.ApiName(), relPrim.ApiName(), filters.OpEqual.Raw)))
+			assert.Equal(t, "12", q.Get(fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), field.NeuronName(), relPrim.NeuronName(), filters.OpEqual.Raw)))
 		})
 
 		t.Run("FilterKey", func(t *testing.T) {
@@ -111,7 +113,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "some-key", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.ApiName(), filters.OpEqual.Raw)))
+			assert.Equal(t, "some-key", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
 
 		t.Run("Language", func(t *testing.T) {
@@ -126,7 +128,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "pl", q.Get(internal.QueryParamLanguage), fmt.Sprintf("%v", q))
+			assert.Equal(t, "pl", q.Get(common.QueryParamLanguage), fmt.Sprintf("%v", q))
 		})
 	})
 
@@ -138,7 +140,7 @@ func TestFormatQuery(t *testing.T) {
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "12", q.Get(internal.QueryParamPageLimit))
+		assert.Equal(t, "12", q.Get(common.QueryParamPageLimit))
 	})
 
 	t.Run("Sorts", func(t *testing.T) {
@@ -150,6 +152,6 @@ func TestFormatQuery(t *testing.T) {
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "-id", q.Get(internal.QueryParamSort))
+		assert.Equal(t, "-id", q.Get(common.QueryParamSort))
 	})
 }

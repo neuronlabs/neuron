@@ -1,14 +1,16 @@
 package scope
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/namer"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/namer"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
 type testRelatedModel struct {
@@ -28,7 +30,7 @@ func TestGetPrimaryFieldValues(t *testing.T) {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig(), flags.New())
+	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
 	require.NoError(t, err)
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
@@ -99,7 +101,7 @@ func TestGetForeignKeyValues(t *testing.T) {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig(), flags.New())
+	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
 	require.NoError(t, err)
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))

@@ -1,6 +1,11 @@
 package jsonapi
 
-import "fmt"
+import (
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+
+	"fmt"
+)
 
 // payloader is used to encapsulate the One and Many payload types
 type payloader interface {
@@ -42,6 +47,18 @@ func (p *manyPayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
+type singleTypeRecognizePayload struct {
+	Data *typeRecognizeNode `json:"data"`
+}
+
+type manyTypeRecognizePayload struct {
+	Data []*typeRecognizeNode `json:"data"`
+}
+
+type typeRecognizeNode struct {
+	Type string `json:"type"`
+}
+
 // node is used to represent a generic JSON API Resource
 type node struct {
 	Type string `json:"type"`
@@ -72,7 +89,7 @@ type relationshipManyNode struct {
 // http://jsonapi.org/format/#document-links
 type Links map[string]interface{}
 
-func (l *Links) validate() (err error) {
+func (l *Links) validate() error {
 	// Each member of a links object is a “link”. A link MUST be represented as
 	// either:
 	//  - a string containing the link’s URL.
@@ -85,13 +102,10 @@ func (l *Links) validate() (err error) {
 		_, isLink := v.(Link)
 
 		if !(isString || isLink) {
-			return fmt.Errorf(
-				"The %s member of the links object was not a string or link object",
-				k,
-			)
+			return errors.Newf(class.EncodingUnmarshalInvalidType, "the %s member of the links object was not a string or link object", k)
 		}
 	}
-	return
+	return nil
 }
 
 // Link is used to represent a member of the `links` object.

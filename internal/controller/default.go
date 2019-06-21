@@ -1,14 +1,16 @@
 package controller
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/neuron/config"
 )
 
 // DefaultConfig is the controller default config used with the Default function
 var (
-	DefaultConfig        *config.Controller = config.ReadDefaultControllerConfig()
+	DefaultConfig        = config.ReadDefaultControllerConfig()
 	DefaultTestingConfig *config.Controller
 )
 

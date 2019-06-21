@@ -1,13 +1,13 @@
 package jsonapi
 
 import (
-	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 )
 
-var c *controller.Controller = controller.Default()
+var c = controller.Default()
 
 const (
-	// MediaType defines the HTTP ContentType value for the jsonapi specification
-	MediaType string = internal.MediaType
+	// MediaType is the identifier for the JSON API media type
+	// see http://jsonapi.org/format/#document-structure
+	MediaType = "application/vnd.api+json"
 )

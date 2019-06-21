@@ -1,12 +1,15 @@
 package config
 
 import (
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/uni-logger"
+	"testing"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/uni-logger"
+
+	"github.com/neuronlabs/neuron/log"
 )
 
 func readConfigFile(t *testing.T, fileName string) {
@@ -19,6 +22,7 @@ func readConfigFile(t *testing.T, fileName string) {
 	require.NoErrorf(t, err, "Read config fileName: %s", fileName)
 }
 
+// TestModelConfig tests the model config.
 func TestModelConfig(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(unilogger.DEBUG)
@@ -31,30 +35,5 @@ func TestModelConfig(t *testing.T) {
 
 	assert.Equal(t, "some_model", cfg.Collection)
 	assert.Equal(t, "default", cfg.RepositoryName)
-
-	// Create
-	e := cfg.Endpoints.Create
-
-	assert.Contains(t, e.PresetFilters, "[collection][field][operator]")
-	flContainer, err := e.Flags.Container()
-	if assert.NoError(t, err) {
-		v, ok := flContainer.Get(FlReturnPatchContent)
-		assert.True(t, ok)
-		assert.True(t, v)
-
-		v, ok = flContainer.Get(FlUseLinks)
-		assert.True(t, ok)
-		assert.False(t, v)
-
-		_, ok = flContainer.Get(FlAddMetaCountList)
-		assert.False(t, ok)
-	}
-	e = cfg.Endpoints.Get
-	assert.True(t, e.Forbidden)
-
-	e = cfg.Endpoints.GetRelated
-
-	assert.Contains(t, e.RelatedField.PresetSorts, "-field")
-	assert.Contains(t, e.RelatedField.PresetSorts, "other_field")
 
 }

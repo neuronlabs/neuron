@@ -1,12 +1,15 @@
 package models
 
 import (
-	"fmt"
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/log"
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
+
+	"github.com/neuronlabs/neuron/internal"
 )
 
 // FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute')
@@ -64,6 +67,7 @@ func (f FieldKind) String() string {
 
 type fieldFlag int
 
+// field flags
 const (
 	FDefault   fieldFlag = iota
 	FOmitempty fieldFlag = 1 << (iota - 1)
@@ -93,8 +97,8 @@ type StructField struct {
 	// model is the model struct that this field is part of.
 	mStruct *ModelStruct
 
-	// ApiName is jsonapi field name - representation for json
-	apiName string
+	// NeuronName is jsonapi field name - representation for json
+	neuronName string
 
 	// fieldKind
 	fieldKind FieldKind
@@ -132,7 +136,7 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 		s.store = make(map[string]interface{})
 	}
 	s.store[key] = value
-	log.Debugf("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.ApiName(), key, value)
+	log.Debugf("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
@@ -153,9 +157,9 @@ func (s *StructField) StoreDelete(key string) {
 	delete(s.store, key)
 }
 
-// ApiName returns the structFields ApiName
-func (s *StructField) ApiName() string {
-	return s.apiName
+// NeuronName returns the structFields NeuronName
+func (s *StructField) NeuronName() string {
+	return s.neuronName
 }
 
 // FieldIndex - gets the field index in the given model
@@ -269,14 +273,9 @@ func FieldsNested(s *StructField) *NestedStruct {
 	return s.nested
 }
 
-// FieldSetNested sets the structFields nested field
-func FieldSetNested(s *StructField, nested *NestedStruct) {
-	s.nested = nested
-}
-
-// FieldsSetApiName sets the field's apiName
-func FieldsSetApiName(s *StructField, apiName string) {
-	s.apiName = apiName
+// FieldsSetNeuronName sets the field's neuronName
+func FieldsSetNeuronName(s *StructField, neuronName string) {
+	s.neuronName = neuronName
 }
 
 // FieldSetFlag sets the provided flag for the structField
@@ -284,18 +283,12 @@ func FieldSetFlag(s *StructField, flag fieldFlag) {
 	s.fieldFlags = s.fieldFlags | flag
 }
 
-// FieldSetFieldKind sets the field's kind
-func FieldSetFieldKind(s *StructField, fieldKind FieldKind) {
-	s.fieldKind = fieldKind
-}
-
 // fieldSetRelatedType sets the related type for the provided structField
 func (s *StructField) fieldSetRelatedType() error {
-
 	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
-		return fmt.Errorf("Incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
+		return errors.Newf(class.ModelRelationshipType, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
 	}
 
 	switch modelType.Kind() {
@@ -360,7 +353,7 @@ func (s *StructField) isRelationship() bool {
 
 // baseFieldType is the field's base dereferenced type
 func (s *StructField) baseFieldType() reflect.Type {
-	var elem reflect.Type = s.reflectField.Type
+	var elem = s.reflectField.Type
 
 	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
 		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
@@ -391,7 +384,7 @@ func (s *StructField) GetDereferencedType() reflect.Type {
 }
 
 func (s *StructField) getDereferencedType() reflect.Type {
-	var t reflect.Type = s.reflectField.Type
+	t := s.reflectField.Type
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -416,6 +409,7 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		if i != len(option)-1 {
 			values = strings.Split(option[i+1:], internal.AnnotationSeperator)
 		}
+
 		mp[key] = values
 	}
 	return mp
@@ -433,20 +427,17 @@ func (s *StructField) initCheckFieldType() error {
 			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 			reflect.Uint32, reflect.Uint64:
 		default:
-			err := fmt.Errorf("Invalid primary field type: %s for the field: %s in model: %s.", fieldType, s.fieldName(), s.mStruct.modelType.Name())
-			return err
+			return errors.Newf(class.ModelFieldType, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 		}
 	case KindAttribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
-			err := fmt.Errorf("Invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
-			return err
+			return errors.Newf(class.ModelFieldType, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
 		}
 		if s.isLanguage() {
 			if fieldType.Kind() != reflect.String {
-				err := fmt.Errorf("Incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
-				return err
+				return errors.Newf(class.ModelFieldType, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
 			}
 		}
 
@@ -462,13 +453,10 @@ func (s *StructField) initCheckFieldType() error {
 				fieldType = fieldType.Elem()
 			}
 			if fieldType.Kind() != reflect.Struct {
-				err := fmt.Errorf("Invalid slice type: %v, for the relationship: %v", fieldType,
-					s.apiName)
-				return err
+				return errors.Newf(class.ModelRelationshipType, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
 			}
 		default:
-			err := fmt.Errorf("Invalid field type: %v, for the relationship.: %v", fieldType, s.apiName)
-			return err
+			return errors.Newf(class.ModelRelationshipType, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
 		}
 	}
 	return nil

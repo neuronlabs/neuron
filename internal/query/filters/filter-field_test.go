@@ -1,11 +1,14 @@
 package filters
 
 import (
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/neuronlabs/neuron/common"
 )
 
+// TestSplitBracketParameter tests the split bracket parameter function.
 func TestSplitBracketParameter(t *testing.T) {
 	type stringBool struct {
 		Str string
@@ -24,7 +27,7 @@ func TestSplitBracketParameter(t *testing.T) {
 	var splitted []string
 	var err error
 	for _, v := range values {
-		splitted, err = internal.SplitBracketParameter(v.Str)
+		splitted, err = common.SplitBracketParameter(v.Str)
 		if !v.Val {
 			assert.Error(t, err)
 			// t.Log(err)
@@ -38,6 +41,7 @@ func TestSplitBracketParameter(t *testing.T) {
 	}
 }
 
+// TestFilterOperators tests the filter operators registration process.
 func TestFilterOperators(t *testing.T) {
 	container := NewOpContainer()
 	container.registerManyOperators(defaultOperators...)
@@ -46,8 +50,5 @@ func TestFilterOperators(t *testing.T) {
 	assert.False(t, OpEqual.isRangable())
 	assert.False(t, OpEqual.isStringOnly())
 	assert.True(t, OpContains.isStringOnly())
-	// t.Log(OpGreaterThan.String())
-
 	assert.Equal(t, AnnotationOperatorGreaterThan, OpGreaterThan.Raw)
-
 }

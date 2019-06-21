@@ -1,14 +1,16 @@
 package scope
 
 import (
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/internal/flags"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/namer"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/namer"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
 func TestAutoSelectFields(t *testing.T) {
@@ -17,7 +19,7 @@ func TestAutoSelectFields(t *testing.T) {
 	}
 
 	t.Run("NonZeros", func(t *testing.T) {
-		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig(), flags.New())
+		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
 		require.NoError(t, err)
 
 		require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
@@ -30,16 +32,13 @@ func TestAutoSelectFields(t *testing.T) {
 		s.Value = &testModel{ID: 1, Name: "Some", Relation: &testRelatedModel{}}
 
 		require.Nil(t, s.selectedFields)
-
 		require.NoError(t, s.AutoSelectFields())
-
 		require.NotNil(t, s.selectedFields)
-
 		assert.Len(t, s.selectedFields, 3)
 	})
 
 	t.Run("WithZeros", func(t *testing.T) {
-		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig(), flags.New())
+		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
 		require.NoError(t, err)
 
 		require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))

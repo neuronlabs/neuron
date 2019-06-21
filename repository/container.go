@@ -2,23 +2,23 @@ package repository
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"github.com/neuronlabs/neuron/internal/models"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
+
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-var (
-	ctr = newContainer()
-)
+var ctr = newContainer()
 
-// RegisterFactory registers provided Factory within the container
+// RegisterFactory registers provided Factory within the container.
 func RegisterFactory(f Factory) error {
 	return ctr.registerFactory(f)
 }
 
-// GetFactory gets the repository factory
+// GetFactory gets the repository factory with given 'name'.
 func GetFactory(name string) Factory {
 	f, ok := ctr.factories[name]
 	if ok {
@@ -27,7 +27,7 @@ func GetFactory(name string) Factory {
 	return nil
 }
 
-// GetRepository gets the repository instance for the provided model
+// GetRepository gets the repository instance for the provided model.
 func GetRepository(structer ModelStructer, model interface{}) (Repository, error) {
 	mstruct, ok := model.(*mapping.ModelStruct)
 	if !ok {
@@ -50,7 +50,7 @@ func GetRepository(structer ModelStructer, model interface{}) (Repository, error
 
 }
 
-// container is the container for the model repositories
+// container is the container for the model repositories.
 // It contains mapping between repository name as well as the repository mapped to
 // the given ModelStruct
 type container struct {
@@ -80,7 +80,7 @@ func (c *container) registerFactory(f Factory) error {
 	if ok {
 		log.Debugf("Repository already registered: %s", repoName)
 		log.Debugf("Factories: %v", c.factories)
-		return fmt.Errorf("Factory already registered: %s", repoName)
+		return errors.Newf(class.RepositoryFactoryAlreadyRegistered, "factory: '%s' already registered", repoName)
 	}
 
 	c.factories[repoName] = f
@@ -96,12 +96,12 @@ func (c *container) mapModel(structer ModelStructer, model *mapping.ModelStruct)
 	var factory Factory
 
 	if repoName == "" {
-		return errors.New("No default repository factory found")
+		return errors.New(class.ModelSchemaNotFound, "no default repository factory found")
 	}
 
 	factory = c.factories[repoName]
 	if factory == nil {
-		err := fmt.Errorf("Repository Factory: '%s' is not found.", repoName)
+		err := errors.Newf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", repoName)
 		log.Debug(err)
 		return err
 	}

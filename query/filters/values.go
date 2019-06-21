@@ -1,14 +1,14 @@
 package filters
 
 import (
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
 	"strconv"
 	"time"
+
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 func stringValue(sField *mapping.StructField, val interface{}, values *[]string) {
-
 	switch v := val.(type) {
 	case string:
 		*values = append(*values, v)

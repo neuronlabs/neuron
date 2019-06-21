@@ -1,21 +1,4 @@
 {
 	"collection" : "some_model",
-	"repository_name":"default",
-	"endpoints": {
-		"create": {
-			"preset_filters": ["[collection][field][operator]"],
-			"flags" : {
-				"return_patch_content": true,
-				"return_links": false
-			}
-		},
-		"get": {
-			"forbidden": true
-		},
-		"get_related": {
-			"related": {
-				"preset_sorts": ["-field","other_field"]
-			}
-		}
-	}
+	"repository_name":"default"	
 }
