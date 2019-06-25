@@ -16,14 +16,30 @@ type PreviousProcess struct{}
 
 type autoBegin struct{}
 
+type created struct{}
+
 // Store keys
 var (
-	ControllerStoreKey       = ControllerStoreKeyStruct{}
-	TxStateStoreKey          = TxStateStoreStruct{}
+	// ControllerStoreKey is the store key used to store the controller.
+	ControllerStoreKey = ControllerStoreKeyStruct{}
+
+	//  TxStateStoreKey is the store key used to store the scope's transaction.
+	TxStateStoreKey = TxStateStoreStruct{}
+
+	// ReducedPrimariesStoreKey is the store key used to store the reduced scope primary values.
 	ReducedPrimariesStoreKey = ReducedPrimariesStoreStruct{}
-	PrimariesAlreadyChecked  = primariesChecked{}
-	PreviousProcessStoreKey  = PreviousProcess{}
-	AutoBeginStoreKey        = autoBegin{}
+
+	// PrimariesAlreadyChecked is the store key flag value used to notify that the primaries for given process chain were already checked.
+	PrimariesAlreadyChecked = primariesChecked{}
+
+	// PreviousProcessStoreKey is the store key used to indicate what was the previous query process.
+	PreviousProcessStoreKey = PreviousProcess{}
+
+	// AutoBeginStoreKey is the key that defines if query were started with begin_transaction process.
+	AutoBeginStoreKey = autoBegin{}
+
+	// JustCreated is the store key that defines that the root scope's process is just after the creation process.
+	JustCreated = created{}
 )
 
 // TODO: clear the errors

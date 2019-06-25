@@ -2,7 +2,9 @@ package query
 
 import (
 	"context"
+
 	"github.com/neuronlabs/neuron/common"
+
 	"github.com/neuronlabs/neuron/internal"
 )
 
@@ -23,7 +25,7 @@ var (
 
 func beginTransactionFunc(ctx context.Context, s *Scope) error {
 	_, ok := s.StoreGet(common.ProcessError)
-	if !ok {
+	if ok {
 		return nil
 	}
 

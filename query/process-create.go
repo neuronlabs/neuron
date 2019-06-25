@@ -60,6 +60,8 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 
+	s.StoreSet(internal.JustCreated, struct{}{})
+
 	return nil
 }
 

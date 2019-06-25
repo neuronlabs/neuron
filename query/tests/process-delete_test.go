@@ -60,10 +60,17 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		require.NoError(t, err)
 
-		repo := r.(*mocks.Repository)
+		repo, ok := r.(*mocks.Repository)
+		require.True(t, ok)
+
+		defer clearRepository(repo)
+
+		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 		repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.Delete()
 		if assert.NoError(t, err) {
@@ -75,11 +82,17 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testBeforeDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		require.NoError(t, err)
 
-		repo := r.(*mocks.Repository)
+		repo, ok := r.(*mocks.Repository)
+		require.True(t, ok)
 
+		defer clearRepository(repo)
+
+		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 		repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.DeleteContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
@@ -91,11 +104,17 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testAfterDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		require.NoError(t, err)
 
-		repo := r.(*mocks.Repository)
+		repo, ok := r.(*mocks.Repository)
+		require.True(t, ok)
 
-		repo.On("Delete", mock.Anything, mock.Anything).Return(nil)
+		defer clearRepository(repo)
+
+		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.DeleteContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {

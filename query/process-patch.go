@@ -681,7 +681,10 @@ func patchMany2ManyRelationship(
 		isEmpty = true
 	}
 
-	if isEmpty {
+	// justCreated is a flag that this is a part of Create Process
+	_, justCreated := s.StoreGet(internal.JustCreated)
+
+	if isEmpty && !justCreated {
 		var (
 			clearScope *Scope
 			rootTx     bool
@@ -725,56 +728,56 @@ func patchMany2ManyRelationship(
 				return err
 			}
 		}
-
+		return nil
+	} else if isEmpty && justCreated {
 		return nil
 	}
 
 	// 1) clear the join model values
-	//
 	// create the clearScope based on the join model
-	var (
-		clearScope *Scope
-		rootTx     bool
-	)
+	var clearScope *Scope
+	var rootTx bool
 
-	if tx := s.Tx(); tx != nil {
-		rootTx = true
-		clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().JoinModel(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = (*Scope)(newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false))
-		if _, err = clearScope.begin(ctx, nil, false); err != nil {
-			return err
-		}
-	}
-
-	// it also should get all 'old' entries matched with root.primary
-	// value as the backreference primary field
-	// copy the root scope primary filters into backreference foreign key
-	f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
-	if err := clearScope.internal().AddFilterField(f); err != nil {
-		if !rootTx {
-			clearScope.RollbackContext(ctx)
-		}
-		return err
-	}
-
-	// delete the entries in the join model
-	if err := clearScope.DeleteContext(ctx); err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			// if the err is no result
-			if e.Class == class.QueryValueNoResult {
-				err = nil
+	if !justCreated {
+		if tx := s.Tx(); tx != nil {
+			rootTx = true
+			clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().JoinModel(), false)
+			if err != nil {
+				return err
+			}
+		} else {
+			clearScope = (*Scope)(newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false))
+			if _, err = clearScope.begin(ctx, nil, false); err != nil {
+				return err
 			}
 		}
 
-		if err != nil {
-			if rootTx {
+		// it also should get all 'old' entries matched with root.primary
+		// value as the backreference primary field
+		// copy the root scope primary filters into backreference foreign key
+		f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
+		if err := clearScope.internal().AddFilterField(f); err != nil {
+			if !rootTx {
 				clearScope.RollbackContext(ctx)
 			}
 			return err
+		}
+
+		// delete the entries in the join model
+		if err := clearScope.DeleteContext(ctx); err != nil {
+			if e, ok := err.(*errors.Error); ok {
+				// if the err is no result
+				if e.Class == class.QueryValueNoResult {
+					err = nil
+				}
+			}
+
+			if err != nil {
+				if rootTx {
+					clearScope.RollbackContext(ctx)
+				}
+				return err
+			}
 		}
 	}
 
@@ -789,25 +792,35 @@ func patchMany2ManyRelationship(
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if !justCreated {
 		if tx := clearScope.Tx(); tx != nil {
 			checkScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), true)
 			if err != nil {
 				return err
 			}
 		}
+	} else {
+		checkScope = (*Scope)(newScopeWithModel(s.Controller(), relField.Relationship().Struct(), true))
 	}
 
 	// we would need only primary fields
 	checkScope.internal().SetEmptyFieldset()
 	checkScope.internal().SetFieldsetNoCheck(relField.Relationship().Struct().PrimaryField())
+	checkScope.internal().AddFilterField(filters.NewFilter(relField.Relationship().Struct().PrimaryField(), filters.NewOpValuePair(filters.OpIn, relatedPrimaries...)))
 
+	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values in scope: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), checkScope.ID())
 	// get the values from the checkScope
 	err = checkScope.ListContext(ctx)
 	if err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			if e.Class == class.QueryValueNoResult {
 				e.WrapDetail("No many2many relationship values found with the provided ids")
+			}
+		}
+		if !justCreated && !rootTx {
+			err := clearScope.RollbackContext(ctx)
+			if err != nil {
+				return err
 			}
 		}
 		return err
@@ -822,6 +835,12 @@ func patchMany2ManyRelationship(
 
 	checkPrimaries, err := checkScope.internal().GetPrimaryFieldValues()
 	if err != nil {
+		if !justCreated && !rootTx {
+			err := clearScope.RollbackContext(ctx)
+			if err != nil {
+				return err
+			}
+		}
 		return err
 	}
 
@@ -840,6 +859,12 @@ func patchMany2ManyRelationship(
 
 	if len(nonExistsPrimaries) > 0 {
 		// violation integrity constraint erorr
+		if !justCreated && !rootTx {
+			err := clearScope.RollbackContext(ctx)
+			if err != nil {
+				return err
+			}
+		}
 		err = errors.New(class.QueryViolationIntegrityConstraint, "relationship values doesn't exists").SetDetailf("Patching relationship field: '%s' failed. The relationships: %v doesn't exists", relField.NeuronName(), nonExistsPrimaries)
 		return err
 	}
@@ -850,37 +875,63 @@ func patchMany2ManyRelationship(
 
 	// 3) when all the primaries exists in the relation model
 	// insert the relation values into the join model
-	instances := relField.Relationship().JoinModel().NewReflectValueMany()
-	dereferencedInstances := instances.Elem()
+	joinModel := relField.Relationship().JoinModel()
 
 	// create multiple instances of join models
+	// TODO: change to CreateMany if implemented.
 	for _, primary := range primaries {
+		single := joinModel.NewReflectValueSingle()
 		for _, relPrimary := range relatedPrimaries {
-			joinModelInstance := relField.Relationship().JoinModel().NewReflectValueSingle()
-
 			// get the join model foreign key
-			mtmFK := joinModelInstance.Elem().FieldByIndex(relField.Relationship().ManyToManyForeignKey().ReflectField().Index)
+			mtmFK := single.Elem().FieldByIndex(relField.Relationship().ManyToManyForeignKey().ReflectField().Index)
 			// set it's value to primary value
 			mtmFK.Set(reflect.ValueOf(relPrimary))
 
 			// get the join model backreference key and set it with primary value
-			fk := joinModelInstance.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index)
+			fk := single.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index)
 			fk.Set(reflect.ValueOf(primary))
-			dereferencedInstances.Set(reflect.Append(dereferencedInstances, joinModelInstance))
+		}
+
+		var insertScope *Scope
+		if tx := s.Tx(); tx != nil {
+			insertScope, err = tx.NewC(s.Controller(), single.Interface())
+
+		} else if !justCreated {
+			insertScope, err = clearScope.Tx().NewC(s.Controller(), single.Interface())
+		} else {
+			insertScope, err = NewC(s.Controller(), single.Interface())
+		}
+
+		if err != nil {
+			log.Debugf("SCOPE[%s][%s] Many2Many Relationship InsertScope failed: %v", s.ID(), s.Struct().Collection(), err)
+			if !justCreated && !rootTx {
+				err := clearScope.RollbackContext(ctx)
+				if err != nil {
+					return err
+				}
+			}
+			return err
+		}
+
+		insertScope.internal().AddSelectedField(relField.Relationship().ManyToManyForeignKey())
+		insertScope.internal().AddSelectedField(relField.Relationship().ForeignKey())
+
+		// create the newly created relationships
+		if err = insertScope.CreateContext(ctx); err != nil {
+			if !justCreated && !rootTx {
+				err := clearScope.RollbackContext(ctx)
+				if err != nil {
+					return err
+				}
+			}
+			return err
 		}
 	}
 
-	insertScope, err := NewC(s.Controller(), instances.Interface())
-	if err != nil {
-		return err
-	}
-
-	insertScope.internal().AddSelectedField(relField.Relationship().ManyToManyForeignKey())
-	insertScope.internal().AddSelectedField(relField.Relationship().ForeignKey())
-
-	// create the newly created relationships
-	if err = insertScope.CreateContext(ctx); err != nil {
-		return err
+	if !justCreated && !rootTx {
+		if err = clearScope.CommitContext(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
