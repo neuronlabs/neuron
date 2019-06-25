@@ -9,15 +9,21 @@ type TxStateStoreStruct struct{}
 // ReducedPrimariesStoreStruct is the Store key that keeps the primary values in the patch scope
 type ReducedPrimariesStoreStruct struct{}
 
+type primariesChecked struct{}
+
 // PreviousProcess is a struct used as the Store key for getting the previous process
 type PreviousProcess struct{}
+
+type autoBegin struct{}
 
 // Store keys
 var (
 	ControllerStoreKey       = ControllerStoreKeyStruct{}
 	TxStateStoreKey          = TxStateStoreStruct{}
 	ReducedPrimariesStoreKey = ReducedPrimariesStoreStruct{}
+	PrimariesAlreadyChecked  = primariesChecked{}
 	PreviousProcessStoreKey  = PreviousProcess{}
+	AutoBeginStoreKey        = autoBegin{}
 )
 
 // TODO: clear the errors

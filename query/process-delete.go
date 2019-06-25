@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/neuronlabs/neuron/common"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
@@ -12,7 +13,6 @@ import (
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/filters"
-	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 var (
@@ -45,9 +45,19 @@ var (
 		Name: "neuron:delete_foreign_relationships",
 		Func: deleteForeignRelationshipsFunc,
 	}
+
+	// ProcessDeleteForeignRelationshipsSafe is the Process that deletes the foreing relatioionships
+	ProcessDeleteForeignRelationshipsSafe = &Process{
+		Name: "neuron:delete_foreign_relationships_safe",
+		Func: deleteForeignRelationshipsSafeFunc,
+	}
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
@@ -69,6 +79,10 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeDeleteFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	beforeDeleter, ok := s.Value.(BeforeDeleter)
 	if !ok {
 		return nil
@@ -81,6 +95,10 @@ func beforeDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterDeleteFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	afterDeleter, ok := s.Value.(AfterDeleter)
 	if !ok {
 		return nil
@@ -93,11 +111,13 @@ func afterDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	iScope := (*scope.Scope)(s)
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
 
 	// get only relationship fields
 	var relationships []*models.StructField
-	for _, field := range iScope.Struct().Fields() {
+	for _, field := range s.internal().Struct().Fields() {
 		if field.IsRelationship() {
 			if field.Relationship().Kind() != models.RelBelongsTo {
 				relationships = append(relationships, field)
@@ -106,7 +126,6 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 	}
 
 	if len(relationships) > 0 {
-
 		var results = make(chan interface{}, len(relationships))
 
 		// create the cancelable context for the sub context
@@ -129,7 +148,16 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 
 		// delete foreign relationships
 		for _, field := range relationships {
-			go deleteForeignRelationships(ctx, iScope, field, results)
+			switch field.Relationship().Kind() {
+			case models.RelHasOne:
+				go deleteHasOneRelationshipsChan(ctx, s, field, results)
+			case models.RelHasMany:
+				go deleteHasManyRelationshipsChan(ctx, s, field, results)
+			case models.RelMany2Many:
+				go deleteMany2ManyRelationshipsChan(ctx, s, field, results)
+			case models.RelBelongsTo:
+				continue
+			}
 		}
 
 		var ctr int
@@ -152,114 +180,228 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 		}
 	}
 	return nil
-
 }
 
-func deleteForeignRelationships(ctx context.Context, iScope *scope.Scope, field *models.StructField, results chan<- interface{}) {
-	var err error
-	defer func() {
-		if err != nil {
-			results <- err
-		} else {
-			results <- struct{}{}
+func deleteForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
+	// get only relationship fields
+	var relationships []*models.StructField
+	for _, field := range s.internal().Struct().Fields() {
+		if field.IsRelationship() {
+			if field.Relationship().Kind() != models.RelBelongsTo {
+				relationships = append(relationships, field)
+			}
 		}
-	}()
+	}
+
+	if len(relationships) > 0 {
+		// create the cancelable context for the sub context
+		maxTimeout := s.Controller().Config.Processor.DefaultTimeout
+		for _, rel := range relationships {
+			if rel.Relationship().Struct().Config() == nil {
+				continue
+			}
+			if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
+				if tm := modelRepo.MaxTimeout; tm != nil {
+					if *tm > maxTimeout {
+						maxTimeout = *tm
+					}
+				}
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
+		defer cancel()
+
+		var err error
+		// delete foreign relationships
+		for _, field := range relationships {
+			switch field.Relationship().Kind() {
+			case models.RelHasOne:
+				err = deleteHasOneRelationships(ctx, s, field)
+			case models.RelHasMany:
+				err = deleteHasManyRelationships(ctx, s, field)
+			case models.RelMany2Many:
+				err = deleteMany2ManyRelationships(ctx, s, field)
+			}
+			if err != nil {
+				return err
+			}
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+		}
+	}
+	return nil
+}
+
+func deleteHasOneRelationshipsChan(ctx context.Context, s *Scope, field *models.StructField, results chan<- interface{}) {
+	if err := deleteHasOneRelationships(ctx, s, field); err != nil {
+		results <- err
+	} else {
+		results <- struct{}{}
+	}
+}
+
+func deleteHasOneRelationships(ctx context.Context, s *Scope, field *models.StructField) error {
+	// clearScope clears the foreign key values for the relationships
+	var (
+		clearScope *Scope
+		err        error
+	)
 
 	rel := field.Relationship()
-	switch rel.Kind() {
-	case models.RelBelongsTo:
-		// belongs to relationship was deleted in the root scope
-		return
-	case models.RelHasOne, models.RelHasMany:
 
-		// has relationships are deleted by ereasing the
-		var isMany bool
-		if rel.Kind() == models.RelHasMany {
-			isMany = true
+	if tx := s.Tx(); tx != nil {
+		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), false)
+		if err != nil {
+			return err
 		}
-
-		// clearScope clears the foreign key values for the relationships
-		clearScope := newScopeWithModel(queryS(iScope).Controller(), rel.Struct(), isMany)
-
-		// the selected field would be only the foreign key -> zero valued
-		clearScope.AddSelectedField(rel.ForeignKey())
-
-		for _, prim := range iScope.PrimaryFilters() {
-			err = clearScope.AddFilterField(filters.NewFilter(rel.ForeignKey(), prim.Values()...))
-			if err != nil {
-				log.Debugf("Adding Relationship's foreign key failed: %v", err)
-				return
-			}
-		}
-
-		if tx := queryS(iScope).tx(); tx != nil {
-			iScope.AddChainSubscope(clearScope)
-			if err = queryS(clearScope).begin(ctx, &tx.Options, false); err != nil {
-				log.Debug("BeginTx for the related scope failed: %s", err)
-				return
-			}
-		}
-
-		// patch the clearScope
-		if err = queryS(clearScope).PatchContext(ctx); err != nil {
-			switch e := err.(type) {
-			case *errors.Error:
-				if e.Class == class.QueryValueNoResult {
-					err = nil
-					return
-				}
-			}
-			return
-		}
-	case models.RelMany2Many:
-		// there is assumption that only the primary filters exists on the delete scope
-		// delete the many2many rows within the join model
-		clearScope := newScopeWithModel((*Scope)(iScope).Controller(), rel.JoinModel(), false)
-
-		// add the backreference filter
-		foreignKeyFilter := filters.NewFilter(rel.ForeignKey())
-
-		// with the values of the primary filter
-		for _, prim := range iScope.PrimaryFilters() {
-			foreignKeyFilter.AddValues(prim.Values()...)
-		}
-
-		if err = clearScope.AddFilterField(foreignKeyFilter); err != nil {
-			log.Debugf("Deleting relationship: '%s' AddFilterField failed: %v ", field.Name(), err)
-			return
-		}
-
-		if tx := (*Scope)(iScope).tx(); tx != nil {
-			iScope.AddChainSubscope(clearScope)
-			if err = (*Scope)(clearScope).begin(ctx, &tx.Options, false); err != nil {
-				log.Debug("BeginTx for the related scope failed: %s", err)
-				return
-			}
-		}
-
-		// delete the entries in the join model
-		if err = (*Scope)(clearScope).DeleteContext(ctx); err != nil {
-			switch e := err.(type) {
-			case *errors.Error:
-				if e.Class == class.QueryValueNoResult {
-					err = nil
-					return
-				}
-			}
-			return
-		}
-
+	} else {
+		clearScope = queryS(newScopeWithModel(s.Controller(), rel.Struct(), false))
 	}
+
+	// the selected field would be only the foreign key -> zero valued
+	clearScope.internal().AddSelectedField(rel.ForeignKey())
+
+	for _, prim := range s.internal().PrimaryFilters() {
+		err = clearScope.internal().AddFilterField(filters.NewFilter(rel.ForeignKey(), prim.Values()...))
+		if err != nil {
+			log.Debugf("Adding Relationship's foreign key failed: %v", err)
+			return err
+		}
+	}
+
+	// patch the clearScope
+	if err = clearScope.PatchContext(ctx); err != nil {
+		switch e := err.(type) {
+		case *errors.Error:
+			if e.Class == class.QueryValueNoResult {
+				err = nil
+			}
+		}
+	}
+	return err
+}
+
+func deleteHasManyRelationshipsChan(ctx context.Context, s *Scope, field *models.StructField, results chan<- interface{}) {
+	if err := deleteHasManyRelationships(ctx, s, field); err != nil {
+		results <- err
+	} else {
+		results <- struct{}{}
+	}
+}
+
+func deleteHasManyRelationships(ctx context.Context, s *Scope, field *models.StructField) error {
+	// clearScope clears the foreign key values for the relationships
+	var (
+		clearScope *Scope
+		err        error
+	)
+
+	rel := field.Relationship()
+
+	if tx := s.Tx(); tx != nil {
+		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), true)
+		if err != nil {
+			return err
+		}
+	} else {
+		clearScope = queryS(newScopeWithModel(s.Controller(), rel.Struct(), true))
+	}
+
+	// the selected field would be only the foreign key -> zero valued
+	clearScope.internal().AddSelectedField(rel.ForeignKey())
+
+	for _, prim := range s.internal().PrimaryFilters() {
+		err = clearScope.internal().AddFilterField(filters.NewFilter(rel.ForeignKey(), prim.Values()...))
+		if err != nil {
+			log.Debugf("Adding Relationship's foreign key failed: %v", err)
+			return err
+		}
+	}
+
+	// patch the clearScope
+	err = clearScope.PatchContext(ctx)
+	if err != nil {
+		switch e := err.(type) {
+		case *errors.Error:
+			if e.Class == class.QueryValueNoResult {
+				err = nil
+			}
+		}
+	}
+	return err
+}
+
+func deleteMany2ManyRelationshipsChan(ctx context.Context, s *Scope, field *models.StructField, results chan<- interface{}) {
+	if err := deleteMany2ManyRelationships(ctx, s, field); err != nil {
+		results <- err
+	} else {
+		results <- struct{}{}
+	}
+}
+
+func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *models.StructField) error {
+	var (
+		clearScope *Scope
+		err        error
+	)
+	rel := field.Relationship()
+	// there is assumption that only the primary filters exists on the delete scope
+	// delete the many2many rows within the join model
+	if tx := s.Tx(); tx != nil {
+		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.JoinModel(), false)
+		if err != nil {
+			return err
+		}
+	} else {
+		clearScope = (*Scope)(newScopeWithModel(s.Controller(), rel.JoinModel(), false))
+	}
+
+	// add the backreference filter
+	foreignKeyFilter := filters.NewFilter(rel.ForeignKey())
+
+	// with the values of the primary filter
+	for _, prim := range s.internal().PrimaryFilters() {
+		foreignKeyFilter.AddValues(prim.Values()...)
+	}
+
+	if err = clearScope.internal().AddFilterField(foreignKeyFilter); err != nil {
+		log.Debugf("Deleting relationship: '%s' AddFilterField failed: %v ", field.Name(), err)
+		return err
+	}
+
+	// delete the entries in the join model
+	err = clearScope.DeleteContext(ctx)
+	if err != nil {
+		switch e := err.(type) {
+		case *errors.Error:
+			if e.Class == class.QueryValueNoResult {
+				err = nil
+			}
+		}
+	}
+	return err
 }
 
 // reducePrimaryFilters is the process func that changes the delete scope filters so that
 // if the root model contains any nonBelongsTo relationship then the filters must be converted into primary field filter
 func reducePrimaryFilters(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	reducedPrimariesInterface, alreadyReduced := s.internal().StoreGet(internal.ReducedPrimariesStoreKey)
 	if alreadyReduced {
 		previousProcess, ok := s.StoreGet(internal.PreviousProcessStoreKey)
 		if ok {
-
 			switch previousProcess.(*Process) {
 			case ProcessBeforeDelete:
 				_, isBeforeDeleter := s.Value.(BeforeDeleter)
@@ -279,7 +421,6 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// get the primary field values from the scope's value
 	if s.Value != nil {
-
 		primaryValues, err := s.internal().Struct().PrimaryValues(reflect.ValueOf(s.Value))
 		if err != nil {
 			return err
@@ -306,7 +447,6 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	// if the operator is different than filters.OpIn and filters.OpEqual
 	// then the reduction is necessary
 	for _, pk := range s.internal().PrimaryFilters() {
-
 		for _, fv := range pk.Values() {
 			switch fv.Operator() {
 			case filters.OpIn:
@@ -341,7 +481,6 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 			if allFound {
 				return nil
 			}
-
 		}
 	}
 
@@ -392,12 +531,14 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// clear all filters in the root scope
 	s.internal().ClearAllFilters()
+	s.internal().UnselectFieldIfSelected(s.internal().Struct().PrimaryField())
 
 	// reduce the filters as the primary filters in the root scope
 	primaryFilter := s.internal().GetOrCreateIDFilter()
 	primaryFilter.AddValues(filters.NewOpValuePair(filters.OpIn, primaries...))
 
 	s.StoreSet(internal.ReducedPrimariesStoreKey, primaries)
+	s.StoreSet(internal.PrimariesAlreadyChecked, struct{}{})
 
 	return nil
 }

@@ -43,7 +43,8 @@ func NewC(c *controller.Controller, model interface{}) (*Scope, error) {
 	return newScope((*internalController.Controller)(c), model)
 }
 
-// NewModelC creates new scope on the base of the provided model struct with the new single value.
+// NewModelC creates new scope on the base of the provided model struct with the value.
+// The value might be a slice of instances if 'isMany' is true.
 func NewModelC(c *controller.Controller, mStruct *mapping.ModelStruct, isMany bool) *Scope {
 	return (*Scope)(newScopeWithModel(c, (*models.ModelStruct)(mStruct), isMany))
 }
@@ -125,12 +126,12 @@ func (s *Scope) AttributeFilters() []*filters.FilterField {
 }
 
 // Begin begins the transaction for the provided scope with the default Options.
-func (s *Scope) Begin() error {
+func (s *Scope) Begin() (*Tx, error) {
 	return s.begin(context.Background(), nil, true)
 }
 
 // BeginTx begins the transaction with the given context.Context 'ctx' and Options 'opts'.
-func (s *Scope) BeginTx(ctx context.Context, opts *TxOptions) error {
+func (s *Scope) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
 	return s.begin(ctx, opts, true)
 }
 
@@ -526,13 +527,13 @@ func (s *Scope) ValidatePatch() []*errors.Error {
 	return s.validate(v, "PatchValidator")
 }
 
-func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) error {
+func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*Tx, error) {
 	// check if the context contains the transaction
 	if v, ok := s.StoreGet(internal.TxStateStoreKey); ok {
 		txn := v.(*Tx)
 		if checkError {
 			if txn.State != TxDone {
-				return errors.New(class.QueryTxAlreadyBegin, "transaction had already began")
+				return nil, errors.New(class.QueryTxAlreadyBegin, "transaction had already began")
 			}
 		}
 	}
@@ -544,6 +545,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) err
 
 	txn := &Tx{
 		Options: *opts,
+		root:    s,
 	}
 
 	// generate the id
@@ -552,8 +554,9 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) err
 	var err error
 	txn.ID, err = uuid.NewRandom()
 	if err != nil {
-		return errors.Newf(class.InternalCommon, "new uuid failed: '%s'", err.Error())
+		return nil, errors.Newf(class.InternalCommon, "new uuid failed: '%s'", err.Error())
 	}
+	log.Debug3f("SCOPE[%s][%s] Begins transaction[%s]", s.ID(), s.Struct().Collection(), txn.ID)
 
 	txn.State = TxBegin
 
@@ -563,7 +566,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) err
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Errorf("No repository found for the %s model. %s", s.Struct().Collection(), err)
-		return err
+		return nil, err
 	}
 
 	transactioner, ok := repo.(Transactioner)
@@ -573,10 +576,10 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) err
 	}
 
 	if err = transactioner.Begin(ctx, s); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return txn, nil
 }
 
 func (s *Scope) commit(ctx context.Context) error {
@@ -616,7 +619,6 @@ func (s *Scope) commit(ctx context.Context) error {
 
 		results := make(chan interface{}, len(chain))
 		for _, sub := range chain {
-
 			// create goroutine for the given subscope that commits the query
 			go (*Scope)(sub).commitSingle(ctx, results)
 		}
@@ -752,7 +754,7 @@ func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, err
 	sub.internal().SetKind(scope.SubscopeKind)
 
 	if txn := s.tx(); txn != nil {
-		if err := sub.begin(ctx, &txn.Options, false); err != nil {
+		if _, err := sub.begin(ctx, &txn.Options, false); err != nil {
 			log.Debug("Begin subscope failed: %v", err)
 			return nil, err
 		}
@@ -792,8 +794,6 @@ func (s *Scope) rollback(ctx context.Context) error {
 		log.Debugf("ROLLBACK: Transaction already resolved: %s", tx.State)
 		return errors.New(class.QueryTxAlreadyResolved, "transaction already resolved")
 	}
-
-	log.Debugf("s.Rollback: %s for model: %s rolling back", s.ID().String(), s.Struct().Collection())
 
 	chain := s.internal().Chain()
 
@@ -952,9 +952,20 @@ func (s *Scope) tx() *Tx {
 }
 
 func newScope(c *internalController.Controller, model interface{}) (*Scope, error) {
-	mStruct, err := c.GetModelStruct(model)
-	if err != nil {
-		return nil, err
+	var (
+		err     error
+		mStruct *models.ModelStruct
+	)
+	switch mt := model.(type) {
+	case *models.ModelStruct:
+		mStruct = mt
+	case *mapping.ModelStruct:
+		mStruct = (*models.ModelStruct)(mt)
+	default:
+		mStruct, err = c.GetModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	s := scope.New(mStruct)

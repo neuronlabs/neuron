@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 
+	"github.com/neuronlabs/neuron/common"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
@@ -40,6 +41,10 @@ var (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		return err
@@ -60,6 +65,10 @@ func createFunc(ctx context.Context, s *Scope) error {
 
 // beforeCreate is the function that is used before the create process
 func beforeCreateFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	beforeCreator, ok := s.Value.(BeforeCreator)
 	if !ok {
 		return nil
@@ -76,6 +85,10 @@ func beforeCreateFunc(ctx context.Context, s *Scope) error {
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
 func afterCreateFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	afterCreator, ok := s.Value.(AfterCreator)
 	if !ok {
 		return nil
@@ -89,6 +102,10 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 }
 
 func storeScopePrimaries(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	primaryValues, err := s.internal().GetPrimaryFieldValues()
 	if err != nil {
 		return err

@@ -4,12 +4,11 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/neuronlabs/neuron/common"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
-
-	"github.com/neuronlabs/neuron/internal/query/scope"
 )
 
 var (
@@ -33,6 +32,10 @@ var (
 )
 
 func listFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Debug("RepositoryByModel failed: %v", s.Struct().Type().Name())
@@ -56,7 +59,11 @@ func listFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterListFunc(ctx context.Context, s *Scope) error {
-	if !(*scope.Scope)(s).Struct().IsAfterLister() {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
+	if !s.internal().Struct().IsAfterLister() {
 		return nil
 	}
 
@@ -74,7 +81,11 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeListFunc(ctx context.Context, s *Scope) error {
-	if !(*scope.Scope)(s).Struct().IsBeforeLister() {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
+	if !s.internal().Struct().IsBeforeLister() {
 		return nil
 	}
 

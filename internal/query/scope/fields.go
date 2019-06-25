@@ -77,7 +77,14 @@ func (s *Scope) AutoSelectFields() error {
 		return errors.New(class.QueryNoValue, "no value provided for scope")
 	}
 
-	// TODO: type check the scope's value
+	defer func() {
+		fieldsInflection := "field"
+		if len(s.selectedFields) > 1 {
+			fieldsInflection += "s"
+		}
+		log.Debug3f("SCOPE[%s][%s] Auto selected '%d' %s.", s.ID(), s.Struct().Collection(), len(s.selectedFields), fieldsInflection)
+	}()
+
 	v := reflect.ValueOf(s.Value).Elem()
 
 	// check if the value is a struct
@@ -112,6 +119,16 @@ func (s *Scope) AutoSelectFields() error {
 // UnselectFields unselects provided fields
 func (s *Scope) UnselectFields(fields ...*models.StructField) error {
 	return s.unselectFields(fields...)
+}
+
+// UnselectFieldIfSelected unselects provided field if it is selected.
+func (s *Scope) UnselectFieldIfSelected(field *models.StructField) {
+	for i := 0; i < len(s.selectedFields); i++ {
+		if s.selectedFields[i] == field {
+			s.selectedFields = append(s.selectedFields[:i], s.selectedFields[i+1:]...)
+			i--
+		}
+	}
 }
 
 // DeleteselectedFields deletes the models.StructFields from the given scope Fieldset

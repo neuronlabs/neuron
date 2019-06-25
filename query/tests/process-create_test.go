@@ -170,7 +170,7 @@ func TestCreateTransactions(t *testing.T) {
 			// commit
 			foreignKeyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
-			err = s.Begin()
+			_, err = s.Begin()
 			require.NoError(t, err)
 
 			foreignKeyRepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
@@ -183,10 +183,9 @@ func TestCreateTransactions(t *testing.T) {
 			err = s.Commit()
 			require.NoError(t, err)
 			foreignKeyRepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
-
 		})
-		t.Run("WithForeignRelationships", func(t *testing.T) {
 
+		t.Run("WithForeignRelationships", func(t *testing.T) {
 			t.Run("HasOne", func(t *testing.T) {
 				// valid transactions with the has one model should act like a normal valid create process
 				// and as a subsequent process the begin, patch and commit on the related field should occur
@@ -208,10 +207,8 @@ func TestCreateTransactions(t *testing.T) {
 				repo := r.(*mocks.Repository)
 
 				repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Begin on hasOneModel")
 				}).Return(nil)
 				repo.On("Create", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Create on hasOneModel")
 					s := a[1].(*query.Scope)
 					_, ok := s.StoreGet(internal.TxStateStoreKey)
 					assert.True(t, ok)
@@ -221,7 +218,6 @@ func TestCreateTransactions(t *testing.T) {
 				}).Return(nil)
 				// Do the Commit
 				repo.On("Commit", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-					log.Debug("Commit on hasOneModel")
 				}).Return(nil)
 
 				// do the create
@@ -234,14 +230,12 @@ func TestCreateTransactions(t *testing.T) {
 
 				fkModelRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 				fkModelRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-					log.Debug("Patch on foreignKeyModel")
 				}).Return(nil)
 				fkModelRepo.On("Commit", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-					log.Debug("Commit on foreignKeyModel")
 				}).Return(nil)
 
 				// Begin the transaction
-				err = s.Begin()
+				_, err = s.Begin()
 				require.NoError(t, err)
 
 				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
@@ -272,12 +266,8 @@ func TestCreateTransactions(t *testing.T) {
 
 				m1 := hasManyModel{
 					HasMany: []*foreignKeyModel{
-						{
-							ID: 2,
-						},
-						{
-							ID: 4,
-						},
+						{ID: 2},
+						{ID: 4},
 					},
 				}
 
@@ -370,14 +360,8 @@ func TestCreateTransactions(t *testing.T) {
 		})
 	})
 
-	t.Run("Rollbacked", func(t *testing.T) {
-
-		t.Run("ByRoot", func(t *testing.T) {
-
-		})
-
+	t.Run("Rollback", func(t *testing.T) {
 		t.Run("ByForeignRelationships", func(t *testing.T) {
-
 			t.Run("HasOne", func(t *testing.T) {
 				c := newController(t)
 				err := c.RegisterModels(&hasOneModel{}, &foreignKeyModel{})
@@ -395,18 +379,19 @@ func TestCreateTransactions(t *testing.T) {
 				r, _ := repository.GetRepository(s.Controller(), s.Struct())
 
 				// prepare the transaction
-				repo := r.(*mocks.Repository)
+				hasOneModel := r.(*mocks.Repository)
 
 				// Begin the transaction
-				repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Begin on hasOneModel")
+				hasOneModel.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				}).Return(nil)
 
-				require.NoError(t, s.Begin())
+				defer func() { hasOneModel.Calls = []mock.Call{} }()
 
-				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				_, err = s.Begin()
+				require.NoError(t, err)
+				hasOneModel.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 
-				repo.On("Create", mock.Anything, mock.Anything).Return(nil)
+				hasOneModel.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
 
 				model, err := c.GetModelStruct(&foreignKeyModel{})
 				require.NoError(t, err)
@@ -414,37 +399,42 @@ func TestCreateTransactions(t *testing.T) {
 				m2Repo, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
 				require.NoError(t, err)
 
-				repo2, ok := m2Repo.(*mocks.Repository)
+				foreignKey, ok := m2Repo.(*mocks.Repository)
 				require.True(t, ok)
 
+				defer func() {
+					foreignKey.Calls = []mock.Call{}
+				}()
+
 				// Begin the transaction on subscope
-				repo2.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Begin on foreignKeyModel")
+				foreignKey.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				}).Return(nil)
-				repo2.On("Patch", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Patch on foreignKeyModel")
+
+				foreignKey.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				}).Return(errors.New("Some error"))
 
 				// Rollback the result
-				repo2.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Rollback on foreignKeyModel")
+				foreignKey.On("Rollback", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				}).Return(nil)
-				repo.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-					log.Debug("Rollback on hasOneModel")
+
+				hasOneModel.On("Rollback", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				}).Return(nil)
 
 				err = s.Create()
 				require.Error(t, err)
 
+				err = s.Rollback()
+				require.NoError(t, err)
+
 				// Assert calls
 
-				repo2.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				foreignKey.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 
-				repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
-				repo2.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
+				hasOneModel.AssertCalled(t, "Create", mock.Anything, mock.Anything)
+				foreignKey.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
 
-				repo.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
-				repo2.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
+				hasOneModel.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
+				foreignKey.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 			})
 
 			t.Run("HasMany", func(t *testing.T) {
@@ -463,7 +453,7 @@ func newController(t testing.TB) *controller.Controller {
 
 	c := controller.DefaultTesting(t, nil)
 	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG2)
+		log.SetLevel(log.LDEBUG3)
 	}
 
 	return c

@@ -6,17 +6,107 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
+
+	"github.com/neuronlabs/neuron/internal"
+	internalController "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron/internal/models"
 )
 
-// Tx is the scope's defined transaction
+// Tx is the scope's transaction model.
+// It is bound to the single model type.
 type Tx struct {
 	ID      uuid.UUID `json:"id"`
 	State   TxState   `json:"state"`
 	Options TxOptions `json:"options"`
+
+	root *Scope
+}
+
+// Commit commits the transaction.
+func (t *Tx) Commit() error {
+	return t.root.Commit()
+}
+
+// CommitContext commits the transaction with 'ctx' context.
+func (t *Tx) CommitContext(ctx context.Context) error {
+	return t.root.CommitContext(ctx)
+}
+
+// NewC creates new scope for given transaction.
+func (t *Tx) NewC(c *controller.Controller, model interface{}) (*Scope, error) {
+	return t.newC(context.Background(), c, model)
+}
+
+// NewContextC creates new scope for given transaction with the 'ctx' context.
+func (t *Tx) NewContextC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
+	return t.newC(ctx, c, model)
+}
+
+// NewContextModelC creates new scope for given 'model' structure and 'ctx' context. It also initializes scope's value.
+// The value might be a slice of instances if 'isMany' is true or a single instance if false.
+func (t *Tx) NewContextModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
+	return t.newModelC(ctx, c, (*models.ModelStruct)(model), isMany)
+}
+
+// NewModelC creates new scope for given model structure, and initializes it's value.
+// The value might be a slice of instances if 'isMany' is true or a single instance if false.
+func (t *Tx) NewModelC(c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
+	return t.newModelC(context.Background(), c, (*models.ModelStruct)(model), isMany)
+}
+
+// Rollback rolls back the transaction.
+func (t *Tx) Rollback() error {
+	return t.root.Rollback()
+}
+
+// RollbackContext rollsback the transaction with given 'ctx' context.
+func (t *Tx) RollbackContext(ctx context.Context) error {
+	return t.root.RollbackContext(ctx)
+}
+
+func (t *Tx) newC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
+	s, err := newScope((*internalController.Controller)(c), model)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = t.setToScope(ctx, s); err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (t *Tx) newModelC(ctx context.Context, c *controller.Controller, model *models.ModelStruct, isMany bool) (*Scope, error) {
+	s := (*Scope)(newScopeWithModel(c, model, isMany))
+
+	if err := t.setToScope(ctx, s); err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (t *Tx) setToScope(ctx context.Context, s *Scope) error {
+	if s.Struct() != t.root.Struct() {
+		// for models of different structure then the root one,
+		// create new transactions with begin method and add it to the
+		// subscope chain.
+		if _, err := s.begin(ctx, &t.Options, true); err != nil {
+			return err
+		}
+		t.root.internal().AddChainSubscope(s.internal())
+	} else {
+		// otherwise set the transaction to the store.
+		s.StoreSet(internal.TxStateStoreKey, t)
+	}
+	return nil
 }
 
 // TxOptions are the options for the Transaction
@@ -167,11 +257,10 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 		s.tx().State = TxCommit
 	}()
 
-	log.Debugf("Scope: %s, tx.State: %s", s.ID().String(), s.tx().State)
 	if txn := s.tx(); txn.State != TxBegin {
 		return
 	}
-	log.Debugf("Scope: %s for model: %s commiting tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
+	log.Debug3f("Scope[%s][%s] Commits transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
 	var repo repository.Repository
 	repo, err = repository.GetRepository(s.Controller(), s.Struct())
@@ -194,26 +283,18 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 
 func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) {
 	var err error
-	defer func() {
-		s.tx().State = TxRollback
-		if err != nil {
-			results <- err
-
-		} else {
-			results <- struct{}{}
-		}
-
-	}()
 
 	if txn := s.tx(); txn.State == TxRollback {
+		results <- struct{}{}
 		return
 	}
+	log.Debug3f("Scope[%s][%s] Rolls back transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
-	log.Debugf("Scope: %s for model: %s rolling back tx: %s", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 	var repo repository.Repository
 	repo, err = repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
+		results <- err
 		return
 	}
 
@@ -221,10 +302,14 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 	if !ok {
 		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.RepositoryName())
 		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
+		results <- err
 		return
 	}
 
 	if err = rb.Rollback(ctx, s); err != nil {
+		results <- err
 		return
 	}
+	s.tx().State = TxRollback
+	results <- struct{}{}
 }

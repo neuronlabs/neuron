@@ -561,6 +561,10 @@ func (m *ModelSchemas) getByType(t reflect.Type) (*ModelStruct, error) {
 }
 
 func (m *ModelSchemas) getModelStruct(model interface{}) (*ModelStruct, error) {
+	mStruct, ok := model.(*ModelStruct)
+	if ok {
+		return mStruct, nil
+	}
 	t := reflect.TypeOf(model)
 	return m.getByType(t)
 }

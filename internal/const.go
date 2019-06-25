@@ -69,9 +69,5 @@ const (
 	// AnnotationOr  = "or"
 	// AnnotationAnd = "and"
 
-	// string only filters
-
-	Iso8601TimeFormat = "2006-01-02T15:04:05Z"
-
 	IsPointerTime = "jsonapi:is-ptr-time"
 )

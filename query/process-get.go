@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 
+	"github.com/neuronlabs/neuron/common"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
@@ -37,6 +38,10 @@ var (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	repo, err := repository.GetRepository(s.Controller(), s.Struct())
 	if err != nil {
 		log.Errorf("No repository found for model: %v", s.Struct().Collection())
@@ -59,6 +64,10 @@ func getFunc(ctx context.Context, s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook.
 func beforeGetFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	hookBeforeGetter, ok := s.Value.(BeforeGetter)
 	if !ok {
 		return nil
@@ -72,6 +81,10 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterGetFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(common.ProcessError); ok {
+		return nil
+	}
+
 	hookAfterGetter, ok := s.Value.(AfterGetter)
 	if !ok {
 		return nil

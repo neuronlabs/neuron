@@ -3,8 +3,6 @@ package jsonapi
 import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
-
-	"fmt"
 )
 
 // payloader is used to encapsulate the One and Many payload types

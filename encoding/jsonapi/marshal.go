@@ -15,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/query"
 
-	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 	"github.com/neuronlabs/neuron/internal/query/scope"
@@ -366,7 +365,7 @@ func visitNode(
 					}
 
 					if models.FieldIsIso8601(field) {
-						node.Attributes[field.NeuronName()] = t.UTC().Format(internal.Iso8601TimeFormat)
+						node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
 					} else {
 						node.Attributes[field.NeuronName()] = t.Unix()
 					}
@@ -385,7 +384,7 @@ func visitNode(
 						}
 
 						if models.FieldIsIso8601(field) {
-							node.Attributes[field.NeuronName()] = t.UTC().Format(internal.Iso8601TimeFormat)
+							node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
 						} else {
 							node.Attributes[field.NeuronName()] = t.Unix()
 						}
@@ -528,7 +527,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 					}
 
 					if field.IsIso8601() {
-						node.Attributes[field.NeuronName()] = t.UTC().Format(internal.Iso8601TimeFormat)
+						node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
 					} else {
 						node.Attributes[field.NeuronName()] = t.Unix()
 					}
@@ -546,7 +545,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 						}
 
 						if field.IsIso8601() {
-							node.Attributes[field.NeuronName()] = t.UTC().Format(internal.Iso8601TimeFormat)
+							node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
 						} else {
 							node.Attributes[field.NeuronName()] = t.Unix()
 						}

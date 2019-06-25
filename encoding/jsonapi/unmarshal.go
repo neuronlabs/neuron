@@ -16,7 +16,6 @@ import (
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 
-	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
 	"github.com/neuronlabs/neuron/internal/models"
 )
@@ -813,7 +812,7 @@ func unmarshalSingleFieldValue(
 			}
 
 			// parse the string time with iso formatting
-			t, err := time.Parse(internal.Iso8601TimeFormat, tm)
+			t, err := time.Parse(Iso8601TimeFormat, tm)
 			if err != nil {
 				err := errors.New(class.EncodingUnmarshalInvalidTime, "invalid ISO8601 time field")
 				err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())

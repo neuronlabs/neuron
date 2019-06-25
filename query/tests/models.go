@@ -1,5 +1,10 @@
 package tests
 
+import (
+	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/stretchr/testify/mock"
+)
+
 // HasOneModel is the model that have has-one relationship.
 type HasOneModel struct {
 	ID     int           `neuron:"type=primary"`
@@ -35,4 +40,9 @@ type JoinModel struct {
 type RelatedModel struct {
 	ID         int     `neuron:"type=primary"`
 	FloatField float64 `neuron:"type=attr"`
+}
+
+func clearRepository(repo *mocks.Repository) {
+	repo.Calls = []mock.Call{}
+	repo.ExpectedCalls = []*mock.Call{}
 }

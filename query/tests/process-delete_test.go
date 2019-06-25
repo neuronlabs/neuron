@@ -104,7 +104,6 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("Transactions", func(t *testing.T) {
-
 		// define the helper models
 		type deleteTMRelated struct {
 			ID int `neuron:"type=primary"`
@@ -123,9 +122,7 @@ func TestDelete(t *testing.T) {
 
 		t.Run("Valid", func(t *testing.T) {
 
-			tm := &deleteTMRelations{
-				ID: 2,
-			}
+			tm := &deleteTMRelations{ID: 2}
 
 			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
@@ -133,14 +130,15 @@ func TestDelete(t *testing.T) {
 			r, _ := repository.GetRepository(s.Controller(), s.Struct())
 			repo := r.(*mocks.Repository)
 
+			defer clearRepository(repo)
+
 			// Begin define
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Begin on deleteTMRelations")
 			}).Once().Return(nil)
 
-			require.NoError(t, s.Begin())
-
-			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+			_, err = s.Begin()
+			require.NoError(t, err)
 
 			repo.On("Delete", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Delete on deleteTMRelations")
@@ -160,6 +158,8 @@ func TestDelete(t *testing.T) {
 			repo2, ok := mr.(*mocks.Repository)
 			require.True(t, ok)
 
+			defer clearRepository(repo2)
+
 			repo2.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				log.Debug("Patch on deleteTMRelated")
 			}).Return(nil)
@@ -167,6 +167,7 @@ func TestDelete(t *testing.T) {
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				log.Debug("Begin on deleteTMRelated")
 			}).Return(nil)
+
 			repo2.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				s := a[1].(*query.Scope)
 				values := []*deleteTMRelated{{ID: 2}}
@@ -206,19 +207,15 @@ func TestDelete(t *testing.T) {
 
 			// prepare the transaction
 			repo := r.(*mocks.Repository)
+			defer clearRepository(repo)
 
 			// Begin the transaction
-			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Begin on deleteTMRelations")
-			}).Return(nil)
+			repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 
-			require.NoError(t, s.Begin())
+			_, err = s.Begin()
+			require.NoError(t, err)
 
-			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
-			repo.On("Delete", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Delete on deleteTMRelations")
-			}).Once().Return(nil)
+			repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
 
 			model, err := c.GetModelStruct(&deleteTMRelated{})
 			require.NoError(t, err)
@@ -229,24 +226,24 @@ func TestDelete(t *testing.T) {
 			repo2, ok := m2Repo.(*mocks.Repository)
 			require.True(t, ok)
 
-			// Begin the transaction on subquery
-			repo2.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Begin on deleteTMRelated")
-			}).Return(nil)
+			clearRepository(repo2)
 
-			repo2.On("List", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
+			// Begin the transaction on subquery
+			repo2.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+			repo2.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				s := a[1].(*query.Scope)
 				values := []*deleteTMRelated{{ID: 1}}
 				s.Value = &values
 			}).Return(nil)
-			repo2.On("Patch", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Patch on deleteTMRelated")
-			}).Return(errors.New("Some error"))
+
+			repo2.On("Patch", mock.Anything, mock.Anything).Once().Return(errors.New("Some error"))
 
 			// Rollback the result
 			repo2.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Rollback on deleteTMRelated")
 			}).Return(nil)
+
 			repo.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 				log.Debug("Rollback on deleteTMRelations")
 			}).Return(nil)
@@ -254,8 +251,10 @@ func TestDelete(t *testing.T) {
 			err = s.Delete()
 			require.Error(t, err)
 
-			// Assert calls
+			err = s.Rollback()
+			assert.NoError(t, err)
 
+			// Assert calls
 			repo2.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 			repo.AssertCalled(t, "Delete", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
