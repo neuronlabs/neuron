@@ -9,6 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 )
 
+// TestReadDefaultConfig test the read default config function.
 func TestReadDefaultConfig(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)

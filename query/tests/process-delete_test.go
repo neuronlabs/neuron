@@ -13,6 +13,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
 	"github.com/neuronlabs/neuron/repository"
 
@@ -209,7 +210,6 @@ func TestDelete(t *testing.T) {
 
 			repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
-
 		})
 
 		t.Run("Rollback", func(t *testing.T) {
@@ -280,6 +280,360 @@ func TestDelete(t *testing.T) {
 
 			repo.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
+		})
+	})
+
+	t.Run("ForeignRelationships", func(t *testing.T) {
+		c := newController(t)
+
+		err = c.RegisterModels(HasOneModel{}, HasManyModel{}, Many2ManyModel{}, JoinModel{}, ForeignModel{}, RelatedModel{})
+		require.NoError(t, err)
+
+		t.Run("HasOne", func(t *testing.T) {
+			t.Run("Valid", func(t *testing.T) {
+
+				// patch the model
+				model := &HasOneModel{
+					ID: 3,
+				}
+
+				s, err := query.NewC((*controller.Controller)(c), model)
+				require.NoError(t, err)
+
+				hasOneRepo, err := repository.GetRepository((*controller.Controller)(c), model)
+				require.NoError(t, err)
+
+				repo, ok := hasOneRepo.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(repo)
+
+				foreignRepo, err := repository.GetRepository((*controller.Controller)(c), model.HasOne)
+				require.NoError(t, err)
+
+				frepo, ok := foreignRepo.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(frepo)
+
+				repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				repo.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+
+					if assert.Len(t, primaries, 1) {
+						single := primaries[0]
+
+						if assert.Len(t, single.Values(), 1) {
+							fv := single.Values()[0]
+
+							assert.Equal(t, filters.OpIn, fv.Operator())
+							if assert.Len(t, fv.Values, 1) {
+								assert.Contains(t, fv.Values, model.ID)
+							}
+						}
+					}
+				}).Return(nil)
+
+				repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				frepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+				frepo.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					foreigns := s.ForeignFilters()
+					if assert.Len(t, foreigns, 1) {
+						if assert.Len(t, foreigns[0].Values(), 1) {
+							v := foreigns[0].Values()[0]
+							assert.Equal(t, filters.OpIn, v.Operator())
+							assert.Equal(t, model.ID, v.Values[0])
+						}
+					}
+
+					v, ok := s.Value.(*[]*ForeignModel)
+					require.True(t, ok)
+
+					(*v) = append((*v), &ForeignModel{ID: 5})
+				}).Return(nil)
+
+				frepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(arg mock.Arguments) {
+					s, ok := arg[1].(*query.Scope)
+					require.True(t, ok)
+
+					pm := s.PrimaryFilters()
+					if assert.NotEmpty(t, pm) {
+						if assert.Len(t, pm, 1) {
+							if assert.Len(t, pm[0].Values(), 1) {
+								v := pm[0].Values()[0]
+								assert.Equal(t, filters.OpIn, v.Operator())
+								assert.Equal(t, 5, v.Values[0])
+							}
+						}
+					}
+
+					isSelected, err := s.IsSelected("ForeignKey")
+					require.NoError(t, err)
+					assert.True(t, isSelected)
+				}).Return(nil)
+
+				frepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				require.NoError(t, s.Delete())
+
+				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Delete", mock.Anything, mock.Anything)
+
+				frepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				frepo.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
+
+				frepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+			})
+		})
+
+		t.Run("HasMany", func(t *testing.T) {
+			model := &HasManyModel{ID: 3}
+
+			s, err := query.NewC((*controller.Controller)(c), model)
+			require.NoError(t, err)
+
+			mr, err := repository.GetRepository(c, model)
+			require.NoError(t, err)
+
+			hasMany, ok := mr.(*mocks.Repository)
+			require.True(t, ok)
+
+			defer clearRepository(hasMany)
+
+			hasMany.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+			// delete the 'hasMany' for model's primaries
+			hasMany.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s := args[1].(*query.Scope)
+				primaries := s.PrimaryFilters()
+
+				if assert.Len(t, primaries, 1) {
+					single := primaries[0]
+
+					if assert.Len(t, single.Values(), 1) {
+						fv := single.Values()[0]
+
+						assert.Equal(t, filters.OpIn, fv.Operator())
+						if assert.Len(t, fv.Values, 1) {
+							assert.Contains(t, fv.Values, model.ID)
+						}
+					}
+				}
+			}).Return(nil)
+
+			fr, err := repository.GetRepository(c, &ForeignModel{})
+			require.NoError(t, err)
+
+			foreignModel := fr.(*mocks.Repository)
+			foreignModel.Calls = []mock.Call{}
+
+			foreignModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+			// get the foreign relationships with the foreign key equal to the primaries of the root
+			foreignModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s := args[1].(*query.Scope)
+
+				foreignKeys := s.ForeignFilters()
+				if assert.Len(t, foreignKeys, 1) {
+					single := foreignKeys[0]
+
+					if assert.Len(t, single.Values(), 1) {
+						fv := single.Values()[0]
+
+						assert.Equal(t, filters.OpIn, fv.Operator())
+						if assert.Len(t, fv.Values, 1) {
+							assert.Contains(t, fv.Values, model.ID)
+						}
+					}
+				}
+
+				if fieldSet := s.Fieldset(); assert.Len(t, fieldSet, 1) {
+					assert.Equal(t, fieldSet[0], s.Struct().Primary())
+				}
+
+				sv := s.Value.(*[]*ForeignModel)
+				(*sv) = append((*sv), &ForeignModel{ID: 4}, &ForeignModel{ID: 7})
+			}).Return(nil)
+
+			// clear the relationship foreign keys
+			foreignModel.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s := args[1].(*query.Scope)
+
+				primaries := s.PrimaryFilters()
+				if assert.Len(t, primaries, 1) {
+					single := primaries[0]
+
+					if assert.Len(t, single.Values(), 1) {
+						fv := single.Values()[0]
+
+						assert.Equal(t, filters.OpIn, fv.Operator())
+						if assert.Len(t, fv.Values, 2) {
+							assert.Contains(t, fv.Values, 4)
+							assert.Contains(t, fv.Values, 7)
+						}
+					}
+				}
+
+				isFKSelected, err := s.IsSelected("ForeignKey")
+				require.NoError(t, err)
+
+				assert.True(t, isFKSelected)
+
+				sv := s.Value.(*ForeignModel)
+				assert.Equal(t, 0, sv.ForeignKey)
+			}).Return(nil)
+
+			foreignModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			foreignModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+			hasMany.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+			err = s.Delete()
+			require.NoError(t, err)
+
+			hasMany.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+
+			// one call to hasMany - check if exists
+			hasMany.AssertNumberOfCalls(t, "Delete", 1)
+
+			foreignModel.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+			// one call to foreign List - get the primary id's - a part of clear scope
+			foreignModel.AssertNumberOfCalls(t, "List", 1)
+
+			// 1. clear scope
+			foreignModel.AssertNumberOfCalls(t, "Patch", 1)
+			foreignModel.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+			hasMany.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+		})
+
+		t.Run("Many2Many", func(t *testing.T) {
+			model := &Many2ManyModel{ID: 4}
+
+			r, err := repository.GetRepository(c, model)
+			require.NoError(t, err)
+
+			many2many, ok := r.(*mocks.Repository)
+			require.True(t, ok)
+
+			defer clearRepository(many2many)
+
+			r, err = repository.GetRepository(c, RelatedModel{})
+			require.NoError(t, err)
+
+			relatedModel, ok := r.(*mocks.Repository)
+			require.True(t, ok)
+
+			defer clearRepository(relatedModel)
+
+			r, err = repository.GetRepository(c, JoinModel{})
+			require.NoError(t, err)
+
+			joinModel, ok := r.(*mocks.Repository)
+			require.True(t, ok)
+
+			defer clearRepository(joinModel)
+
+			many2many.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+			many2many.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				primaries := s.PrimaryFilters()
+				if assert.Len(t, primaries, 1) {
+					if assert.Len(t, primaries[0].Values(), 1) {
+						pv := primaries[0].Values()[0]
+
+						assert.Equal(t, filters.OpIn, pv.Operator())
+						if assert.Len(t, pv.Values, 1) {
+							assert.Equal(t, 4, pv.Values[0])
+						}
+					}
+				}
+			}).Return(nil)
+
+			joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+			// List is the reduce primaries lister
+			joinModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				foreigns := s.ForeignFilters()
+				if assert.Len(t, foreigns, 1) {
+					foreignValues := foreigns[0].Values()
+					fk, ok := s.Struct().ForeignKey("ForeignKey")
+					if assert.True(t, ok) {
+						assert.Equal(t, fk, foreigns[0].StructField())
+					}
+
+					if assert.Len(t, foreignValues, 1) {
+						foreignFirst := foreignValues[0]
+
+						assert.Equal(t, filters.OpIn, foreignFirst.Operator())
+						if assert.Len(t, foreignFirst.Values, 1) {
+							assert.Equal(t, 4, foreignFirst.Values[0])
+						}
+					}
+				}
+
+				v, ok := s.Value.(*[]*JoinModel)
+				require.True(t, ok)
+
+				(*v) = append((*v),
+					&JoinModel{ID: 6, ForeignKey: 4, MtMForeignKey: 17},
+					&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
+				)
+			}).Return(nil)
+
+			joinModel.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				primaries := s.PrimaryFilters()
+				if assert.Len(t, primaries, 1) {
+					pf := primaries[0]
+					pfValues := pf.Values()
+
+					if assert.Len(t, pfValues, 1) {
+						pfOpValue := pfValues[0]
+
+						assert.Equal(t, filters.OpIn, pfOpValue.Operator())
+
+						if assert.Len(t, pfOpValue.Values, 2) {
+							assert.Contains(t, pfOpValue.Values, 6)
+							assert.Contains(t, pfOpValue.Values, 7)
+						}
+					}
+				}
+			}).Return(nil)
+
+			joinModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			many2many.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+			s, err := query.NewC((*controller.Controller)(c), model)
+			require.NoError(t, err)
+
+			err = s.Delete()
+			require.NoError(t, err)
+
+			many2many.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+			many2many.AssertCalled(t, "Delete", mock.Anything, mock.Anything)
+
+			joinModel.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+			joinModel.AssertCalled(t, "List", mock.Anything, mock.Anything)
+			joinModel.AssertCalled(t, "Delete", mock.Anything, mock.Anything)
+			joinModel.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+
+			many2many.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 		})
 	})
 }

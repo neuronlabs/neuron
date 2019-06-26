@@ -888,7 +888,320 @@ func TestPatch(t *testing.T) {
 		})
 
 		t.Run("Many2Many", func(t *testing.T) {
-			// TODO: patch many2many tests
+			t.Run("NonEmpty", func(t *testing.T) {
+				c := newController(t)
+				err := c.RegisterModels(Many2ManyModel{}, RelatedModel{}, JoinModel{})
+
+				model := &Many2ManyModel{
+					ID:        4,
+					Many2Many: []*RelatedModel{{ID: 1}},
+				}
+
+				r, err := repository.GetRepository(c, model)
+				require.NoError(t, err)
+
+				many2many, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(many2many)
+
+				r, err = repository.GetRepository(c, RelatedModel{})
+				require.NoError(t, err)
+
+				relatedModel, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(relatedModel)
+
+				r, err = repository.GetRepository(c, JoinModel{})
+				require.NoError(t, err)
+
+				joinModel, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(joinModel)
+
+				many2many.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+				// check the values
+				many2many.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+					if assert.Len(t, primaries, 1) {
+						if assert.Len(t, primaries[0].Values(), 1) {
+							pv := primaries[0].Values()[0]
+
+							assert.Equal(t, filters.OpIn, pv.Operator())
+							if assert.Len(t, pv.Values, 1) {
+								assert.Equal(t, 4, pv.Values[0])
+							}
+						}
+					}
+
+					v, ok := s.Value.(*[]*Many2ManyModel)
+					require.True(t, ok)
+
+					(*v) = append((*v), &Many2ManyModel{ID: 4})
+				}).Return(nil)
+
+				relatedModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				relatedModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+					if assert.Len(t, primaries, 1) {
+						pf := primaries[0]
+						pfValues := pf.Values()
+
+						if assert.Len(t, pfValues, 1) {
+							pfOpValue := pfValues[0]
+
+							assert.Equal(t, filters.OpIn, pfOpValue.Operator())
+
+							if assert.Len(t, pfOpValue.Values, 1) {
+								assert.Equal(t, 1, pfOpValue.Values[0])
+							}
+						}
+					}
+					fieldset := s.Fieldset()
+					assert.Len(t, fieldset, 1)
+					assert.Equal(t, fieldset[0], s.Struct().Primary())
+
+					v, ok := s.Value.(*[]*RelatedModel)
+					require.True(t, ok)
+
+					(*v) = append((*v), &RelatedModel{ID: 1})
+				}).Return(nil)
+
+				joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+				// List is the reduce primaries lister
+				joinModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					foreigns := s.ForeignFilters()
+					if assert.Len(t, foreigns, 1) {
+						foreignValues := foreigns[0].Values()
+						fk, ok := s.Struct().ForeignKey("ForeignKey")
+						if assert.True(t, ok) {
+							assert.Equal(t, fk, foreigns[0].StructField())
+						}
+
+						if assert.Len(t, foreignValues, 1) {
+							foreignFirst := foreignValues[0]
+
+							assert.Equal(t, filters.OpIn, foreignFirst.Operator())
+							if assert.Len(t, foreignFirst.Values, 1) {
+								assert.Equal(t, 4, foreignFirst.Values[0])
+							}
+						}
+					}
+
+					v, ok := s.Value.(*[]*JoinModel)
+					require.True(t, ok)
+
+					(*v) = append((*v),
+						&JoinModel{ID: 6, ForeignKey: 4, MtMForeignKey: 17},
+						&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
+					)
+				}).Return(nil)
+
+				joinModel.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+					if assert.Len(t, primaries, 1) {
+						pf := primaries[0]
+						pfValues := pf.Values()
+
+						if assert.Len(t, pfValues, 1) {
+							pfOpValue := pfValues[0]
+
+							assert.Equal(t, filters.OpIn, pfOpValue.Operator())
+
+							if assert.Len(t, pfOpValue.Values, 2) {
+								assert.Contains(t, pfOpValue.Values, 6)
+								assert.Contains(t, pfOpValue.Values, 7)
+							}
+						}
+					}
+				}).Return(nil)
+
+				joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				joinModel.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					v, ok := s.Value.(*JoinModel)
+					require.True(t, ok)
+
+					assert.Equal(t, 4, v.ForeignKey)
+					assert.Equal(t, 1, v.MtMForeignKey)
+
+					v.ID = 33
+				}).Return(nil)
+
+				joinModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				joinModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				relatedModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				many2many.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				s, err := query.NewC((*controller.Controller)(c), model)
+				require.NoError(t, err)
+
+				err = s.Patch()
+				require.NoError(t, err)
+
+				many2many.AssertNumberOfCalls(t, "Begin", 1)
+				many2many.AssertNumberOfCalls(t, "List", 1)
+
+				relatedModel.AssertNumberOfCalls(t, "Begin", 1)
+				relatedModel.AssertNumberOfCalls(t, "List", 1)
+
+				joinModel.AssertNumberOfCalls(t, "Begin", 2)
+				joinModel.AssertNumberOfCalls(t, "Create", 1)
+				joinModel.AssertNumberOfCalls(t, "Commit", 2)
+
+				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
+				many2many.AssertNumberOfCalls(t, "Commit", 1)
+			})
+
+			t.Run("Clear", func(t *testing.T) {
+				c := newController(t)
+				err := c.RegisterModels(Many2ManyModel{}, RelatedModel{}, JoinModel{})
+
+				model := &Many2ManyModel{
+					ID:        4,
+					Many2Many: []*RelatedModel{},
+				}
+
+				r, err := repository.GetRepository(c, model)
+				require.NoError(t, err)
+
+				many2many, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(many2many)
+
+				r, err = repository.GetRepository(c, RelatedModel{})
+				require.NoError(t, err)
+
+				relatedModel, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(relatedModel)
+
+				r, err = repository.GetRepository(c, JoinModel{})
+				require.NoError(t, err)
+
+				joinModel, ok := r.(*mocks.Repository)
+				require.True(t, ok)
+
+				defer clearRepository(joinModel)
+
+				many2many.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				many2many.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+					if assert.Len(t, primaries, 1) {
+						if assert.Len(t, primaries[0].Values(), 1) {
+							pv := primaries[0].Values()[0]
+
+							assert.Equal(t, filters.OpIn, pv.Operator())
+							if assert.Len(t, pv.Values, 1) {
+								assert.Equal(t, 4, pv.Values[0])
+							}
+						}
+					}
+
+					v, ok := s.Value.(*[]*Many2ManyModel)
+					require.True(t, ok)
+
+					(*v) = append((*v), &Many2ManyModel{ID: 4})
+				}).Return(nil)
+
+				joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+
+				// List is the reduce primaries lister
+				joinModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					foreigns := s.ForeignFilters()
+					if assert.Len(t, foreigns, 1) {
+						foreignValues := foreigns[0].Values()
+						fk, ok := s.Struct().ForeignKey("ForeignKey")
+						if assert.True(t, ok) {
+							assert.Equal(t, fk, foreigns[0].StructField())
+						}
+
+						if assert.Len(t, foreignValues, 1) {
+							foreignFirst := foreignValues[0]
+
+							assert.Equal(t, filters.OpIn, foreignFirst.Operator())
+							if assert.Len(t, foreignFirst.Values, 1) {
+								assert.Equal(t, 4, foreignFirst.Values[0])
+							}
+						}
+					}
+
+					v, ok := s.Value.(*[]*JoinModel)
+					require.True(t, ok)
+
+					(*v) = append((*v),
+						&JoinModel{ID: 6, ForeignKey: 4, MtMForeignKey: 17},
+						&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
+					)
+				}).Return(nil)
+
+				joinModel.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*query.Scope)
+					require.True(t, ok)
+
+					primaries := s.PrimaryFilters()
+					if assert.Len(t, primaries, 1) {
+						pf := primaries[0]
+						pfValues := pf.Values()
+
+						if assert.Len(t, pfValues, 1) {
+							pfOpValue := pfValues[0]
+
+							assert.Equal(t, filters.OpIn, pfOpValue.Operator())
+
+							if assert.Len(t, pfOpValue.Values, 2) {
+								assert.Contains(t, pfOpValue.Values, 6)
+								assert.Contains(t, pfOpValue.Values, 7)
+							}
+						}
+					}
+				}).Return(nil)
+
+				joinModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				many2many.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				s, err := query.NewC((*controller.Controller)(c), model)
+				require.NoError(t, err)
+
+				err = s.Patch()
+				require.NoError(t, err)
+
+				many2many.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				many2many.AssertCalled(t, "List", mock.Anything, mock.Anything)
+
+				joinModel.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				joinModel.AssertCalled(t, "List", mock.Anything, mock.Anything)
+				joinModel.AssertCalled(t, "Delete", mock.Anything, mock.Anything)
+				joinModel.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+
+				many2many.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+			})
 		})
 	})
 }

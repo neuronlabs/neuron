@@ -472,7 +472,6 @@ func TestCreateTransactions(t *testing.T) {
 
 				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
 				many2many.AssertNumberOfCalls(t, "Commit", 1)
-
 			})
 		})
 	})

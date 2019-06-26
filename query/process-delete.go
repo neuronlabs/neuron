@@ -308,12 +308,12 @@ func deleteHasManyRelationships(ctx context.Context, s *Scope, field *models.Str
 	rel := field.Relationship()
 
 	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), true)
+		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), false)
 		if err != nil {
 			return err
 		}
 	} else {
-		clearScope = queryS(newScopeWithModel(s.Controller(), rel.Struct(), true))
+		clearScope = queryS(newScopeWithModel(s.Controller(), rel.Struct(), false))
 	}
 
 	// the selected field would be only the foreign key -> zero valued

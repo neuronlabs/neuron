@@ -42,9 +42,8 @@ var (
 	JustCreated = created{}
 )
 
-// TODO: clear the errors
+// TODO: clear the error definitions below after mapping the gateway errors.
 // Errors used in by the internal packages
-var (
 
 // Unmarshal Errors
 
@@ -65,5 +64,3 @@ var (
 
 // ErrBadJSONAPIID is returned when the Struct JSON API annotated "id" field
 // was not a valid numeric type.
-
-)

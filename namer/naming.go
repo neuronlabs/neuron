@@ -7,22 +7,22 @@ import (
 // Namer is the function that change the name with some prepared formatting.
 type Namer func(string) string
 
-// NamingSnake is a Namer function that converts the 'raw' into the 'snake_case_model'.
+// NamingSnake is a Namer function that converts the 'TestingModelName' into the 'testing_model_name' format.
 func NamingSnake(raw string) string {
 	return strcase.ToSnake(raw)
 }
 
-// NamingKebab is a Namer function that converts the 'raw' into the 'kebab-case-model'.
+// NamingKebab is a Namer function that converts the 'TestingModelName' into the 'testing-model-name' format.
 func NamingKebab(raw string) string {
 	return strcase.ToKebab(raw)
 }
 
-// NamingCamel is a Namer function that converts the 'raw' into the 'CamelCaseModel'.
+// NamingCamel is a Namer function that converts the 'TestingModelName' into the 'TestingModelName' format.
 func NamingCamel(raw string) string {
 	return strcase.ToCamel(raw)
 }
 
-// NamingLowerCamel is a Namer function that converts the 'raw' into the 'camelCaseModel'.
+// NamingLowerCamel is a Namer function that converts the 'TestingModelName' into the 'testingModelName' format.
 func NamingLowerCamel(raw string) string {
 	return strcase.ToLowerCamel(raw)
 }
