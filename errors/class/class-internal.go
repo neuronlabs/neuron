@@ -162,20 +162,30 @@ var (
 	// for the repository related internal issues.
 	MnrInternalRepository Minor
 
+	// InternalRepository is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// for internal repositories errors.
+	InternalRepository Class
+
+	// InternalRepositoryResourceName is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// for the errors related with the internal repository invalid resource name.
+	InternalRepositoryResourceName Class
+
 	// InternalRepositorySyntax is the 'MjrInternal', 'MnrInternalRepository' error classification
 	// for the errors related with the internal repository syntax.
 	InternalRepositorySyntax Class
 
-	// InternalRepositoryResourceName	 is the 'MjrInternal', 'MnrInternalRepository' error classification
-	// for the errors related with the internal repository invalid resource name.
-	InternalRepositoryResourceName Class
+	// InternalRepositorySystemError is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// while repository system error occurred: i.e. not enough disk space.
+	InternalRepositorySystemError Class
 )
 
 func registerInternalRepository() {
 	MnrInternalRepository = MjrInternal.MustRegisterMinor("Repository", "repository related internal issues")
 
-	InternalRepositorySyntax = MnrInternalRepository.MustRegisterIndex("Syntax", "invalid syntax for one of the repository queries").Class()
+	InternalRepository = MustNewMinorClass(MnrInternalRepository)
 	InternalRepositoryResourceName = MnrInternalRepository.MustRegisterIndex("ResourceName", "invalid resource name for one of the repositories are queried").Class()
+	InternalRepositorySyntax = MnrInternalRepository.MustRegisterIndex("Syntax", "invalid syntax for one of the repository queries").Class()
+	InternalRepositorySystemError = MnrInternalRepository.MustRegisterIndex("System Error", "System error occurred on the repository").Class()
 }
 
 var (

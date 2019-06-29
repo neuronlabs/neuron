@@ -42,17 +42,22 @@ var (
 	QueryFieldsetDuplicate Class
 
 	// QueryFieldsetInvalid is the 'MjrQuery', 'MnrQueryFieldset' error classification
-	// for invalid field type issues.
+	// for invalid fieldset issues.
 	QueryFieldsetInvalid Class
+
+	// QueryFieldsetEmpty is the 'MjrQuery', 'MnrQueryFieldset' error classification
+	// for empty fieldset issues.
+	QueryFieldsetEmpty Class
 )
 
 func registerQueryFieldset() {
 	MnrQueryFieldset = MjrQuery.MustRegisterMinor("Fieldset", "issues related with the query fieldset")
 
+	QueryFieldsetDuplicate = MnrQueryFieldset.MustRegisterIndex("Duplicates", "duplicated field found within the fieldset").Class()
+	QueryFieldsetEmpty = MnrQueryFieldset.MustRegisterIndex("Empty", "empty fieldset issues").Class()
+	QueryFieldsetInvalid = MnrQueryFieldset.MustRegisterIndex("Invalid", "invalid fieldset field type").Class()
 	QueryFieldsetTooBig = MnrQueryFieldset.MustRegisterIndex("Too Big", "too many fields tried to be set within the query fieldset").Class()
 	QueryFieldsetUnknownField = MnrQueryFieldset.MustRegisterIndex("Unknown Field", "provided fieldset field not found within the model's collection").Class()
-	QueryFieldsetDuplicate = MnrQueryFieldset.MustRegisterIndex("Duplicates", "duplicated field found within the fieldset").Class()
-	QueryFieldsetInvalid = MnrQueryFieldset.MustRegisterIndex("Invalid", "invalid fieldset field type").Class()
 }
 
 /**
@@ -328,6 +333,10 @@ var (
 	// MnrQueryTransaction is the 'MjrQuery' minor error classification that defines issues with the query transactions.
 	MnrQueryTransaction Minor
 
+	// QueryTxBegin is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
+	// for query tranasaction begins.
+	QueryTxBegin Class
+
 	// QueryTxAlreadyBegin is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction had already begin.
 	QueryTxAlreadyBegin Class
@@ -355,6 +364,10 @@ var (
 	// QueryTxUnknownIsolationLevel is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction isolation level is unknown.
 	QueryTxUnknownIsolationLevel Class
+
+	// QueryTxTermination is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
+	// when query transaction is invalidly terminated.
+	QueryTxTermination Class
 )
 
 func registerQueryTransactions() {
@@ -362,11 +375,13 @@ func registerQueryTransactions() {
 
 	QueryTxAlreadyBegin = MnrQueryTransaction.MustRegisterIndex("Already Begin", "query transaction already begin").Class()
 	QueryTxAlreadyResolved = MnrQueryTransaction.MustRegisterIndex("Already Resolved", "query transaction already resolved").Class()
+	QueryTxBegin = MnrQueryTransaction.MustRegisterIndex("Begin", "query transaction begin").Class()
 	QueryTxFailed = MnrQueryTransaction.MustRegisterIndex("Failed", "transaction failed").Class()
 	QueryTxNotFound = MnrQueryTransaction.MustRegisterIndex("Not Found", "transaction not found for given query").Class()
 	QueryTxRollback = MnrQueryTransaction.MustRegisterIndex("Rollback", "query transaction with rollback issues").Class()
 	QueryTxUnknownState = MnrQueryTransaction.MustRegisterIndex("Unknown State", "transaction state unknown").Class()
 	QueryTxUnknownIsolationLevel = MnrQueryTransaction.MustRegisterIndex("Unknown Isolation Level", "transaction isolation level unknown").Class()
+	QueryTxTermination = MnrQueryTransaction.MustRegisterIndex("Termination", "invalid transaction termination").Class()
 }
 
 /**
@@ -403,6 +418,10 @@ var (
 	// QueryViolationDataType is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the inserted data type violates the allowed data types.
 	QueryViolationDataType Class
+
+	// QueryViolationRestrict is the 'MjrQuery', 'MnrQueryViolation' error classifcation
+	// while doing restricted operation. I.e. SQL based repository with field marked as RESTRICT.
+	QueryViolationRestrict Class
 )
 
 func registerQueryViolation() {
@@ -414,6 +433,7 @@ func registerQueryViolation() {
 	QueryViolationUnique = MnrQueryViolation.MustRegisterIndex("Unique", "violating unique restriction on the field").Class()
 	QueryViolationCheck = MnrQueryViolation.MustRegisterIndex("Check", "repository based data value check failed").Class()
 	QueryViolationDataType = MnrQueryViolation.MustRegisterIndex("Data Type", "inserting or patching invalid data type value").Class()
+	QueryViolationRestrict = MnrQueryViolation.MustRegisterIndex("Restrict", "restricted operation").Class()
 }
 
 var (

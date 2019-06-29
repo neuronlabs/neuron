@@ -59,8 +59,6 @@ func BenchmarkScopeCreate(b *testing.B) {
 
 	b.Run("Related", func(b *testing.B) {
 		b.Run("HasOne", func(b *testing.B) {
-			b.StopTimer()
-
 			c := (*controller.Controller)(c)
 
 			repo, err := repository.GetRepository(c, HasOneModel{})
@@ -99,7 +97,7 @@ func BenchmarkScopeCreate(b *testing.B) {
 			foreign.On("Patch", mock.Anything, mock.Anything).Return(nil)
 			foreign.On("Commit", mock.Anything, mock.Anything).Return(nil)
 
-			b.StartTimer()
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				model := &HasOneModel{HasOne: &ForeignModel{ID: 1}}
 				s, err := query.NewC(c, model)

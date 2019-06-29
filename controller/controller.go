@@ -73,6 +73,8 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	return c.internal().RegisterModels(models...)
 }
 
+// func (c *Controller) RegisterRepository(repo )
+
 // Schema gets the schema by it's name
 func (c *Controller) Schema(schemaName string) (*mapping.Schema, bool) {
 	s, ok := c.internal().ModelSchemas().Schema(schemaName)
@@ -87,7 +89,7 @@ func (c *Controller) Schemas() (schemas []*mapping.Schema) {
 	for _, s := range c.internal().ModelSchemas().Schemas() {
 		schemas = append(schemas, (*mapping.Schema)(s))
 	}
-	return
+	return schemas
 }
 
 // Close closes all repositories

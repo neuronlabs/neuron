@@ -453,7 +453,7 @@ func (m *ModelStruct) StructFields() (fields []*StructField) {
 		fields = append(fields, f)
 	}
 
-	return
+	return fields
 }
 
 // Type returns model's reflect.Type

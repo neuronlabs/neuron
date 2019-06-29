@@ -12,6 +12,8 @@ func registerRepositoryClasses() {
 	registerRepositoryConnection()
 	registerRepositoryInterface()
 	registerRepositoryFactory()
+	registerRepositoryModel()
+	registerRepostioryUnmappedError()
 }
 
 /**
@@ -80,6 +82,10 @@ var (
 	// for the repository connection issues.
 	MnrRepositoryConnection Minor
 
+	// RepositoryConnection is the 'MjrRepository', 'MnrRepositoryConnection'
+	// error classification related with repository connection.
+	RepositoryConnection Class
+
 	// RepositoryConnectionTimedOut is the 'MjrRepository', 'MnrRepositoryConnection'
 	// error classification related with timed out connection.
 	RepositoryConnectionTimedOut Class
@@ -92,6 +98,7 @@ var (
 func registerRepositoryConnection() {
 	MnrRepositoryConnection = MjrRepository.MustRegisterMinor("Connection", "repository connection issues")
 
+	RepositoryConnection = MustNewMinorClass(MnrRepositoryConnection)
 	RepositoryConnectionTimedOut = MnrRepositoryConnection.MustRegisterIndex("Timed Out", "repository connection timed out").Class()
 	RepositoryConnectionURI = MnrRepositoryConnection.MustRegisterIndex("URI", "invalid URI provided for the repository connection").Class()
 
@@ -179,4 +186,32 @@ func registerRepositoryFactory() {
 
 	RepositoryFactoryNotFound = MnrRepositoryFactory.MustRegisterIndex("Not Found", "repository factory not found").Class()
 	RepositoryFactoryAlreadyRegistered = MnrRepositoryFactory.MustRegisterIndex("Already Registered", "repository factory already registered").Class()
+}
+
+// MnrRepositoryModel is the minor error classification for the repository model issues.
+var MnrRepositoryModel Minor
+
+var (
+	// RepositoryModelReservedName is the 'MjrRepository', 'MnrRepositoryModel' error classification
+	// for reserved names in the repositories.
+	RepositoryModelReservedName Class
+
+	// RepositoryModelTags is the 'MjrRepository', 'MnrRepositoryModel' error classification
+	// for invalid repository specific field tags.
+	RepositoryModelTags Class
+)
+
+func registerRepositoryModel() {
+	MnrRepositoryModel = MjrRepository.MustRegisterMinor("Model", "repository specific model issues")
+
+	RepositoryModelReservedName = MnrRepositoryModel.MustRegisterIndex("Reserved Name", "reserved name violation").Class()
+	RepositoryModelTags = MnrRepositoryModel.MustRegisterIndex("Tags", "repository specific tags issues").Class()
+}
+
+// RepositoryUnmappedError is the error 'MjrRepository' classification used for non errors not mapped for the
+// repository specific error classes, types or codes.
+var RepositoryUnmappedError Class
+
+func registerRepostioryUnmappedError() {
+	RepositoryUnmappedError = MustNewMinorClass(MjrRepository.MustRegisterMinor("Unmapped Error", "unmapped repository errors"))
 }

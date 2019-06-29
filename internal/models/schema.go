@@ -101,7 +101,6 @@ func newModelSchemas(
 
 	// set the schema's configs
 	for name, schemaCfg := range cfg {
-
 		if name == defaultSchema {
 			ms.defaultSchema.config = schemaCfg
 		} else {
@@ -130,7 +129,6 @@ func (m *ModelSchemas) ComputeNestedIncludedCount(limit int) {
 			model.computeNestedIncludedCount(limit)
 		}
 	}
-
 }
 
 // DefaultSchema returns default schema for give models
@@ -156,13 +154,9 @@ func (m *ModelSchemas) Schemas() []*Schema {
 }
 
 // RegisterModels registers the model within the schemas container
-func (m *ModelSchemas) RegisterModels(
-	models ...interface{},
-) error {
-
+func (m *ModelSchemas) RegisterModels(models ...interface{}) error {
 	// iterate over models and register one by one
 	for _, model := range models {
-
 		var schema string
 
 		// set model's schema
