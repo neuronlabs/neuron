@@ -25,8 +25,8 @@ func (_m *Factory) New(structer repository.ModelStructer, model *mapping.ModelSt
 	return &Repository{}, nil
 }
 
-// RepositoryName provides a mock repository name.
-func (_m *Factory) RepositoryName() string {
+// DriverName provides a mock repository name.
+func (_m *Factory) DriverName() string {
 	return "mocks"
 }
 

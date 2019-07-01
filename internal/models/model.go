@@ -397,7 +397,7 @@ func (m *ModelStruct) StoreSet(key string, value interface{}) {
 		m.store = make(map[string]interface{})
 	}
 
-	log.Debugf("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
+	log.Debug2f("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
 	m.store[key] = value
 }
 

@@ -111,7 +111,6 @@ func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []*errors
 		if sort[0] == '-' {
 			order = sorts.DescendingOrder
 			sort = sort[1:]
-
 		} else {
 			order = sorts.AscendingOrder
 		}

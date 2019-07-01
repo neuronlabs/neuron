@@ -88,23 +88,22 @@ type manyWithoutJoinTwo struct {
 func TestMappedRelationships(t *testing.T) {
 	t.Run("many2many", func(t *testing.T) {
 		t.Run("PredefinedFields", func(t *testing.T) {
-			s := testingSchemas(t)
+			m := testingModelMap(t)
 
-			err := s.RegisterModels(Model1WithMany2Many{}, Model2WithMany2Many{}, joinModel{})
+			err := m.RegisterModels(Model1WithMany2Many{}, Model2WithMany2Many{}, joinModel{})
 			require.NoError(t, err)
 
-			join, err := s.GetModelStruct(joinModel{})
+			join, err := m.GetModelStruct(joinModel{})
 			require.NoError(t, err)
 
 			assert.True(t, join.isJoin)
 
-			first, err := s.GetModelStruct(Model1WithMany2Many{})
+			first, err := m.GetModelStruct(Model1WithMany2Many{})
 			require.NoError(t, err)
 
-			second, err := s.GetModelStruct(Model2WithMany2Many{})
+			second, err := m.GetModelStruct(Model2WithMany2Many{})
 			require.NoError(t, err)
 			t.Run("First", func(t *testing.T) {
-
 				relField, ok := first.relationships["synced"]
 				require.True(t, ok)
 
@@ -149,18 +148,18 @@ func TestMappedRelationships(t *testing.T) {
 		})
 
 		t.Run("DefaultSettings", func(t *testing.T) {
-			s := testingSchemas(t)
+			m := testingModelMap(t)
 
-			err := s.RegisterModels(First{}, Second{}, FirstSeconds{})
+			err := m.RegisterModels(First{}, Second{}, FirstSeconds{})
 			require.NoError(t, err)
 
-			first, err := s.GetModelStruct(First{})
+			first, err := m.GetModelStruct(First{})
 			require.NoError(t, err)
 
-			second, err := s.GetModelStruct(Second{})
+			second, err := m.GetModelStruct(Second{})
 			require.NoError(t, err)
 
-			firstSeconds, err := s.GetModelStruct(FirstSeconds{})
+			firstSeconds, err := m.GetModelStruct(FirstSeconds{})
 			require.NoError(t, err)
 
 			firstRel, ok := first.RelationshipField("Many")
@@ -192,9 +191,9 @@ func TestMappedRelationships(t *testing.T) {
 
 		t.Run("WithoutJoinTable", func(t *testing.T) {
 			t.Run("NotRegistered", func(t *testing.T) {
-				s := testingSchemas(t)
+				m := testingModelMap(t)
 
-				err := s.RegisterModels(First{}, Second{})
+				err := m.RegisterModels(First{}, Second{})
 				require.Error(t, err)
 
 				e := err.(*errors.Error)
@@ -209,19 +208,19 @@ func TestMappedRelationships(t *testing.T) {
 
 	t.Run("hasMany", func(t *testing.T) {
 		t.Run("synced", func(t *testing.T) {
-			s := testingSchemas(t)
+			m := testingModelMap(t)
 
 			// get the models
-			require.NoError(t, s.RegisterModels(modelWithHasMany{}, modelWithForeignKey{}))
+			require.NoError(t, m.RegisterModels(modelWithHasMany{}, modelWithForeignKey{}))
 
 			// get hasMany model
-			hasManyModel, err := s.getModelStruct(modelWithHasMany{})
+			hasManyModel, err := m.GetModelStruct(modelWithHasMany{})
 			require.NoError(t, err)
 
 			hasManyField, ok := hasManyModel.relationships["has_many"]
 			require.True(t, ok)
 
-			fkModel, err := s.getModelStruct(modelWithForeignKey{})
+			fkModel, err := m.GetModelStruct(modelWithForeignKey{})
 			require.NoError(t, err)
 
 			fk, ok := fkModel.foreignKeys["foreign_key"]
@@ -236,12 +235,12 @@ func TestMappedRelationships(t *testing.T) {
 		})
 	})
 
-	s := testingSchemas(t)
+	m := testingModelMap(t)
 
-	require.NoError(t, s.RegisterModels(modelWithBelongsTo{}, modelWithHasOne{}))
+	require.NoError(t, m.RegisterModels(modelWithBelongsTo{}, modelWithHasOne{}))
 
 	t.Run("belongsTo", func(t *testing.T) {
-		model, err := s.getModelStruct(modelWithBelongsTo{})
+		model, err := m.GetModelStruct(modelWithBelongsTo{})
 		require.NoError(t, err)
 
 		belongsToField, ok := model.relationships["belongs_to"]
@@ -253,14 +252,13 @@ func TestMappedRelationships(t *testing.T) {
 	})
 
 	t.Run("hasOne", func(t *testing.T) {
-
-		model, err := s.getModelStruct(modelWithHasOne{})
+		model, err := m.GetModelStruct(modelWithHasOne{})
 		require.NoError(t, err)
 
 		hasOneField, ok := model.relationships["has_one"]
 		require.True(t, ok)
 
-		belongsToModel, err := s.getModelStruct(modelWithBelongsTo{})
+		belongsToModel, err := m.GetModelStruct(modelWithBelongsTo{})
 		require.NoError(t, err)
 
 		fk, ok := belongsToModel.foreignKeys["foreign_key"]

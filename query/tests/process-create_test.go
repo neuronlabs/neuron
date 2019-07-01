@@ -15,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/controller"
@@ -73,7 +72,7 @@ func TestCreate(t *testing.T) {
 		s, err := query.NewC((*ctrl.Controller)(c), &createTestModel{})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo, ok := r.(*mocks.Repository)
 		require.True(t, ok)
@@ -95,9 +94,11 @@ func TestCreate(t *testing.T) {
 		s, err := query.NewC((*ctrl.Controller)(c), &beforeCreateTestModel{})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := s.Controller().GetRepository(s.Struct())
+		require.NoError(t, err)
 
-		repo := r.(*mocks.Repository)
+		repo, ok := r.(*mocks.Repository)
+		require.True(t, ok)
 		defer clearRepository(repo)
 
 		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
@@ -115,7 +116,7 @@ func TestCreate(t *testing.T) {
 		s, err := query.NewC((*ctrl.Controller)(c), &afterCreateTestModel{})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 		defer clearRepository(repo)
@@ -164,7 +165,7 @@ func TestCreateTransactions(t *testing.T) {
 			s, err := query.NewC((*ctrl.Controller)(c), model)
 			require.NoError(t, err)
 
-			fkModel, err := repository.GetRepository(c, &foreignKeyModel{})
+			fkModel, err := c.GetRepository(&foreignKeyModel{})
 			require.NoError(t, err)
 
 			foreignKeyRepo, ok := fkModel.(*mocks.Repository)
@@ -215,7 +216,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				s, err := query.NewC((*ctrl.Controller)(c), tm)
 				require.NoError(t, err)
-				r, err := repository.GetRepository(s.Controller(), s.Struct())
+				r, err := s.Controller().GetRepository(s.Struct())
 				require.NoError(t, err)
 
 				// get the repository for the has one model
@@ -237,7 +238,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				// do the create
 
-				repo2, err := repository.GetRepository(s.Controller(), &foreignKeyModel{})
+				repo2, err := s.Controller().GetRepository(&foreignKeyModel{})
 				require.NoError(t, err)
 
 				fkModelRepo, ok := repo2.(*mocks.Repository)
@@ -281,7 +282,7 @@ func TestCreateTransactions(t *testing.T) {
 				require.NoError(t, err)
 
 				// get the repositories for the both models in order to mock it
-				hmModel, err := repository.GetRepository(c, &m1)
+				hmModel, err := c.GetRepository(&m1)
 				require.NoError(t, err)
 
 				hasManyRepo, ok := hmModel.(*mocks.Repository)
@@ -289,7 +290,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(hasManyRepo)
 
-				fkModel, err := repository.GetRepository(c, &foreignKeyModel{})
+				fkModel, err := c.GetRepository(&foreignKeyModel{})
 				require.NoError(t, err)
 
 				foreignKeyRepo, ok := fkModel.(*mocks.Repository)
@@ -369,7 +370,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				model := &Many2ManyModel{Many2Many: []*RelatedModel{{ID: 1}}}
 
-				r, err := repository.GetRepository(c, model)
+				r, err := c.GetRepository(model)
 				require.NoError(t, err)
 
 				many2many, ok := r.(*mocks.Repository)
@@ -377,7 +378,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(many2many)
 
-				r, err = repository.GetRepository(c, RelatedModel{})
+				r, err = c.GetRepository(RelatedModel{})
 				require.NoError(t, err)
 
 				relatedModel, ok := r.(*mocks.Repository)
@@ -385,7 +386,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(relatedModel)
 
-				r, err = repository.GetRepository(c, JoinModel{})
+				r, err = c.GetRepository(JoinModel{})
 				require.NoError(t, err)
 
 				joinModel, ok := r.(*mocks.Repository)
@@ -491,7 +492,7 @@ func TestCreateTransactions(t *testing.T) {
 
 			s, err := query.NewC((*ctrl.Controller)(c), tm)
 			require.NoError(t, err)
-			r, _ := repository.GetRepository(s.Controller(), s.Struct())
+			r, _ := s.Controller().GetRepository(s.Struct())
 
 			// prepare the transaction
 			hasOneModel := r.(*mocks.Repository)
@@ -511,7 +512,7 @@ func TestCreateTransactions(t *testing.T) {
 			model, err := c.GetModelStruct(&foreignKeyModel{})
 			require.NoError(t, err)
 
-			m2Repo, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			m2Repo, err := s.Controller().GetRepository((*mapping.ModelStruct)(model))
 			require.NoError(t, err)
 
 			foreignKey, ok := m2Repo.(*mocks.Repository)

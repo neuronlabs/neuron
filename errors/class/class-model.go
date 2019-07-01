@@ -77,7 +77,7 @@ var (
 	// used when the model schema is not found.
 	ModelSchemaNotFound Class
 
-	// ModelNotMappedInSchema is the 'MjrModel', 'MnrModelSchema' error classification
+	// ModelNotMapped is the 'MjrModel', 'MnrModelSchema' error classification
 	// used when the model is not mapped within schema.
 	ModelNotMappedInSchema Class
 )
@@ -152,6 +152,10 @@ var (
 	// ModelMappingInvalidType is the 'MjrModel', 'MnrModelMapping' error classification
 	// for invalid types (i.e. field).
 	ModelMappingInvalidType Class
+
+	// ModelNotMapped is the 'MjrModel', 'MnrModelSchema' error classification
+	// used when the model is not mapped within schema.
+	ModelNotMapped Class
 )
 
 func registerModelMapping() {
@@ -159,4 +163,5 @@ func registerModelMapping() {
 
 	ModelMappingNoFields = MnrModelMapping.MustRegisterIndex("No Fields", "issues for models without required field or no fields at all").Class()
 	ModelMappingInvalidType = MnrModelMapping.MustRegisterIndex("Invalid Type", "issues with the models (fields) type while mapping").Class()
+	ModelNotMapped = MnrModelMapping.MustRegisterIndex("Not Mapped", "issues with non mapped models").Class()
 }

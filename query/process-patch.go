@@ -8,7 +8,6 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/models"
@@ -59,7 +58,7 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	repo, err := s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		log.Errorf("No repository found for model: %v", s.Struct().Collection())
 		return err

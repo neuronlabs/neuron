@@ -12,7 +12,7 @@ import (
 	"github.com/neuronlabs/neuron/errors/class"
 )
 
-var (
+const (
 	// LDEBUG3 is the logger DEBUG3 level.
 	LDEBUG3 = unilogger.DEBUG3
 
@@ -48,21 +48,22 @@ var (
 	isDebugLeveled bool
 )
 
+// Level returns current logger Level.
+func Level() unilogger.Level {
+	return currentLevel
+}
+
 // Logger returns default logger.
 func Logger() unilogger.LeveledLogger {
-	if logger == nil {
-		Default()
-	}
 	return logger
 }
 
 // SetLevel sets the level if possible for the logger file.
 func SetLevel(level unilogger.Level) error {
-	if logger == nil {
-		Default()
-	}
-
 	currentLevel = level
+	if logger == nil {
+		return nil
+	}
 
 	lvl, ok := logger.(unilogger.LevelSetter)
 	if !ok {
@@ -70,6 +71,10 @@ func SetLevel(level unilogger.Level) error {
 	}
 
 	lvl.SetLevel(currentLevel)
+
+	for _, module := range modules {
+		module.SetLevel(level)
+	}
 
 	return nil
 }
@@ -91,22 +96,29 @@ func SetLogger(log unilogger.LeveledLogger) {
 	}
 
 	debugLeveled, isDebugLeveled = log.(unilogger.DebugLeveledLogger)
+
+	subLogger, isSubLogger := log.(unilogger.SubLogger)
+	for _, m := range modules {
+		if m.logger == nil && isSubLogger {
+			m.logger = subLogger.SubLogger()
+			m.initializeLogger()
+		}
+		m.SetLevel(currentLevel)
+	}
 }
 
 // New creates new logger on the base of the provided values.
 func New(out io.Writer, prefix string, flags int) {
 	basic := unilogger.NewBasicLogger(out, prefix, flags)
 	basic.SetOutputDepth(4)
-	logger = basic
-	debugLeveled, isDebugLeveled = logger.(unilogger.DebugLeveledLogger)
+	SetLogger(basic)
 }
 
 // Default creates default logger.
 func Default() {
 	basic := unilogger.NewBasicLogger(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile)
 	basic.SetOutputDepth(4)
-	logger = basic
-	debugLeveled, isDebugLeveled = logger.(unilogger.DebugLeveledLogger)
+	SetLogger(basic)
 }
 
 // Debug3f writes the formated debug log.

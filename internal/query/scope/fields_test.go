@@ -19,8 +19,7 @@ func TestAutoSelectFields(t *testing.T) {
 	}
 
 	t.Run("NonZeros", func(t *testing.T) {
-		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
-		require.NoError(t, err)
+		schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 		require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
 
@@ -38,8 +37,7 @@ func TestAutoSelectFields(t *testing.T) {
 	})
 
 	t.Run("WithZeros", func(t *testing.T) {
-		schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
-		require.NoError(t, err)
+		schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 		require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
 

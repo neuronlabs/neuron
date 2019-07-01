@@ -24,6 +24,5 @@ func TestReadDefaultConfig(t *testing.T) {
 		assert.Equal(t, "snake", c.NamingConvention)
 		assert.Equal(t, "create", c.CreateValidatorAlias)
 		assert.Equal(t, "patch", c.PatchValidatorAlias)
-		assert.Equal(t, "api", c.DefaultSchema)
 	})
 }

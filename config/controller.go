@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/neuronlabs/neuron/log"
@@ -17,11 +16,8 @@ type Controller struct {
 	// - kebab
 	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lowercamel snake kebab"`
 
-	// DefaultSchema is the default schema name for the models within given controller
-	DefaultSchema string `validate:"alphanum" mapstructure:"default_schema"`
-
-	// ModelSchemas defines the model schemas used by api
-	ModelSchemas map[string]*Schema `mapstructure:"schemas"`
+	// Models defines the model's configurations.
+	Models map[string]*ModelConfig `mapstructure:"models"`
 
 	// StrictUnmarshalMode is the flag that defines if the unmarshaling should be in a
 	// strict mode that checks if incoming values are all known to the controller
@@ -31,8 +27,8 @@ type Controller struct {
 	// EncodeLinks is the boolean used for encoding the links in the jsonapi encoder
 	EncodeLinks bool `mapstructure:"encode_links"`
 
-	// Debug sets the debug mode for the controller.
-	Debug bool `mapstructure:"debug"`
+	// LogLevel is the current logging level
+	LogLevel string `mapstructure:"log_level" validate:"oneof=debug3 debug2 debug info warning error critical"`
 
 	// Repositories contains the connection configs for the given repository instance name
 	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
@@ -57,51 +53,54 @@ type Controller struct {
 }
 
 // MapRepositories maps the repositories definitions from the controller with the model's repositories.
-func (c *Controller) MapRepositories(s *Schema) error {
-	if c.Repositories == nil {
-		return errors.New("no repositories found within the config")
-	}
-
-	for _, model := range s.Models {
-		if model.Repository == nil {
-			var reponame string
-			if reponame = model.RepositoryName; reponame == "" {
-				log.Debugf("Model: %s config have no Repository nor RepositoryName defined. Setting to default repository", model.Collection)
-				reponame = c.DefaultRepositoryName
-			}
-			repoConfig, ok := c.Repositories[reponame]
-			if !ok {
-				return fmt.Errorf("No repository config definition found for the repository: %s", reponame)
-			}
-			model.Repository = repoConfig
-			log.Debugf("Mapped repositpory: %s for the model: %s", reponame, model.Collection)
+func (c *Controller) MapRepositories() error {
+	log.Debug3("Mapping repositories to model configs")
+	for _, model := range c.Models {
+		if model.Repository != nil {
+			continue
 		}
-	}
+		log.Debug2f("Mapping repository for model: '%s'", model.Collection)
 
-	return nil
-}
-
-// SetDefaultRepository sets the default repository if defined.
-func (c *Controller) SetDefaultRepository() error {
-	if c.DefaultRepository != nil && c.DefaultRepositoryName != "" {
-		if c.Repositories == nil {
-			c.Repositories = map[string]*Repository{}
+		var reponame string
+		if reponame = model.RepositoryName; reponame == "" {
+			log.Debugf("Model: %s config have no Repository nor RepositoryName defined. Setting to default repository", model.Collection)
+			reponame = c.DefaultRepositoryName
 		}
-		c.Repositories[c.DefaultRepositoryName] = c.DefaultRepository
-	} else if repoName := c.DefaultRepositoryName; repoName != "" && len(c.Repositories) > 0 {
-		repo, ok := c.Repositories[repoName]
+
+		repoConfig, ok := c.Repositories[reponame]
 		if !ok {
-			return fmt.Errorf("default repository: %s not defined in the ControllerConfig.Repository map", repoName)
+			log.Errorf("Repository: '%s' not found within configuration repositories: %v", reponame, c.Repositories)
+			return fmt.Errorf("no repository config definition found for the: '%s' repository name", reponame)
 		}
-		c.DefaultRepository = repo
-	} else if len(c.Repositories) == 1 {
-		for repoName, repo := range c.Repositories {
-			c.DefaultRepositoryName = repoName
-			c.DefaultRepository = repo
-		}
-	} else {
-		return errors.New("No repositories found within the config")
+		model.Repository = repoConfig
+		log.Debugf("Mapped repositpory: %s for the model: %s", reponame, model.Collection)
 	}
 
 	return nil
 }
+
+// // SetDefaultRepository sets the default repository if defined.
+// func (c *Controller) SetDefaultRepository() error {
+// 	if c.DefaultRepository != nil && c.DefaultRepositoryName != "" {
+// 		if c.Repositories == nil {
+// 			c.Repositories = map[string]*Repository{}
+// 		}
+
+// 		c.Repositories[c.DefaultRepositoryName] = c.DefaultRepository
+// 	} else if repoName := c.DefaultRepositoryName; repoName != "" && len(c.Repositories) > 0 {
+// 		repo, ok := c.Repositories[repoName]
+// 		if !ok {
+// 			return fmt.Errorf("default repository: %s not defined in the ControllerConfig.Repository map", repoName)
+// 		}
+// 		c.DefaultRepository = repo
+// 	} else if len(c.Repositories) == 1 {
+// 		for repoName, repo := range c.Repositories {
+// 			c.DefaultRepositoryName = repoName
+// 			c.DefaultRepository = repo
+// 		}
+// 	} else {
+// 		return errors.New("no repositories found within the config")
+// 	}
+
+// 	return nil
+// }

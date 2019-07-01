@@ -30,8 +30,7 @@ func TestGetPrimaryFieldValues(t *testing.T) {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
-	require.NoError(t, err)
+	schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
 
@@ -101,8 +100,7 @@ func TestGetForeignKeyValues(t *testing.T) {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	schm, err := models.NewModelSchemas(namer.NamingSnake, config.ReadDefaultControllerConfig())
-	require.NoError(t, err)
+	schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
 

@@ -10,7 +10,6 @@ import (
 
 // DefaultConfig is the controller default config used with the Default function
 var (
-	DefaultConfig        = config.ReadDefaultControllerConfig()
 	DefaultTestingConfig *config.Controller
 )
 
@@ -29,7 +28,7 @@ func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
 		cfg = DefaultTestingConfig
 	}
 	if testing.Verbose() {
-		cfg.Debug = true
+		cfg.LogLevel = "debug3"
 	}
 
 	c, err := newController(cfg)
@@ -40,7 +39,7 @@ func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
 
 // NewDefault creates new default controller based on the default config
 func NewDefault() *Controller {
-	c, err := newController(DefaultConfig)
+	c, err := newController(config.ReadDefaultControllerConfig())
 	if err != nil {
 		panic(err)
 	}

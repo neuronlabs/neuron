@@ -13,10 +13,12 @@ import (
 	"github.com/neuronlabs/neuron/internal/controller"
 )
 
+// new -> config ( set repositories -> set default if any exists )  -> register repositories -> register models (if no default repository found error)
+
 // DefaultController is the Default controller used if no 'controller' is provided for operations
 var DefaultController *Controller
 
-// Default returns the default controller
+// Default returns current default controller.
 func Default() *Controller {
 	if DefaultController == nil {
 		DefaultController = (*Controller)(controller.Default())
@@ -24,21 +26,22 @@ func Default() *Controller {
 	return DefaultController
 }
 
-// NewDefault returns new default controller
+// NewDefault creates and returns new default Controller.
 func NewDefault() *Controller {
 	return (*Controller)(controller.NewDefault())
 }
 
-// SetDefault sets the default Controller to the provided
+// SetDefault sets given Controller 'c' as the default.
 func SetDefault(c *Controller) {
 	controller.SetDefault(c.internal())
 }
 
 // Controller is the structure that controls whole jsonapi behavior.
-// It contains repositories, model definitions, query builders and it's own config
+// It contains repositories, model definitions, query builders and it's own config.
 type Controller controller.Controller
 
-// MustGetNew gets the
+// MustGetNew creates new controller for given config 'cfg' and 'logger' (optionally).
+// Panics on error.
 func MustGetNew(cfg *config.Controller, logger ...unilogger.LeveledLogger) *Controller {
 	c, err := new(cfg, logger...)
 	if err != nil {
@@ -49,7 +52,7 @@ func MustGetNew(cfg *config.Controller, logger ...unilogger.LeveledLogger) *Cont
 
 }
 
-// New creates new controller for given config
+// New creates new controller for given config 'cfg' and 'logger' (optionally).
 func New(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*Controller, error) {
 	c, err := new(cfg, logger...)
 	if err != nil {
@@ -57,6 +60,11 @@ func New(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*Controller
 	}
 
 	return (*Controller)(c), nil
+}
+
+// GetRepository gets the repository for the provided model.
+func (c *Controller) GetRepository(model interface{}) (repository.Repository, error) {
+	return c.internal().GetRepository(model)
 }
 
 // ModelStruct gets the model struct on the base of the provided model
@@ -73,29 +81,21 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	return c.internal().RegisterModels(models...)
 }
 
-// func (c *Controller) RegisterRepository(repo )
-
-// Schema gets the schema by it's name
-func (c *Controller) Schema(schemaName string) (*mapping.Schema, bool) {
-	s, ok := c.internal().ModelSchemas().Schema(schemaName)
-	if ok {
-		return (*mapping.Schema)(s), ok
+// RegisterRepository registers provided repository for given 'name' and with with given 'cfg' config.
+func (c *Controller) RegisterRepository(name string, cfg *config.Repository) error {
+	if err := cfg.Validate(); err != nil {
+		return err
 	}
-	return nil, ok
+	return c.internal().RegisterRepository(name, cfg)
 }
 
-// Schemas gets the controller defined schemas
-func (c *Controller) Schemas() (schemas []*mapping.Schema) {
-	for _, s := range c.internal().ModelSchemas().Schemas() {
-		schemas = append(schemas, (*mapping.Schema)(s))
-	}
-	return schemas
-}
-
-// Close closes all repositories
+// Close closes all repository instances.
 func (c *Controller) Close() error {
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	repository.CloseAll(ctx)
+
 	return nil
 }
 

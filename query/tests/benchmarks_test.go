@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal/query/scope"
 )
@@ -61,7 +60,7 @@ func BenchmarkScopeCreate(b *testing.B) {
 		b.Run("HasOne", func(b *testing.B) {
 			c := (*controller.Controller)(c)
 
-			repo, err := repository.GetRepository(c, HasOneModel{})
+			repo, err := c.GetRepository(HasOneModel{})
 			require.NoError(b, err)
 
 			hasOne, ok := repo.(*mocks.Repository)
@@ -78,7 +77,7 @@ func BenchmarkScopeCreate(b *testing.B) {
 			}).Return(nil)
 			hasOne.On("Commit", mock.Anything, mock.Anything).Return(nil)
 
-			repo, err = repository.GetRepository(c, ForeignModel{})
+			repo, err = c.GetRepository(ForeignModel{})
 			require.NoError(b, err)
 
 			foreign, ok := repo.(*mocks.Repository)

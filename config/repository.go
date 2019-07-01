@@ -1,13 +1,19 @@
 package config
 
 import (
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron/log"
 )
 
 // Repository defines the repository configuration variables.
 type Repository struct {
 	// DriverName defines the name for the repository driver
-	DriverName string `mapstructure:"driver_name"`
+	DriverName string `mapstructure:"driver_name" validate:"required"`
 
 	// Host defines the access hostname or the ip address
 	Host string `mapstructure:"host" validate:"hostname|ip"`
@@ -42,4 +48,59 @@ type Repository struct {
 
 	// SSLMode defines if the ssl is enabled
 	SSLMode string `mapstructure:"sslmode"`
+}
+
+// Parse parses the repository configuration from the whitespace seperated key value string.
+// I.e. 'host=172.16.1.1 port=5432 username=some password=pass drivername=pq'
+func (r *Repository) Parse(s string) error {
+	spaceSplit := strings.Split(s, " ")
+	for _, pair := range spaceSplit {
+		eqSign := strings.IndexRune(pair, '=')
+		if eqSign == -1 {
+			return errors.Newf(class.RepositoryConfigInvalid, "invalid repository config, key value pair: '%s' - equal sign not found", pair)
+		}
+
+		key := pair[:eqSign]
+		value := pair[eqSign+1:]
+		switch key {
+		case "driver_name", "driver":
+			r.DriverName = value
+		case "host", "hostname":
+			r.Host = value
+		case "path":
+			r.Path = value
+		case "port":
+			port, err := strconv.Atoi(value)
+			if err != nil {
+				return errors.Newf(class.RepositoryConfigInvalid, "repository port configuration is not an integer: '%s'", value)
+			}
+			r.Port = port
+		case "protocol":
+			r.Protocol = value
+		case "raw_url":
+			r.RawURL = value
+		case "username", "user":
+			r.Username = value
+		case "password":
+			r.Password = value
+		case "max_timeout":
+			d, err := time.ParseDuration(value)
+			if err != nil {
+				return errors.Newf(class.RepositoryConfigInvalid, "repository config max_timeout parse duration failed: '%v'", err)
+			}
+			r.MaxTimeout = &d
+		case "dbname":
+			r.DBName = value
+		case "sslmode":
+			r.SSLMode = value
+		default:
+			log.Debugf("Invalid repository configuration key: '%s'", key)
+		}
+	}
+	return nil
+}
+
+// Validate validates the repository config.
+func (r *Repository) Validate() error {
+	return validate.Struct(r)
 }

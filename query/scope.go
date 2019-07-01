@@ -15,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query/filters"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal"
 	internalController "github.com/neuronlabs/neuron/internal/controller"
@@ -462,6 +461,9 @@ func (s *Scope) SetFieldset(fields ...interface{}) error {
 // SortBy adds the sort fields into given scope.
 // If the scope already have sorted fields or the fields are duplicated returns error.
 func (s *Scope) SortBy(fields ...string) error {
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("[SCOPE][%s] Sorting by fields: %v ", s.ID(), fields)
+	}
 	if s.internal().HaveSortFields() {
 		sortFields, err := s.internal().CreateSortFields(false, fields...)
 		if err != nil {
@@ -563,7 +565,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 	// set the transaction to the context
 	s.StoreSet(internal.TxStateStoreKey, txn)
 
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	repo, err := s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		log.Errorf("No repository found for the %s model. %s", s.Struct().Collection(), err)
 		return nil, err

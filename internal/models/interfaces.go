@@ -4,8 +4,3 @@ package models
 type Collectioner interface {
 	CollectionName() string
 }
-
-// SchemaNamer is the interface used to get the schema name from the model.
-type SchemaNamer interface {
-	SchemaName() string
-}

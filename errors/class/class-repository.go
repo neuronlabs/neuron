@@ -14,6 +14,7 @@ func registerRepositoryClasses() {
 	registerRepositoryFactory()
 	registerRepositoryModel()
 	registerRepostioryUnmappedError()
+	registerRepositoryConfig()
 }
 
 /**
@@ -208,10 +209,30 @@ func registerRepositoryModel() {
 	RepositoryModelTags = MnrRepositoryModel.MustRegisterIndex("Tags", "repository specific tags issues").Class()
 }
 
-// RepositoryUnmappedError is the error 'MjrRepository' classification used for non errors not mapped for the
+// RepositoryUnmappedError is the error 'MjrRepository' classification used for unmapped
 // repository specific error classes, types or codes.
 var RepositoryUnmappedError Class
 
 func registerRepostioryUnmappedError() {
 	RepositoryUnmappedError = MustNewMinorClass(MjrRepository.MustRegisterMinor("Unmapped Error", "unmapped repository errors"))
+}
+
+var (
+	// MnrRepositoryConfig is the 'MjrRepository' error classification for repository configurations
+	MnrRepositoryConfig Minor
+
+	// RepositoryConfigAlreadyRegistered is the 'MjrRepository', 'MnrRepositoryConfig' error classification
+	// for already registered repository configurations.
+	RepositoryConfigAlreadyRegistered Class
+
+	// RepositoryConfigInvalid is the 'MjrRepository', 'MnrRepositoryConfig' error classification
+	// for invalid repository configuration.
+	RepositoryConfigInvalid Class
+)
+
+func registerRepositoryConfig() {
+	MnrRepositoryConfig = MjrRepository.MustRegisterMinor("Config", "repository configurations")
+
+	RepositoryConfigAlreadyRegistered = MnrRepositoryConfig.MustRegisterIndex("Already Registerd", "repository configuration already exists").Class()
+	RepositoryConfigInvalid = MnrRepositoryConfig.MustRegisterIndex("Invalid", "invalid repository configuration").Class()
 }

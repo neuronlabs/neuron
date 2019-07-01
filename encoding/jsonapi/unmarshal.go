@@ -143,7 +143,7 @@ func unmarshalScope(
 		mStruct = (*models.ModelStruct)(m)
 	default:
 		var err error
-		mStruct, err = c.ModelSchemas().GetModelStruct(model)
+		mStruct, err = c.ModelMap().GetModelStruct(model)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func unmarshal(
 		return nil, errors.New(class.EncodingUnmarshalInvalidOutput, "invalid output 'model'")
 	}
 
-	mStruct, err := c.ModelSchemas().GetModelStruct(model)
+	mStruct, err := c.ModelMap().GetModelStruct(model)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func unmarshal(
 			return nil, errors.New(class.EncodingUnmarshalInvalidType, "provided invalid input data type")
 		}
 
-		mStruct, err := c.ModelSchemas().ModelByType(t.Elem())
+		mStruct := c.ModelMap().Get(t.Elem())
 		if mStruct == nil {
 			return nil, err
 		}
@@ -389,18 +389,9 @@ func unmarshalNode(
 	modelValue reflect.Value,
 	included *map[string]*node,
 ) error {
-	var (
-		schema *models.Schema
-		err    error
-	)
+	var err error
 
-	schema, err = c.ModelSchemas().SchemaByType(modelValue.Type())
-	if err != nil {
-		log.Debugf("getSchemaByType failed: %v", err)
-		return err
-	}
-
-	mStruct := schema.ModelByCollection(data.Type)
+	mStruct := c.ModelMap().GetByCollection(data.Type)
 	if mStruct == nil {
 		log.Debugf("Invalid collection type: %s", data.Type)
 		err := errors.New(class.EncodingUnmarshalCollection, "unmarshaling invalid collection name")

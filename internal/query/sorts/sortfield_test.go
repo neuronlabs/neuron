@@ -20,10 +20,9 @@ func TestSetRelationScopeSort(t *testing.T) {
 		log.SetLevel(log.LDEBUG2)
 	}
 
-	ms, err := models.NewModelSchemas(namer.NamingKebab, config.ReadDefaultControllerConfig())
-	require.NoError(t, err)
+	ms := models.NewModelMap(namer.NamingKebab, config.ReadDefaultControllerConfig())
 
-	err = ms.RegisterModels(&blog{}, &post{}, &comment{})
+	err := ms.RegisterModels(&blog{}, &post{}, &comment{})
 	require.NoError(t, err)
 
 	mStruct, err := ms.GetModelStruct(&blog{})

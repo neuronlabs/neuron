@@ -15,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal"
 )
@@ -61,7 +60,7 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := s.Controller().GetRepository(s.Struct())
 		require.NoError(t, err)
 
 		repo, ok := r.(*mocks.Repository)
@@ -83,7 +82,7 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testBeforeDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := s.Controller().GetRepository(s.Struct())
 		require.NoError(t, err)
 
 		repo, ok := r.(*mocks.Repository)
@@ -105,7 +104,7 @@ func TestDelete(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &testAfterDeleter{ID: 1})
 		require.NoError(t, err)
 
-		r, err := repository.GetRepository(s.Controller(), s.Struct())
+		r, err := s.Controller().GetRepository(s.Struct())
 		require.NoError(t, err)
 
 		repo, ok := r.(*mocks.Repository)
@@ -147,7 +146,7 @@ func TestDelete(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
 
-			r, _ := repository.GetRepository(s.Controller(), s.Struct())
+			r, _ := s.Controller().GetRepository(s.Struct())
 			repo := r.(*mocks.Repository)
 
 			defer clearRepository(repo)
@@ -172,7 +171,7 @@ func TestDelete(t *testing.T) {
 			model, err := c.GetModelStruct(&deleteTMRelated{})
 			require.NoError(t, err)
 
-			mr, err := repository.GetRepository(s.Controller(), ((*mapping.ModelStruct)(model)))
+			mr, err := s.Controller().GetRepository(((*mapping.ModelStruct)(model)))
 			require.NoError(t, err)
 
 			repo2, ok := mr.(*mocks.Repository)
@@ -222,7 +221,7 @@ func TestDelete(t *testing.T) {
 
 			s, err := query.NewC((*controller.Controller)(c), tm)
 			require.NoError(t, err)
-			r, _ := repository.GetRepository(s.Controller(), s.Struct())
+			r, _ := s.Controller().GetRepository(s.Struct())
 
 			// prepare the transaction
 			repo := r.(*mocks.Repository)
@@ -239,7 +238,7 @@ func TestDelete(t *testing.T) {
 			model, err := c.GetModelStruct(&deleteTMRelated{})
 			require.NoError(t, err)
 
-			m2Repo, err := repository.GetRepository(s.Controller(), (*mapping.ModelStruct)(model))
+			m2Repo, err := s.Controller().GetRepository((*mapping.ModelStruct)(model))
 			require.NoError(t, err)
 
 			repo2, ok := m2Repo.(*mocks.Repository)
@@ -300,7 +299,7 @@ func TestDelete(t *testing.T) {
 				s, err := query.NewC((*controller.Controller)(c), model)
 				require.NoError(t, err)
 
-				hasOneRepo, err := repository.GetRepository((*controller.Controller)(c), model)
+				hasOneRepo, err := c.GetRepository(model)
 				require.NoError(t, err)
 
 				repo, ok := hasOneRepo.(*mocks.Repository)
@@ -308,7 +307,7 @@ func TestDelete(t *testing.T) {
 
 				defer clearRepository(repo)
 
-				foreignRepo, err := repository.GetRepository((*controller.Controller)(c), model.HasOne)
+				foreignRepo, err := c.GetRepository(model.HasOne)
 				require.NoError(t, err)
 
 				frepo, ok := foreignRepo.(*mocks.Repository)
@@ -401,7 +400,7 @@ func TestDelete(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), model)
 			require.NoError(t, err)
 
-			mr, err := repository.GetRepository(c, model)
+			mr, err := c.GetRepository(model)
 			require.NoError(t, err)
 
 			hasMany, ok := mr.(*mocks.Repository)
@@ -430,7 +429,7 @@ func TestDelete(t *testing.T) {
 				}
 			}).Return(nil)
 
-			fr, err := repository.GetRepository(c, &ForeignModel{})
+			fr, err := c.GetRepository(&ForeignModel{})
 			require.NoError(t, err)
 
 			foreignModel := fr.(*mocks.Repository)
@@ -518,7 +517,7 @@ func TestDelete(t *testing.T) {
 		t.Run("Many2Many", func(t *testing.T) {
 			model := &Many2ManyModel{ID: 4}
 
-			r, err := repository.GetRepository(c, model)
+			r, err := c.GetRepository(model)
 			require.NoError(t, err)
 
 			many2many, ok := r.(*mocks.Repository)
@@ -526,7 +525,7 @@ func TestDelete(t *testing.T) {
 
 			defer clearRepository(many2many)
 
-			r, err = repository.GetRepository(c, RelatedModel{})
+			r, err = c.GetRepository(RelatedModel{})
 			require.NoError(t, err)
 
 			relatedModel, ok := r.(*mocks.Repository)
@@ -534,7 +533,7 @@ func TestDelete(t *testing.T) {
 
 			defer clearRepository(relatedModel)
 
-			r, err = repository.GetRepository(c, JoinModel{})
+			r, err = c.GetRepository(JoinModel{})
 			require.NoError(t, err)
 
 			joinModel, ok := r.(*mocks.Repository)

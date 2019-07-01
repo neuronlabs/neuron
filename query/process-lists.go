@@ -8,7 +8,6 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
 )
 
 var (
@@ -36,7 +35,7 @@ func listFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	repo, err := s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		log.Debug("RepositoryByModel failed: %v", s.Struct().Type().Name())
 		return err

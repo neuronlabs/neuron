@@ -263,7 +263,7 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 	log.Debug3f("Scope[%s][%s] Commits transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
 	var repo repository.Repository
-	repo, err = repository.GetRepository(s.Controller(), s.Struct())
+	repo, err = s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
 		return
@@ -291,7 +291,7 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 	log.Debug3f("Scope[%s][%s] Rolls back transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
 
 	var repo repository.Repository
-	repo, err = repository.GetRepository(s.Controller(), s.Struct())
+	repo, err = s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
 		results <- err

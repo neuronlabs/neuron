@@ -11,7 +11,6 @@ import (
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/mocks"
-	"github.com/neuronlabs/neuron/repository"
 )
 
 type beforeGetter struct {
@@ -54,7 +53,7 @@ func TestGet(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &getter{})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 
@@ -72,7 +71,7 @@ func TestGet(t *testing.T) {
 
 		require.NotNil(t, s.Value)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 
@@ -88,7 +87,7 @@ func TestGet(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &afterGetter{})
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 

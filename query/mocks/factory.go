@@ -14,6 +14,7 @@ const (
 )
 
 func init() {
+	// fmt.Printf("RegisterFactory: %v", debug.Stack())
 	repository.RegisterFactory(&Factory{})
 }
 
@@ -28,9 +29,9 @@ func (f *Factory) New(s repository.ModelStructer, model *mapping.ModelStruct) (r
 	return &Repository{}, nil
 }
 
-// RepositoryName returns the factory repository name
+// DriverName returns the factory repository name
 // Implements repository.Repository
-func (f *Factory) RepositoryName() string {
+func (f *Factory) DriverName() string {
 	return repoName
 }
 

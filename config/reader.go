@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/spf13/viper"
+	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/neuronlabs/neuron/log"
 )
@@ -9,6 +10,7 @@ import (
 var (
 	external      bool
 	defaultConfig *Controller
+	validate      = validator.New()
 )
 
 // ViperSetDefaults sets the default values for the viper config.
@@ -81,20 +83,18 @@ func ReadControllerConfig(name, path string) (*Controller, error) {
 }
 
 func readDefaultConfig() *Controller {
-	if defaultConfig == nil {
-		v := viper.New()
-		setDefaults(v)
 
-		c := &Controller{}
+	v := viper.New()
+	setDefaults(v)
 
-		if err := v.Unmarshal(c); err != nil {
-			log.Debugf("Unmarshaling Config failed: %v", err)
-			panic(err)
-		}
-		defaultConfig = c
+	c := &Controller{}
+
+	if err := v.Unmarshal(c); err != nil {
+		log.Debugf("Unmarshaling Config failed: %v", err)
+		panic(err)
 	}
 
-	return defaultConfig
+	return c
 }
 
 // Default values
@@ -105,13 +105,10 @@ func setDefaults(v *viper.Viper) {
 func setDefaultControllerConfigs(v *viper.Viper) {
 	// Set defaults for the controller
 	keys := map[string]interface{}{
-		"naming_convention": "snake",
-		// "flags.return_links":            true,
-		// "flags.use_filter_values_limit": true,
-		// "flags.return_patch_content":    true,
+		"naming_convention":      "snake",
 		"create_validator_alias": "create",
 		"patch_validator_alias":  "patch",
-		"default_schema":         "api",
+		"log_level":              "info",
 		"processor":              DefaultProcessorConfig(),
 	}
 

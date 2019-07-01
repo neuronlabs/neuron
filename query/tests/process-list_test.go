@@ -15,7 +15,6 @@ import (
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filters"
 	"github.com/neuronlabs/neuron/query/mocks"
-	"github.com/neuronlabs/neuron/repository"
 )
 
 type beforeLister struct {
@@ -59,7 +58,7 @@ func TestList(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 
@@ -76,7 +75,7 @@ func TestList(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 
@@ -93,7 +92,7 @@ func TestList(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &v)
 		require.NoError(t, err)
 
-		r, _ := repository.GetRepository(s.Controller(), s.Struct())
+		r, _ := s.Controller().GetRepository(s.Struct())
 
 		repo := r.(*mocks.Repository)
 
@@ -140,10 +139,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			require.NoError(t, s.AddStringFilter("[relation_models][relation][some_attr][$eq]", "test-value"))
 
-			repoRoot, err := repository.GetRepository(s.Controller(), &relationModel{})
+			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
 
-			repoRelated, err := repository.GetRepository(s.Controller(), &relatedModel{})
+			repoRelated, err := s.Controller().GetRepository(&relatedModel{})
 			require.NoError(t, err)
 
 			rr := repoRoot.(*mocks.Repository)
@@ -196,7 +195,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			require.NoError(t, s.AddStringFilter("[relation_models][relation][id][$eq]", 1))
 
-			repoRoot, err := repository.GetRepository(s.Controller(), &relationModel{})
+			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
 
 			rr := repoRoot.(*mocks.Repository)
@@ -231,10 +230,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 		require.NoError(t, s.AddStringFilter("[related_models][relation][id][$eq]", "1"))
 
-		relatedRepo, err := repository.GetRepository(s.Controller(), &relatedModel{})
+		relatedRepo, err := s.Controller().GetRepository(&relatedModel{})
 		require.NoError(t, err)
 
-		relationRepo, err := repository.GetRepository(s.Controller(), &relationModel{})
+		relationRepo, err := s.Controller().GetRepository(&relationModel{})
 		require.NoError(t, err)
 
 		relation := relationRepo.(*mocks.Repository)
@@ -318,7 +317,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			require.NoError(t, s.AddStringFilter("[multi_related_models][relations][id][$in]", "1", "2"))
 
-			relationRepo, err := repository.GetRepository(s.Controller(), &relationModel{})
+			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
 
 			// handle initial filter model list.
@@ -345,7 +344,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				(*v) = append((*v), []*relationModel{{ID: 1, FK: 3}, {ID: 2, FK: 5}, {ID: 3, FK: 3}}...)
 			}).Return(nil)
 
-			relatedRepo, err := repository.GetRepository(s.Controller(), &multiRelatedModel{})
+			relatedRepo, err := s.Controller().GetRepository(&multiRelatedModel{})
 			require.NoError(t, err)
 
 			multi := relatedRepo.(*mocks.Repository)
@@ -434,7 +433,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			require.NoError(t, s.AddStringFilter("[multi_related_models][relations][id][$in]", "1", "2"))
 
-			relationRepo, err := repository.GetRepository(s.Controller(), &relationModel{})
+			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
 
 			// handle initial filter model list.
@@ -480,12 +479,12 @@ func TestListRelationshipFilters(t *testing.T) {
 			err = s.AddStringFilter("[many_2_many_models][many_2_many][id][$in]", "1", "2", "4")
 			require.NoError(t, err)
 
-			m2mRepo, err := repository.GetRepository(c, s.Struct())
+			m2mRepo, err := c.GetRepository(s.Struct())
 			require.NoError(t, err)
 
 			m2m := m2mRepo.(*mocks.Repository)
 
-			jmRepo, err := repository.GetRepository(c, JoinModel{})
+			jmRepo, err := c.GetRepository(JoinModel{})
 			require.NoError(t, err)
 
 			joinModel := jmRepo.(*mocks.Repository)
@@ -628,17 +627,17 @@ func TestListRelationshipFilters(t *testing.T) {
 				err = s.AddStringFilter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
 				require.NoError(t, err)
 
-				m2mRepo, err := repository.GetRepository(c, s.Struct())
+				m2mRepo, err := c.GetRepository(s.Struct())
 				require.NoError(t, err)
 
 				m2m := m2mRepo.(*mocks.Repository)
 
-				jmRepo, err := repository.GetRepository(c, JoinModel{})
+				jmRepo, err := c.GetRepository(JoinModel{})
 				require.NoError(t, err)
 
 				joinModel := jmRepo.(*mocks.Repository)
 
-				relatedRepo, err := repository.GetRepository(c, RelatedModel{})
+				relatedRepo, err := c.GetRepository(RelatedModel{})
 				require.NoError(t, err)
 
 				related := relatedRepo.(*mocks.Repository)
@@ -781,7 +780,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				err = s.AddStringFilter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
 				require.NoError(t, err)
 
-				relatedRepo, err := repository.GetRepository(c, RelatedModel{})
+				relatedRepo, err := c.GetRepository(RelatedModel{})
 				require.NoError(t, err)
 
 				related := relatedRepo.(*mocks.Repository)

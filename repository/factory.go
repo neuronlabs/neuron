@@ -12,7 +12,7 @@ type Factory interface {
 	FactoryCloser
 
 	// Namer gets the repository name for given factory.
-	Namer
+	DriverName() string
 
 	// New creates new instance of the Repository for given 'model'.
 	New(structer ModelStructer, model *mapping.ModelStruct) (Repository, error)

@@ -7,7 +7,6 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/errors/class"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
 
 	"github.com/neuronlabs/neuron/internal"
 	"github.com/neuronlabs/neuron/internal/query/scope"
@@ -45,7 +44,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	repo, err := repository.GetRepository(s.Controller(), s.Struct())
+	repo, err := s.Controller().GetRepository(s.Struct())
 	if err != nil {
 		return err
 	}

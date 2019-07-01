@@ -17,27 +17,27 @@ const (
 	defaultRepo   string = "repo"
 )
 
-func testingSchemas(t *testing.T) *ModelSchemas {
+func testingModelMap(t *testing.T) *ModelMap {
 	t.Helper()
 
 	cfg := config.ReadDefaultControllerConfig()
-	m, err := NewModelSchemas(namer.NamingSnake, cfg)
-	require.NoError(t, err)
+	m := NewModelMap(namer.NamingSnake, cfg)
 	return m
 }
 
+// TestRegisterModel tests the register model function.
 func TestRegisterModel(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)
 	}
 
-	s := testingSchemas(t)
+	m := testingModelMap(t)
 
 	t.Run("embedded", func(t *testing.T) {
-		err := s.RegisterModels(&embeddedModel{})
+		err := m.RegisterModels(&embeddedModel{})
 		assert.NoError(t, err)
 
-		ms, err := s.GetModelStruct(&embeddedModel{})
+		ms, err := m.GetModelStruct(&embeddedModel{})
 		require.NoError(t, err)
 
 		// get embedded attribute
@@ -62,5 +62,4 @@ func TestRegisterModel(t *testing.T) {
 			assert.Equal(t, []int{0, 3}, sField.getFieldIndex())
 		}
 	})
-
 }

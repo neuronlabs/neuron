@@ -29,6 +29,10 @@ func TestMarshal(t *testing.T) {
 		t.Helper()
 		c := controller.DefaultTesting(t, nil)
 
+		if testing.Verbose() {
+			log.SetLevel(log.LDEBUG3)
+		}
+
 		buf.Reset()
 		require.NoError(t, c.RegisterModels(models...))
 		return (*ctrl.Controller)(c)
@@ -197,7 +201,6 @@ func TestMarshal(t *testing.T) {
 			}
 		},
 		"Nested": func(t *testing.T) {
-
 			t.Run("Simple", func(t *testing.T) {
 				type NestedSub struct {
 					First int
@@ -254,7 +257,7 @@ func TestMarshal(t *testing.T) {
 
 func TestMarshalScope(t *testing.T) {
 	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
+		log.SetLevel(log.LDEBUG2)
 	}
 
 	t.Run("Included", func(t *testing.T) {
@@ -414,7 +417,7 @@ func TestMarshalScope(t *testing.T) {
 
 func blogController(t *testing.T) *controller.Controller {
 	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
+		log.SetLevel(log.LDEBUG2)
 	}
 
 	c := controller.DefaultTesting(t, nil)

@@ -34,7 +34,7 @@ func TestNestedFields(t *testing.T) {
 
 	setLogger()
 
-	ms := testingSchemas(t)
+	ms := testingModelMap(t)
 
 	err := ms.RegisterModels(modelWithNested{})
 	require.NoError(t, err)

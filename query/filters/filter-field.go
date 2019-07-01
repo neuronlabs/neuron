@@ -86,19 +86,7 @@ func newStringFilter(c *controller.Controller, filter string, schemaName string,
 		return nil, err
 	}
 
-	schemas := (*internalController.Controller)(c).ModelSchemas()
-	var schema *models.Schema
-	if schemaName != "" {
-		var ok bool
-		schema, ok = schemas.Schema(schemaName)
-		if !ok {
-			return nil, errors.New(class.ModelSchemaNotFound, "model's schema is not found")
-		}
-	} else {
-		schema = schemas.DefaultSchema()
-	}
-
-	mStruct := schema.ModelByCollection(params[0])
+	mStruct := (*internalController.Controller)(c).ModelMap().GetByCollection(params[0])
 	if mStruct == nil {
 		err := errors.New(class.QueryFilterUnknownCollection, "provided filter collection not found")
 		err.SetDetailf("Filter model: '%s' not found", params[0])

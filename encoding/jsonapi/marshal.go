@@ -103,20 +103,7 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 		return errors.New(class.EncodingMarshalInput, "provided value is not a struct based")
 	}
 
-	var schemaName string
-	schemaNamer, ok := reflect.New(t).Interface().(models.SchemaNamer)
-	if ok {
-		schemaName = schemaNamer.SchemaName()
-	} else {
-		schemaName = c.ModelSchemas().DefaultSchema().Name
-	}
-
-	schema, ok := c.ModelSchemas().Schema(schemaName)
-	if !ok {
-		return errors.Newf(class.EncodingMarshalModelNotMapped, "schema name: '%s' not found for the model: '%s'", schemaName, t.Name())
-	}
-
-	mStruct := schema.Model(t)
+	mStruct := c.ModelMap().Get(t)
 	if mStruct == nil {
 		return errors.Newf(class.EncodingMarshalModelNotMapped, "model: '%s' is not registered.", t.Name())
 	}
