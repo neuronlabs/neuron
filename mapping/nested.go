@@ -3,7 +3,7 @@ package mapping
 import (
 	"reflect"
 
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // NestedStruct is the structure that represtents nested attribute structure.

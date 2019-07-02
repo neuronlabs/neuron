@@ -4,10 +4,10 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/neuronlabs/neuron/common"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 var (

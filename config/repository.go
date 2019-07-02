@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Repository defines the repository configuration variables.
@@ -16,7 +16,7 @@ type Repository struct {
 	DriverName string `mapstructure:"driver_name" validate:"required"`
 
 	// Host defines the access hostname or the ip address
-	Host string `mapstructure:"host" validate:"hostname|ip"`
+	Host string `mapstructure:"host" validate:"isdefault|hostname|ip"`
 
 	// Path is the connection path, just after the protocol and
 	Path string `mapstructure:"path" validate:"isdefault|uri"`

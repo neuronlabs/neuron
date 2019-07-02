@@ -3,10 +3,10 @@ package mapping
 import (
 	"reflect"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/namer"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/namer"
 
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // ModelStruct is the structure definition for the imported models.

@@ -5,45 +5,47 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
-// FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute')
+// FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute').
 type FieldKind int
 
-// Enums for the field kind
+// Enums for the field kind.
 const (
-	// UnknownType is the unsupported unknown type of the struct field
+	// UnknownType is the unsupported unknown type of the struct field.
 	UnknownType FieldKind = iota
-	// KindPrimary is a 'primary' field
+
+	// KindPrimary is a 'primary' field.
 	KindPrimary
 
-	// KindAttribute is an 'attribute' field
+	// KindAttribute is an 'attribute' field.
 	KindAttribute
 
-	// KindClientID is id set by client
+	// KindClientID is id set by client.
 	KindClientID
 
-	// KindRelationshipSingle is a 'relationship' with single object
+	// KindRelationshipSingle is a 'relationship' with single object.
 	KindRelationshipSingle
 
-	// KindRelationshipMultiple is a 'relationship' with multiple objects
+	// KindRelationshipMultiple is a 'relationship' with multiple objects.
 	KindRelationshipMultiple
 
-	// KindForeignKey is the field type that is responsible for the relationships
+	// KindForeignKey is the field type that is responsible for the relationships.
 	KindForeignKey
 
-	// KindFilterKey is the field that is used only for special case filtering
+	// KindFilterKey is the field that is used only for special case filtering.
 	KindFilterKey
 
-	// KindNested is the field that is nested within another structfield
+	// KindNested is the field that is nested within another structfield.
 	KindNested
 )
 
+// String implements fmt.Stringer interface.
 func (f FieldKind) String() string {
 	switch f {
 	case KindPrimary:
@@ -69,65 +71,80 @@ type fieldFlag int
 
 // field flags
 const (
-	FDefault   fieldFlag = iota
+	// FDefault is a default flag value
+	FDefault fieldFlag = iota
+	// FOmitEmpty is a field flag for omitting empty value.
 	FOmitempty fieldFlag = 1 << (iota - 1)
+
+	// FIso8601 is a time field flag marking it usable with IS08601 formatting.
 	FIso8601
+
+	// FI18n is the i18n field flag.
 	FI18n
+
+	// FNoFilter is the 'no filter' field flag.
 	FNoFilter
+
+	// FLanguage is the language field flag.
 	FLanguage
+
+	// FHidden is a flag for hidden field.
 	FHidden
+
+	// FSortable is a flag used for sortable fields.
 	FSortable
+
+	// FClientID is flag used to mark field as allowable to set ClientID.
 	FClientID
 
-	// field type
+	// FTime  is a flag used to mark field type as a Time.
 	FTime
+
+	// FMap is a flag used to mark field as a map.
 	FMap
+
+	// FPtr is a flag used to mark field as a pointer.
 	FPtr
+
+	// FArray is a flag used to mark field as an array.
 	FArray
+
+	// FSlice is a flag used to mark field as a slice.
 	FSlice
+
+	// FBasePtr is flag used to mark field as a based pointer.
 	FBasePtr
 
+	// FNestedStruct is a flag used to mark field as a nested structure.
 	FNestedStruct
+
+	// FNested is a flag used to mark field as nested.
 	FNestedField
 )
 
-// StructField represents a field structure with its json api parameters
+// StructField represents a field structure with its neuron parameters
 // and model relationships.
 type StructField struct {
 	// model is the model struct that this field is part of.
 	mStruct *ModelStruct
 
-	// NeuronName is jsonapi field name - representation for json
+	// NeuronName is neuron field name.
 	neuronName string
 
 	// fieldKind
 	fieldKind FieldKind
 
 	reflectField reflect.StructField
-
-	// isListRelated
-	isListRelated bool
-
 	relationship *Relationship
 
 	// nested is the NestedStruct definition
-	nested *NestedStruct
-
+	nested     *NestedStruct
 	fieldFlags fieldFlag
 
 	fieldIndex []int
 
 	// store is the key value store used for the local usage
 	store map[string]interface{}
-}
-
-// NewStructField is the creator function for the struct field
-func NewStructField(
-	refField reflect.StructField,
-	mStruct *ModelStruct,
-) *StructField {
-	return &StructField{reflectField: refField, mStruct: mStruct}
-
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'
@@ -683,4 +700,9 @@ func (s *StructField) isNestedField() bool {
 // Implements Structfielder interface.
 func (s *StructField) Self() *StructField {
 	return s
+}
+
+// newStructField is the creator function for the struct field
+func newStructField(refField reflect.StructField, mStruct *ModelStruct) *StructField {
+	return &StructField{reflectField: refField, mStruct: mStruct}
 }

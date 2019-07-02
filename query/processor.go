@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/neuronlabs/neuron/common"
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 // processes contains registered processes by their name

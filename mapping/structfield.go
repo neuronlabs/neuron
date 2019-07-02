@@ -1,7 +1,7 @@
 package mapping
 
 import (
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/models"
 	"reflect"
 )
 

@@ -1,10 +1,10 @@
 package common
 
 import (
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
 
-	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.

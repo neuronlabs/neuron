@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
 const (

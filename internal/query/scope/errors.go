@@ -1,8 +1,8 @@
 package scope
 
 import (
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 func errNoRelationship(neuronName, included string) *errors.Error {

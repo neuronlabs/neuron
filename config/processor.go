@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
 // Processor is the config used for the scope processor.

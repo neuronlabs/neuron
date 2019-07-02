@@ -3,7 +3,7 @@ package models
 import (
 	"testing"
 
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 type baseModel struct {

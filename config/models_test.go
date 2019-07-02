@@ -9,7 +9,7 @@ import (
 
 	"github.com/neuronlabs/uni-logger"
 
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 func readConfigFile(t *testing.T, fileName string) {

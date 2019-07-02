@@ -4,25 +4,22 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"sync"
 	"time"
 	"unicode"
 
 	"github.com/jinzhu/inflection"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/neuron-core/internal"
+	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.
-// Allow concurrent safe gets and sets to the map.
 type ModelMap struct {
-	sync.RWMutex
 	models      map[reflect.Type]*ModelStruct
 	collections map[string]reflect.Type
 	Configs     map[string]*config.ModelConfig
@@ -31,7 +28,7 @@ type ModelMap struct {
 	NamerFunc         namer.Namer
 }
 
-// NewModelMap creates new model map
+// NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
 func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 	if c.Models == nil {
 		c.Models = make(map[string]*config.ModelConfig)
@@ -48,7 +45,7 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 	return modelMap
 }
 
-// ComputeNestedIncludedCount computes the limits for the nested included count for each model in each schema
+// ComputeNestedIncludedCount computes the limits for the nested included count for each model.
 func (m *ModelMap) ComputeNestedIncludedCount(limit int) {
 	for _, model := range m.models {
 		model.initComputeThisIncludedCount()
@@ -59,18 +56,13 @@ func (m *ModelMap) ComputeNestedIncludedCount(limit int) {
 	}
 }
 
-// Get is concurrent safe getter of model structs.
+// Get gets the *ModelStruct for the provided 'model'.
 func (m *ModelMap) Get(model reflect.Type) *ModelStruct {
-	m.RLock()
-	defer m.RUnlock()
-
 	return m.models[m.getType(model)]
 }
 
-// GetByCollection gets model by collection name
+// GetByCollection gets *ModelStruct by the 'collection'.
 func (m *ModelMap) GetByCollection(collection string) *ModelStruct {
-	m.RLock()
-	defer m.RUnlock()
 	t, ok := m.collections[collection]
 	if !ok || t == nil {
 		return nil
@@ -116,7 +108,7 @@ func (m *ModelMap) ModelByName(name string) *ModelStruct {
 func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	// iterate over models and register one by one
 	for _, model := range models {
-		// build the model's structure and set into schema's model map
+		// build the model's structure and set into model map.
 		mStruct, err := buildModelStruct(model, m.NamerFunc)
 		if err != nil {
 			return err
@@ -147,7 +139,6 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 				modelConfig.RepositoryName = repositoryNamer.RepositoryName()
 			}
 		}
-
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
 	}
 
@@ -172,12 +163,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	return nil
 }
 
-// Set sets the modelstruct for given map
-// If the model already exists the function returns an error
+// Set sets the *ModelStruct for given map.
+// If the model already exists the function returns an error.
 func (m *ModelMap) Set(value *ModelStruct) error {
-	m.Lock()
-	defer m.Unlock()
-
 	_, ok := m.models[value.modelType]
 	if ok {
 		return errors.Newf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
@@ -194,16 +182,12 @@ func (m *ModelMap) Set(value *ModelStruct) error {
 	return nil
 }
 
-// SetByCollection sets the model by it's collection
+// SetByCollection sets the model by it's collection.
 func (m *ModelMap) SetByCollection(ms *ModelStruct) {
-	m.Lock()
-	defer m.Unlock()
-
 	m.collections[ms.Collection()] = ms.Type()
 }
 
 func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
-
 	for _, relField := range model.RelationshipFields() {
 		relType := FieldsRelatedModelType(relField)
 
@@ -252,7 +236,6 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 }
 
 func (m *ModelMap) setRelationships() error {
-	// iterate over all models from schema
 	for _, model := range m.models {
 		for _, relField := range model.RelationshipFields() {
 			// relationship gets the relationship between the fields
@@ -538,7 +521,7 @@ func buildModelStruct(
 
 			var tagValues url.Values
 
-			structField := NewStructField(tField, modelStruct)
+			structField := newStructField(tField, modelStruct)
 			tagValues = structField.TagValues(tag)
 
 			structField.fieldIndex = make([]int, len(fieldIndex))

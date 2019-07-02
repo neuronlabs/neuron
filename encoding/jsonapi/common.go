@@ -1,7 +1,7 @@
 package jsonapi
 
 import (
-	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/controller"
 )
 
 var c = controller.Default()

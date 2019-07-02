@@ -1,19 +1,25 @@
 package paginations
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
-// Type is the pagination type definition enum
+// Type is the pagination type definition enum.
 type Type int
 
-// Enum defined for the scope's pagination
 const (
+	// TpOffset is the 'offset' based pagination type.
 	TpOffset Type = iota
+
+	// TpPage is the 'page' based pagination type.
 	TpPage
 )
 
+// String implements fmt.Stringer interface.
 func (t Type) String() string {
 	switch t {
 	case TpOffset:
@@ -25,18 +31,24 @@ func (t Type) String() string {
 	}
 }
 
-// Parameter Defines the given paginate paramater type
+// Parameter Defines the given paginate paramater type.
 type Parameter int
 
-// Parameter enum definition
 const (
+	// ParamLimit defines 'limit' of the pagination. Used for 'offset' based paginations.
 	ParamLimit Parameter = iota
+
+	// ParamOffset defines 'offset' of the pagination. Used for 'offset' based paginations.
 	ParamOffset
+
+	// ParamNumber defines the 'page number' of the pagination. Used for 'page' based paginations.
 	ParamNumber
+
+	// ParamSize defines 'page size' of the pagination. Used for 'page' based paginations.
 	ParamSize
 )
 
-// Pagination is a struct that keeps variables used to paginate the result
+// Pagination is a struct that keeps variables used to paginate the result.
 type Pagination struct {
 	first  int // first is the limit, or page number
 	second int // second is the offset or page size
@@ -45,7 +57,7 @@ type Pagination struct {
 	tp Type
 }
 
-// NewLimitOffset creates new limit offset pagination
+// NewLimitOffset creates new limit offset pagination.
 func NewLimitOffset(limit, offset int) *Pagination {
 	return &Pagination{
 		first:  limit,
@@ -54,7 +66,7 @@ func NewLimitOffset(limit, offset int) *Pagination {
 	}
 }
 
-// NewPaged creates new pagination of TpPage type
+// NewPaged creates new page based Pagination.
 func NewPaged(pageNumber, pageSize int) *Pagination {
 	return &Pagination{
 		first:  pageNumber,
@@ -63,27 +75,22 @@ func NewPaged(pageNumber, pageSize int) *Pagination {
 	}
 }
 
-// CheckPagination checks if the given pagination is valid
-func CheckPagination(p *Pagination) error {
-	return p.check()
-}
-
-// Check checks if the given pagination is valid
+// Check checks if the given pagination is valid.
 func (p *Pagination) Check() error {
 	return p.check()
 }
 
-// IsZero checks if the pagination were already set
+// IsZero checks if the pagination were already set.
 func (p *Pagination) IsZero() bool {
 	return p.first == 0 && p.second == 0 && p.tp == 0
 }
 
-// SetType sets the pagination type
+// SetType sets the pagination type.
 func (p *Pagination) SetType(tp Type) {
 	p.tp = tp
 }
 
-// SetLimitOffset sets the Pagination from the PageType into  OffsetType
+// SetLimitOffset sets the Pagination from the PageType into OffsetType.
 func (p *Pagination) SetLimitOffset() {
 	if p.tp == TpPage {
 		p.first = p.second
@@ -92,7 +99,7 @@ func (p *Pagination) SetLimitOffset() {
 	}
 }
 
-// SetValue sets the pagination value for given parameter
+// SetValue sets the pagination value for given parameter.
 func (p *Pagination) SetValue(val int, parameter Parameter) {
 	switch parameter {
 	case ParamLimit, ParamNumber:
@@ -102,12 +109,12 @@ func (p *Pagination) SetValue(val int, parameter Parameter) {
 	}
 }
 
-// Type gets the pagination type
+// Type gets the pagination type.
 func (p *Pagination) Type() Type {
 	return p.tp
 }
 
-// String implements Stringer interface
+// String implements fmt.Stringer interface.
 func (p *Pagination) String() string {
 	switch p.tp {
 	case TpOffset:
@@ -119,7 +126,7 @@ func (p *Pagination) String() string {
 	}
 }
 
-// GetLimitOffset gets the limit and offset values from the given pagination
+// GetLimitOffset gets the 'limit' and 'offset' values from the given pagination.
 func (p *Pagination) GetLimitOffset() (limit, offset int) {
 	switch p.tp {
 	case TpOffset:
@@ -128,11 +135,13 @@ func (p *Pagination) GetLimitOffset() (limit, offset int) {
 	case TpPage:
 		limit = p.second
 		offset = p.second * p.first
+	default:
+		log.Warningf("Unknown pagination type: '%v'", p.tp)
 	}
-	return
+	return limit, offset
 }
 
-// GetNumberSize gets the page number and size
+// GetNumberSize gets the 'page number' and 'page size' from the pagination.
 func (p *Pagination) GetNumberSize() (pageNumber, pageSize int) {
 	switch p.tp {
 	case TpOffset:
@@ -153,23 +162,34 @@ func (p *Pagination) check() error {
 }
 
 func (p *Pagination) checkValues() error {
-	if p.tp == TpOffset {
-		if p.first < 0 {
-			return errors.New("Pagination limit lower than -1")
-		}
-
-		if p.second < 0 {
-			return errors.New("Pagination offset lower than 0")
-		}
-		return nil
+	switch p.Type() {
+	case TpOffset:
+		return p.checkOffsetBasedValues()
+	case TpPage:
+		return p.checkPageBasedValues()
+	default:
+		return errors.Newf(class.QueryPaginationType, "unsupported pagination type: '%v'", p.Type())
 	}
+}
 
+func (p *Pagination) checkOffsetBasedValues() error {
 	if p.first < 0 {
-		return errors.New("Pagination page-number lower than 0")
+		return errors.New(class.QueryPaginationValue, "invalid pagination").SetDetail("Pagination limit lower than -1")
 	}
 
 	if p.second < 0 {
-		return errors.New("Pagination page-size lower than 0")
+		return errors.New(class.QueryPaginationValue, "invalid pagination").SetDetail("Pagination offset lower than 0")
+	}
+	return nil
+}
+
+func (p *Pagination) checkPageBasedValues() error {
+	if p.first < 0 {
+		return errors.New(class.QueryPaginationValue, "invalid pagination value").SetDetail("Pagination page-number lower than 0")
+	}
+
+	if p.second < 0 {
+		return errors.New(class.QueryPaginationValue, "invalid pagination value").SetDetail("Pagination page-size lower than 0")
 	}
 	return nil
 }

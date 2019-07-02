@@ -9,19 +9,19 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/filters"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/query/filters"
 
-	"github.com/neuronlabs/neuron/internal"
-	internalController "github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
-	internalFilters "github.com/neuronlabs/neuron/internal/query/filters"
-	"github.com/neuronlabs/neuron/internal/query/paginations"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal"
+	internalController "github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/models"
+	internalFilters "github.com/neuronlabs/neuron-core/internal/query/filters"
+	"github.com/neuronlabs/neuron-core/internal/query/paginations"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 // Scope is the query's structure that contains all information required to

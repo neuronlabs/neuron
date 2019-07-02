@@ -6,11 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/namer"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/namer"
 
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 func TestAutoSelectFields(t *testing.T) {

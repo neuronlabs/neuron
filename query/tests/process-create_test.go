@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/filters"
-	"github.com/neuronlabs/neuron/query/mocks"
+	ctrl "github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/query"
+	"github.com/neuronlabs/neuron-core/query/filters"
+	"github.com/neuronlabs/neuron-core/query/mocks"
 
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal"
+	"github.com/neuronlabs/neuron-core/internal/controller"
 )
 
 var (

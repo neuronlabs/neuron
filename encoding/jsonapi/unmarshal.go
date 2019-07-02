@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"time"
 
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query"
+	ctrl "github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/query"
 
-	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // Unmarshal unmarshals the incoming reader stream into provided value 'v'.
@@ -421,7 +421,7 @@ func unmarshalNode(
 		for attrName, attrValue := range data.Attributes {
 			modelAttr, ok := mStruct.Attribute(attrName)
 			if !ok || (ok && modelAttr.IsHidden()) {
-				if c.StrictUnmarshalMode {
+				if c.Config.StrictUnmarshalMode {
 					err := errors.New(class.EncodingUnmarshalUnknownField, "unknown field name")
 					err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", attrName, data.Type)
 					return err
@@ -442,7 +442,7 @@ func unmarshalNode(
 		for relName, relValue := range data.Relationships {
 			modelRel, ok := mStruct.RelationshipField(relName)
 			if !ok || (ok && modelRel.IsHidden()) {
-				if c.StrictUnmarshalMode {
+				if c.Config.StrictUnmarshalMode {
 					err := errors.New(class.EncodingUnmarshalUnknownField, "unknown field name")
 					err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", relName, data.Type)
 					return err
@@ -1146,7 +1146,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 	for mpName, mpVal := range mp {
 		nestedField, ok := models.NestedStructFields(n)[mpName]
 		if !ok {
-			if !c.StrictUnmarshalMode {
+			if !c.Config.StrictUnmarshalMode {
 				continue
 			}
 			err := errors.New(class.EncodingUnmarshalUnknownField, "nested field not found")

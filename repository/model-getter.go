@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron-core/mapping"
 )
 
 // ModelStructer gets the model struct from the given model.

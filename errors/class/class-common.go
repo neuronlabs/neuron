@@ -19,6 +19,10 @@ var (
 	// CommonLoggerNotImplement is the 'MjrCommon', 'MnrCommonLogger' error classification
 	// for logger's that doesn't implement some interface.
 	CommonLoggerNotImplement Class
+
+	// CommonLoggerUnknownLevel is the 'MjrCommon', 'MnrCommonLogger' error classification
+	// for unknown level logger.
+	CommonLoggerUnknownLevel Class
 )
 
 func registerCommonClasses() {
@@ -29,4 +33,5 @@ func registerCommonClasses() {
 
 	MnrCommonLogger = MjrCommon.MustRegisterMinor("Logger", "common logger issues")
 	CommonLoggerNotImplement = MnrCommonLogger.MustRegisterIndex("Not Implement", "logger issues that doesn't implement some interface").Class()
+	CommonLoggerUnknownLevel = MnrCommonLogger.MustRegisterIndex("Unknown Level", "unknown level issue").Class()
 }

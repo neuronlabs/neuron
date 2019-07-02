@@ -3,9 +3,9 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/common"
+	"github.com/neuronlabs/neuron-core/common"
 
-	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
 var (

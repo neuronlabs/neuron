@@ -4,16 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/neuronlabs/uni-logger"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
-
-	"github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/controller"
 )
-
-// new -> config ( set repositories -> set default if any exists )  -> register repositories -> register models (if no default repository found error)
 
 // DefaultController is the Default controller used if no 'controller' is provided for operations
 var DefaultController *Controller
@@ -40,10 +36,10 @@ func SetDefault(c *Controller) {
 // It contains repositories, model definitions, query builders and it's own config.
 type Controller controller.Controller
 
-// MustGetNew creates new controller for given config 'cfg' and 'logger' (optionally).
+// MustGetNew creates new controller for given provided 'cfg' config.
 // Panics on error.
-func MustGetNew(cfg *config.Controller, logger ...unilogger.LeveledLogger) *Controller {
-	c, err := new(cfg, logger...)
+func MustGetNew(cfg *config.Controller) *Controller {
+	c, err := new(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -52,14 +48,24 @@ func MustGetNew(cfg *config.Controller, logger ...unilogger.LeveledLogger) *Cont
 
 }
 
-// New creates new controller for given config 'cfg' and 'logger' (optionally).
-func New(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*Controller, error) {
-	c, err := new(cfg, logger...)
+// New creates new controller for given config 'cfg'.
+func New(cfg *config.Controller) (*Controller, error) {
+	c, err := new(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return (*Controller)(c), nil
+}
+
+// Close closes all repository instances.
+func (c *Controller) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	repository.CloseAll(ctx)
+
+	return nil
 }
 
 // GetRepository gets the repository for the provided model.
@@ -89,24 +95,8 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 	return c.internal().RegisterRepository(name, cfg)
 }
 
-// Close closes all repository instances.
-func (c *Controller) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	repository.CloseAll(ctx)
-
-	return nil
-}
-
-func new(cfg *config.Controller, logger ...unilogger.LeveledLogger) (*controller.Controller, error) {
-	var l unilogger.LeveledLogger
-
-	if len(logger) == 1 {
-		l = logger[0]
-	}
-
-	return controller.New(cfg, l)
+func new(cfg *config.Controller) (*controller.Controller, error) {
+	return controller.New(cfg)
 }
 
 func (c *Controller) internal() *controller.Controller {

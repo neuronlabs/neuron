@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/query"
+	"github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 type beforeGetter struct {

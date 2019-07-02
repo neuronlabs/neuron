@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron-core/repository"
 )
 
 var _ repository.Repository = &Repository{}

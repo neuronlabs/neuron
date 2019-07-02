@@ -1,20 +1,20 @@
 package tests
 
 import (
-	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron-core/controller"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron-core/query"
 
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 import (
 	// import and register mocks repository
-	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 type benchmarkType struct {

@@ -10,6 +10,8 @@
 // - query - used to query the model's repositories.
 // - mapping - contains the information about the mapped models
 //	their fields and settings.
+// - errors - used as a default error package for the neuron packages.
+// - errors/class - contains errors classification system for the neuron packages.
 // - encoding/jsonapi - allows to marshal and unmarshal the
 //	model's, and queries by the 'https://jsonapi.org/' specification
 // - log - is the logging interface for the neuron based applications.
@@ -18,4 +20,4 @@
 //	It is also used to get the repository/factory per model. A modular design
 //  allows to use and compile only required repositories.
 
-package neuron
+package ncore

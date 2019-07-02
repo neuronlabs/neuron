@@ -6,16 +6,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 
-	"github.com/neuronlabs/neuron/internal"
-	internalController "github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal"
+	internalController "github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // Tx is the scope's transaction model.

@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/filters"
-	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/query"
+	"github.com/neuronlabs/neuron-core/query/filters"
+	"github.com/neuronlabs/neuron-core/query/mocks"
 
-	"github.com/neuronlabs/neuron/internal"
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
 type testPatcher struct {

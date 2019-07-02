@@ -4,15 +4,15 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query/filters"
-	"github.com/neuronlabs/neuron/internal/query/sorts"
-	"github.com/neuronlabs/neuron/internal/safemap"
+	"github.com/neuronlabs/neuron-core/internal"
+	"github.com/neuronlabs/neuron-core/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/query/filters"
+	"github.com/neuronlabs/neuron-core/internal/query/sorts"
+	"github.com/neuronlabs/neuron-core/internal/safemap"
 )
 
 /**

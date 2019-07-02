@@ -7,15 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/common"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/query"
-	"github.com/neuronlabs/neuron/query/filters"
+	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/query"
+	"github.com/neuronlabs/neuron-core/query/filters"
 )
 
 import (
 	// mocks import and register mock repository
-	_ "github.com/neuronlabs/neuron/query/mocks"
+	_ "github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 type formatter struct {

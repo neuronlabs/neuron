@@ -3,7 +3,7 @@ package errors
 import (
 	"strings"
 
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 // MultiError is the slice of errors parsable into a single error.

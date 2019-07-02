@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/common"
+	"github.com/neuronlabs/neuron-core/common"
 )
 
 // TestFormatQuery tests the FormatQuery method.

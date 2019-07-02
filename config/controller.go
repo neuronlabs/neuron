@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Controller defines the configuration for the Controller.
@@ -28,7 +28,7 @@ type Controller struct {
 	EncodeLinks bool `mapstructure:"encode_links"`
 
 	// LogLevel is the current logging level
-	LogLevel string `mapstructure:"log_level" validate:"oneof=debug3 debug2 debug info warning error critical"`
+	LogLevel string `mapstructure:"log_level" validate:"isdefault|oneof=debug3 debug2 debug info warning error critical"`
 
 	// Repositories contains the connection configs for the given repository instance name
 	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
@@ -78,29 +78,3 @@ func (c *Controller) MapRepositories() error {
 
 	return nil
 }
-
-// // SetDefaultRepository sets the default repository if defined.
-// func (c *Controller) SetDefaultRepository() error {
-// 	if c.DefaultRepository != nil && c.DefaultRepositoryName != "" {
-// 		if c.Repositories == nil {
-// 			c.Repositories = map[string]*Repository{}
-// 		}
-
-// 		c.Repositories[c.DefaultRepositoryName] = c.DefaultRepository
-// 	} else if repoName := c.DefaultRepositoryName; repoName != "" && len(c.Repositories) > 0 {
-// 		repo, ok := c.Repositories[repoName]
-// 		if !ok {
-// 			return fmt.Errorf("default repository: %s not defined in the ControllerConfig.Repository map", repoName)
-// 		}
-// 		c.DefaultRepository = repo
-// 	} else if len(c.Repositories) == 1 {
-// 		for repoName, repo := range c.Repositories {
-// 			c.DefaultRepositoryName = repoName
-// 			c.DefaultRepository = repo
-// 		}
-// 	} else {
-// 		return errors.New("no repositories found within the config")
-// 	}
-
-// 	return nil
-// }

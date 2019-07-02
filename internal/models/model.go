@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal/namer"
+	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
 const (

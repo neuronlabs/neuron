@@ -5,13 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron-core/config"
 )
 
-// DefaultConfig is the controller default config used with the Default function
-var (
-	DefaultTestingConfig *config.Controller
-)
+// DefaultTestingConfig is the controllerS default testing config used with the Default function
+var DefaultTestingConfig *config.Controller
 
 func init() {
 	DefaultTestingConfig = config.ReadDefaultControllerConfig()
@@ -22,8 +20,9 @@ func init() {
 	DefaultTestingConfig.DefaultRepositoryName = "mock"
 }
 
-// DefaultTesting is the default controller used for testing
+// DefaultTesting is the default controller used for testing.
 func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
+	t.Helper()
 	if cfg == nil {
 		cfg = DefaultTestingConfig
 	}
@@ -37,7 +36,7 @@ func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
 	return c
 }
 
-// NewDefault creates new default controller based on the default config
+// NewDefault creates new default controller based on the default config.
 func NewDefault() *Controller {
 	c, err := newController(config.ReadDefaultControllerConfig())
 	if err != nil {

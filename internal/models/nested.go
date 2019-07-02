@@ -6,7 +6,7 @@ import (
 
 // NestedStruct is the field StructField that is composed from different abstraction
 // then the basic data types.
-// It may contain multiple fields *NestedFields
+// It may contain multiple fields *NestedFields.
 type NestedStruct struct {
 	// structField is the reference to it's root structfield
 	structField StructFielder

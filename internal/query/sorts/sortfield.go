@@ -3,12 +3,12 @@ package sorts
 import (
 	"strings"
 
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal"
-	"github.com/neuronlabs/neuron/internal/models"
+	"github.com/neuronlabs/neuron-core/internal"
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // MaxNestedRelLevel is a temporary maximum nested check while creating sort fields

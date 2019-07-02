@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 var (

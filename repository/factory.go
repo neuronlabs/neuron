@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron-core/mapping"
 )
 
 // Factory is the interface used for creating the repositories.

@@ -6,9 +6,9 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 // Support defines the internationalization coverage.

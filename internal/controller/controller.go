@@ -7,16 +7,16 @@ import (
 
 	"github.com/neuronlabs/uni-logger"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/namer"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/namer"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 var (
@@ -26,45 +26,30 @@ var (
 
 // Controller is the root data structure responsible for controlling neuron models, queries and validators.
 type Controller struct {
-	// Config is the configuration struct for the controller
+	// Config is the configuration struct for the controller.
 	Config *config.Controller
 
-	// Namer defines the function strategy how the model's and it's fields are being named
+	// Namer defines the function strategy how the model's and it's fields are being named.
 	NamerFunc namer.Namer
 
-	// StrictUnmarshalMode if set to true, the incoming data cannot contain
-	// any unknown fields
-	StrictUnmarshalMode bool
+	// CreateValidator is used as a validator for the Create processes.
+	CreateValidator *validator.Validate
 
-	// // queryBuilderis the controllers query builder
-	// queryBuilder *query.Builder
+	//PatchValidator is used as a validator for the Patch processes.
+	PatchValidator *validator.Validate
 
+	// Processor is the predefined query processor for provided controller.
 	processor scope.Processor
 
-	// modelMap is a mapping for the model schemas
+	// modelMap is a mapping for the model's structures.
 	modelMap *models.ModelMap
 
 	// modelRepositories is the mapping of the model's to their repositories.
 	modelRepositories map[*models.ModelStruct]repository.Repository
-
-	// Validators
-	// CreateValidator is used as a validator for the Create processes
-	CreateValidator *validator.Validate
-
-	//PatchValidator is used as a validator for the Patch processes
-	PatchValidator *validator.Validate
 }
 
-// New Creates raw *jsonapi.Controller with no limits and links.
-func New(cfg *config.Controller, logger unilogger.LeveledLogger) (*Controller, error) {
-	if log.Logger() == nil {
-		if logger != nil {
-			log.SetLogger(logger)
-		} else {
-			log.Default()
-		}
-	}
-
+// New creates and returns new Controller for provided 'cfg' config.
+func New(cfg *config.Controller) (*Controller, error) {
 	c, err := newController(cfg)
 	if err != nil {
 		return nil, err
@@ -73,13 +58,12 @@ func New(cfg *config.Controller, logger unilogger.LeveledLogger) (*Controller, e
 	return c, nil
 }
 
-// SetDefault sets the default controller
+// SetDefault sets the 'c' Controller as default.
 func SetDefault(c *Controller) {
 	defaultController = c
 }
 
-// Default creates new *jsonapi.Controller with preset limits:
-// Controller has also set the FlagUseLinks flag to true.
+// Default creates new Controller with default contorller config.
 func Default() *Controller {
 	if defaultController == nil {
 		c, err := newController(config.ReadDefaultControllerConfig())
@@ -93,35 +77,14 @@ func Default() *Controller {
 	return defaultController
 }
 
-func newController(cfg *config.Controller) (*Controller, error) {
-	var err error
-	c := &Controller{
-		CreateValidator:   validator.New(),
-		PatchValidator:    validator.New(),
-		modelRepositories: make(map[*models.ModelStruct]repository.Repository),
-	}
-
-	if err = c.setConfig(cfg); err != nil {
-		return nil, err
-	}
-
-	// create model schemas
-	c.modelMap = models.NewModelMap(
-		c.NamerFunc,
-		c.Config,
-	)
-
-	return c, nil
-}
-
-// GetModelStruct returns the ModelStruct for provided model
-// Returns error if provided model does not exists in the PrecomputedMap
+// GetModelStruct returns the *models.ModelStruct for provided 'model' argument.
+// Returns error if provided model does not exists in the models.ModelMap.
 func (c *Controller) GetModelStruct(model interface{}) (*models.ModelStruct, error) {
 	return c.getModelStruct(model)
 }
 
 // GetRepository gets the repository for the provided 'model'.
-// Allowed 'model' types are: *mapping.ModelStruct, *models.ModelStruct and an instance of the given model.
+// Allowed 'model' types are: *mapping.ModelStruct, *models.ModelStruct and a model structure instance i.e. &SomeType{}.
 func (c *Controller) GetRepository(model interface{}) (repository.Repository, error) {
 	mStruct, err := c.getModelStruct(model)
 	if err != nil {
@@ -138,13 +101,13 @@ func (c *Controller) GetRepository(model interface{}) (repository.Repository, er
 	return repo, nil
 }
 
-// ModelMap gets the controllers models mapping.
+// ModelMap gets the models mapping.
 func (c *Controller) ModelMap() *models.ModelMap {
 	return c.modelMap
 }
 
-// ModelStruct gets the model struct  mapping.
-// Implements repository.ModelStructer
+// ModelStruct gets the *mapping.ModelStruct for provided 'model'.
+// Implements repository.ModelStructer.
 func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	m, err := c.getModelStruct(model)
 	if err != nil {
@@ -153,8 +116,8 @@ func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error
 	return (*mapping.ModelStruct)(m), nil
 }
 
-// MustGetModelStruct gets (concurrently safe) the model struct from the cached model Map
-// panics if the model does not exists in the map.
+// MustGetModelStruct gets the model struct from the cached model Map.
+// Panics if the model does not exists in the map.
 func (c *Controller) MustGetModelStruct(model interface{}) *models.ModelStruct {
 	mStruct, err := c.getModelStruct(model)
 	if err != nil {
@@ -168,18 +131,14 @@ func (c *Controller) Processor() scope.Processor {
 	return c.processor
 }
 
-// SetLogger sets the logger for the controller operations.
-func (c *Controller) SetLogger(logger unilogger.LeveledLogger) {
-	log.SetLogger(logger)
-}
-
 // SetProcessor sets the query processor for the controller.
 func (c *Controller) SetProcessor(p scope.Processor) {
 	c.processor = p
 }
 
-// RegisterModels precomputes provided models, making it easy to check
-// models relationships and  attributes.
+// RegisterModels registers and sets provided 'models', by creating
+// mapped *models.ModelStruct's for each.
+// Provided model structures are stored within the *models.ModelMap.
 func (c *Controller) RegisterModels(models ...interface{}) error {
 	if err := c.checkDefaultRepositories(); err != nil {
 		log.Errorf("Registering models failed - no default repository set yet. %v", err)
@@ -203,11 +162,10 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// RegisterRepository creates the repository configuration with provided 'name' and
+// RegisterRepository creates and stores the repository configuration with provided 'name' and
 // given 'cfg' configuration.
 func (c *Controller) RegisterRepository(name string, cfg *config.Repository) error {
 	// check if the repository is not already registered
@@ -227,6 +185,40 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 	}
 
 	return nil
+}
+
+func (c *Controller) checkDefaultRepositories() error {
+	if c.Config.Repositories == nil {
+		return errors.New(class.ConfigValueNil, "no Repositories map found for the controller config")
+	}
+
+	if c.Config.DefaultRepository != nil {
+		if c.Config.DefaultRepositoryName == "" {
+			return errors.Newf(class.RepositoryConfigInvalid, "no default repository name provided")
+		}
+		// check if it is stored in repositories
+		_, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
+		if !ok {
+			c.Config.Repositories[c.Config.DefaultRepositoryName] = c.Config.DefaultRepository
+		}
+		return nil
+	}
+
+	// find if the repository is in the Repositories
+	if c.Config.DefaultRepositoryName == "" && len(c.Config.Repositories) == 0 {
+		return errors.New(class.RepositoryNotFound, "no repositories found for the controller")
+	}
+
+	if c.Config.DefaultRepositoryName != "" {
+		defaultRepo, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
+		if ok {
+			c.Config.DefaultRepository = defaultRepo
+			return nil
+		}
+		return errors.Newf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.Config.DefaultRepositoryName)
+	}
+
+	return errors.New(class.ConfigValueNil, "no default repository set for the controller")
 }
 
 func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, error) {
@@ -262,6 +254,12 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 		if level == unilogger.UNKNOWN {
 			return errors.Newf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", cfg.LogLevel)
 		}
+		if log.Logger() == nil {
+			log.Default()
+		}
+
+		// get and set default logger
+		log.Default()
 		log.SetLevel(level)
 	}
 
@@ -287,6 +285,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	if cfg.DefaultRepository == nil {
 		for name, repoConfig := range cfg.Repositories {
 			if cfg.DefaultRepositoryName == name || cfg.DefaultRepositoryName == "" {
+				log.Debugf("Setting default repository to: '%s'", name)
 				cfg.DefaultRepository = repoConfig
 				cfg.DefaultRepositoryName = name
 				break
@@ -330,6 +329,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	if cfg.PatchValidatorAlias == "" {
 		cfg.PatchValidatorAlias = "patch"
 	}
+
 	c.PatchValidator.SetTagName(cfg.PatchValidatorAlias)
 
 	return nil
@@ -359,36 +359,23 @@ func (c *Controller) mapModel(model *models.ModelStruct) error {
 	return nil
 }
 
-func (c *Controller) checkDefaultRepositories() error {
-	if c.Config.Repositories == nil {
-		return errors.New(class.ConfigValueNil, "no Repositories map found for the controller config")
+func newController(cfg *config.Controller) (*Controller, error) {
+	var err error
+	c := &Controller{
+		CreateValidator:   validator.New(),
+		PatchValidator:    validator.New(),
+		modelRepositories: make(map[*models.ModelStruct]repository.Repository),
 	}
 
-	if c.Config.DefaultRepository != nil {
-		if c.Config.DefaultRepositoryName == "" {
-			return errors.Newf(class.RepositoryConfigInvalid, "no default repository name provided")
-		}
-		// check if it is stored in repositories
-		_, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
-		if !ok {
-			c.Config.Repositories[c.Config.DefaultRepositoryName] = c.Config.DefaultRepository
-		}
-		return nil
+	if err = c.setConfig(cfg); err != nil {
+		return nil, err
 	}
 
-	// find if the repository is in the Repositories
-	if c.Config.DefaultRepositoryName == "" && len(c.Config.Repositories) == 0 {
-		return errors.New(class.RepositoryNotFound, "no repositories found for the controller")
-	}
+	// create and initialize model mapping
+	c.modelMap = models.NewModelMap(
+		c.NamerFunc,
+		c.Config,
+	)
 
-	if c.Config.DefaultRepositoryName != "" {
-		defaultRepo, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
-		if ok {
-			c.Config.DefaultRepository = defaultRepo
-			return nil
-		}
-		return errors.Newf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.Config.DefaultRepositoryName)
-	}
-
-	return errors.New(class.ConfigValueNil, "no default repository set for the controller")
+	return c, nil
 }

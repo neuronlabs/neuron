@@ -9,17 +9,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query"
+	ctrl "github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/query"
 
-	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 import (
 	// mocks import and register mock repository
-	_ "github.com/neuronlabs/neuron/query/mocks"
+	_ "github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 func TestMarshal(t *testing.T) {

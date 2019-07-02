@@ -1,8 +1,8 @@
 package jsonapi
 
 import (
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 // payloader is used to encapsulate the One and Many payload types

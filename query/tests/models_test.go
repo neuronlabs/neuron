@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/neuronlabs/neuron/query/mocks"
+	"github.com/neuronlabs/neuron-core/query/mocks"
 	"github.com/stretchr/testify/mock"
 )
 

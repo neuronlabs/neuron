@@ -9,21 +9,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query/filters"
+	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/query/filters"
 
-	"github.com/neuronlabs/neuron/internal"
-	internalController "github.com/neuronlabs/neuron/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal"
+	internalController "github.com/neuronlabs/neuron-core/internal/controller"
 )
 
 import (
 	// register processes
-	_ "github.com/neuronlabs/neuron/query"
+	_ "github.com/neuronlabs/neuron-core/query"
 
 	// import and register mock factory
-	_ "github.com/neuronlabs/neuron/repository/mocks"
+	_ "github.com/neuronlabs/neuron-core/repository/mocks"
 )
 
 type testingModel struct {
@@ -45,27 +45,30 @@ type nestedModel struct {
 
 //TestParseQuery tests parsing the query into a string.
 func TestParseQuery(t *testing.T) {
-	cfg := internalController.DefaultConfig
+	cfg := *internalController.DefaultTestingConfig
 	cfg.Repositories = map[string]*config.Repository{
 		"mocks": &config.Repository{DriverName: "mocks"},
 	}
 	cfg.DefaultRepositoryName = "mocks"
 
-	c := (*controller.Controller)(internalController.DefaultTesting(t, nil))
+	c := (*controller.Controller)(internalController.DefaultTesting(t, &cfg))
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
 	t.Run("Attribute", func(t *testing.T) {
-
+		// TODO: write parse query attribute tests
 	})
 
 	t.Run("Relationship", func(t *testing.T) {
-
+		// TODO: write parse query relationship tests
 	})
 }
 
 // TestNewStringFilter tests the NewStringFilter function.
 func TestNewStringFilter(t *testing.T) {
 	c := controller.NewDefault()
+
+	err := c.RegisterRepository("mocks", &config.Repository{DriverName: "mocks"})
+	require.NoError(t, err)
 
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 
@@ -193,6 +196,9 @@ func TestNewStringFilter(t *testing.T) {
 // TestFormatQuery checks the FormatQuery function
 func TestFormatQuery(t *testing.T) {
 	c := controller.NewDefault()
+
+	err := c.RegisterRepository("mocks", &config.Repository{DriverName: "mocks"})
+	require.NoError(t, err)
 
 	require.NoError(t, c.RegisterModels(&testingModel{}, &relationModel{}))
 

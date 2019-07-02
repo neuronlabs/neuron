@@ -8,16 +8,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/neuronlabs/neuron/common"
-	ctrl "github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron-core/common"
+	ctrl "github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/query"
 
-	"github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/models"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	"github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/models"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 // Marshal marshals the provided value 'v' into the writer with the jsonapi encoding.

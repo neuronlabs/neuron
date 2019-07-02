@@ -1,9 +1,9 @@
 package filters
 
 import (
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal/query/filters"
+	"github.com/neuronlabs/neuron-core/internal/query/filters"
 )
 
 var (

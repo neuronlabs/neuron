@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron-core/mapping"
 )
 
 func stringValue(sField *mapping.StructField, val interface{}, values *[]string) {

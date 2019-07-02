@@ -9,18 +9,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
-	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/query"
 
-	ictrl "github.com/neuronlabs/neuron/internal/controller"
-	"github.com/neuronlabs/neuron/internal/query/scope"
+	ictrl "github.com/neuronlabs/neuron-core/internal/controller"
+	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
 import (
 	// mocks import and register mock repository
-	_ "github.com/neuronlabs/neuron/query/mocks"
+	_ "github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 // UnmarshalModel basic model used to tests in unmarshal
@@ -204,9 +204,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 	t.Run("invalid_field_strict_mode", func(t *testing.T) {
 		// title attribute is missspelled as 'Atitle'
 		in := strings.NewReader(`{"data":{"type":"blogs","id":"1", "attributes":{"Atitle":1.02}}}`)
-		c.StrictUnmarshalMode = true
+		c.Config.StrictUnmarshalMode = true
 		defer func() {
-			c.StrictUnmarshalMode = false
+			c.Config.StrictUnmarshalMode = false
 		}()
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)

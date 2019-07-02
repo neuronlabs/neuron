@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 )
 
 func init() {

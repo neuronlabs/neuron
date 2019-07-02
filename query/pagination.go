@@ -4,10 +4,10 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/neuronlabs/neuron/common"
-	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron/internal/query/paginations"
+	"github.com/neuronlabs/neuron-core/internal/query/paginations"
 )
 
 // PaginationType defines the pagination type.

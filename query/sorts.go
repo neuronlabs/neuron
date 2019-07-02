@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/neuronlabs/neuron/common"
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/neuron-core/mapping"
 
-	"github.com/neuronlabs/neuron/internal/query/sorts"
+	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 )
 
 // SortField is a field that contains sorting information.

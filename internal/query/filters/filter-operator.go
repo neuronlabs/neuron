@@ -3,8 +3,8 @@ package filters
 import (
 	"sync"
 
-	"github.com/neuronlabs/neuron/errors"
-	"github.com/neuronlabs/neuron/errors/class"
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 // Operators contains all the registered operators.

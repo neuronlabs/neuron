@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/neuronlabs/neuron/common"
+	"github.com/neuronlabs/neuron-core/common"
 )
 
 // TestSplitBracketParameter tests the split bracket parameter function.
