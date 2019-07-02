@@ -1,7 +1,7 @@
 package namer
 
 import (
-	"github.com/iancoleman/strcase"
+	"github.com/neuronlabs/strcase"
 )
 
 // Namer is the interface responsible for naming the structures.

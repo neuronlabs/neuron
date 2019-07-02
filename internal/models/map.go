@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/jinzhu/inflection"
+	"github.com/neuronlabs/inflection"
 
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/errors"

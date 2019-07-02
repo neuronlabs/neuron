@@ -1,7 +1,7 @@
 package namer
 
 import (
-	"github.com/iancoleman/strcase"
+	"github.com/neuronlabs/strcase"
 )
 
 // Namer is the function that change the name with some prepared formatting.
