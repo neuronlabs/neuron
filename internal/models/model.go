@@ -24,7 +24,7 @@ const (
 	hasForeignRelationships = "neuron:has_foreign_keys"
 )
 
-// ModelStruct is a computed representation of the jsonapi models.
+// ModelStruct is a computed representation of the neuron models.
 // Contain information about the model like the collection type,
 // distinction of the field types (primary, attributes, relationships).
 type ModelStruct struct {
@@ -33,13 +33,10 @@ type ModelStruct struct {
 	// modelType contain a reflect.Type information about given model
 	modelType reflect.Type
 
-	// collectionType is jsonapi 'type' for given model
+	// collectionType is neuron 'type' for given model
 	collectionType string
 
-	// schemaName is the schema name set for given model
-	schemaName string
-
-	// Primary is a jsonapi primary field
+	// Primary is a neuron primary field
 	primary *StructField
 
 	// language is a field that contains the language information
@@ -48,15 +45,10 @@ type ModelStruct struct {
 	// Attributes contain attribute fields
 	attributes map[string]*StructField
 
-	// Relationships contain jsonapi relationship fields
-	// used to check and get if relationship exists in the model.
-	// Can be heplful for validating url queries
-	// Mapped StructField contain detailed information about given relationship
+	// Relationships contain neuron relationship type fields.
 	relationships map[string]*StructField
 
-	// Fields is a container of all public fields in the given model.
-	// The field's index is the same as in the original model - for private or
-	// non-settable fields the index would be nil
+	// fields is a container of all public fields in the given model.
 	fields []*StructField
 
 	// field that are ready for translations
@@ -72,8 +64,7 @@ type ModelStruct struct {
 	sortScopeCount int
 
 	isJoin bool
-
-	cfg *config.ModelConfig
+	cfg    *config.ModelConfig
 
 	store map[string]interface{}
 }
@@ -329,19 +320,6 @@ func (m *ModelStruct) RelationshipField(field string) (*StructField, bool) {
 	return m.relationshipField(field)
 }
 
-func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
-	f, ok := m.relationships[field]
-	if !ok {
-		for _, f = range m.relationships {
-			if f.Name() == field {
-				return f, true
-			}
-		}
-		return nil, false
-	}
-	return f, true
-}
-
 // RelationshipFields return structfields that are matched as relatinoships
 func (m *ModelStruct) RelationshipFields() (rels []*StructField) {
 	for _, rel := range m.relationships {
@@ -353,11 +331,6 @@ func (m *ModelStruct) RelationshipFields() (rels []*StructField) {
 // RepositoryName returns the repository name for given model
 func (m *ModelStruct) RepositoryName() string {
 	return m.Config().RepositoryName
-}
-
-// SchemaName returns model's schema name
-func (m *ModelStruct) SchemaName() string {
-	return m.schemaName
 }
 
 // SetConfig sets the config for given ModelStruct
@@ -380,11 +353,6 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 // SetRepositoryName sets the repositoryName
 func (m *ModelStruct) SetRepositoryName(repo string) {
 	m.cfg.RepositoryName = repo
-}
-
-// SetSchemaName sets the schema name for the given model
-func (m *ModelStruct) SetSchemaName(schema string) {
-	m.schemaName = schema
 }
 
 // SortScopeCount returns the count of the sort fieldsb
@@ -585,7 +553,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 	// check if no duplicates
 	_, ok := m.attributes[structField.neuronName]
 	if ok {
-		return errors.Newf(class.ModelFieldName, "duplicated jsonapi attribute name: '%s' for model: '%v'.",
+		return errors.Newf(class.ModelFieldName, "duplicated neuron attribute name: '%s' for model: '%v'.",
 			structField.neuronName, m.modelType.Name())
 	}
 
@@ -751,6 +719,19 @@ func (m *ModelStruct) setPrimaryField(structField *StructField) error {
 	m.primary = structField
 	m.fields = append(m.fields, structField)
 	return nil
+}
+
+func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
+	f, ok := m.relationships[field]
+	if !ok {
+		for _, f = range m.relationships {
+			if f.Name() == field {
+				return f, true
+			}
+		}
+		return nil, false
+	}
+	return f, true
 }
 
 var ctr = &counter{}

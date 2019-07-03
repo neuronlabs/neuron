@@ -342,7 +342,7 @@ func visitNode(
 				node.Attributes = make(map[string]interface{})
 			}
 
-			if models.FieldIsTime(field) {
+			if field.IsTime() {
 				if !field.IsBasePtr() {
 					t := fieldValue.Interface().(time.Time)
 
@@ -415,8 +415,8 @@ func visitNode(
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.NeuronName())
 			} else if c.Config.EncodeLinks {
 				link := make(map[string]interface{})
-				link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", mStruct.SchemaName(), mStruct.Collection(), node.ID, field.NeuronName())
-				link["related"] = fmt.Sprintf("%s/%s/%s/%s", mStruct.SchemaName(), mStruct.Collection(), node.ID, field.NeuronName())
+				link["self"] = fmt.Sprintf("%s/%s/relationships/%s", mStruct.Collection(), node.ID, field.NeuronName())
+				link["related"] = fmt.Sprintf("%s/%s/%s", mStruct.Collection(), node.ID, field.NeuronName())
 				links := Links(link)
 				relLinks = &links
 			}
@@ -460,7 +460,7 @@ func visitNode(
 		node.Links = linkable.JSONAPILinks()
 	} else if c.Config.EncodeLinks {
 		links := make(map[string]interface{})
-		links["self"] = fmt.Sprintf("%s/%s/%s", mStruct.SchemaName(), mStruct.Collection(), node.ID)
+		links["self"] = fmt.Sprintf("%s/%s", mStruct.Collection(), node.ID)
 
 		linksObj := Links(links)
 		node.Links = &(linksObj)
@@ -567,8 +567,8 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			} else if value, ok := sc.StoreGet(common.EncodeLinksCtxKey); ok {
 				if encodeLinks, ok := value.(bool); ok && encodeLinks {
 					link := make(map[string]interface{})
-					link["self"] = fmt.Sprintf("%s/%s/%s/relationships/%s", sc.Struct().SchemaName(), sc.Struct().Collection(), node.ID, field.NeuronName())
-					link["related"] = fmt.Sprintf("%s/%s/%s/%s", sc.Struct().SchemaName(), sc.Struct().Collection(), node.ID, field.NeuronName())
+					link["self"] = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
+					link["related"] = fmt.Sprintf("%s/%s/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
 					links := Links(link)
 					relLinks = &links
 				}
@@ -621,7 +621,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			var self string
 			switch sc.Kind() {
 			case scope.RootKind, scope.IncludedKind:
-				self = fmt.Sprintf("%s/%s/%s", sc.Struct().SchemaName(), sc.Struct().Collection(), node.ID)
+				self = fmt.Sprintf("%s/%s", sc.Struct().Collection(), node.ID)
 			case scope.RelatedKind:
 				rootScope := sc.GetModelsRootScope(sc.Struct())
 				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
@@ -630,12 +630,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 				}
 
 				relatedName := rootScope.IncludedFields()[0].NeuronName()
-				self = fmt.Sprintf("%s/%s/%s/%s",
-					rootScope.Struct().SchemaName(),
-					sc.Struct().Collection(),
-					node.ID,
-					relatedName,
-				)
+				self = fmt.Sprintf("%s/%s/%s", sc.Struct().Collection(), node.ID, relatedName)
 			case scope.RelationshipKind:
 				rootScope := sc.GetModelsRootScope(sc.Struct())
 				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
@@ -643,12 +638,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 					return nil, err
 				}
 				relatedName := rootScope.IncludedFields()[0].NeuronName()
-				self = fmt.Sprintf("%s/%s/%s/relationships/%s",
-					rootScope.Struct().SchemaName(),
-					sc.Struct().Collection(),
-					node.ID,
-					relatedName,
-				)
+				self = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, relatedName)
 			}
 			links["self"] = self
 			linksObj := Links(links)

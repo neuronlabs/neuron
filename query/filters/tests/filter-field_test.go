@@ -77,7 +77,7 @@ func TestNewStringFilter(t *testing.T) {
 
 	t.Run("Primary", func(t *testing.T) {
 		t.Run("WithoutOperator", func(t *testing.T) {
-			filter, err := filters.NewStringFilter(c, "filter[testing_models][id]", "", 521)
+			filter, err := filters.NewStringFilter(c, "filter[testing_models][id]", 521)
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField())
@@ -90,7 +90,7 @@ func TestNewStringFilter(t *testing.T) {
 		})
 
 		t.Run("WithoutFilterWord", func(t *testing.T) {
-			filter, err := filters.NewStringFilter(c, "[testing_models][id][$ne]", "", "some string value")
+			filter, err := filters.NewStringFilter(c, "[testing_models][id][$ne]", "some string value")
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField())
@@ -105,12 +105,12 @@ func TestNewStringFilter(t *testing.T) {
 
 	t.Run("Invalid", func(t *testing.T) {
 		t.Run("Collection", func(t *testing.T) {
-			_, err := filters.NewStringFilter(c, "filter[invalid-collection][fieldname][$eq]", "", 1)
+			_, err := filters.NewStringFilter(c, "filter[invalid-collection][fieldname][$eq]", 1)
 			require.Error(t, err)
 		})
 
 		t.Run("Operator", func(t *testing.T) {
-			_, err := filters.NewStringFilter(c, "filter[testing_models][id][$unknown]", "", 1)
+			_, err := filters.NewStringFilter(c, "filter[testing_models][id][$unknown]", 1)
 			require.Error(t, err)
 		})
 
@@ -121,7 +121,7 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("Attribute", func(t *testing.T) {
-		filter, err := filters.NewStringFilter(c, "[testing_models][attr][$ne]", "", "some string value")
+		filter, err := filters.NewStringFilter(c, "[testing_models][attr][$ne]", "some string value")
 		require.NoError(t, err)
 
 		attrField, ok := mStruct.FieldByName("Attr")
@@ -137,7 +137,7 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("FilterKey", func(t *testing.T) {
-		filter, err := filters.NewStringFilter(c, "[testing_models][filter_key][$ne]", "", "some string value")
+		filter, err := filters.NewStringFilter(c, "[testing_models][filter_key][$ne]", "some string value")
 		require.NoError(t, err)
 
 		attrField, ok := mStruct.FieldByName("FilterKey")
@@ -153,10 +153,10 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("ForeignKey", func(t *testing.T) {
-		filter, err := filters.NewStringFilter(c, "[testing_models][foreign_key][$ne]", "", "some string value")
+		filter, err := filters.NewStringFilter(c, "[testing_models][foreign_key][$ne]", "some string value")
 		require.Error(t, err)
 
-		filter, err = filters.NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "", "some string value")
+		filter, err = filters.NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "some string value")
 		require.NoError(t, err)
 
 		attrField, ok := mStruct.FieldByName("ForeignKey")
@@ -175,7 +175,7 @@ func TestNewStringFilter(t *testing.T) {
 		if testing.Verbose() {
 			log.SetLevel(log.LDEBUG)
 		}
-		filter, err := filters.NewStringFilter(c, "[testing_models][relation][id][$ne]", "", "some string value")
+		filter, err := filters.NewStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
 		require.NoError(t, err)
 		attrField, ok := mStruct.FieldByName("Relation")
 		require.True(t, ok)

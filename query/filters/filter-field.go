@@ -54,29 +54,26 @@ func NewRelationshipFilter(
 	return (*FilterField)(f)
 }
 
-// NewStringFilter creates the filter field based on the provided 'filter', 'schemaName' and 'values'.
-// The filter should not contain the values. If the 'schemaName' is not provided the defaultSchema for given controller would be taken.
+// NewStringFilter creates the filter field based on the provided 'filter' and 'values'.
 // Example:
 //	- 'fitler': "filter[collection][fieldName][operator]"
-//  - 'schema': "schemaName"
 //  - 'values': 5, 13
 // This function doesn't allow to filter over foreign keys.
-func NewStringFilter(c *controller.Controller, filter string, schemaName string, values ...interface{}) (*FilterField, error) {
-	return newStringFilter(c, filter, schemaName, false, values...)
+func NewStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
+	return newStringFilter(c, filter, false, values...)
 }
 
 // NewStringFilterWithForeignKey creates the filter field based on the provided filter, schemaName and values.
-// The filter should not contain the values. If the 'schemaName' is not provided the defaultSchema for given controller would be taken.
 // Example:
 //	- 'fitler': "filter[collection][fieldName][operator]"
 //  - 'schema': "schemaName"
 //  - 'values': 5, 13
 // This function allow to filter over the foreign key fields.
-func NewStringFilterWithForeignKey(c *controller.Controller, filter, schemaName string, values ...interface{}) (*FilterField, error) {
-	return newStringFilter(c, filter, schemaName, true, values...)
+func NewStringFilterWithForeignKey(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
+	return newStringFilter(c, filter, true, values...)
 }
 
-func newStringFilter(c *controller.Controller, filter string, schemaName string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
+func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
 	if strings.HasPrefix(filter, "filter") {
 		filter = filter[6:]
 	}

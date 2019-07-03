@@ -68,7 +68,7 @@ func (s *Scope) AddFilter(filter *filters.FilterField) error {
 // AddStringFilter parses the filter into the filters.FilterField and adds
 // it to the given scope.
 func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
-	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, s.Struct().SchemaName(), values...)
+	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, values...)
 	if err != nil {
 		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
 		return err
