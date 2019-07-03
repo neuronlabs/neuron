@@ -3,6 +3,7 @@ package models
 import (
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/errors"
@@ -577,6 +578,179 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 func (m *ModelStruct) setLanguage(f *StructField) {
 	f.fieldFlags = f.fieldFlags | FLanguage
 	m.language = f
+}
+
+func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Namer) error {
+	structField.fieldKind = KindAttribute
+	// check if no duplicates
+	_, ok := m.attributes[structField.neuronName]
+	if ok {
+		return errors.Newf(class.ModelFieldName, "duplicated jsonapi attribute name: '%s' for model: '%v'.",
+			structField.neuronName, m.modelType.Name())
+	}
+
+	m.fields = append(m.fields, structField)
+
+	t := structField.ReflectField().Type
+	if t.Kind() == reflect.Ptr {
+		structField.setFlag(FPtr)
+		t = t.Elem()
+	}
+
+	switch t.Kind() {
+	case reflect.Struct:
+		if t == reflect.TypeOf(time.Time{}) {
+			structField.setFlag(FTime)
+		} else {
+			// this case it must be a nested struct field
+			structField.setFlag(FNestedStruct)
+
+			nStruct, err := getNestedStruct(t, structField, namerFunc)
+			if err != nil {
+				log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
+				return err
+			}
+			structField.nested = nStruct
+		}
+
+		if structField.IsPtr() {
+			structField.setFlag(FBasePtr)
+		}
+	case reflect.Map:
+		structField.setFlag(FMap)
+		mapElem := t.Elem()
+
+		// isPtr is a bool that defines if the given slice Elem is a pointer type
+		// flags are not set now due to the slice sliceElem possiblities
+		var isPtr bool
+
+		// map type must have a key of type string and value of basic type
+		if mapElem.Kind() == reflect.Ptr {
+			isPtr = true
+			mapElem = mapElem.Elem()
+		}
+
+		// Check the map 'value' kind
+		switch mapElem.Kind() {
+		// struct may be time or nested struct
+		case reflect.Struct:
+			// check if it is time
+			if mapElem == reflect.TypeOf(time.Time{}) {
+				structField.setFlag(FTime)
+				// otherwise it must be a nested struct
+			} else {
+				structField.setFlag(FNestedStruct)
+
+				nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+				if err != nil {
+					log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
+					return err
+				}
+				structField.nested = nStruct
+			}
+			// if the value is pointer add the base flag
+			if isPtr {
+				structField.setFlag(FBasePtr)
+			}
+
+			// map 'value' may be a slice or array
+		case reflect.Slice, reflect.Array:
+			mapElem = mapElem.Elem()
+			for mapElem.Kind() == reflect.Slice || mapElem.Kind() == reflect.Array {
+				mapElem = mapElem.Elem()
+			}
+
+			if mapElem.Kind() == reflect.Ptr {
+				structField.setFlag(FBasePtr)
+				mapElem = mapElem.Elem()
+			}
+
+			switch mapElem.Kind() {
+			case reflect.Struct:
+				// check if it is time
+				if mapElem == reflect.TypeOf(time.Time{}) {
+					structField.setFlag(FTime)
+					// otherwise it must be a nested struct
+				} else {
+					structField.setFlag(FNestedStruct)
+					nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+					if err != nil {
+						log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
+						return err
+					}
+					structField.nested = nStruct
+				}
+			case reflect.Slice, reflect.Array, reflect.Map:
+				// disallow nested map, arrs, maps in ptr type slices
+				return errors.Newf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
+			default:
+			}
+		default:
+			if isPtr {
+				structField.setFlag(FBasePtr)
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		if t.Kind() == reflect.Slice {
+			structField.setFlag(FSlice)
+		} else {
+			structField.setFlag(FArray)
+		}
+
+		// dereference the slice
+		// check the field base type
+		sliceElem := t
+		for sliceElem.Kind() == reflect.Slice || sliceElem.Kind() == reflect.Array {
+			sliceElem = sliceElem.Elem()
+		}
+
+		if sliceElem.Kind() == reflect.Ptr {
+			// add maybe slice Field Ptr
+			structField.setFlag(FBasePtr)
+			sliceElem = sliceElem.Elem()
+		}
+
+		switch sliceElem.Kind() {
+		case reflect.Struct:
+			// check if time
+			if sliceElem == reflect.TypeOf(time.Time{}) {
+				structField.setFlag(FTime)
+			} else {
+				// this should be the nested struct
+				structField.setFlag(FNestedStruct)
+				nStruct, err := getNestedStruct(sliceElem, structField, namerFunc)
+				if err != nil {
+					log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
+					return err
+				}
+				structField.nested = nStruct
+			}
+		case reflect.Map:
+			// map should not be allow as slice nested field
+			return errors.Newf(class.ModelFieldType, "map can't be a base of the slice. Field: '%s'", structField.Name())
+		case reflect.Array, reflect.Slice:
+			// cannot use slice of ptr slices
+			return errors.Newf(class.ModelFieldType, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
+		default:
+		}
+	default:
+		if structField.IsPtr() {
+			structField.setFlag(FBasePtr)
+		}
+
+	}
+	m.attributes[structField.neuronName] = structField
+	return nil
+}
+
+func (m *ModelStruct) setPrimaryField(structField *StructField) error {
+	structField.fieldKind = KindPrimary
+	if m.primary != nil {
+		return errors.Newf(class.ModelFieldName, "primary field is already defined for the model: '%s'", m.Type().Name())
+	}
+	m.primary = structField
+	m.fields = append(m.fields, structField)
+	return nil
 }
 
 var ctr = &counter{}

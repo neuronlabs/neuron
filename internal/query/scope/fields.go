@@ -11,7 +11,7 @@ import (
 	"github.com/neuronlabs/neuron-core/internal/namer/dialect"
 )
 
-// AddselectedFields adds provided fields into given Scope's selectedFields Container
+// AddselectedFields adds provided fields into given Scope's SelectedFields.
 func AddselectedFields(s *Scope, fields ...string) error {
 	for _, addField := range fields {
 		field := s.mStruct.FieldByName(addField)
@@ -27,21 +27,21 @@ func AddselectedFields(s *Scope, fields ...string) error {
 	return nil
 }
 
-// AddSelectedFields adds the fields to the scope's selected fields
+// AddSelectedFields adds the fields to the scope's selected fields.
 func (s *Scope) AddSelectedFields(fields ...interface{}) error {
 	return s.addToSelectedFields(fields...)
 }
 
-// AddSelectedField adds the selected field to the selected field's array
+// AddSelectedField adds the selected field to the selected field's array.
 func (s *Scope) AddSelectedField(field *models.StructField) {
 	s.selectedFields = append(s.selectedFields, field)
 }
 
 // AreSelected iterates over all selected fields within given scope and returns
 // boolean statement all of provided 'fields' are already selected.
-// Returns an error if any of the 'fields' are not found within given model
+// Returns an error if any of the 'fields' are not found within given model.
 // or are of invalid type.
-// Function accepts field in a following formats:
+// 'field' may be in a following types/formats:
 // 	- NeuronName - string
 //	- Name - string
 //	- models.StructField
@@ -67,7 +67,7 @@ func (s *Scope) AreSelected(fields ...interface{}) (bool, error) {
 	return true, nil
 }
 
-// AutoSelectFields selects the fields automatically if none of the select field method were called
+// AutoSelectFields selects the fields automatically if none of the select field method were called.
 func (s *Scope) AutoSelectFields() error {
 	if s.selectedFields != nil {
 		return nil
@@ -116,7 +116,7 @@ func (s *Scope) AutoSelectFields() error {
 	return nil
 }
 
-// UnselectFields unselects provided fields
+// UnselectFields unselects provided fields.
 func (s *Scope) UnselectFields(fields ...*models.StructField) error {
 	return s.unselectFields(fields...)
 }
@@ -131,16 +131,15 @@ func (s *Scope) UnselectFieldIfSelected(field *models.StructField) {
 	}
 }
 
-// DeleteselectedFields deletes the models.StructFields from the given scope Fieldset
+// DeleteselectedFields deletes the models.StructFields from the given scope Fieldset.
 func DeleteselectedFields(s *Scope, fields ...*models.StructField) error {
 	return s.unselectFields(fields...)
 }
 
 // IsSelected iterates over all selected fields within given scope and returns
 // boolean statement if provided 'field' is already selected.
-// Returns an error if the 'field' is not found within given model
-// or it is of invalid type.
-// Function accepts field in a following formats:
+// Returns an error if the 'field' is not found within given model or it is of invalid type.
+// 'field' may be of following types/formats:
 // 	- NeuronName - string
 //	- Name - string
 //	- models.StructField
@@ -149,7 +148,7 @@ func (s *Scope) IsSelected(field interface{}) (bool, error) {
 	return s.isSelected(field, selectedFields, false)
 }
 
-// NotSelectedFields lists all the fields that are not selected within the scope
+// NotSelectedFields lists all the fields that are not selected within the scope.
 func (s *Scope) NotSelectedFields(foreignKeys ...bool) []*models.StructField {
 	var notSelected []*models.StructField
 
@@ -175,14 +174,14 @@ func (s *Scope) NotSelectedFields(foreignKeys ...bool) []*models.StructField {
 	return notSelected
 }
 
-// SelectedFields return fields that were selected during unmarshaling
+// SelectedFields return fields that were selected during unmarshaling.
 func (s *Scope) SelectedFields() []*models.StructField {
 	return s.selectedFields
 }
 
 func (s *Scope) addToSelectedFields(fields ...interface{}) error {
-	var selectedFields = make(map[*models.StructField]struct{})
 	var sfields []*models.StructField
+	selectedFields := make(map[*models.StructField]struct{})
 
 	for _, field := range fields {
 		var found bool
@@ -231,7 +230,6 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 
 	// add all fields to scope's selected fields
 	s.selectedFields = append(s.selectedFields, sfields...)
-
 	return nil
 }
 
@@ -301,7 +299,6 @@ func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (map[string
 }
 
 func (s *Scope) unselectFields(fields ...*models.StructField) error {
-
 scopeFields:
 	for i := 0; i < len(s.selectedFields); i++ {
 		if len(fields) == 0 {
@@ -327,7 +324,6 @@ scopeFields:
 		}
 		return errors.Newf(class.QuerySelectedFieldsNotSelected, "unselecting non selected fields: '%s'", notEreased)
 	}
-
 	return nil
 }
 
@@ -342,7 +338,6 @@ func (s *Scope) AddToFieldset(fields ...interface{}) error {
 	if s.fieldset == nil {
 		s.fieldset = map[string]*models.StructField{}
 	}
-
 	return s.addToFieldset(fields...)
 }
 
@@ -352,7 +347,6 @@ func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 		errObj *errors.Error
 		errs   []*errors.Error
 	)
-
 	// check if the length of the fields in the fieldset is not bigger then the fields number for the model.
 	if len(fields) > s.mStruct.FieldCount() {
 		errObj = errors.New(class.QueryFieldsetTooBig, "too many fields to set for the query")
@@ -391,7 +385,7 @@ func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 		s.fieldset[sField.NeuronName()] = sField
 
 		if sField.IsRelationship() {
-			r := models.FieldRelationship(sField)
+			r := sField.Relationship()
 			if r != nil && r.Kind() == models.RelBelongsTo {
 				if fk := r.ForeignKey(); fk != nil {
 					s.fieldset[fk.NeuronName()] = fk

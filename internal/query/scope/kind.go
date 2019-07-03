@@ -1,9 +1,9 @@
 package scope
 
-// Kind is the enum defining the kind of scope
+// Kind is the enum defining the kind of scope.
 type Kind int
 
-// Enums for the scope kind
+// Enums for the scope kind.
 const (
 	RootKind Kind = iota
 	IncludedKind

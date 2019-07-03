@@ -76,8 +76,8 @@ const (
 	// FOmitEmpty is a field flag for omitting empty value.
 	FOmitempty fieldFlag = 1 << (iota - 1)
 
-	// FIso8601 is a time field flag marking it usable with IS08601 formatting.
-	FIso8601
+	// FISO8601 is a time field flag marking it usable with IS08601 formatting.
+	FISO8601
 
 	// FI18n is the i18n field flag.
 	FI18n
@@ -122,8 +122,7 @@ const (
 	FNestedField
 )
 
-// StructField represents a field structure with its neuron parameters
-// and model relationships.
+// StructField is a struct that contains all neuron specific parameters.
 type StructField struct {
 	// model is the model struct that this field is part of.
 	mStruct *ModelStruct
@@ -147,13 +146,206 @@ type StructField struct {
 	store map[string]interface{}
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'
-func (s *StructField) StoreSet(key string, value interface{}) {
-	if s.store == nil {
-		s.store = make(map[string]interface{})
+// BaseType returns the base 'reflect.Type' for the provided field.
+// The base is the lowest possible dereference of the field's type.
+func (s *StructField) BaseType() reflect.Type {
+	return s.baseFieldType()
+}
+
+// CanBeSorted returns if the struct field can be sorted.
+func (s *StructField) CanBeSorted() bool {
+	return s.canBeSorted()
+}
+
+// FieldIndex - gets the field index in the given model.
+func (s *StructField) FieldIndex() []int {
+	return s.getFieldIndex()
+}
+
+// FieldKind returns structFields kind.
+func (s *StructField) FieldKind() FieldKind {
+	return s.fieldKind
+}
+
+// FieldName returns struct fields name.
+func (s *StructField) FieldName() string {
+	return s.reflectField.Name
+}
+
+// FieldType returns field's reflect.Type.
+func (s *StructField) FieldType() reflect.Type {
+	return s.reflectField.Type
+}
+
+// GetDereferencedType returns structField dereferenced type.
+func (s *StructField) GetDereferencedType() reflect.Type {
+	return s.getDereferencedType()
+}
+
+// IsArray checks if the field is an array.
+func (s *StructField) IsArray() bool {
+	return s.isArray()
+}
+
+// IsBasePtr checks if the field has a pointer type in the base.
+func (s *StructField) IsBasePtr() bool {
+	return s.isBasePtr()
+}
+
+// IsHidden checks if the field is hidden for marshaling processes.
+func (s *StructField) IsHidden() bool {
+	return s.isHidden()
+}
+
+// IsI18n returns flag if the struct fields is an i18n.
+func (s *StructField) IsI18n() bool {
+	return s.isI18n()
+}
+
+// IsISO8601 checks if it is a time field with ISO8601 formatting.
+func (s *StructField) IsISO8601() bool {
+	return s.isISO8601()
+}
+
+// IsLanguage checks if the field is a language type.
+func (s *StructField) IsLanguage() bool {
+	return s.isLanguage()
+}
+
+// IsMap checks if the field is of map type.
+func (s *StructField) IsMap() bool {
+	return s.isMap()
+}
+
+// IsNestedField checks if the field is not defined within ModelStruct.
+func (s *StructField) IsNestedField() bool {
+	return s.isNestedField()
+}
+
+//IsNestedStruct checks if the field is a nested structure.
+func (s *StructField) IsNestedStruct() bool {
+	return s.nested != nil
+}
+
+// IsNoFilter checks wether the field uses no filter flag.
+func (s *StructField) IsNoFilter() bool {
+	return s.isNoFilter()
+}
+
+// IsOmitEmpty checks if the given field has a omitempty flag.
+func (s *StructField) IsOmitEmpty() bool {
+	return s.isOmitEmpty()
+}
+
+// IsPrimary checks if the field is the primary field type.
+func (s *StructField) IsPrimary() bool {
+	return s.fieldKind == KindPrimary
+}
+
+// IsPtr checks if the field is a pointer.
+func (s *StructField) IsPtr() bool {
+	return s.isPtr()
+}
+
+// IsPtrTime checks wether the field is a base ptr time flag.
+func (s *StructField) IsPtrTime() bool {
+	return s.isPtrTime()
+}
+
+// IsRelationship checks if given field is a relationship.
+func (s *StructField) IsRelationship() bool {
+	return s.isRelationship()
+}
+
+// IsSlice checks if the field is a slice based.
+func (s *StructField) IsSlice() bool {
+	return s.isSlice()
+}
+
+// IsSortable checks if the field has a sortable flag.
+func (s *StructField) IsSortable() bool {
+	return s.isSortable()
+}
+
+// IsTime checks wether the field uses time flag.
+func (s *StructField) IsTime() bool {
+	return s.isTime()
+}
+
+// IsZeroValue checks if the provided field has Zero value.
+func (s *StructField) IsZeroValue(fieldValue interface{}) bool {
+	return reflect.DeepEqual(fieldValue, reflect.Zero(s.reflectField.Type).Interface())
+}
+
+// Name returns the reflect.StructField Name.
+func (s *StructField) Name() string {
+	return s.reflectField.Name
+}
+
+// Nested returns nested field's structure.
+func (s *StructField) Nested() *NestedStruct {
+	return s.nested
+}
+
+// NeuronName returns the NeuronName.
+func (s *StructField) NeuronName() string {
+	return s.neuronName
+}
+
+// ReflectField returns structs reflect.StructField.
+func (s *StructField) ReflectField() reflect.StructField {
+	return s.reflectField
+}
+
+// Relationship returns field's Relationships.
+func (s *StructField) Relationship() *Relationship {
+	return s.relationship
+}
+
+// RelatedModelType gets the relationship's model type.
+// Returns nil if the field is not a relationship.
+func (s *StructField) RelatedModelType() reflect.Type {
+	return s.getRelatedModelType()
+}
+
+// RelatedModelStruct gets the ModelStruct of the field Type.
+// Returns nil if the field is not a relationship.
+func (s *StructField) RelatedModelStruct() *ModelStruct {
+	if s.relationship == nil {
+		return nil
 	}
-	s.store[key] = value
-	log.Debugf("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
+	return s.relationship.mStruct
+}
+
+// Self returns itself. Used in the nested fields.
+// Implements Structfielder interface.
+func (s *StructField) Self() *StructField {
+	return s
+}
+
+// SetRelatedModel sets the related model for the given struct field.
+func (s *StructField) SetRelatedModel(relModel *ModelStruct) {
+	if s.relationship == nil {
+		s.relationship = &Relationship{
+			modelType: relModel.Type(),
+		}
+	}
+
+	s.relationship.mStruct = relModel
+}
+
+// SetRelationship sets the relationship value for the struct field.
+func (s *StructField) SetRelationship(rel *Relationship) {
+	s.relationship = rel
+}
+
+// StoreDelete deletes the store value at 'key'.
+func (s *StructField) StoreDelete(key string) {
+	if s.store == nil {
+		return
+	}
+	delete(s.store, key)
+	log.Debug2f("[STORE][%s][%s] deleting key: '%s'", s.mStruct.collectionType, s.neuronName, key)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
@@ -166,57 +358,13 @@ func (s *StructField) StoreGet(key string) (interface{}, bool) {
 	return v, ok
 }
 
-// StoreDelete deletes the store value at 'key'
-func (s *StructField) StoreDelete(key string) {
+// StoreSet sets into the store the value 'value' for given 'key'.
+func (s *StructField) StoreSet(key string, value interface{}) {
 	if s.store == nil {
-		return
+		s.store = make(map[string]interface{})
 	}
-	delete(s.store, key)
-}
-
-// NeuronName returns the structFields NeuronName
-func (s *StructField) NeuronName() string {
-	return s.neuronName
-}
-
-// FieldIndex - gets the field index in the given model
-func (s *StructField) FieldIndex() []int {
-	return s.getFieldIndex()
-}
-
-// FieldKind returns structFields kind
-func (s *StructField) FieldKind() FieldKind {
-	return s.fieldKind
-}
-
-// FieldName returns struct fields name
-func (s *StructField) FieldName() string {
-	return s.reflectField.Name
-}
-
-// FieldType returns field's reflect.Type
-func (s *StructField) FieldType() reflect.Type {
-	return s.reflectField.Type
-}
-
-// Nested returns nested field's structure
-func (s *StructField) Nested() *NestedStruct {
-	return s.nested
-}
-
-// ReflectField returns structs reflect.StructField
-func (s *StructField) ReflectField() reflect.StructField {
-	return s.reflectField
-}
-
-// Relationship returns StructField's Relationships
-func (s *StructField) Relationship() *Relationship {
-	return s.relationship
-}
-
-// SetRelationship sets the relationship value for the struct field
-func (s *StructField) SetRelationship(rel *Relationship) {
-	s.relationship = rel
+	s.store[key] = value
+	log.Debug2f("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
 }
 
 // Struct returns fields modelstruct
@@ -224,83 +372,45 @@ func (s *StructField) Struct() *ModelStruct {
 	return s.mStruct
 }
 
-// FieldRelationship returns the struct field relationship
-func FieldRelationship(s *StructField) *Relationship {
-	return s.relationship
+// TagValues returns the url.Values for the specific tag.
+func (s *StructField) TagValues(tag string) url.Values {
+	return s.getTagValues(tag)
 }
 
-// Name returns the StructFields Golang Name
-func (s *StructField) Name() string {
+/**
+
+PRIVATES
+
+*/
+
+func (s *StructField) allowClientID() bool {
+	return s.fieldFlags&FClientID != 0
+}
+
+// baseFieldType is the field's base dereferenced type
+func (s *StructField) baseFieldType() reflect.Type {
+	var elem = s.reflectField.Type
+
+	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
+		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
+
+		elem = elem.Elem()
+	}
+	return elem
+}
+
+func (s *StructField) canBeSorted() bool {
+	switch s.fieldKind {
+	case KindRelationshipSingle, KindRelationshipMultiple, KindAttribute:
+		return true
+	}
+	return false
+}
+
+func (s *StructField) fieldName() string {
 	return s.reflectField.Name
 }
 
-// IsRelationship checks if given field is a relationship
-func (s *StructField) IsRelationship() bool {
-	return s.isRelationship()
-}
-
-// FieldsStruct returns field's modelStruct
-func FieldsStruct(s *StructField) *ModelStruct {
-	return s.mStruct
-}
-
-// FieldIsZeroValue checks if the provided field has Zero value.
-func FieldIsZeroValue(s *StructField, fieldValue interface{}) bool {
-	return reflect.DeepEqual(fieldValue, reflect.Zero(s.reflectField.Type).Interface())
-}
-
-// FieldsRelatedModelType gets the relationship's model type
-// Returns nil if the structfield is not a relationship
-func FieldsRelatedModelType(s *StructField) reflect.Type {
-	return s.getRelatedModelType()
-}
-
-// FieldsRelatedModelStruct gets the ModelStruct of the field Type.
-// Returns nil if the structField is not a relationship
-func FieldsRelatedModelStruct(s *StructField) *ModelStruct {
-	if s.relationship == nil {
-		return nil
-	}
-	return s.relationship.mStruct
-}
-
-// FieldInitCheckFieldType initializes StructField type
-func FieldInitCheckFieldType(s *StructField) error {
-	return s.initCheckFieldType()
-}
-
-// // IsMap checks if given field is of type map
-// func (s *StructField) IsMap() bool {
-// 	return s.isMap()
-// }
-
-// IsPrimary checks if the field is the primary field type
-func (s *StructField) IsPrimary() bool {
-	return s.fieldKind == KindPrimary
-}
-
-// FieldBaseType returns the base 'reflect.Type' for the provided field.
-// The base is the lowest possible dereference of the field's type.
-func FieldBaseType(s *StructField) reflect.Type {
-	return s.baseFieldType()
-}
-
-// FieldsNested gets NestedStruct in the field
-func FieldsNested(s *StructField) *NestedStruct {
-	return s.nested
-}
-
-// FieldsSetNeuronName sets the field's neuronName
-func FieldsSetNeuronName(s *StructField, neuronName string) {
-	s.neuronName = neuronName
-}
-
-// FieldSetFlag sets the provided flag for the structField
-func FieldSetFlag(s *StructField, flag fieldFlag) {
-	s.fieldFlags = s.fieldFlags | flag
-}
-
-// fieldSetRelatedType sets the related type for the provided structField
 func (s *StructField) fieldSetRelatedType() error {
 	modelType := s.reflectField.Type
 	// get error function
@@ -338,68 +448,6 @@ func (s *StructField) fieldSetRelatedType() error {
 	return nil
 }
 
-// SetRelatedModel sets the related model for the given struct field
-func (s *StructField) SetRelatedModel(relModel *ModelStruct) {
-	if s.relationship == nil {
-		s.relationship = &Relationship{
-			modelType: relModel.Type(),
-		}
-	}
-
-	s.relationship.mStruct = relModel
-}
-
-// // CanBeSorted returns if the struct field can be sorted
-// func (s *StructField) CanBeSorted() bool {
-// 	return s.canBeSorted()
-// }
-
-// FieldTagValues gets field's tag values
-func FieldTagValues(s *StructField, tag string) url.Values {
-	return s.getTagValues(tag)
-}
-
-// TagValues returns the url.Values for the specific tag
-func (s *StructField) TagValues(tag string) url.Values {
-	return s.getTagValues(tag)
-}
-
-func (s *StructField) isRelationship() bool {
-	return s.fieldKind == KindRelationshipMultiple || s.fieldKind == KindRelationshipSingle
-}
-
-// baseFieldType is the field's base dereferenced type
-func (s *StructField) baseFieldType() reflect.Type {
-	var elem = s.reflectField.Type
-
-	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
-		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
-
-		elem = elem.Elem()
-	}
-	return elem
-}
-
-func (s *StructField) canBeSorted() bool {
-	switch s.fieldKind {
-	case KindRelationshipSingle, KindRelationshipMultiple, KindAttribute:
-		return true
-	}
-	return false
-}
-
-func (s *StructField) getRelatedModelType() reflect.Type {
-	if s.relationship == nil {
-		return nil
-	}
-	return s.relationship.modelType
-}
-
-// GetDereferencedType returns structField dereferenced type
-func (s *StructField) GetDereferencedType() reflect.Type {
-	return s.getDereferencedType()
-}
-
 func (s *StructField) getDereferencedType() reflect.Type {
 	t := s.reflectField.Type
 	if t.Kind() == reflect.Ptr {
@@ -412,8 +460,19 @@ func (s *StructField) getFieldIndex() []int {
 	return s.fieldIndex
 }
 
+func (s *StructField) getRelatedModelType() reflect.Type {
+	if s.relationship == nil {
+		return nil
+	}
+	return s.relationship.modelType
+}
+
 func (s *StructField) getTagValues(tag string) url.Values {
 	mp := url.Values{}
+	if tag == "" {
+		return mp
+	}
+
 	seperated := strings.Split(tag, internal.AnnotationTagSeperator)
 	for _, option := range seperated {
 		i := strings.IndexRune(option, internal.AnnotationTagEqual)
@@ -479,216 +538,32 @@ func (s *StructField) initCheckFieldType() error {
 	return nil
 }
 
-// FieldAllowClientID checks if the given field allow ClientID
-func FieldAllowClientID(s *StructField) bool {
-	return s.allowClientID()
-}
-
-func (s *StructField) allowClientID() bool {
-	return s.fieldFlags&FClientID != 0
-}
-
-func (s *StructField) fieldName() string {
-	return s.reflectField.Name
-}
-
-// FieldIsOmitEmpty checks wether the field uses OmitEmpty flag
-func FieldIsOmitEmpty(s *StructField) bool {
-	return s.isOmitEmpty()
-}
-
-// IsOmitEmpty checks if the given field has a omitempty flag
-func (s *StructField) IsOmitEmpty() bool {
-	return s.isOmitEmpty()
-}
-
-func (s *StructField) isOmitEmpty() bool {
-	return s.fieldFlags&FOmitempty != 0
-}
-
-// FieldIsIso8601 checks wether the field uses FIso8601 flag
-func FieldIsIso8601(s *StructField) bool {
-	return s.isIso8601()
-}
-
-// IsIso8601 checks wether the field uses FIso8601 flag
-func (s *StructField) IsIso8601() bool {
-	return s.isIso8601()
-}
-
-func (s *StructField) isIso8601() bool {
-	return s.fieldFlags&FIso8601 != 0
-}
-
-// FieldIsTime checks wether the field uses time flag
-func FieldIsTime(s *StructField) bool {
-	return s.isTime()
-}
-
-// IsTime checks wether the field uses time flag
-func (s *StructField) IsTime() bool {
-	return s.isTime()
-}
-
-func (s *StructField) isTime() bool {
-	return s.fieldFlags&FTime != 0
-}
-
-// FieldIsPtrTime checks wether the field is a base ptr time flag
-func FieldIsPtrTime(s *StructField) bool {
-	return s.isPtrTime()
-}
-
-func (s *StructField) isPtrTime() bool {
-	return (s.fieldFlags&FTime != 0) && (s.fieldFlags&FPtr != 0)
-}
-
-// FieldIsI18n checks wether the field has a i18n flag
-func FieldIsI18n(s *StructField) bool {
-	return s.isI18n()
-}
-
-// IsI18n returns flag if the struct fields is an i18n field
-func (s *StructField) IsI18n() bool {
-	return s.isI18n()
-}
-
-func (s *StructField) isI18n() bool {
-	return s.fieldFlags&FI18n != 0
-}
-
-// FieldIsNoFilter checks wether the field uses no filter flag
-func FieldIsNoFilter(s *StructField) bool {
-	return s.isNoFilter()
-}
-func (s *StructField) isNoFilter() bool {
-	return s.fieldFlags&FNoFilter != 0
-}
-
-// FieldIsFlag checks wether the field has a language flag
-func FieldIsFlag(s *StructField) bool {
-	return s.isLanguage()
-}
-
-// IsLanguage checks wether the field is a language type field
-func (s *StructField) IsLanguage() bool {
-	return s.isLanguage()
-}
-
-func (s *StructField) isLanguage() bool {
-	return s.fieldFlags&FLanguage != 0
-}
-
-// FieldIsHidden checks if the field has a hidden flag
-func FieldIsHidden(s *StructField) bool {
-	return s.isHidden()
-}
-
-func (s *StructField) isHidden() bool {
-	return s.fieldFlags&FHidden != 0
-}
-
-// IsHidden checks if the field has a hidden flag
-func (s *StructField) IsHidden() bool {
-	return s.isHidden()
-}
-
-// FieldIsSortable checks if the field has a sortable flag
-func FieldIsSortable(s *StructField) bool {
-	return s.isSortable()
-}
-
-func (s *StructField) isSortable() bool {
-	return s.fieldFlags&FSortable != 0
-}
-
-// FieldIsMap checks if the field has a fMap flag
-func FieldIsMap(s *StructField) bool {
-	return s.isMap()
-}
-
-// IsMap checks if the field has a fMap flag
-func (s *StructField) IsMap() bool {
-	return s.isMap()
-}
-
-func (s *StructField) isMap() bool {
-	return s.fieldFlags&FMap != 0
-}
-
-// FieldIsSlice checks if the field is a slice based
-func FieldIsSlice(s *StructField) bool {
-	return s.isSlice()
-}
-
-// IsSlice checks if the field is a slice based
-func (s *StructField) IsSlice() bool {
-	return s.isSlice()
-}
-
-func (s *StructField) isSlice() bool {
-	return s.fieldFlags&FSlice != 0
-}
-
-// FieldIsArray checks if the field is an array
-func FieldIsArray(s *StructField) bool {
-	return s.isArray()
-}
-
-// IsArray checks if the field is an array
-func (s *StructField) IsArray() bool {
-	return s.isArray()
-}
-
 func (s *StructField) isArray() bool {
 	return s.fieldFlags&FArray != 0
-}
-
-// FieldIsPtr checks if the field is a pointer
-func FieldIsPtr(s *StructField) bool {
-	return s.isPtr()
-}
-
-// IsPtr checks if the field is a pointer
-func (s *StructField) IsPtr() bool {
-	return s.isPtr()
-}
-
-func (s *StructField) isPtr() bool {
-	return s.fieldFlags&FPtr != 0
-}
-
-// FieldIsBasePtr checks if the field has a pointer type in the base
-func FieldIsBasePtr(s *StructField) bool {
-	return s.isBasePtr()
-}
-
-// IsBasePtr checks if the field has a pointer type in the base
-func (s *StructField) IsBasePtr() bool {
-	return s.isBasePtr()
 }
 
 func (s *StructField) isBasePtr() bool {
 	return s.fieldFlags&FBasePtr != 0
 }
 
-// FieldIsNestedStruct checks if the field is a nested structure
-func FieldIsNestedStruct(s *StructField) bool {
-	return s.isNestedStruct()
+func (s *StructField) isHidden() bool {
+	return s.fieldFlags&FHidden != 0
 }
 
-//IsNestedStruct checks if the field is a nested structure
-func (s *StructField) IsNestedStruct() bool {
-	return s.nested != nil
+func (s *StructField) isI18n() bool {
+	return s.fieldFlags&FI18n != 0
 }
 
-func (s *StructField) isNestedStruct() bool {
-	return s.nested != nil
+func (s *StructField) isISO8601() bool {
+	return s.fieldFlags&FISO8601 != 0
 }
 
-// FieldIsNestedField checks if the field is not defined within ModelStruct
-func FieldIsNestedField(s *StructField) bool {
-	return s.isNestedField()
+func (s *StructField) isLanguage() bool {
+	return s.fieldFlags&FLanguage != 0
+}
+
+func (s *StructField) isMap() bool {
+	return s.fieldFlags&FMap != 0
 }
 
 // isNested means that the struct field is not defined within the ModelStruct
@@ -696,10 +571,44 @@ func (s *StructField) isNestedField() bool {
 	return s.fieldFlags&FNestedField != 0
 }
 
-// Self returns itself. Used in the nested fields.
-// Implements Structfielder interface.
-func (s *StructField) Self() *StructField {
-	return s
+func (s *StructField) isNestedStruct() bool {
+	return s.nested != nil
+}
+
+func (s *StructField) isNoFilter() bool {
+	return s.fieldFlags&FNoFilter != 0
+}
+
+func (s *StructField) isOmitEmpty() bool {
+	return s.fieldFlags&FOmitempty != 0
+}
+
+func (s *StructField) isPtr() bool {
+	return s.fieldFlags&FPtr != 0
+}
+
+func (s *StructField) isPtrTime() bool {
+	return (s.fieldFlags&FTime != 0) && (s.fieldFlags&FPtr != 0)
+}
+
+func (s *StructField) isRelationship() bool {
+	return s.fieldKind == KindRelationshipMultiple || s.fieldKind == KindRelationshipSingle
+}
+
+func (s *StructField) isSlice() bool {
+	return s.fieldFlags&FSlice != 0
+}
+
+func (s *StructField) isSortable() bool {
+	return s.fieldFlags&FSortable != 0
+}
+
+func (s *StructField) isTime() bool {
+	return s.fieldFlags&FTime != 0
+}
+
+func (s *StructField) setFlag(flag fieldFlag) {
+	s.fieldFlags = s.fieldFlags | flag
 }
 
 // newStructField is the creator function for the struct field

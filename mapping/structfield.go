@@ -1,8 +1,9 @@
 package mapping
 
 import (
-	"github.com/neuronlabs/neuron-core/internal/models"
 	"reflect"
+
+	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute').
@@ -63,19 +64,39 @@ func (f FieldKind) String() string {
 // and model relationships.
 type StructField models.StructField
 
-// NeuronName returns the field's 'api' name.
-func (s *StructField) NeuronName() string {
-	return (*models.StructField)(s).NeuronName()
-}
-
 // FieldIndex gets the field's index.
 func (s *StructField) FieldIndex() []int {
-	return (*models.StructField)(s).FieldIndex()
+	return s.internal().FieldIndex()
+}
+
+// FieldKind returns struct fields kind.
+func (s *StructField) FieldKind() FieldKind {
+	return FieldKind(s.internal().FieldKind())
+}
+
+// IsTimePointer checks if the field's type is a *time.time.
+func (s *StructField) IsTimePointer() bool {
+	return s.internal().IsPtrTime()
+}
+
+// ModelStruct returns field's model struct.
+func (s *StructField) ModelStruct() *ModelStruct {
+	return (*ModelStruct)(s.internal().Struct())
+}
+
+// Name returns field's 'golang' name.
+func (s *StructField) Name() string {
+	return s.internal().Name()
+}
+
+// NeuronName returns the field's 'api' name.
+func (s *StructField) NeuronName() string {
+	return s.internal().NeuronName()
 }
 
 // Nested returns the nested structure.
 func (s *StructField) Nested() *NestedStruct {
-	nested := models.FieldsNested((*models.StructField)(s))
+	nested := s.internal().Nested()
 	if nested == nil {
 		return nil
 	}
@@ -84,7 +105,7 @@ func (s *StructField) Nested() *NestedStruct {
 
 // Relationship returns relationship for provided field.
 func (s *StructField) Relationship() *Relationship {
-	r := models.FieldRelationship((*models.StructField)(s))
+	r := s.internal().Relationship()
 	if r == nil {
 		return nil
 	}
@@ -93,40 +114,24 @@ func (s *StructField) Relationship() *Relationship {
 
 // ReflectField returns reflect.StructField related with this StructField.
 func (s *StructField) ReflectField() reflect.StructField {
-	return (*models.StructField)(s).ReflectField()
-}
-
-// ModelStruct returns field's model struct.
-func (s *StructField) ModelStruct() *ModelStruct {
-	return (*ModelStruct)(models.FieldsStruct((*models.StructField)(s)))
+	return s.internal().ReflectField()
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (s *StructField) StoreSet(key string, value interface{}) {
-	(*models.StructField)(s).StoreSet(key, value)
+	s.internal().StoreSet(key, value)
 }
 
 // StoreGet gets the value from the store at the key: 'key'..
 func (s *StructField) StoreGet(key string) (interface{}, bool) {
-	return (*models.StructField)(s).StoreGet(key)
+	return s.internal().StoreGet(key)
 }
 
 // StoreDelete deletes the store value at 'key'.
 func (s *StructField) StoreDelete(key string) {
-	(*models.StructField)(s).StoreDelete(key)
+	s.internal().StoreDelete(key)
 }
 
-// Name returns field's 'golang' name.
-func (s *StructField) Name() string {
-	return (*models.StructField)(s).Name()
-}
-
-// FieldKind returns struct fields kind.
-func (s *StructField) FieldKind() FieldKind {
-	return FieldKind((*models.StructField)(s).FieldKind())
-}
-
-// IsTimePointer checks if the field's type is a *time.time.
-func (s *StructField) IsTimePointer() bool {
-	return models.FieldIsPtrTime((*models.StructField)(s))
+func (s *StructField) internal() *models.StructField {
+	return (*models.StructField)(s)
 }

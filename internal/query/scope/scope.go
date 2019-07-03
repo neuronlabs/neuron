@@ -471,7 +471,7 @@ func (s *Scope) getFieldValuePublic(field *models.StructField) (interface{}, err
 		return nil, errors.New(class.QueryNoValue, "no query value provided")
 	}
 
-	if s.mStruct.ID() != models.FieldsStruct(field).ID() {
+	if s.mStruct != field.Struct() {
 		return nil, errors.New(class.InternalQueryInvalidField, "provided invalid field for given model struct").SetOperation("getFieldValuePublic")
 	}
 

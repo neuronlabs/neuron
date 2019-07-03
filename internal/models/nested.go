@@ -47,11 +47,6 @@ func NewNestedStruct(t reflect.Type, structField StructFielder) *NestedStruct {
 	return &NestedStruct{structField: structField, modelType: t, fields: map[string]*NestedField{}}
 }
 
-// NestedStructAttr returns related attribute to the provided nested struct
-func NestedStructAttr(n *NestedStruct) *StructField {
-	return n.attr()
-}
-
 // NestedStructSetSubfield sets the subfield for the nestedStructr
 func NestedStructSetSubfield(s *NestedStruct, n *NestedField) {
 	s.fields[n.structField.neuronName] = n

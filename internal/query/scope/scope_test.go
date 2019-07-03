@@ -24,7 +24,7 @@ type testModel struct {
 	Relation *testRelatedModel `neuron:"type=relation;foreign=FK"`
 }
 
-// TestGetPrimaryFieldValues tests the GetPrimaryFieldValues method
+// TestGetPrimaryFieldValues tests the GetPrimaryFieldValues method.
 func TestGetPrimaryFieldValues(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)

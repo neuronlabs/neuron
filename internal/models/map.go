@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 	"time"
 	"unicode"
 
@@ -189,7 +190,7 @@ func (m *ModelMap) SetByCollection(ms *ModelStruct) {
 
 func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 	for _, relField := range model.RelationshipFields() {
-		relType := FieldsRelatedModelType(relField)
+		relType := relField.RelatedModelType()
 
 		val := m.Get(relType)
 		if val == nil {
@@ -381,8 +382,8 @@ func (m *ModelMap) setRelationships() error {
 					if relationship.mStruct.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
 						log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
 							relField.Name(),
-							FieldsRelatedModelType(relField).Name(),
-							FieldsRelatedModelStruct(relField).PrimaryField().ReflectField().Type,
+							relField.RelatedModelType().Name(),
+							relField.RelatedModelStruct().PrimaryField().ReflectField().Type,
 							fk.ReflectField().Type)
 						return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model's with belongs to relationship primary key type")
 					}
@@ -432,10 +433,7 @@ func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) 
 }
 
 // buildModelStruct builds the model struct for the provided model with the given namer function
-func buildModelStruct(
-	model interface{},
-	namerFunc namer.Namer,
-) (*ModelStruct, error) {
+func buildModelStruct(model interface{}, namerFunc namer.Namer) (*ModelStruct, error) {
 	var err error
 
 	modelType := reflect.TypeOf(model)
@@ -461,7 +459,6 @@ func buildModelStruct(
 	}
 
 	modelStruct := newModelStruct(modelType, collection)
-
 	// Define the function definition
 	var (
 		mapFields      func(modelType reflect.Type, modelValue reflect.Value, index []int) error
@@ -472,7 +469,6 @@ func buildModelStruct(
 
 	// assign the function to it
 	mapFields = func(modelType reflect.Type, modelValue reflect.Value, index []int) error {
-
 		for i := 0; i < modelType.NumField(); i++ {
 			var fieldIndex []int
 
@@ -510,24 +506,18 @@ func buildModelStruct(
 				continue
 			}
 
-			tag, ok := tField.Tag.Lookup(internal.AnnotationNeuron)
-			if !ok {
-				continue
-			}
-
+			tag, hasTag := tField.Tag.Lookup(internal.AnnotationNeuron)
 			if tag == "-" {
 				continue
 			}
 
 			var tagValues url.Values
-
 			structField := newStructField(tField, modelStruct)
+			structField.fieldIndex = make([]int, len(fieldIndex))
 			tagValues = structField.TagValues(tag)
 
-			structField.fieldIndex = make([]int, len(fieldIndex))
 			copy(structField.fieldIndex, fieldIndex)
-
-			log.Debugf("[%s] - Field: %s with tags: %s ", modelStruct.Type().Name(), tField.Name, tagValues)
+			log.Debug2f("[%s] - Field: %s with tags: %s ", modelStruct.Type().Name(), tField.Name, tagValues)
 
 			assignedFields++
 
@@ -539,8 +529,21 @@ func buildModelStruct(
 			} else {
 				neuronName = namerFunc(tField.Name)
 			}
+			structField.neuronName = neuronName
 
-			FieldsSetNeuronName(structField, neuronName)
+			if !hasTag {
+				// if there is no struct field tag and the field's ToLower name  is 'id'
+				// set it as the model's primary key.
+				if strings.ToLower(structField.Name()) == "id" {
+					err = modelStruct.setPrimaryField(structField)
+				} else {
+					err = modelStruct.setAttribute(structField, namerFunc)
+				}
+				if err != nil {
+					return err
+				}
+				continue
+			}
 
 			// Set field type
 			values := tagValues[internal.AnnotationFieldType]
@@ -553,9 +556,10 @@ func buildModelStruct(
 			switch value {
 			case internal.AnnotationPrimary, internal.AnnotationID,
 				internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
-				structField.fieldKind = KindPrimary
-				modelStruct.primary = structField
-				modelStruct.fields = append(modelStruct.fields, structField)
+				err = modelStruct.setPrimaryField(structField)
+				if err != nil {
+					return err
+				}
 			case internal.AnnotationRelation, internal.AnnotationRelationFull:
 				// add relationField to fields
 				modelStruct.fields = append(modelStruct.fields, structField)
@@ -575,168 +579,10 @@ func buildModelStruct(
 				// set relationship field
 				modelStruct.relationships[structField.neuronName] = structField
 			case internal.AnnotationAttribute, internal.AnnotationAttributeFull:
-				structField.fieldKind = KindAttribute
-				// check if no duplicates
-				_, ok := modelStruct.attributes[neuronName]
-				if ok {
-					return errors.Newf(class.ModelFieldName, "duplicated jsonapi attribute name: '%s' for model: '%v'.",
-						structField.neuronName, modelStruct.modelType.Name())
+				err = modelStruct.setAttribute(structField, namerFunc)
+				if err != nil {
+					return err
 				}
-
-				modelStruct.fields = append(modelStruct.fields, structField)
-
-				t := structField.ReflectField().Type
-				if t.Kind() == reflect.Ptr {
-					FieldSetFlag(structField, FPtr)
-					t = t.Elem()
-				}
-
-				switch t.Kind() {
-				case reflect.Struct:
-					if t == reflect.TypeOf(time.Time{}) {
-						FieldSetFlag(structField, FTime)
-					} else {
-						// this case it must be a nested struct field
-						FieldSetFlag(structField, FNestedStruct)
-
-						nStruct, err := getNestedStruct(t, structField, namerFunc)
-						if err != nil {
-							log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
-							return err
-						}
-						structField.nested = nStruct
-					}
-
-					if FieldIsPtr(structField) {
-						FieldSetFlag(structField, FBasePtr)
-					}
-				case reflect.Map:
-					FieldSetFlag(structField, FMap)
-
-					mapElem := t.Elem()
-
-					// isPtr is a bool that defines if the given slice Elem is a pointer type
-					// flags are not set now due to the slice sliceElem possiblities
-					var isPtr bool
-
-					// map type must have a key of type string and value of basic type
-					if mapElem.Kind() == reflect.Ptr {
-						isPtr = true
-
-						mapElem = mapElem.Elem()
-					}
-
-					// Check the map 'value' kind
-					switch mapElem.Kind() {
-					// struct may be time or nested struct
-					case reflect.Struct:
-						// check if it is time
-						if mapElem == reflect.TypeOf(time.Time{}) {
-							FieldSetFlag(structField, FTime)
-							// otherwise it must be a nested struct
-						} else {
-							FieldSetFlag(structField, FNestedStruct)
-
-							nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
-							if err != nil {
-								log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
-								return err
-							}
-							structField.nested = nStruct
-						}
-						// if the value is pointer add the base flag
-						if isPtr {
-							FieldSetFlag(structField, FBasePtr)
-						}
-
-						// map 'value' may be a slice or array
-					case reflect.Slice, reflect.Array:
-						mapElem = mapElem.Elem()
-						for mapElem.Kind() == reflect.Slice || mapElem.Kind() == reflect.Array {
-							mapElem = mapElem.Elem()
-						}
-
-						if mapElem.Kind() == reflect.Ptr {
-							FieldSetFlag(structField, FBasePtr)
-							mapElem = mapElem.Elem()
-						}
-
-						switch mapElem.Kind() {
-						case reflect.Struct:
-							// check if it is time
-							if mapElem == reflect.TypeOf(time.Time{}) {
-								FieldSetFlag(structField, FTime)
-								// otherwise it must be a nested struct
-							} else {
-								FieldSetFlag(structField, FNestedStruct)
-								nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
-								if err != nil {
-									log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
-									return err
-								}
-								structField.nested = nStruct
-							}
-						case reflect.Slice, reflect.Array, reflect.Map:
-							// disallow nested map, arrs, maps in ptr type slices
-							return errors.Newf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
-						default:
-						}
-					default:
-						if isPtr {
-							FieldSetFlag(structField, FBasePtr)
-						}
-
-					}
-				case reflect.Slice, reflect.Array:
-					if t.Kind() == reflect.Slice {
-						FieldSetFlag(structField, FSlice)
-					} else {
-						FieldSetFlag(structField, FArray)
-					}
-
-					// dereference the slice
-					// check the field base type
-					sliceElem := t
-					for sliceElem.Kind() == reflect.Slice || sliceElem.Kind() == reflect.Array {
-						sliceElem = sliceElem.Elem()
-					}
-
-					if sliceElem.Kind() == reflect.Ptr {
-						// add maybe slice Field Ptr
-						FieldSetFlag(structField, FBasePtr)
-						sliceElem = sliceElem.Elem()
-					}
-
-					switch sliceElem.Kind() {
-					case reflect.Struct:
-						// check if time
-						if sliceElem == reflect.TypeOf(time.Time{}) {
-							FieldSetFlag(structField, FTime)
-						} else {
-							// this should be the nested struct
-							FieldSetFlag(structField, FNestedStruct)
-							nStruct, err := getNestedStruct(sliceElem, structField, namerFunc)
-							if err != nil {
-								log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
-								return err
-							}
-							structField.nested = nStruct
-						}
-					case reflect.Map:
-						// map should not be allow as slice nested field
-						return errors.Newf(class.ModelFieldType, "map can't be a base of the slice. Field: '%s'", structField.Name())
-					case reflect.Array, reflect.Slice:
-						// cannot use slice of ptr slices
-						return errors.Newf(class.ModelFieldType, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
-					default:
-					}
-				default:
-					if FieldIsPtr(structField) {
-						FieldSetFlag(structField, FBasePtr)
-					}
-
-				}
-				modelStruct.attributes[structField.neuronName] = structField
 			case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull,
 				internal.AnnotationForeignKeyFullS:
 				structField.fieldKind = KindForeignKey
@@ -761,33 +607,33 @@ func buildModelStruct(
 				return errors.Newf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, modelStruct.Type().Name(), tField.Name)
 			}
 
-			// iterate over structfield tags
+			// iterate over structfield additional tags
 			for key, values := range tagValues {
 				switch key {
 				case internal.AnnotationFieldType, internal.AnnotationName:
 					continue
 				case internal.AnnotationFlags:
 					for _, value := range values {
-
 						switch value {
 						case internal.AnnotationClientID:
-							FieldSetFlag(structField, FClientID)
+							structField.setFlag(FClientID)
 						case internal.AnnotationNoFilter:
-							FieldSetFlag(structField, FNoFilter)
+							structField.setFlag(FNoFilter)
 						case internal.AnnotationHidden:
-							FieldSetFlag(structField, FHidden)
+							structField.setFlag(FHidden)
 						case internal.AnnotationNotSortable:
-							FieldSetFlag(structField, FSortable)
+							structField.setFlag(FSortable)
 						case internal.AnnotationISO8601:
-							FieldSetFlag(structField, FIso8601)
+							structField.setFlag(FISO8601)
 						case internal.AnnotationOmitEmpty:
-							FieldSetFlag(structField, FOmitempty)
+							structField.setFlag(FOmitempty)
 						case internal.AnnotationI18n:
-							FieldSetFlag(structField, FI18n)
+							structField.setFlag(FI18n)
 							modelStruct.i18n = append(modelStruct.i18n, structField)
 						case internal.AnnotationLanguage:
 							modelStruct.setLanguage(structField)
-
+						default:
+							log.Debugf("Unknown field's: '%s' flag tag: '%s'", structField.Name(), value)
 						}
 					}
 				case internal.AnnotationManyToMany:
@@ -884,7 +730,7 @@ func getNestedStruct(
 			for tKey, tValue := range tagValues {
 				switch tKey {
 				case internal.AnnotationName:
-					FieldsSetNeuronName(nestedField.structField, tValue[0])
+					nestedField.structField.neuronName = tValue[0]
 				case internal.AnnotationFieldType:
 					if tValue[0] != internal.AnnotationNestedField {
 						log.Debugf("Invalid annotationNestedField value: '%s' for field: %s", tValue[0], nestedField.structField.Name())
@@ -894,15 +740,15 @@ func getNestedStruct(
 					for _, value := range tValue {
 						switch value {
 						case internal.AnnotationNoFilter:
-							FieldSetFlag(nestedField.structField, FNoFilter)
+							nestedField.structField.setFlag(FNoFilter)
 						case internal.AnnotationHidden:
-							FieldSetFlag(nestedField.structField, FHidden)
+							nestedField.structField.setFlag(FHidden)
 						case internal.AnnotationNotSortable:
-							FieldSetFlag(nestedField.structField, FSortable)
+							nestedField.structField.setFlag(FSortable)
 						case internal.AnnotationISO8601:
-							FieldSetFlag(nestedField.structField, FIso8601)
+							nestedField.structField.setFlag(FISO8601)
 						case internal.AnnotationOmitEmpty:
-							FieldSetFlag(nestedField.structField, FOmitempty)
+							nestedField.structField.setFlag(FOmitempty)
 						}
 
 					}
@@ -911,18 +757,16 @@ func getNestedStruct(
 		}
 
 		if nestedField.structField.NeuronName() == "" {
-			FieldsSetNeuronName(nestedField.structField, namerFunc(nField.Name))
+			nestedField.structField.neuronName = namerFunc(nField.Name)
 		}
 
 		switch nestedField.structField.NeuronName() {
 		case "relationships", "links":
-			return nil, errors.Newf(class.ModelFieldName, "nested field within: '%s' field in the model: '%s' has forbidden API name: '%s'",
-				NestedStructAttr(nestedStruct).Name(),
-				FieldsStruct(NestedStructAttr(nestedStruct)).Type().Name(),
+			return nil, errors.Newf(class.ModelFieldName, "nested field within: '%s' field in the model: '%s' has forbidden Neuron name: '%s'",
+				nestedStruct.Attr().Name(),
+				nestedStruct.Attr().Struct().Type().Name(),
 				nestedField.structField.NeuronName(),
 			)
-		default:
-
 		}
 
 		if _, ok = NestedStructSubField(nestedStruct, nestedField.structField.NeuronName()); ok {
@@ -933,13 +777,13 @@ func getNestedStruct(
 		nFType := nField.Type
 		if nFType.Kind() == reflect.Ptr {
 			nFType = nFType.Elem()
-			FieldSetFlag(nestedField.structField, FPtr)
+			nestedField.structField.setFlag(FPtr)
 		}
 
 		switch nFType.Kind() {
 		case reflect.Struct:
 			if nFType == reflect.TypeOf(time.Time{}) {
-				FieldSetFlag(nestedField.structField, FTime)
+				nestedField.structField.setFlag(FTime)
 			} else {
 				// nested nested field
 				nStruct, err := getNestedStruct(nFType, nestedField, namerFunc)
@@ -949,15 +793,14 @@ func getNestedStruct(
 				}
 
 				nestedField.structField.nested = nStruct
-
 				marshalField.Type = nStruct.marshalType
 			}
 
-			if FieldIsPtr(nestedField.structField) {
-				FieldSetFlag(nestedField.structField, FBasePtr)
+			if nestedField.structField.IsPtr() {
+				nestedField.structField.setFlag(FBasePtr)
 			}
 		case reflect.Map:
-			FieldSetFlag(nestedField.structField, FMap)
+			nestedField.structField.setFlag(FMap)
 			// should it be disallowed?
 			// check the inner kind
 			mapElem := nFType.Elem()
@@ -970,13 +813,12 @@ func getNestedStruct(
 
 			switch mapElem.Kind() {
 			case reflect.Struct:
-
 				// check if it is time
 				if mapElem == reflect.TypeOf(time.Time{}) {
-					FieldSetFlag(nestedField.structField, FTime)
+					nestedField.structField.setFlag(FTime)
 					// otherwise it must be a nested struct
 				} else {
-					FieldSetFlag(nestedField.structField, FNestedStruct)
+					nestedField.structField.setFlag(FNestedStruct)
 
 					nStruct, err := getNestedStruct(mapElem, nestedField, namerFunc)
 					if err != nil {
@@ -988,7 +830,7 @@ func getNestedStruct(
 				}
 				// if the value is pointer add the base flag
 				if isPtr {
-					FieldSetFlag(nestedField.structField, FBasePtr)
+					nestedField.structField.setFlag(FBasePtr)
 				}
 			case reflect.Slice, reflect.Array:
 				mapElem = mapElem.Elem()
@@ -997,7 +839,7 @@ func getNestedStruct(
 				}
 
 				if mapElem.Kind() == reflect.Ptr {
-					FieldSetFlag(nestedField.structField, FBasePtr)
+					nestedField.structField.setFlag(FBasePtr)
 					mapElem = mapElem.Elem()
 				}
 
@@ -1005,10 +847,10 @@ func getNestedStruct(
 				case reflect.Struct:
 					// check if it is time
 					if mapElem == reflect.TypeOf(time.Time{}) {
-						FieldSetFlag(nestedField.structField, FTime)
+						nestedField.structField.setFlag(FTime)
 						// otherwise it must be a nested struct
 					} else {
-						FieldSetFlag(nestedField.structField, FNestedStruct)
+						nestedField.structField.setFlag(FNestedStruct)
 
 						nStruct, err := getNestedStruct(mapElem, nestedField, namerFunc)
 						if err != nil {
@@ -1023,19 +865,18 @@ func getNestedStruct(
 				default:
 				}
 			}
-
 		case reflect.Slice, reflect.Array:
 			if nFType.Kind() == reflect.Slice {
-				FieldSetFlag(nestedField.structField, FSlice)
+				nestedField.structField.setFlag(FSlice)
 			} else {
-				FieldSetFlag(nestedField.structField, FArray)
+				nestedField.structField.setFlag(FArray)
 			}
 			for nFType.Kind() == reflect.Slice || nFType.Kind() == reflect.Array {
 				nFType = nFType.Elem()
 			}
 
 			if nFType.Kind() == reflect.Ptr {
-				FieldSetFlag(nestedField.structField, FBasePtr)
+				nestedField.structField.setFlag(FBasePtr)
 				nFType = nFType.Elem()
 			}
 
@@ -1043,10 +884,10 @@ func getNestedStruct(
 			case reflect.Struct:
 				// check if time
 				if nFType == reflect.TypeOf(time.Time{}) {
-					FieldSetFlag(nestedField.structField, FTime)
+					nestedField.structField.setFlag(FTime)
 				} else {
 					// this should be the nested struct
-					FieldSetFlag(nestedField.structField, FNestedStruct)
+					nestedField.structField.setFlag(FNestedStruct)
 					nStruct, err := getNestedStruct(nFType, nestedField, namerFunc)
 					if err != nil {
 						log.Debugf("nestedField: %v getNestedStruct failed. %v", nestedField.structField.fieldName(), err)
@@ -1057,19 +898,17 @@ func getNestedStruct(
 			case reflect.Slice, reflect.Ptr, reflect.Map, reflect.Array:
 				return nil, errors.Newf(class.ModelFieldType, "nested field can't be a slice of pointer to slices|map|arrays. NestedField: '%s' within NestedStruct:'%s'", nestedField.structField.Name(), nestedStruct.modelType.Name())
 			}
-
 		default:
 			// basic type (ints, uints, string, floats)
 			// do nothing
 
-			if FieldIsPtr(nestedField.structField) {
-				FieldSetFlag(nestedField.structField, FBasePtr)
+			if nestedField.structField.IsPtr() {
+				nestedField.structField.setFlag(FBasePtr)
 			}
 		}
 
 		var tagValue = nestedField.structField.NeuronName()
-
-		if FieldIsOmitEmpty(nestedField.structField) {
+		if nestedField.structField.isOmitEmpty() {
 			tagValue += ",omitempty"
 		}
 

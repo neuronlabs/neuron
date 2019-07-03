@@ -26,12 +26,6 @@ func (m *embeddedModel) RepositoryName() string {
 	return defaultRepo
 }
 
-// SchemaName returns the name of the schema for the embeddedModel.
-// Implements SchemaNamer interface.
-func (m *embeddedModel) SchemaName() string {
-	return defaultSchema
-}
-
 func setLogger() {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)

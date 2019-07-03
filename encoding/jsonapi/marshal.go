@@ -226,7 +226,7 @@ func marshalNestedStructValue(n *models.NestedStruct, v reflect.Value) reflect.V
 		vField := v.FieldByIndex(nestedField.StructField().ReflectField().Index)
 		mField := marshalValue.FieldByIndex(nestedField.StructField().ReflectField().Index)
 
-		if models.FieldIsNestedStruct(nestedField.StructField()) {
+		if nestedField.StructField().IsNestedStruct() {
 			mField.Set(marshalNestedStructValue(nestedField.StructField().Nested(), vField))
 		} else {
 			mField.Set(vField)
@@ -314,7 +314,7 @@ func visitNode(
 
 	var err error
 
-	if !models.FieldIsHidden(primStruct) && !models.FieldIsZeroValue(primStruct, primaryVal.Interface()) {
+	if !primStruct.IsHidden() && !primStruct.IsZeroValue(primaryVal.Interface()) {
 		err = setNodePrimary(primaryVal, node)
 		if err != nil {
 			return nil, err
@@ -323,14 +323,13 @@ func visitNode(
 
 	// iterate over fields
 	for _, field := range mStruct.Fields() {
-
 		// Omit hidden fields
-		if models.FieldIsHidden(field) {
+		if field.IsHidden() {
 			continue
 		}
 
 		fieldValue := modelVal.FieldByIndex(field.ReflectField().Index)
-		if models.FieldIsOmitEmpty(field) {
+		if field.IsOmitEmpty() {
 			if reflect.DeepEqual(fieldValue.Interface(), reflect.Zero(field.ReflectField().Type).Interface()) {
 				continue
 			}
@@ -344,51 +343,50 @@ func visitNode(
 			}
 
 			if models.FieldIsTime(field) {
-				if !models.FieldIsBasePtr(field) {
+				if !field.IsBasePtr() {
 					t := fieldValue.Interface().(time.Time)
 
 					if t.IsZero() {
 						continue
 					}
 
-					if models.FieldIsIso8601(field) {
-						node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
+					if field.IsISO8601() {
+						node.Attributes[field.NeuronName()] = t.UTC().Format(ISO8601TimeFormat)
 					} else {
 						node.Attributes[field.NeuronName()] = t.Unix()
 					}
 
 				} else {
 					if fieldValue.IsNil() {
-						if models.FieldIsOmitEmpty(field) {
+						if field.IsOmitEmpty() {
 							continue
 						}
 						node.Attributes[field.NeuronName()] = nil
 					} else {
 						t := fieldValue.Interface().(*time.Time)
 
-						if t.IsZero() && models.FieldIsOmitEmpty(field) {
+						if t.IsZero() && field.IsOmitEmpty() {
 							continue
 						}
 
-						if models.FieldIsIso8601(field) {
-							node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
+						if field.IsISO8601() {
+							node.Attributes[field.NeuronName()] = t.UTC().Format(ISO8601TimeFormat)
 						} else {
 							node.Attributes[field.NeuronName()] = t.Unix()
 						}
 					}
 				}
 			} else {
-				if models.FieldIsOmitEmpty(field) && models.FieldIsPtr(field) && fieldValue.IsNil() {
+				if field.IsOmitEmpty() && field.IsPtr() && fieldValue.IsNil() {
 					continue
 				} else {
 					emptyValue := reflect.Zero(fieldValue.Type())
-					if models.FieldIsOmitEmpty(field) && reflect.
-						DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+					if field.IsOmitEmpty() && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
 						continue
 					}
 				}
 
-				if models.FieldIsNestedStruct(field) {
+				if field.IsNestedStruct() {
 					node.Attributes[field.NeuronName()] = marshalNestedStructValue(field.Nested(), fieldValue).Interface()
 					continue
 				}
@@ -403,9 +401,7 @@ func visitNode(
 		case models.KindRelationshipMultiple, models.KindRelationshipSingle:
 
 			isSlice := field.FieldKind() == models.KindRelationshipMultiple
-			if models.FieldIsOmitEmpty(field) &&
-				((isSlice && fieldValue.Len() == 0) ||
-					(!isSlice && fieldValue.IsNil())) {
+			if field.IsOmitEmpty() && ((isSlice && fieldValue.Len() == 0) || (!isSlice && fieldValue.IsNil())) {
 				continue
 			}
 
@@ -486,7 +482,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 	primIndex := primStruct.FieldIndex()
 	primaryVal := modelVal.FieldByIndex(primIndex)
 
-	if !primStruct.IsHidden() && !models.FieldIsZeroValue(primStruct, primaryVal.Interface()) {
+	if !primStruct.IsHidden() && primStruct.IsZeroValue(primaryVal.Interface()) {
 		err := setNodePrimary(primaryVal, node)
 		if err != nil {
 			return nil, err
@@ -513,8 +509,8 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 						continue
 					}
 
-					if field.IsIso8601() {
-						node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
+					if field.IsISO8601() {
+						node.Attributes[field.NeuronName()] = t.UTC().Format(ISO8601TimeFormat)
 					} else {
 						node.Attributes[field.NeuronName()] = t.Unix()
 					}
@@ -531,8 +527,8 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 							continue
 						}
 
-						if field.IsIso8601() {
-							node.Attributes[field.NeuronName()] = t.UTC().Format(Iso8601TimeFormat)
+						if field.IsISO8601() {
+							node.Attributes[field.NeuronName()] = t.UTC().Format(ISO8601TimeFormat)
 						} else {
 							node.Attributes[field.NeuronName()] = t.Unix()
 						}
@@ -683,12 +679,8 @@ func visitRelationshipManyNode(
 	return &relationshipManyNode{Data: nodes}, nil
 }
 
-func visitRelationshipNode(
-	c *controller.Controller,
-	value, rootID reflect.Value,
-	field *models.StructField,
-) (*node, error) {
-	mStruct := models.FieldsRelatedModelStruct(field)
+func visitRelationshipNode(c *controller.Controller, value, rootID reflect.Value, field *models.StructField) (*node, error) {
+	mStruct := field.RelatedModelStruct()
 	prim := mStruct.PrimaryField()
 	node := &node{Type: mStruct.Collection()}
 

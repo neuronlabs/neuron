@@ -528,7 +528,7 @@ func unmarshalAttrFieldValue(
 ) (err error) {
 	v := reflect.ValueOf(attrValue)
 	fieldType := modelAttr.ReflectField()
-	baseType := models.FieldBaseType(modelAttr)
+	baseType := modelAttr.BaseType()
 
 	if modelAttr.IsSlice() || modelAttr.IsArray() {
 		var sliceValue reflect.Value
@@ -791,7 +791,7 @@ func unmarshalSingleFieldValue(
 	}
 
 	if modelAttr.IsTime() {
-		if modelAttr.IsIso8601() {
+		if modelAttr.IsISO8601() {
 			// on ISO8601 the incoming value must be a string
 			var tm string
 			if v.Kind() == reflect.String {
@@ -803,7 +803,7 @@ func unmarshalSingleFieldValue(
 			}
 
 			// parse the string time with iso formatting
-			t, err := time.Parse(Iso8601TimeFormat, tm)
+			t, err := time.Parse(ISO8601TimeFormat, tm)
 			if err != nil {
 				err := errors.New(class.EncodingUnmarshalInvalidTime, "invalid ISO8601 time field")
 				err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
@@ -1137,7 +1137,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 	mp, ok := value.(map[string]interface{})
 	if !ok {
 		err := errors.New(class.EncodingUnmarshalFieldValue, "invalid field value")
-		err.SetDetailf("Invalid field value for the subfield within attribute: '%s'", models.NestedStructAttr(n).NeuronName())
+		err.SetDetailf("Invalid field value for the subfield within attribute: '%s'", n.Attr().NeuronName())
 		return reflect.Value{}, err
 	}
 
@@ -1150,7 +1150,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 				continue
 			}
 			err := errors.New(class.EncodingUnmarshalUnknownField, "nested field not found")
-			err.SetDetailf("No subfield named: '%s' within attr: '%s'", mpName, models.NestedStructAttr(n).NeuronName())
+			err.SetDetailf("No subfield named: '%s' within attr: '%s'", mpName, n.Attr().NeuronName())
 			return reflect.Value{}, err
 		}
 
@@ -1162,7 +1162,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 		}
 	}
 
-	if models.FieldIsBasePtr(n.StructField().Self()) {
+	if n.StructField().Self().IsBasePtr() {
 		log.Debugf("NestedStruct: '%v' isBasePtr. Attr: '%s'", result.Type(), n.Attr().Name())
 		return result, nil
 	}

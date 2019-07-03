@@ -13,6 +13,7 @@ import (
 	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
+// TestAutoSelectFields tests the auto select fields.
 func TestAutoSelectFields(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG)

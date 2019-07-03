@@ -273,7 +273,7 @@ PRIVATE METHODS
 */
 
 func (s *Scope) addFilterField(filter *filters.FilterField) error {
-	if models.FieldsStruct(filter.StructField()).ID() != s.mStruct.ID() {
+	if filter.StructField().Struct() != s.mStruct {
 		log.Debugf("Filter's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField().Name(), filter.StructField().Struct().Type().Name())
 		err := errors.New(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
 		return err
