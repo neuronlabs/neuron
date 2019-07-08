@@ -9,7 +9,6 @@ Neuron-core is the golang cloud-native, distributed ORM implementation.
 * [Install](#install)
 * [Docs](#docs)
 * [Quick Start](#quick-start)
-* [Design](#design)
 
 ## What is Neuron-Core?
 Neuron-core is a cloud-ready **Golang** ORM. It's design allows to
@@ -135,6 +134,5 @@ func main() {
     }
 ```
 
-## Design
 
 

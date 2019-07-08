@@ -83,7 +83,6 @@ func ReadControllerConfig(name, path string) (*Controller, error) {
 }
 
 func readDefaultConfig() *Controller {
-
 	v := viper.New()
 	setDefaults(v)
 

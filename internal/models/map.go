@@ -445,15 +445,27 @@ func (m *ModelMap) setRelationships() error {
 			if relField.relationship.isMany2Many() {
 				continue
 			}
-			// relationship is of BelongsTo kind
-			// check if the related model struct primary field is of the same type as the given foreign key
-			if relField.relationship.mStruct.PrimaryField().ReflectField().Type != relField.relationship.foreignKey.ReflectField().Type {
+
+			// check if the foreign key match related primary field type
+			var match bool
+			switch relField.relationship.kind {
+			case RelBelongsTo:
+				if relField.relationship.mStruct.PrimaryField().ReflectField().Type == relField.relationship.foreignKey.ReflectField().Type {
+					match = true
+				}
+			case RelHasMany, RelHasOne:
+				if relField.mStruct.PrimaryField().ReflectField().Type == relField.relationship.foreignKey.ReflectField().Type {
+					match = true
+				}
+			}
+
+			if !match {
 				log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
 					relField.relationship.foreignKey.mStruct.Type().Name(),
 					relField.RelatedModelType().Name(),
 					relField.RelatedModelStruct().PrimaryField().ReflectField().Type,
 					relField.relationship.foreignKey.ReflectField().Type)
-				return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model's with belongs to relationship primary key type")
+				return errors.Newf(class.ModelRelationshipForeign, "foreign key: '%s' doesn't match model's: '%s' primary key type", relField.relationship.foreignKey.Name(), relField.relationship.mStruct.Type().Name())
 			}
 		}
 	}

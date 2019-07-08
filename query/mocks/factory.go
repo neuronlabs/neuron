@@ -25,7 +25,7 @@ type Factory struct {
 
 // New creates new repository
 // Implements repository.Factory method
-func (f *Factory) New(s repository.ModelStructer, model *mapping.ModelStruct) (repository.Repository, error) {
+func (f *Factory) New(s repository.Controller, model *mapping.ModelStruct) (repository.Repository, error) {
 	return &Repository{}, nil
 }
 

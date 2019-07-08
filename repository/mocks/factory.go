@@ -21,7 +21,7 @@ type Factory struct {
 }
 
 // New provides a mock function with given fields: model.
-func (_m *Factory) New(structer repository.ModelStructer, model *mapping.ModelStruct) (repository.Repository, error) {
+func (_m *Factory) New(structer repository.Controller, model *mapping.ModelStruct) (repository.Repository, error) {
 	return &Repository{}, nil
 }
 
