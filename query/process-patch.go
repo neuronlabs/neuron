@@ -868,10 +868,6 @@ func patchMany2ManyRelationship(
 		return err
 	}
 
-	// clear the memory from slices and maps
-	checkPrimaries = nil
-	primaryMap = nil
-
 	// 3) when all the primaries exists in the relation model
 	// insert the relation values into the join model
 	joinModel := relField.Relationship().JoinModel()

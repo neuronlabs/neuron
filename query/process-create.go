@@ -49,10 +49,10 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 
-	creater, ok := repo.(Creater)
+	creater, ok := repo.(Creator)
 	if !ok {
-		log.Errorf("The repository deosn't implement Creater interface for model: %s", (*scope.Scope)(s).Struct().Collection())
-		return errors.New(class.RepositoryNotImplementsCreater, "repository doesn't implement Creator interface")
+		log.Errorf("The repository deosn't implement Creator interface for model: %s", (*scope.Scope)(s).Struct().Collection())
+		return errors.New(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
 	if err := creater.Create(ctx, s); err != nil {

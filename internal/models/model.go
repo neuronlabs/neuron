@@ -54,7 +54,7 @@ type ModelStruct struct {
 	// field that are ready for translations
 	i18n []*StructField
 
-	// ForeignKeys is a contianer for the foriegn keys for the relationships
+	// ForeignKeys is a container for the foreign keys for the relationships
 	foreignKeys map[string]*StructField
 
 	// filterKeys is a container for the filter keys
@@ -589,7 +589,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 		mapElem := t.Elem()
 
 		// isPtr is a bool that defines if the given slice Elem is a pointer type
-		// flags are not set now due to the slice sliceElem possiblities
+		// flags are not set now due to the slice sliceElem possibilities.
 		var isPtr bool
 
 		// map type must have a key of type string and value of basic type

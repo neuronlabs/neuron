@@ -15,37 +15,37 @@ import (
 )
 
 var (
-	// ProcessDelete is the process that does the Repository Delete method
+	// ProcessDelete is the process that does the Repository Delete method.
 	ProcessDelete = &Process{
 		Name: "neuron:delete",
 		Func: deleteFunc,
 	}
 
-	// ProcessReducePrimaryFilters is the process that reduces the primary filters for the given process
+	// ProcessReducePrimaryFilters is the process that reduces the primary filters for the given process.
 	ProcessReducePrimaryFilters = &Process{
 		Name: "neuron:reduce_primary_filters",
 		Func: reducePrimaryFilters,
 	}
 
-	// ProcessBeforeDelete is the Process that does the BeforeDelete hook
+	// ProcessBeforeDelete is the Process that does the BeforeDelete hook.
 	ProcessBeforeDelete = &Process{
 		Name: "neuron:hook_before_delete",
 		Func: beforeDeleteFunc,
 	}
 
-	// ProcessAfterDelete is the Process that does the AfterDelete hook
+	// ProcessAfterDelete is the Process that does the AfterDelete hook.
 	ProcessAfterDelete = &Process{
 		Name: "neuron:hook_after_delete",
 		Func: afterDeleteFunc,
 	}
 
-	// ProcessDeleteForeignRelationships is the Process that deletes the foreing relatioionships
+	// ProcessDeleteForeignRelationships is the Process that deletes the foreign relatioionships.
 	ProcessDeleteForeignRelationships = &Process{
 		Name: "neuron:delete_foreign_relationships",
 		Func: deleteForeignRelationshipsFunc,
 	}
 
-	// ProcessDeleteForeignRelationshipsSafe is the Process that deletes the foreing relatioionships
+	// ProcessDeleteForeignRelationshipsSafe is the Process that deletes the foreign relatioionships.
 	ProcessDeleteForeignRelationshipsSafe = &Process{
 		Name: "neuron:delete_foreign_relationships_safe",
 		Func: deleteForeignRelationshipsSafeFunc,

@@ -171,8 +171,8 @@ func (s *Scope) ResetIncludedField() {
 }
 
 // buildInclude searches for the relationship field within given scope
-// if not found, then tries to seperate the 'included' argument
-// by the 'annotationNestedSeperator'. If seperated correctly
+// if not found, then tries to separate the 'included' argument
+// by the 'annotationNestedSeperator'. If separated correctly
 // it tries to create nested fields.
 // adds IncludeScope for given field.
 func (s *Scope) buildInclude(included string) []*errors.Error {

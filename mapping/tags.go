@@ -21,7 +21,7 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 
 	// omit the field with the '-' tag
 	if tag == "-" {
-		return []*FieldTag{&FieldTag{Key: "-"}}
+		return []*FieldTag{{Key: "-"}}
 	}
 
 	var (

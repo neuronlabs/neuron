@@ -47,7 +47,7 @@ var (
 	// for the issues related to the nil config value.
 	ConfigValueNil Class
 
-	// ConfigValueInvalid is the 'MjrConfig', 'MnrConfigValue' error classificaiton
+	// ConfigValueInvalid is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for config validation failures.
 	ConfigValueInvalid Class
 )

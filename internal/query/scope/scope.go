@@ -124,7 +124,7 @@ type Scope struct {
 
 	hasFieldNotInFieldset bool
 
-	// subscopeChain is the array of the scope's used for commiting or rolling back the transaction
+	// subscopesChain is the array of the scope's used for committing or rolling back the transaction.
 	subscopesChain []*Scope
 
 	filterLock sync.Mutex
@@ -1083,8 +1083,24 @@ func (s *Scope) copyPresetParameters() {
 }
 
 func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
-	scope := *s
-	scope.filterLock = sync.Mutex{}
+	scope := Scope{
+		id:                        uuid.New(),
+		Value:                     s.Value,
+		mStruct:                   s.mStruct,
+		store:                     make(map[interface{}]interface{}),
+		isMany:                    s.isMany,
+		count:                     s.count,
+		errorLimit:                s.errorLimit,
+		maxNestedLevel:            s.maxNestedLevel,
+		currentErrorCount:         s.currentErrorCount,
+		totalIncludeCount:         s.totalIncludeCount,
+		kind:                      s.kind,
+		currentIncludedFieldIndex: s.currentIncludedFieldIndex,
+		isRelationship:            s.isRelationship,
+		queryLanguage:             s.queryLanguage,
+		hasFieldNotInFieldset:     s.hasFieldNotInFieldset,
+		filterLock:                sync.Mutex{},
+	}
 
 	if isRoot {
 		scope.rootScope = nil

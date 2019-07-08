@@ -22,7 +22,7 @@ func setBelongsToForeigns(m *models.ModelStruct, v reflect.Value) error {
 	}
 
 	for _, rel := range m.RelationshipFields() {
-		// check if the relatinoship is not a RelBelongsTo
+		// check if the relationship is not a RelBelongsTo
 		if rel.Relationship().Kind() != models.RelBelongsTo {
 			continue
 		}

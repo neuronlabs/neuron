@@ -153,7 +153,7 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) 
 	scopeValue := reflect.ValueOf(sc.Value)
 	t := scopeValue.Type()
 	if t.Kind() != reflect.Ptr {
-		err = errors.New(class.EncodingMarshalNonAddressable, "scope's value is non addresable")
+		err = errors.New(class.EncodingMarshalNonAddressable, "scope's value is non addressable")
 		return nil, err
 	}
 

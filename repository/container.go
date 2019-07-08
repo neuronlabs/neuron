@@ -25,6 +25,34 @@ func GetFactory(name string) Factory {
 	return nil
 }
 
+// CloseAll closes all repositoriy instances for all registered factories.
+func CloseAll(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan interface{}, len(ctr.factories))
+	for _, factory := range ctr.factories {
+		go factory.Close(ctx, done)
+	}
+	var ct int
+fl:
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case v := <-done:
+			if err, ok := v.(error); ok && err != nil {
+				return err
+			}
+
+			ct++
+			if ct == len(ctr.factories) {
+				break fl
+			}
+		}
+	}
+	return nil
+}
+
 // container is the container for the model repositories.
 // It contains mapping between repository name as well as the repository mapped to
 // the given ModelStruct
@@ -55,32 +83,5 @@ func (c *container) registerFactory(f Factory) error {
 	c.factories[repoName] = f
 
 	log.Debugf("Repository Factory: '%s' registered succesfully.", repoName)
-	return nil
-}
-
-// CloseAll closes all repositories
-func CloseAll(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	done := make(chan interface{}, len(ctr.factories))
-	for _, factory := range ctr.factories {
-		go factory.Close(ctx, done)
-	}
-	var ct int
-fl:
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case v := <-done:
-			if err, ok := v.(error); ok {
-				return err
-			}
-			ct++
-			if ct == len(ctr.factories) {
-				break fl
-			}
-		}
-	}
 	return nil
 }

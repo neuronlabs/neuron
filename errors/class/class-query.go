@@ -260,7 +260,7 @@ var (
 	QueryNoValue Class
 
 	// QueryValueMissingRequired is the 'MjrQuery', 'MnrQueryValue' error classifcation
-	// occured on missing required field values.
+	// occurred on missing required field values.
 	QueryValueMissingRequired Class
 
 	// QueryValueNoResult is the 'MjrQuery', 'MnrQueryValue' error classifaction
@@ -404,7 +404,7 @@ var (
 	QueryViolationNotNull Class
 
 	// QueryViolationForeignKey is the 'MjrQuery', 'MnrQueryViolation' error classifcation
-	// when the foregin key is being violated.
+	// when the foreign key is being violated.
 	QueryViolationForeignKey Class
 
 	// QueryViolationUnique is the 'MjrQuery', 'MnrQueryViolation' error classifcation

@@ -14,7 +14,7 @@ var DefaultTestingConfig *config.Controller
 func init() {
 	DefaultTestingConfig = config.ReadDefaultControllerConfig()
 	DefaultTestingConfig.Repositories = map[string]*config.Repository{
-		"mock": &config.Repository{DriverName: "mockery"},
+		"mock": {DriverName: "mockery"},
 	}
 
 	DefaultTestingConfig.DefaultRepositoryName = "mock"

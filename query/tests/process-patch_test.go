@@ -390,8 +390,8 @@ func TestPatch(t *testing.T) {
 				model := &HasManyModel{
 					ID: 3,
 					HasMany: []*ForeignModel{
-						&ForeignModel{ID: 1},
-						&ForeignModel{ID: 5},
+						{ID: 1},
+						{ID: 5},
 					},
 				}
 
@@ -736,8 +736,8 @@ func TestPatch(t *testing.T) {
 					model := &HasManyModel{
 						ID: 3,
 						HasMany: []*ForeignModel{
-							&ForeignModel{ID: 6},
-							&ForeignModel{ID: 7},
+							{ID: 6},
+							{ID: 7},
 						},
 					}
 
@@ -890,6 +890,7 @@ func TestPatch(t *testing.T) {
 			t.Run("NonEmpty", func(t *testing.T) {
 				c := newController(t)
 				err := c.RegisterModels(Many2ManyModel{}, RelatedModel{}, JoinModel{})
+				require.NoError(t, err)
 
 				model := &Many2ManyModel{
 					ID:        4,
@@ -1073,6 +1074,7 @@ func TestPatch(t *testing.T) {
 			t.Run("Clear", func(t *testing.T) {
 				c := newController(t)
 				err := c.RegisterModels(Many2ManyModel{}, RelatedModel{}, JoinModel{})
+				require.NoError(t, err)
 
 				model := &Many2ManyModel{
 					ID:        4,

@@ -47,7 +47,7 @@ type nestedModel struct {
 func TestParseQuery(t *testing.T) {
 	cfg := *internalController.DefaultTestingConfig
 	cfg.Repositories = map[string]*config.Repository{
-		"mocks": &config.Repository{DriverName: "mocks"},
+		"mocks": {DriverName: "mocks"},
 	}
 	cfg.DefaultRepositoryName = "mocks"
 

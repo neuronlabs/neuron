@@ -1,4 +1,4 @@
-// package neuron is the cloud-native, distributed ORM implementation.
+// Package ncore is the cloud-native, distributed ORM implementation.
 // It's design allows to use the separate repository
 // for each model, with a possiblity to have different
 // relationships types between them.
@@ -19,5 +19,4 @@
 // - repository - is a package used to store and register the repositories.
 //	It is also used to get the repository/factory per model. A modular design
 //  allows to use and compile only required repositories.
-
 package ncore

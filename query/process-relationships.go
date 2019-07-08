@@ -151,7 +151,6 @@ func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
 	}
 
 	bufSize := 10
-
 	if len(relationshipFilters) < bufSize {
 		bufSize = len(relationshipFilters)
 	}

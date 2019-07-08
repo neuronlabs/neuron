@@ -14,7 +14,7 @@ type AfterCreator interface {
 	AfterCreate(ctx context.Context, s *Scope) error
 }
 
-// BeforeGetter is the interface used as a hook before gettin value from api.
+// BeforeGetter is the interface used as a hook before getting value.
 type BeforeGetter interface {
 	BeforeGet(ctx context.Context, s *Scope) error
 }
@@ -24,7 +24,7 @@ type BeforeLister interface {
 	BeforeList(ctx context.Context, s *Scope) error
 }
 
-// AfterGetter is the interface used as a hook after getting the value from api.
+// AfterGetter is the interface used as a hook after getting the value.
 type AfterGetter interface {
 	AfterGet(ctx context.Context, s *Scope) error
 }

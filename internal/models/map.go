@@ -378,7 +378,7 @@ func (m *ModelMap) setRelationships() error {
 					}
 				} else {
 					// relationship is of BelongsTo kind
-					// check if the related model struct primary field is of the same type as the given foreing key
+					// check if the related model struct primary field is of the same type as the given foreign key
 					if relationship.mStruct.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
 						log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
 							relField.Name(),

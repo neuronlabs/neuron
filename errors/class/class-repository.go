@@ -5,7 +5,7 @@ package class
 var MjrRepository Major
 
 func registerRepositoryClasses() {
-	MjrRepository = MustRegisterMajor("Repostiory", "repositories related errors")
+	MjrRepository = MustRegisterMajor("Repository", "repositories related errors")
 
 	registerRepositoryUnavailable()
 	registerRepositoryAuth()
@@ -120,20 +120,20 @@ var (
 	// for errors when the repository doesn't implement transactioner interfaces.
 	RepositoryNotImplementsTransactioner Class
 
-	// RepositoryNotImplementsCreater is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement creater interfaces.
-	RepositoryNotImplementsCreater Class
+	// RepositoryNotImplementsCreator is the 'MjrRepository', 'MnrRepositoryInterface' error classification
+	// for errors when the repository doesn't implement query.Creator interfaces.
+	RepositoryNotImplementsCreator Class
 
 	// RepositoryNotImplementsDeleter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement deleter interfaces.
+	// for errors when the repository doesn't implement query.Deleter interfaces.
 	RepositoryNotImplementsDeleter Class
 
 	// RepositoryNotImplementsPatcher is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement patcher interfaces.
+	// for errors when the repository doesn't implement query.Patcher interfaces.
 	RepositoryNotImplementsPatcher Class
 
 	// RepositoryNotImplementsLister is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement lister interfaces.
+	// for errors when the repository doesn't implement query.Lister interfaces.
 	RepositoryNotImplementsLister Class
 
 	// RepositoryNotImplementsGetter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
@@ -144,7 +144,7 @@ var (
 func registerRepositoryInterface() {
 	MnrRepositoryNotImplements = MjrRepository.MustRegisterMinor("NotImplements", "repository implenting interface issues")
 
-	RepositoryNotImplementsCreater = MnrRepositoryNotImplements.MustRegisterIndex("Creater", "repository doesn't implement creater").Class()
+	RepositoryNotImplementsCreator = MnrRepositoryNotImplements.MustRegisterIndex("Creator", "repository doesn't implement creater").Class()
 	RepositoryNotImplementsDeleter = MnrRepositoryNotImplements.MustRegisterIndex("Deleter", "repository doesn't implement deleter").Class()
 	RepositoryNotImplementsGetter = MnrRepositoryNotImplements.MustRegisterIndex("Getter", "repository doesn't implement getter").Class()
 	RepositoryNotImplementsLister = MnrRepositoryNotImplements.MustRegisterIndex("Lister", "repository doesn't implement lister").Class()
@@ -233,6 +233,6 @@ var (
 func registerRepositoryConfig() {
 	MnrRepositoryConfig = MjrRepository.MustRegisterMinor("Config", "repository configurations")
 
-	RepositoryConfigAlreadyRegistered = MnrRepositoryConfig.MustRegisterIndex("Already Registerd", "repository configuration already exists").Class()
+	RepositoryConfigAlreadyRegistered = MnrRepositoryConfig.MustRegisterIndex("Already Registered", "repository configuration already exists").Class()
 	RepositoryConfigInvalid = MnrRepositoryConfig.MustRegisterIndex("Invalid", "invalid repository configuration").Class()
 }

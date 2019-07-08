@@ -7,18 +7,11 @@ import (
 )
 
 // Factory is the interface used for creating the repositories.
-// It implements FactoryCloser and Namer interface.
 type Factory interface {
-	FactoryCloser
-
 	// Namer gets the repository name for given factory.
 	DriverName() string
-
 	// New creates new instance of the Repository for given 'model'.
-	New(structer ModelStructer, model *mapping.ModelStruct) (Repository, error)
-}
-
-// FactoryCloser is the interface used to close the connections.
-type FactoryCloser interface {
+	New(c Controller, model *mapping.ModelStruct) (Repository, error)
+	// Close should close all the repository instances for this factory.
 	Close(ctx context.Context, done chan<- interface{})
 }

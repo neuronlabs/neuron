@@ -367,6 +367,7 @@ func TestCreateTransactions(t *testing.T) {
 			t.Run("Many2Many", func(t *testing.T) {
 				c := newController(t)
 				err := c.RegisterModels(Many2ManyModel{}, RelatedModel{}, JoinModel{})
+				require.NoError(t, err)
 
 				model := &Many2ManyModel{Many2Many: []*RelatedModel{{ID: 1}}}
 

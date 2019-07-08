@@ -13,15 +13,15 @@ type FullRepository interface {
 
 // RepositoryMethoder is an interface that implements all possible repository methods interfaces.
 type RepositoryMethoder interface {
-	Creater
+	Creator
 	Getter
 	Lister
 	Patcher
 	Deleter
 }
 
-// Creater is the repository interface that creates the value within the query.Scope.
-type Creater interface {
+// Creator is the repository interface that creates the value within the query.Scope.
+type Creator interface {
 	Create(ctx context.Context, s *Scope) error
 }
 
@@ -53,22 +53,10 @@ TRANSACTIONS
 
 // Transactioner is the interface used for the transactions.
 type Transactioner interface {
-	Beginner
-	Committer
-	Rollbacker
-}
-
-// Beginner is the interface used for the distributed transaction to begin.
-type Beginner interface {
+	// Begin the scope's transaction.
 	Begin(ctx context.Context, s *Scope) error
-}
-
-// Committer is the interface used for committing the scope's transaction.
-type Committer interface {
+	// Commit the scope's transaction.
 	Commit(ctx context.Context, s *Scope) error
-}
-
-// Rollbacker is the interface used for rollbacks the transaction.
-type Rollbacker interface {
+	// Rollback the scope's transaction.
 	Rollback(ctx context.Context, s *Scope) error
 }

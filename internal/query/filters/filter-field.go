@@ -190,7 +190,7 @@ func (f *FilterField) SetValues(
 							tag, _, confidence = sup.Matcher.Match(tag)
 							if confidence <= language.Low {
 								err := errors.New(class.QueryFilterLanguage, err.Error())
-								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported langauges.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
+								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
 								return err
 							}
 						}
