@@ -389,8 +389,7 @@ func (s *StructField) allowClientID() bool {
 
 // baseFieldType is the field's base dereferenced type
 func (s *StructField) baseFieldType() reflect.Type {
-	var elem = s.reflectField.Type
-
+	elem := s.reflectField.Type
 	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
 		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
 
@@ -605,6 +604,71 @@ func (s *StructField) isSortable() bool {
 
 func (s *StructField) isTime() bool {
 	return s.fieldFlags&FTime != 0
+}
+
+func (s *StructField) setTagValues() error {
+
+	tag, hasTag := s.reflectField.Tag.Lookup(internal.AnnotationNeuron)
+	if !hasTag {
+		return nil
+	}
+
+	tagValues := s.TagValues(tag)
+	// iterate over structfield additional tags
+	for key, values := range tagValues {
+		switch key {
+		case internal.AnnotationFieldType, internal.AnnotationName:
+			continue
+		case internal.AnnotationFlags:
+			for _, value := range values {
+				switch value {
+				case internal.AnnotationClientID:
+					s.setFlag(FClientID)
+				case internal.AnnotationNoFilter:
+					s.setFlag(FNoFilter)
+				case internal.AnnotationHidden:
+					s.setFlag(FHidden)
+				case internal.AnnotationNotSortable:
+					s.setFlag(FSortable)
+				case internal.AnnotationISO8601:
+					s.setFlag(FISO8601)
+				case internal.AnnotationOmitEmpty:
+					s.setFlag(FOmitempty)
+				case internal.AnnotationI18n:
+					s.setFlag(FI18n)
+					s.mStruct.i18n = append(s.mStruct.i18n, s)
+				case internal.AnnotationLanguage:
+					s.mStruct.setLanguage(s)
+				default:
+					log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), value)
+				}
+			}
+		case internal.AnnotationManyToMany:
+			if !s.isRelationship() {
+				log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, internal.AnnotationManyToMany)
+				return errors.New(class.ModelFieldTag, "many2many tag on non relationship field")
+			}
+			r := s.relationship
+			if r == nil {
+				r = &Relationship{}
+				s.relationship = r
+			}
+			r.kind = RelMany2Many
+
+			// first value is join model
+			// the second is the backreference field
+			switch len(values) {
+			case 1:
+				if values[0] != "_" {
+					r.joinModelName = values[0]
+				}
+			case 0:
+			default:
+				return errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
+			}
+		}
+	}
+	return nil
 }
 
 func (s *StructField) setFlag(flag fieldFlag) {

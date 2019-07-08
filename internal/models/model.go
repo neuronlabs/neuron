@@ -1,6 +1,7 @@
 package models
 
 import (
+	"net/url"
 	"reflect"
 	"sync"
 	"time"
@@ -10,16 +11,13 @@ import (
 	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
+	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
 const (
 	nestedIncludedCountKey = "neuron:nested_included_count"
 	thisIncludedCountKey   = "neuron:this_included_count"
-	namerFuncKey           = "neuron:namer_func"
-
-	afterListerKey  = "neuron:is_after_lister"
-	beforeListerKey = "neuron:is_before_lister"
 
 	hasForeignRelationships = "neuron:has_foreign_keys"
 )
@@ -66,7 +64,7 @@ type ModelStruct struct {
 	isJoin bool
 	cfg    *config.ModelConfig
 
-	store map[string]interface{}
+	store map[interface{}]interface{}
 }
 
 // newModelStruct creates new model struct for given type.
@@ -339,7 +337,7 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 	m.cfg = cfg
 
 	if m.store == nil {
-		m.store = make(map[string]interface{})
+		m.store = make(map[interface{}]interface{})
 	}
 
 	// copy the key value from the config
@@ -361,9 +359,9 @@ func (m *ModelStruct) SortScopeCount() int {
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'
-func (m *ModelStruct) StoreSet(key string, value interface{}) {
+func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
 	if m.store == nil {
-		m.store = make(map[string]interface{})
+		m.store = make(map[interface{}]interface{})
 	}
 
 	log.Debug2f("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
@@ -371,16 +369,16 @@ func (m *ModelStruct) StoreSet(key string, value interface{}) {
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
-func (m *ModelStruct) StoreGet(key string) (interface{}, bool) {
+func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
 	if m.store == nil {
-		m.store = make(map[string]interface{})
+		m.store = make(map[interface{}]interface{})
 	}
 	v, ok := m.store[key]
 	return v, ok
 }
 
 // StoreDelete deletes the store's value at key
-func (m *ModelStruct) StoreDelete(key string) {
+func (m *ModelStruct) StoreDelete(key interface{}) {
 	if m.store == nil {
 		return
 	}
@@ -441,6 +439,31 @@ PRIVATE METHODS
 
 */
 
+func (m *ModelStruct) addUntaggedField(field *StructField) {
+	untaggedFields := m.untaggedFields()
+	untaggedFields = append(untaggedFields, field)
+	m.store[untaggedFieldKey] = untaggedFields
+}
+
+func (m *ModelStruct) assignedFields() int {
+	var assignedFields int
+	v, ok := m.store[assignedFieldsKey]
+	if ok {
+		assignedFields = v.(int)
+	}
+	return assignedFields
+}
+
+func (m *ModelStruct) increaseAssignedFields() {
+	var assignedFields int
+	v, ok := m.store[assignedFieldsKey]
+	if ok {
+		assignedFields = v.(int)
+	}
+	assignedFields++
+	m.store[assignedFieldsKey] = assignedFields
+}
+
 func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
 	var (
 		hasAttribute, hasRelationship bool
@@ -474,22 +497,17 @@ func (m *ModelStruct) checkFields(fields ...string) []*errors.Error {
 	return errs
 }
 
-// func (m *ModelStruct) setModelURL(url string) error {
-// 	splitted := strings.Split(url, "/")
-// 	for i, v := range splitted {
-// 		if v == m.collectionType {
-// 			m.collectionURLIndex = i
-// 			break
-// 		}
-// 	}
-// 	if m.collectionURLIndex == -1 {
-// 		err := fmt.Errorf("The url provided for model struct does not contain collection name. URL: '%s'. Collection: '%s'.", url, m.collectionType)
-// 		return err
-// 	}
-// 	m.modelURL = url
+func (m *ModelStruct) clearInitVars() {
+	m.StoreDelete(untaggedFieldKey)
+	m.StoreDelete(assignedFieldsKey)
+}
 
-// 	return nil
-// }
+// computeNestedIncludedCount computes the included count for given limit
+func (m *ModelStruct) computeNestedIncludedCount(limit int) {
+	nestedIncludeCount := initComputeNestedIncludedCount(m, 0, limit)
+
+	m.StoreSet(nestedIncludedCountKey, nestedIncludeCount)
+}
 
 func (m *ModelStruct) initComputeSortedFields() {
 	for _, sField := range m.fields {
@@ -501,29 +519,6 @@ func (m *ModelStruct) initComputeSortedFields() {
 
 func (m *ModelStruct) initComputeThisIncludedCount() {
 	m.StoreSet(thisIncludedCountKey, len(m.relationships))
-}
-
-func initComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int) int {
-	var nestedCount int
-	if level != 0 {
-		thisIncludedCount, _ := m.StoreGet(thisIncludedCountKey)
-		nestedCount += thisIncludedCount.(int)
-	}
-
-	for _, relationship := range m.relationships {
-		if level < maxNestedRelLevel {
-			nestedCount += initComputeNestedIncludedCount(relationship.relationship.mStruct, level+1, maxNestedRelLevel)
-		}
-	}
-
-	return nestedCount
-}
-
-// computeNestedIncludedCount computes the included count for given limit
-func (m *ModelStruct) computeNestedIncludedCount(limit int) {
-	nestedIncludeCount := initComputeNestedIncludedCount(m, 0, limit)
-
-	m.StoreSet(nestedIncludedCountKey, nestedIncludeCount)
 }
 
 func (m *ModelStruct) initCheckFieldTypes() error {
@@ -543,12 +538,127 @@ func (m *ModelStruct) initCheckFieldTypes() error {
 	return nil
 }
 
+func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value, index []int) (err error) {
+	for i := 0; i < modelType.NumField(); i++ {
+		var fieldIndex []int
+
+		// check if field is embedded
+		tField := modelType.Field(i)
+
+		if index == nil {
+			fieldIndex = []int{i}
+		} else {
+			fieldIndex = append(index, i)
+		}
+
+		if tField.Anonymous {
+			// the field is embedded struct or ptr to struct
+			nestedModelType := tField.Type
+			var nestedModelValue reflect.Value
+
+			if nestedModelType.Kind() == reflect.Ptr {
+				nestedModelType = nestedModelType.Elem()
+			}
+
+			nestedModelValue = reflect.New(nestedModelType).Elem()
+
+			if err := m.mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
+				log.Debugf("Mapping embedded field: %s failed: %v", tField.Name, err)
+				return err
+			}
+			continue
+		}
+
+		// don't use private fields
+		if !modelValue.Field(i).CanSet() {
+			log.Debugf("Field not settable: %s", modelType.Field(i).Name)
+			continue
+		}
+
+		tag, hasTag := tField.Tag.Lookup(internal.AnnotationNeuron)
+		if tag == "-" {
+			continue
+		}
+
+		var tagValues url.Values
+		structField := newStructField(tField, m)
+		structField.fieldIndex = make([]int, len(fieldIndex))
+		tagValues = structField.TagValues(tag)
+
+		copy(structField.fieldIndex, fieldIndex)
+		log.Debug2f("[%s] - Field: %s with tags: %s ", m.Type().Name(), tField.Name, tagValues)
+
+		m.increaseAssignedFields()
+
+		// Check if field contains the name
+		var neuronName string
+		name := tagValues.Get(internal.AnnotationName)
+		if name != "" {
+			neuronName = name
+		} else {
+			neuronName = m.NamerFunc()(tField.Name)
+		}
+		structField.neuronName = neuronName
+
+		if !hasTag {
+			m.addUntaggedField(structField)
+			continue
+		}
+
+		// Set field type
+		values := tagValues[internal.AnnotationFieldType]
+		if len(values) == 0 {
+			return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+		}
+
+		// Set field type
+		value := values[0]
+		switch value {
+		case internal.AnnotationPrimary, internal.AnnotationID,
+			internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
+			err = m.setPrimaryField(structField)
+			if err != nil {
+				return err
+			}
+		case internal.AnnotationRelation, internal.AnnotationRelationFull:
+			err = m.setRelationshipField(structField)
+			if err != nil {
+				return err
+			}
+		case internal.AnnotationAttribute, internal.AnnotationAttributeFull:
+			err = m.setAttribute(structField)
+			if err != nil {
+				return err
+			}
+		case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull, internal.AnnotationForeignKeyFullS:
+			if err = m.setForeignKeyField(structField); err != nil {
+				return err
+			}
+		case internal.AnnotationFilterKey:
+			structField.fieldKind = KindFilterKey
+			_, ok := m.FilterKey(structField.NeuronName())
+			if ok {
+				return errors.Newf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+			}
+
+			m.filterKeys[structField.neuronName] = structField
+		default:
+			return errors.Newf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
+		}
+
+		if err = structField.setTagValues(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *ModelStruct) setLanguage(f *StructField) {
 	f.fieldFlags = f.fieldFlags | FLanguage
 	m.language = f
 }
 
-func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Namer) error {
+func (m *ModelStruct) setAttribute(structField *StructField) error {
 	structField.fieldKind = KindAttribute
 	// check if no duplicates
 	_, ok := m.attributes[structField.neuronName]
@@ -573,7 +683,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 			// this case it must be a nested struct field
 			structField.setFlag(FNestedStruct)
 
-			nStruct, err := getNestedStruct(t, structField, namerFunc)
+			nStruct, err := getNestedStruct(t, structField, m.NamerFunc())
 			if err != nil {
 				log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
 				return err
@@ -609,7 +719,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 			} else {
 				structField.setFlag(FNestedStruct)
 
-				nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+				nStruct, err := getNestedStruct(mapElem, structField, m.NamerFunc())
 				if err != nil {
 					log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
 					return err
@@ -641,7 +751,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 					// otherwise it must be a nested struct
 				} else {
 					structField.setFlag(FNestedStruct)
-					nStruct, err := getNestedStruct(mapElem, structField, namerFunc)
+					nStruct, err := getNestedStruct(mapElem, structField, m.NamerFunc())
 					if err != nil {
 						log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
 						return err
@@ -686,7 +796,7 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 			} else {
 				// this should be the nested struct
 				structField.setFlag(FNestedStruct)
-				nStruct, err := getNestedStruct(sliceElem, structField, namerFunc)
+				nStruct, err := getNestedStruct(sliceElem, structField, m.NamerFunc())
 				if err != nil {
 					log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
 					return err
@@ -705,9 +815,23 @@ func (m *ModelStruct) setAttribute(structField *StructField, namerFunc namer.Nam
 		if structField.IsPtr() {
 			structField.setFlag(FBasePtr)
 		}
-
 	}
 	m.attributes[structField.neuronName] = structField
+	return nil
+}
+
+func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
+	structField.fieldKind = KindForeignKey
+
+	// Check if already exists
+	_, ok := m.ForeignKey(structField.NeuronName())
+	if ok {
+		return errors.Newf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+	}
+
+	m.fields = append(m.fields, structField)
+	m.foreignKeys[structField.neuronName] = structField
+
 	return nil
 }
 
@@ -718,6 +842,28 @@ func (m *ModelStruct) setPrimaryField(structField *StructField) error {
 	}
 	m.primary = structField
 	m.fields = append(m.fields, structField)
+	return nil
+}
+
+func (m *ModelStruct) setRelationshipField(structField *StructField) error {
+	// add relationField to fields
+	m.fields = append(m.fields, structField)
+
+	// set related type
+	err := structField.fieldSetRelatedType()
+	if err != nil {
+		return err
+	}
+
+	// check duplicates
+	_, ok := m.relationships[structField.neuronName]
+	if ok {
+		return errors.Newf(class.ModelFieldName, "duplicated jsonapi relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
+	}
+
+	// set relationship field
+	m.relationships[structField.neuronName] = structField
+
 	return nil
 }
 
@@ -734,6 +880,30 @@ func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
 	return f, true
 }
 
+func (m *ModelStruct) untaggedFields() []*StructField {
+	v, ok := m.store[untaggedFieldKey]
+	if !ok {
+		return nil
+	}
+	return v.([]*StructField)
+}
+
+func initComputeNestedIncludedCount(m *ModelStruct, level, maxNestedRelLevel int) int {
+	var nestedCount int
+	if level != 0 {
+		thisIncludedCount, _ := m.StoreGet(thisIncludedCountKey)
+		nestedCount += thisIncludedCount.(int)
+	}
+
+	for _, relationship := range m.relationships {
+		if level < maxNestedRelLevel {
+			nestedCount += initComputeNestedIncludedCount(relationship.relationship.mStruct, level+1, maxNestedRelLevel)
+		}
+	}
+
+	return nestedCount
+}
+
 var ctr = &counter{}
 
 type counter struct {
@@ -747,3 +917,17 @@ func (c *counter) next() int {
 	c.nextID++
 	return c.nextID
 }
+
+var (
+	untaggedFieldKey  = untaggedFieldsStore{}
+	assignedFieldsKey = assignedFieldsStore{}
+	namerFuncKey      = namerStore{}
+	beforeListerKey   = beforeListerStore{}
+	afterListerKey    = afterListerStore{}
+)
+
+type untaggedFieldsStore struct{}
+type assignedFieldsStore struct{}
+type namerStore struct{}
+type beforeListerStore struct{}
+type afterListerStore struct{}

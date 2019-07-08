@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -143,6 +142,22 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
 	}
 
+	for _, modelStruct := range m.models {
+		if err := m.setUntaggedFields(modelStruct); err != nil {
+			return err
+		}
+
+		if modelStruct.assignedFields() == 0 {
+			err := errors.Newf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
+			return err
+		}
+
+		if modelStruct.primary == nil {
+			err := errors.Newf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
+			return err
+		}
+	}
+
 	for _, model := range m.models {
 		if err := m.setModelRelationships(model); err != nil {
 			return err
@@ -186,6 +201,30 @@ func (m *ModelMap) Set(value *ModelStruct) error {
 // SetByCollection sets the model by it's collection.
 func (m *ModelMap) SetByCollection(ms *ModelStruct) {
 	m.collections[ms.Collection()] = ms.Type()
+}
+
+func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {
+	/**
+
+	TO IMPLEMENT:
+
+	find closest match collection
+
+	*/
+	return []string{}
+}
+
+func (m *ModelMap) getType(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+	}
+	return t
 }
 
 func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
@@ -249,15 +288,22 @@ func (m *ModelMap) setRelationships() error {
 			fkeyFieldNames := tags[internal.AnnotationForeignKey]
 			log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), fkeyFieldNames)
 			// check field type
-			var foreignKey, m2mForeignKey string
+			var (
+				foreignKey, m2mForeignKey string
+				taggedForeign             bool
+			)
+
 			switch len(fkeyFieldNames) {
 			case 0:
 			case 1:
 				foreignKey = fkeyFieldNames[0]
+				taggedForeign = true
 			case 2:
 				foreignKey = fkeyFieldNames[0]
 				if foreignKey == "_" {
 					foreignKey = ""
+				} else {
+					taggedForeign = true
 				}
 
 				m2mForeignKey = fkeyFieldNames[1]
@@ -324,8 +370,9 @@ func (m *ModelMap) setRelationships() error {
 					if foreignKey == "" {
 						// the foreign key for any of the slice relationships should be
 						// model's that contains the relationship name concantated with the 'ID'.
-						foreignKey = model.modelType.Name() + "ID"
+						foreignKey = relField.Name() + "ID"
 					}
+
 					modelWithFK := relationship.mStruct
 					// get the name from the NamerFunc.
 					fkeyName := m.NamerFunc(foreignKey)
@@ -333,8 +380,12 @@ func (m *ModelMap) setRelationships() error {
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(fkeyName)
 					if !ok {
-						log.Errorf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
-						return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+						foreignKey = model.modelType.Name() + "ID"
+						fk, ok = modelWithFK.ForeignKey(m.NamerFunc(foreignKey))
+						if !ok {
+							log.Errorf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+						}
 					}
 					// the primary field type of the model should match current's model type.
 					if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
@@ -350,57 +401,68 @@ func (m *ModelMap) setRelationships() error {
 					// is the relationship field name concantated with 'ID'
 					foreignKey = relField.ReflectField().Name + "ID"
 				}
-
 				// use the NamerFunc to get the field's name
 				fkeyName := m.NamerFunc(foreignKey)
 
 				// search for the foreign key within the given model
 				fk, ok := model.ForeignKey(fkeyName)
 				if !ok {
-					// if the foreign key is not found it must be a has one model or an invalid field name was provided
-					relationship.setKind(RelHasOne)
+					if !taggedForeign {
+						// check if the model might have a name of belong's to
+						modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
+						// check if the foreign key would be the name of the related structure
+						otherFK, ok := model.ForeignKey(m.NamerFunc(modelsForeign))
+						if ok {
+							relationship.kind = RelBelongsTo
+							relationship.foreignKey = otherFK
+							continue
+						}
+					}
 
+					// if none of the foreign were found within the 'model', try to find it within
+					// related model. It would be then a 'HasOne' relationship
 					fk, ok = relationship.mStruct.ForeignKey(fkeyName)
 					if !ok {
-						// provided invalid foreign field name
-						return errors.Newf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+						modelsForeign := relField.mStruct.Type().Name() + "ID"
+						fk, ok = relationship.mStruct.ForeignKey(m.NamerFunc(modelsForeign))
+						if !ok {
+							// provided invalid foreign field name
+							return errors.Newf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+						}
 					}
-
-					// then the check if the current model's primary field is of the same type as the foreign key
-					if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
-						log.Errorf("foreign key in model: %v for the has-one relation: %s within model: %s is of invalid type. Wanted: %v, Is: %v",
-							fk.Struct().Type().Name(),
-							relField.Name(),
-							model.Type().Name(),
-							model.PrimaryField().ReflectField().Type,
-							fk.ReflectField().Type)
-						return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model with has one relationship primary key type")
-					}
-				} else {
-					// relationship is of BelongsTo kind
-					// check if the related model struct primary field is of the same type as the given foreign key
-					if relationship.mStruct.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
-						log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
-							relField.Name(),
-							relField.RelatedModelType().Name(),
-							relField.RelatedModelStruct().PrimaryField().ReflectField().Type,
-							fk.ReflectField().Type)
-						return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model's with belongs to relationship primary key type")
-					}
-					relationship.kind = RelBelongsTo
+					// if the foreign key is not found it must be a has one model or an invalid field name was provided
+					relationship.setKind(RelHasOne)
+					relationship.foreignKey = fk
+					continue
 				}
+				relationship.kind = RelBelongsTo
 				// set the foreign key for the given relationship
 				relationship.foreignKey = fk
 			}
 		}
+
+		for _, relField := range model.RelationshipFields() {
+			if relField.relationship.isMany2Many() {
+				continue
+			}
+			// relationship is of BelongsTo kind
+			// check if the related model struct primary field is of the same type as the given foreign key
+			if relField.relationship.mStruct.PrimaryField().ReflectField().Type != relField.relationship.foreignKey.ReflectField().Type {
+				log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
+					relField.relationship.foreignKey.mStruct.Type().Name(),
+					relField.RelatedModelType().Name(),
+					relField.RelatedModelStruct().PrimaryField().ReflectField().Type,
+					relField.relationship.foreignKey.ReflectField().Type)
+				return errors.New(class.ModelRelationshipForeign, "foreign key type doesn't match model's with belongs to relationship primary key type")
+			}
+		}
 	}
 
-modelLoop:
 	for _, model := range m.models {
 		for _, relField := range model.relationships {
 			if relField.Relationship().kind != RelBelongsTo {
 				model.StoreSet(hasForeignRelationships, struct{}{})
-				break modelLoop
+				return nil
 			}
 		}
 	}
@@ -408,34 +470,59 @@ modelLoop:
 	return nil
 }
 
-func (m *ModelMap) getType(t reflect.Type) reflect.Type {
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
+func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
+	untaggedFields := model.untaggedFields()
+	if untaggedFields == nil {
+		return nil
 	}
-	if t.Kind() == reflect.Slice {
-		t = t.Elem()
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
+
+	for _, field := range untaggedFields {
+		// if there is no struct field tag and the field's ToLower name  is 'id'
+		// set it as the model's primary key.
+		if strings.ToLower(field.Name()) == "id" {
+			err = model.setPrimaryField(field)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		// if strings.ToLower(field.Name())
+		otherModel := m.Get(field.BaseType())
+		if otherModel != nil {
+			// set them as the relationships
+			err = model.setRelationshipField(field)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if strings.HasSuffix(field.Name(), "ID") {
+			var isForeignKey bool
+			for otherType := range m.models {
+				if strings.HasPrefix(field.Name(), otherType.Name()) {
+					isForeignKey = true
+					break
+				}
+			}
+			if isForeignKey {
+				if err = model.setForeignKeyField(field); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		if err = model.setAttribute(field); err != nil {
+			return err
 		}
 	}
-	return t
-}
-
-func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {
-	/**
-
-	TO IMPLEMENT:
-
-	find closest match collection
-
-	*/
-	return []string{}
+	return nil
 }
 
 // buildModelStruct builds the model struct for the provided model with the given namer function
-func buildModelStruct(model interface{}, namerFunc namer.Namer) (*ModelStruct, error) {
-	var err error
-
+func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *ModelStruct, err error) {
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
@@ -458,227 +545,12 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (*ModelStruct, e
 		collection = namerFunc(inflection.Plural(modelType.Name()))
 	}
 
-	modelStruct := newModelStruct(modelType, collection)
+	modelStruct = newModelStruct(modelType, collection)
+	modelStruct.StoreSet(namerFuncKey, namerFunc)
 	// Define the function definition
-	var (
-		mapFields      func(modelType reflect.Type, modelValue reflect.Value, index []int) error
-		assignedFields int
-	)
-
-	init := true
-
-	// assign the function to it
-	mapFields = func(modelType reflect.Type, modelValue reflect.Value, index []int) error {
-		for i := 0; i < modelType.NumField(); i++ {
-			var fieldIndex []int
-
-			// check if field is embedded
-			tField := modelType.Field(i)
-
-			if init {
-				fieldIndex = []int{i}
-				init = false
-			} else {
-				fieldIndex = append(index, i)
-			}
-
-			if tField.Anonymous {
-				// the field is embedded struct or ptr to struct
-				nestedModelType := tField.Type
-				var nestedModelValue reflect.Value
-
-				if nestedModelType.Kind() == reflect.Ptr {
-					nestedModelType = nestedModelType.Elem()
-				}
-
-				nestedModelValue = reflect.New(nestedModelType).Elem()
-
-				if err := mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
-					log.Debugf("Mapping embedded field: %s failed: %v", tField.Name, err)
-					return err
-				}
-				continue
-			}
-
-			// don't use private fields
-			if !modelValue.Field(i).CanSet() {
-				log.Debugf("Field not settable: %s", modelType.Field(i).Name)
-				continue
-			}
-
-			tag, hasTag := tField.Tag.Lookup(internal.AnnotationNeuron)
-			if tag == "-" {
-				continue
-			}
-
-			var tagValues url.Values
-			structField := newStructField(tField, modelStruct)
-			structField.fieldIndex = make([]int, len(fieldIndex))
-			tagValues = structField.TagValues(tag)
-
-			copy(structField.fieldIndex, fieldIndex)
-			log.Debug2f("[%s] - Field: %s with tags: %s ", modelStruct.Type().Name(), tField.Name, tagValues)
-
-			assignedFields++
-
-			// Check if field contains the name
-			var neuronName string
-			name := tagValues.Get(internal.AnnotationName)
-			if name != "" {
-				neuronName = name
-			} else {
-				neuronName = namerFunc(tField.Name)
-			}
-			structField.neuronName = neuronName
-
-			if !hasTag {
-				// if there is no struct field tag and the field's ToLower name  is 'id'
-				// set it as the model's primary key.
-				if strings.ToLower(structField.Name()) == "id" {
-					err = modelStruct.setPrimaryField(structField)
-				} else {
-					err = modelStruct.setAttribute(structField, namerFunc)
-				}
-				if err != nil {
-					return err
-				}
-				continue
-			}
-
-			// Set field type
-			values := tagValues[internal.AnnotationFieldType]
-			if len(values) == 0 {
-				return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
-			}
-
-			// Set field type
-			value := values[0]
-			switch value {
-			case internal.AnnotationPrimary, internal.AnnotationID,
-				internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
-				err = modelStruct.setPrimaryField(structField)
-				if err != nil {
-					return err
-				}
-			case internal.AnnotationRelation, internal.AnnotationRelationFull:
-				// add relationField to fields
-				modelStruct.fields = append(modelStruct.fields, structField)
-
-				// set related type
-				err = structField.fieldSetRelatedType()
-				if err != nil {
-					return err
-				}
-
-				// check duplicates
-				_, ok := modelStruct.RelationshipField(neuronName)
-				if ok {
-					return errors.Newf(class.ModelFieldName, "duplicated jsonapi relationship field name: '%s' for model: '%v'", neuronName, modelType.Name())
-				}
-
-				// set relationship field
-				modelStruct.relationships[structField.neuronName] = structField
-			case internal.AnnotationAttribute, internal.AnnotationAttributeFull:
-				err = modelStruct.setAttribute(structField, namerFunc)
-				if err != nil {
-					return err
-				}
-			case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull,
-				internal.AnnotationForeignKeyFullS:
-				structField.fieldKind = KindForeignKey
-
-				// Check if already exists
-				_, ok := modelStruct.ForeignKey(structField.NeuronName())
-				if ok {
-					return errors.Newf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), modelStruct.Type().Name())
-				}
-
-				modelStruct.fields = append(modelStruct.fields, structField)
-				modelStruct.foreignKeys[structField.neuronName] = structField
-			case internal.AnnotationFilterKey:
-				structField.fieldKind = KindFilterKey
-				_, ok := modelStruct.FilterKey(structField.NeuronName())
-				if ok {
-					return errors.Newf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), modelStruct.Type().Name())
-				}
-
-				modelStruct.filterKeys[structField.neuronName] = structField
-			default:
-				return errors.Newf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, modelStruct.Type().Name(), tField.Name)
-			}
-
-			// iterate over structfield additional tags
-			for key, values := range tagValues {
-				switch key {
-				case internal.AnnotationFieldType, internal.AnnotationName:
-					continue
-				case internal.AnnotationFlags:
-					for _, value := range values {
-						switch value {
-						case internal.AnnotationClientID:
-							structField.setFlag(FClientID)
-						case internal.AnnotationNoFilter:
-							structField.setFlag(FNoFilter)
-						case internal.AnnotationHidden:
-							structField.setFlag(FHidden)
-						case internal.AnnotationNotSortable:
-							structField.setFlag(FSortable)
-						case internal.AnnotationISO8601:
-							structField.setFlag(FISO8601)
-						case internal.AnnotationOmitEmpty:
-							structField.setFlag(FOmitempty)
-						case internal.AnnotationI18n:
-							structField.setFlag(FI18n)
-							modelStruct.i18n = append(modelStruct.i18n, structField)
-						case internal.AnnotationLanguage:
-							modelStruct.setLanguage(structField)
-						default:
-							log.Debugf("Unknown field's: '%s' flag tag: '%s'", structField.Name(), value)
-						}
-					}
-				case internal.AnnotationManyToMany:
-					if !structField.isRelationship() {
-						log.Debugf("Field: %s tagged with: %s is not a relationship.", structField.ReflectField().Name, internal.AnnotationManyToMany)
-						return errors.New(class.ModelFieldTag, "many2many tag on non relationship field")
-					}
-					r := structField.relationship
-					if r == nil {
-						r = &Relationship{}
-						structField.relationship = r
-					}
-
-					r.kind = RelMany2Many
-
-					// first value is join model
-					// the second is the backreference field
-					switch len(values) {
-					case 1:
-						if values[0] != "_" {
-							r.joinModelName = values[0]
-						}
-					case 0:
-					default:
-						err = errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
-						return err
-					}
-				}
-			}
-		}
-		return nil
-	}
 
 	// map fields
-	if err := mapFields(modelType, modelValue, nil); err != nil {
-		return nil, err
-	}
-
-	if assignedFields == 0 {
-		err = errors.Newf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelType.Name())
-		return nil, err
-	}
-
-	if modelStruct.primary == nil {
-		err = errors.Newf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelType.Name())
+	if err := modelStruct.mapFields(modelType, modelValue, nil); err != nil {
 		return nil, err
 	}
 
