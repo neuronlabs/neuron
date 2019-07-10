@@ -11,25 +11,9 @@ import (
 	"github.com/neuronlabs/neuron-core/internal/namer/dialect"
 )
 
-// AddselectedFields adds provided fields into given Scope's SelectedFields.
-func AddselectedFields(s *Scope, fields ...string) error {
-	for _, addField := range fields {
-		field := s.mStruct.FieldByName(addField)
-		if field == nil {
-			err := errors.New(class.QuerySelectedFieldsNotFound, "selected field not found")
-			err.SetDetailf("Field: '%s' not found within model: %s", addField, s.mStruct.Collection())
-			return err
-		}
-
-		s.selectedFields = append(s.selectedFields, field)
-
-	}
-	return nil
-}
-
 // AddSelectedFields adds the fields to the scope's selected fields.
 func (s *Scope) AddSelectedFields(fields ...interface{}) error {
-	return s.addToSelectedFields(fields...)
+	return s.selectFields(false, fields...)
 }
 
 // AddSelectedField adds the selected field to the selected field's array.
@@ -77,13 +61,15 @@ func (s *Scope) AutoSelectFields() error {
 		return errors.New(class.QueryNoValue, "no value provided for scope")
 	}
 
-	defer func() {
-		fieldsInflection := "field"
-		if len(s.selectedFields) > 1 {
-			fieldsInflection += "s"
-		}
-		log.Debug3f("SCOPE[%s][%s] Auto selected '%d' %s.", s.ID(), s.Struct().Collection(), len(s.selectedFields), fieldsInflection)
-	}()
+	if log.Level() == log.LDEBUG3 {
+		defer func() {
+			fieldsInflection := "field"
+			if len(s.selectedFields) > 1 {
+				fieldsInflection += "s"
+			}
+			log.Debug3f("SCOPE[%s][%s] Auto selected '%d' %s.", s.ID(), s.Struct().Collection(), len(s.selectedFields), fieldsInflection)
+		}()
+	}
 
 	v := reflect.ValueOf(s.Value).Elem()
 
@@ -101,7 +87,6 @@ func (s *Scope) AutoSelectFields() error {
 			switch tp.Kind() {
 			case reflect.Map, reflect.Slice, reflect.Ptr:
 				if fieldValue.IsNil() {
-
 					continue
 				}
 			default:
@@ -112,7 +97,6 @@ func (s *Scope) AutoSelectFields() error {
 			s.selectedFields = append(s.selectedFields, field)
 		}
 	}
-
 	return nil
 }
 
@@ -174,12 +158,18 @@ func (s *Scope) NotSelectedFields(foreignKeys ...bool) []*models.StructField {
 	return notSelected
 }
 
+// SelectFields creates new SelectFields container and set it's
+// values to provided 'fields'.
+func (s *Scope) SelectFields(fields ...interface{}) error {
+	return s.selectFields(false, fields...)
+}
+
 // SelectedFields return fields that were selected during unmarshaling.
 func (s *Scope) SelectedFields() []*models.StructField {
 	return s.selectedFields
 }
 
-func (s *Scope) addToSelectedFields(fields ...interface{}) error {
+func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 	var sfields []*models.StructField
 	selectedFields := make(map[*models.StructField]struct{})
 
@@ -219,6 +209,11 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 		}
 	}
 
+	if initContainer {
+		s.selectedFields = sfields
+		return nil
+	}
+
 	// check if fields were not already selected
 	for _, alreadySelected := range s.selectedFields {
 		_, ok := selectedFields[alreadySelected]
@@ -230,6 +225,7 @@ func (s *Scope) addToSelectedFields(fields ...interface{}) error {
 
 	// add all fields to scope's selected fields
 	s.selectedFields = append(s.selectedFields, sfields...)
+
 	return nil
 }
 

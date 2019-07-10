@@ -13,23 +13,28 @@ import (
 // It contains all the collection name, fields, config, store and a model type.
 type ModelStruct models.ModelStruct
 
-// Attr returns the attribute for the provided ModelStruct
-// If the attribute doesn't exists
+// Attr returns the attribute for the provided ModelStruct.
+// If the attribute doesn't exists returns nil field and false.
 func (m *ModelStruct) Attr(attr string) (*StructField, bool) {
 	s, ok := m.internal().Attribute(attr)
 	if !ok {
 		return nil, ok
 	}
-
 	return (*StructField)(s), true
 }
 
-// Config gets the model's defined confgi.ModelConfig
+// Collection returns model's collection.
+func (m *ModelStruct) Collection() string {
+	return (*models.ModelStruct)(m).Collection()
+}
+
+// Config gets the model's defined confgi.ModelConfig.
 func (m *ModelStruct) Config() *config.ModelConfig {
 	return (*models.ModelStruct)(m).Config()
 }
 
-// ForeignKey returns model's foreign key field if exists
+// ForeignKey checks and returns model's foreign key field.
+// The 'fk' foreign key field name may be a Neuron name or Golang StructField name.
 func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 	s, ok := m.internal().ForeignKey(fk)
 	if !ok {
@@ -38,7 +43,8 @@ func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
 	return (*StructField)(s), ok
 }
 
-// FilterKey returns model's filter key if exists
+// FilterKey checks and returns model's filter key.
+// The 'fk' filter key field name may be a Neuron name or Golang StructField name.
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 	s, ok := m.internal().FilterKey(fk)
 	if !ok {
@@ -48,7 +54,7 @@ func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 }
 
 // FieldByName gets the StructField by the 'name' argument.
-// The 'name' may be a StructField's Name or NeuronName
+// The 'name' may be a StructField's Name or NeuronName.
 func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	field := m.internal().FieldByName(name)
 	if field == nil {
@@ -57,38 +63,31 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	return (*StructField)(field), true
 }
 
-// Fields gets all attributes and relationships StructFields for the Model
+// Fields gets all attributes and relationships StructFields for the Model.
 func (m *ModelStruct) Fields() (fields []*StructField) {
 	for _, field := range (*models.ModelStruct)(m).Fields() {
 		fields = append(fields, (*StructField)(field))
 	}
-	return
+	return fields
 }
 
-// LanguageField returns model's language field
+// LanguageField returns model's language field.
 func (m *ModelStruct) LanguageField() *StructField {
-	lf := (*models.ModelStruct)(m).LanguageField()
-	if lf == nil {
-		return nil
-	}
-	return (*StructField)(lf)
+	return (*StructField)(m.internal().LanguageField())
 }
 
-// NamerFunc returns the namer func used by the given model
+// NamerFunc returns the namer func used by the given model.
 func (m *ModelStruct) NamerFunc() namer.Namer {
-	return (namer.Namer)((*models.ModelStruct)(m).NamerFunc())
+	return (namer.Namer)(m.internal().NamerFunc())
 }
 
-// Primary returns model's primary field
+// Primary returns model's primary field StructField.
 func (m *ModelStruct) Primary() *StructField {
-	p := m.internal().PrimaryField()
-	if p == nil {
-		return nil
-	}
-	return (*StructField)(p)
+	return (*StructField)(m.internal().PrimaryField())
 }
 
 // RelationField gets the relationship field for the provided string
+// The 'rel' relationship field name may be a Neuron or Golang StructField name.
 // If the relationship field doesn't exists returns nil and false
 func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
 	s, ok := m.internal().RelationshipField(rel)
@@ -98,48 +97,32 @@ func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
 	return (*StructField)(s), true
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'
-func (m *ModelStruct) StoreSet(key string, value interface{}) {
+// StoreSet sets into the store the value 'value' for given 'key'.
+func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
 	(*models.ModelStruct)(m).StoreSet(key, value)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
-func (m *ModelStruct) StoreGet(key string) (interface{}, bool) {
+func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
 	return (*models.ModelStruct)(m).StoreGet(key)
 }
 
-// StoreDelete deletes the store's value at key
-func (m *ModelStruct) StoreDelete(key string) {
+// StoreDelete deletes the store's value at 'key'.
+func (m *ModelStruct) StoreDelete(key interface{}) {
 	(*models.ModelStruct)(m).StoreDelete(key)
 }
 
-// StructFields return all struct fields used by the model
-func (m *ModelStruct) StructFields() []*StructField {
-
-	// init StructField
-	var mFields []*StructField
-
-	fields := (*models.ModelStruct)(m).StructFields()
-	for _, f := range fields {
+// StructFields return all struct fields mapping used by the model.
+func (m *ModelStruct) StructFields() (mFields []*StructField) {
+	for _, f := range m.internal().StructFields() {
 		mFields = append(mFields, (*StructField)(f))
 	}
-
 	return mFields
-
 }
 
-func (m *ModelStruct) toModels() *models.ModelStruct {
-	return (*models.ModelStruct)(m)
-}
-
-// Type returns model struct type
+// Type returns model's reflect.Type.
 func (m *ModelStruct) Type() reflect.Type {
 	return (*models.ModelStruct)(m).Type()
-}
-
-// Collection returns model's collection
-func (m *ModelStruct) Collection() string {
-	return (*models.ModelStruct)(m).Collection()
 }
 
 func (m *ModelStruct) internal() *models.ModelStruct {

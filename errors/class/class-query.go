@@ -16,6 +16,7 @@ func registerQueryClasses() {
 	registerQueryInclude()
 	registerQueryTransactions()
 	registerQueryViolation()
+	registerQueryRelations()
 }
 
 /**
@@ -450,4 +451,24 @@ func registerQueryProcessor() {
 	MnrQueryProcessor = MjrQuery.MustRegisterMinor("Processor", "issues related with the query processes / processor")
 
 	QueryProcessorNotFound = MnrQueryProcessor.MustRegisterIndex("Not Found", "query process / processor not found").Class()
+}
+
+var (
+	// MnrQueryRelation is the 'MjrQuery' minor error classification related
+	// with the issues while querying the relations.
+	MnrQueryRelation Minor
+
+	// QueryRelation is the 'MjrQuery', 'MnrQueryRelation' error classification
+	// for general issues while querying the relations.
+	QueryRelation Class
+	// QueryRelationNotFound is the 'MjrQuery', 'MnrQueryRelations' error classification
+	// used when the relation query instance is not found.
+	QueryRelationNotFound Class
+)
+
+func registerQueryRelations() {
+	MnrQueryRelation = MjrQuery.MustRegisterMinor("Relation", "issues with querying, patching, creating relations")
+
+	QueryRelation = MustNewMinorClass(MnrQueryRelation)
+	QueryRelationNotFound = MnrQueryRelation.MustRegisterIndex("Not Found", "queried relation is not found").Class()
 }

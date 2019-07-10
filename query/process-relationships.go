@@ -116,8 +116,11 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 		}
 	}
 
-	var ctr int
-fl:
+	var (
+		ctr  int
+		done bool
+	)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -129,8 +132,12 @@ fl:
 			ctr++
 
 			if ctr == len(relationshipFilters) {
-				break fl
+				done = true
 			}
+		}
+		// finish the for loop when done
+		if done {
+			break
 		}
 	}
 
@@ -234,7 +241,6 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 	if onlyPrimes {
 		// convert the filters into the foreign key filters of the root scope
 		foreignKey := filter.StructField().Relationship().ForeignKey()
-
 		filterField := s.internal().GetOrCreateForeignKeyFilter(foreignKey)
 
 		for _, nested := range filter.NestedFields() {
@@ -294,7 +300,9 @@ func convertHasManyRelationshipFilterChan(ctx context.Context, s *Scope, index i
 // having the foreign key from the related model, the root scope should have primary field filter key with
 // the values of the related model's foreign key results
 func convertHasManyRelationshipFilter(ctx context.Context, s *Scope, index int, filter *filters.FilterField) (int, error) {
-	log.Debug3f("[SCOPE][%s] convertHasManyRelationshipFilter field: '%s'", s.ID(), filter.StructField().Name())
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("[SCOPE][%s] convertHasManyRelationshipFilter field: '%s'", s.ID(), filter.StructField().Name())
+	}
 	// if all the nested filters are the foreign key of this relationship then there is no need to get values from scope
 	onlyForeign := true
 	foreignKey := filter.StructField().Relationship().ForeignKey()

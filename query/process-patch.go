@@ -199,76 +199,75 @@ func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 		if relField.Relationship().Kind() == models.RelBelongsTo {
 			continue
 		}
-
 		relationships = append(relationships, relField)
 	}
 
-	if len(relationships) > 0 {
-		primaryValues, ok := s.internal().StoreGet(internal.ReducedPrimariesStoreKey)
-		if !ok {
-			err := errors.New(class.InternalQueryNoStoredValue, "no primaries context key set in the store")
-			log.Errorf("Scope[%s] %s", s.ID(), err.Error())
-			return err
+	if len(relationships) == 0 {
+		return nil
+	}
+	primaryValues, ok := s.internal().StoreGet(internal.ReducedPrimariesStoreKey)
+	if !ok {
+		err := errors.New(class.InternalQueryNoStoredValue, "no primaries context key set in the store")
+		log.Errorf("Scope[%s] %s", s.ID(), err.Error())
+		return err
+	}
+
+	primaries, ok := primaryValues.([]interface{})
+	if !ok {
+		err := errors.Newf(class.InternalQueryNoStoredValue, "primaries not of a type []interface{}")
+		log.Errorf("Scope[%s]  %s", s.ID(), err.Error())
+		return err
+	}
+
+	var results = make(chan interface{}, len(relationships))
+
+	// create the cancelable context for the sub context
+	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
+	for _, rel := range relationships {
+		if rel.Relationship().Struct().Config() == nil {
+			continue
 		}
-
-		primaries, ok := primaryValues.([]interface{})
-		if !ok {
-			err := errors.Newf(class.InternalQueryNoStoredValue, "primaries not of a type []interface{}")
-			log.Errorf("Scope[%s]  %s", s.ID(), err.Error())
-			return err
-		}
-
-		var results = make(chan interface{}, len(relationships))
-
-		// create the cancelable context for the sub context
-		maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-		for _, rel := range relationships {
-			if rel.Relationship().Struct().Config() == nil {
-				continue
-			}
-			if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
-				if tm := modelRepo.MaxTimeout; tm != nil {
-					if *tm > maxTimeout {
-						maxTimeout = *tm
-					}
-				}
-			}
-		}
-
-		ctx, cancelFunc := context.WithTimeout(ctx, maxTimeout)
-		defer cancelFunc()
-
-		for _, relField := range relationships {
-			switch relField.Relationship().Kind() {
-			case models.RelHasOne:
-				go patchHasOneRelationshipChan(ctx, s, relField, primaries, results)
-			case models.RelHasMany:
-				go patchHasManyRelationshipChan(ctx, s, relField, primaries, results)
-			case models.RelMany2Many:
-				go patchMany2ManyRelationshipChan(ctx, s, relField, primaries, results)
-			}
-		}
-
-		var ctr int
-		for {
-			select {
-			case <-ctx.Done():
-			case v, ok := <-results:
-				if !ok {
-					return nil
-				}
-
-				if err, ok := v.(error); ok {
-					return err
-				}
-				ctr++
-				if ctr == len(relationships) {
-					return nil
+		if modelRepo := rel.Relationship().Struct().Config().Repository; modelRepo != nil {
+			if tm := modelRepo.MaxTimeout; tm != nil {
+				if *tm > maxTimeout {
+					maxTimeout = *tm
 				}
 			}
 		}
 	}
-	return nil
+
+	ctx, cancelFunc := context.WithTimeout(ctx, maxTimeout)
+	defer cancelFunc()
+
+	for _, relField := range relationships {
+		switch relField.Relationship().Kind() {
+		case models.RelHasOne:
+			go patchHasOneRelationshipChan(ctx, s, relField, primaries, results)
+		case models.RelHasMany:
+			go patchHasManyRelationshipChan(ctx, s, relField, primaries, results)
+		case models.RelMany2Many:
+			go patchMany2ManyRelationshipChan(ctx, s, relField, primaries, results)
+		}
+	}
+
+	var ctr int
+	for {
+		select {
+		case <-ctx.Done():
+		case v, ok := <-results:
+			if !ok {
+				return nil
+			}
+
+			if err, ok := v.(error); ok {
+				return err
+			}
+			ctr++
+			if ctr == len(relationships) {
+				return nil
+			}
+		}
+	}
 }
 
 func patchForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
@@ -414,9 +413,12 @@ func patchHasOneRelationship(
 		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
 
 		if e, ok := err.(*errors.Error); ok {
+			// change the class of the error
 			if e.Class == class.QueryValueNoResult {
 				e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
-				err = e
+				err = errors.New(class.QueryRelationNotFound, e.InternalMessage)
+			} else {
+				err = errors.New(class.QueryRelation, e.InternalMessage)
 			}
 		}
 		return err

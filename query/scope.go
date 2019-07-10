@@ -93,14 +93,7 @@ func (s *Scope) AddToFieldset(fields ...interface{}) error {
 // This would affect the Create or Patch processes where the SelectedFields are taken
 // as the unmarshaled fields.
 func (s *Scope) AddSelectedFields(fields ...interface{}) error {
-	for i, f := range fields {
-		// cast all *mapping.StructFields into models.StructField
-		field, ok := f.(*mapping.StructField)
-		if ok {
-			fields[i] = (*models.StructField)(field)
-		}
-	}
-	return s.internal().AddSelectedFields(fields...)
+	return s.selectFields(false, fields...)
 }
 
 // AddStringSortFields adds the sort fields in a string form.
@@ -432,10 +425,15 @@ func (s *Scope) SelectField(name string) error {
 		log.Debug("Field not found: '%s'", name)
 		return errors.Newf(class.QuerySelectedFieldsNotFound, "field: '%s' not found", name)
 	}
-
 	s.internal().AddSelectedField((*models.StructField)(field))
-
 	return nil
+}
+
+// SelectFields clears current scope selected fields and set it to
+// the 'fields'. The fields might be a string (NeuronName, Name)
+// or the *mapping.StructField.
+func (s *Scope) SelectFields(fields ...interface{}) error {
+	return s.selectFields(true, fields...)
 }
 
 // SelectedFields gets the fields selected to modify/create in the repository.
@@ -871,6 +869,20 @@ func (s *Scope) rollback(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
+	for i, f := range fields {
+		// cast all *mapping.StructFields into models.StructField
+		field, ok := f.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(field)
+		}
+	}
+	if initContainer {
+		return s.internal().SelectFields(fields...)
+	}
+	return s.internal().AddSelectedFields(fields...)
 }
 
 func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.Error {
