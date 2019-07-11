@@ -73,7 +73,7 @@ func (c *Controller) MapRepositories() error {
 			return fmt.Errorf("no repository config definition found for the: '%s' repository name", reponame)
 		}
 		model.Repository = repoConfig
-		log.Debugf("Mapped repositpory: %s for the model: %s", reponame, model.Collection)
+		log.Debugf("Mapped repository: %s for the model: %s", reponame, model.Collection)
 	}
 
 	return nil

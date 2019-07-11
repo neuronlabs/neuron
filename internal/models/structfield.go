@@ -3,6 +3,7 @@ package models
 import (
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/neuronlabs/neuron-core/errors"
@@ -607,7 +608,6 @@ func (s *StructField) isTime() bool {
 }
 
 func (s *StructField) setTagValues() error {
-
 	tag, hasTag := s.reflectField.Tag.Lookup(internal.AnnotationNeuron)
 	if !hasTag {
 		return nil
@@ -617,44 +617,26 @@ func (s *StructField) setTagValues() error {
 	// iterate over structfield additional tags
 	for key, values := range tagValues {
 		switch key {
-		case internal.AnnotationFieldType, internal.AnnotationName:
+		case internal.AnnotationFieldType, internal.AnnotationName, internal.AnnotationForeignKey, internal.AnnotationRelation:
 			continue
 		case internal.AnnotationFlags:
-			for _, value := range values {
-				switch value {
-				case internal.AnnotationClientID:
-					s.setFlag(FClientID)
-				case internal.AnnotationNoFilter:
-					s.setFlag(FNoFilter)
-				case internal.AnnotationHidden:
-					s.setFlag(FHidden)
-				case internal.AnnotationNotSortable:
-					s.setFlag(FSortable)
-				case internal.AnnotationISO8601:
-					s.setFlag(FISO8601)
-				case internal.AnnotationOmitEmpty:
-					s.setFlag(FOmitempty)
-				case internal.AnnotationI18n:
-					s.setFlag(FI18n)
-					s.mStruct.i18n = append(s.mStruct.i18n, s)
-				case internal.AnnotationLanguage:
-					s.mStruct.setLanguage(s)
-				default:
-					log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), value)
-				}
-			}
-		case internal.AnnotationManyToMany:
-			if !s.isRelationship() {
-				log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, internal.AnnotationManyToMany)
-				return errors.New(class.ModelFieldTag, "many2many tag on non relationship field")
-			}
-			r := s.relationship
-			if r == nil {
-				r = &Relationship{}
-				s.relationship = r
-			}
-			r.kind = RelMany2Many
+			s.setFlags(values...)
+			continue
+		}
 
+		if !s.isRelationship() {
+			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, internal.AnnotationManyToMany)
+			return errors.Newf(class.ModelFieldTag, "%s tag on non relationship field", key)
+		}
+
+		r := s.relationship
+		if r == nil {
+			r = &Relationship{}
+			s.relationship = r
+		}
+
+		if key == internal.AnnotationManyToMany {
+			r.kind = RelMany2Many
 			// first value is join model
 			// the second is the backreference field
 			switch len(values) {
@@ -666,9 +648,58 @@ func (s *StructField) setTagValues() error {
 			default:
 				return errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
 			}
+			continue
+		}
+
+		if len(values) == 0 || len(values) > 1 {
+			return errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' has invalid values: '%v'", s.Struct().Type().Name(), s.Name(), key, values)
+		}
+
+		var err error
+		switch key {
+		case internal.AnnotationOnDelete:
+			err = r.setOnDelete(s, values[0])
+		case internal.AnnotationOnPatch:
+			err = r.setOnPatch(s, values[0])
+		case internal.AnnotationOrder:
+			r.order, err = strconv.Atoi(values[0])
+			if err != nil {
+				err = errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' has invalid values: '%v'", s.Struct().Type().Name(), s.Name(), key, values).SetDetailf(err.Error())
+			}
+		case internal.AnnotationOnError:
+			err = r.setOnError(s, values[0])
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (s *StructField) setFlags(flags ...string) {
+	for _, single := range flags {
+		switch single {
+		case internal.AnnotationClientID:
+			s.setFlag(FClientID)
+		case internal.AnnotationNoFilter:
+			s.setFlag(FNoFilter)
+		case internal.AnnotationHidden:
+			s.setFlag(FHidden)
+		case internal.AnnotationNotSortable:
+			s.setFlag(FSortable)
+		case internal.AnnotationISO8601:
+			s.setFlag(FISO8601)
+		case internal.AnnotationOmitEmpty:
+			s.setFlag(FOmitempty)
+		case internal.AnnotationI18n:
+			s.setFlag(FI18n)
+			s.mStruct.i18n = append(s.mStruct.i18n, s)
+		case internal.AnnotationLanguage:
+			s.mStruct.setLanguage(s)
+		default:
+			log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), single)
+		}
+	}
 }
 
 func (s *StructField) setFlag(flag fieldFlag) {

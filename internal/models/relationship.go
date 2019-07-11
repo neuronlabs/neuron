@@ -1,6 +1,9 @@
 package models
 
 import (
+	"github.com/neuronlabs/neuron-core/errors"
+	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/neuron-core/internal"
 	"reflect"
 )
 
@@ -65,6 +68,15 @@ const (
 	SetNull
 )
 
+// RelationshipQueryStrategy is the query strategy for given relationship field.
+type RelationshipQueryStrategy int
+
+// Relationship query strategy constants with the default 'fail'
+const (
+	Fail RelationshipQueryStrategy = iota
+	Continue
+)
+
 // Relationship is the structure that contains the relation's required field's
 // kind, join model (if exists) and the process option (onDelete, onUpdate) as well
 // as the definition for the related model's type 'mStruct'.
@@ -85,14 +97,19 @@ type Relationship struct {
 	// joinModelName is the collection name of the join model.
 	joinModelName string
 
-	// OnUpdate is a relationship option which determines
+	// onPatch is a relationship option which determines
 	// how the relationship should operate while updating the root object
 	// By default it is set to Restrict
-	onUpdate RelationshipOption
+	onPatch RelationshipOption
 
 	// OnDelete is a relationship option which determines
 	// how the relationship should operate while deleting the root object
 	onDelete RelationshipOption
+
+	// onError defines the query strategy for the relationship
+	onError RelationshipQueryStrategy
+
+	order int
 
 	// mStruct is the relationship model's structure
 	mStruct *ModelStruct
@@ -164,6 +181,50 @@ func (r Relationship) isMany2Many() bool {
 // setForeignKey sets foreign key structfield.
 func (r *Relationship) setForeignKey(s *StructField) {
 	r.foreignKey = s
+}
+
+func (r *Relationship) setOnError(s *StructField, value string) error {
+	switch value {
+	case internal.AnnotationFailOnError:
+		r.onError = Fail
+	case internal.AnnotationContinueOnError:
+		r.onError = Continue
+	default:
+		return errors.Newf(class.ModelRelationshipOptions, "model: '%s' field's: '%s' relationship invalid 'on error' option: '%s'", s.Struct().Type().Name(), s.Name(), value)
+	}
+	return nil
+}
+
+func (r *Relationship) setOnPatch(s *StructField, value string) error {
+	switch value {
+	case internal.AnnotationRelationSetNull:
+		r.onPatch = SetNull
+	case internal.AnnotationRelationCascade:
+		r.onPatch = Cascade
+	case internal.AnnotationRelationRestrict:
+		r.onPatch = Restrict
+	case internal.AnnotationRelationNoAction:
+		r.onPatch = NoAction
+	default:
+		return errors.Newf(class.ModelRelationshipOptions, "model: '%s' field's: '%s' relationship invalid 'on patch' option: '%s'", s.Struct().Type().Name(), s.Name(), value)
+	}
+	return nil
+}
+
+func (r *Relationship) setOnDelete(s *StructField, value string) error {
+	switch value {
+	case internal.AnnotationRelationSetNull:
+		r.onDelete = SetNull
+	case internal.AnnotationRelationCascade:
+		r.onDelete = Cascade
+	case internal.AnnotationRelationRestrict:
+		r.onDelete = Restrict
+	case internal.AnnotationRelationNoAction:
+		r.onDelete = NoAction
+	default:
+		return errors.Newf(class.ModelRelationshipOptions, "model: '%s' field's: '%s' relationship invalid 'on delete' option: '%s'", s.Struct().Type().Name(), s.Name(), value)
+	}
+	return nil
 }
 
 // SetKind sets the relationship kind

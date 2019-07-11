@@ -177,6 +177,18 @@ var (
 	// InternalRepositorySystemError is the 'MjrInternal', 'MnrInternalRepository' error classification
 	// while repository system error occurred: i.e. not enough disk space.
 	InternalRepositorySystemError Class
+
+	// InternalRepositoryClientMismatch is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// for internal errors on matching the repository clients.
+	InternalRepositoryClientMismatch Class
+
+	// InternalRepositoryIndex is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// for internal errors with index.
+	InternalRepositoryIndex Class
+
+	// InternalRepositoryOptions is the 'MjrInternal', 'MnrInternalRepository' error classification
+	// for internal repository options errors.
+	InternalRepositoryOptions Class
 )
 
 func registerInternalRepository() {
@@ -186,6 +198,9 @@ func registerInternalRepository() {
 	InternalRepositoryResourceName = MnrInternalRepository.MustRegisterIndex("ResourceName", "invalid resource name for one of the repositories are queried").Class()
 	InternalRepositorySyntax = MnrInternalRepository.MustRegisterIndex("Syntax", "invalid syntax for one of the repository queries").Class()
 	InternalRepositorySystemError = MnrInternalRepository.MustRegisterIndex("System Error", "System error occurred on the repository").Class()
+	InternalRepositoryClientMismatch = MnrInternalRepository.MustRegisterIndex("Client Mismatch", "repository client doesn't match for given session, transaction etc").Class()
+	InternalRepositoryIndex = MnrInternalRepository.MustRegisterIndex("Index", "internal index problems").Class()
+	InternalRepositoryOptions = MnrInternalRepository.MustRegisterIndex("Options", "internal repository options issues").Class()
 }
 
 var (

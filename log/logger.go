@@ -15,28 +15,20 @@ import (
 const (
 	// LDEBUG3 is the logger DEBUG3 level.
 	LDEBUG3 = unilogger.DEBUG3
-
 	// LDEBUG2 is the logger DEBUG2 level.
 	LDEBUG2 = unilogger.DEBUG2
-
 	// LDEBUG is the logger DEBUG level.
 	LDEBUG = unilogger.DEBUG
-
 	// LINFO is the logger INFO level.
 	LINFO = unilogger.INFO
-
 	// LWARNING is the logger WARNING level.
 	LWARNING = unilogger.WARNING
-
 	// LERROR is the logger ERROR level.
 	LERROR = unilogger.ERROR
-
 	// LCRITICAL is the logger CRITICAL level.
 	LCRITICAL = unilogger.CRITICAL
-
 	// LPRINT is the logger PRINT level.
 	LPRINT = unilogger.PRINT
-
 	// LUNKNOWN is the unspecified logger level.
 	LUNKNOWN = unilogger.UNKNOWN
 )
@@ -207,7 +199,6 @@ func SetLevel(level unilogger.Level) error {
 	}
 
 	currentLevel = level
-
 	if logger == nil {
 		return nil
 	}
@@ -237,8 +228,9 @@ func SetLogger(log unilogger.LeveledLogger) {
 		lvlSetter.SetLevel(currentLevel)
 	}
 
-	debugLeveled, isDebugLeveled = log.(unilogger.DebugLeveledLogger)
+	Debug("New logger set with level: %s", currentLevel.String())
 
+	debugLeveled, isDebugLeveled = log.(unilogger.DebugLeveledLogger)
 	subLogger, isSubLogger := log.(unilogger.SubLogger)
 	for _, m := range modules {
 		if m.logger == nil && isSubLogger {

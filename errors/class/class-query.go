@@ -369,6 +369,10 @@ var (
 	// QueryTxTermination is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction is invalidly terminated.
 	QueryTxTermination Class
+
+	// QueryTxLockTimeOut is the 'MjrQuery', 'MnrQueryTransaction' error classification
+	// when query transaction lock had timed out.
+	QueryTxLockTimeOut Class
 )
 
 func registerQueryTransactions() {
@@ -383,6 +387,7 @@ func registerQueryTransactions() {
 	QueryTxUnknownState = MnrQueryTransaction.MustRegisterIndex("Unknown State", "transaction state unknown").Class()
 	QueryTxUnknownIsolationLevel = MnrQueryTransaction.MustRegisterIndex("Unknown Isolation Level", "transaction isolation level unknown").Class()
 	QueryTxTermination = MnrQueryTransaction.MustRegisterIndex("Termination", "invalid transaction termination").Class()
+	QueryTxLockTimeOut = MnrQueryTransaction.MustRegisterIndex("Lock Timed Out", "transaction lock had timed out").Class()
 }
 
 /**

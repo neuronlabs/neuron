@@ -653,11 +653,6 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 	return nil
 }
 
-func (m *ModelStruct) setLanguage(f *StructField) {
-	f.fieldFlags = f.fieldFlags | FLanguage
-	m.language = f
-}
-
 func (m *ModelStruct) setAttribute(structField *StructField) error {
 	structField.fieldKind = KindAttribute
 	// check if no duplicates
@@ -820,6 +815,59 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	return nil
 }
 
+func (m *ModelStruct) setFieldsConfigs() (err error) {
+	structFields := m.StructFields()
+	for field, cfg := range m.Config().Fields {
+		if cfg == nil {
+			continue
+		}
+
+		for _, sField := range structFields {
+			if field != sField.NeuronName() && field != sField.Name() {
+				continue
+			}
+			sField.setFlags(cfg.Flags...)
+
+			// check if the field is a relationship
+			if !sField.isRelationship() {
+				break
+			}
+
+			rel := sField.relationship
+			if rel == nil {
+				rel = &Relationship{}
+				sField.relationship = rel
+			}
+
+			// set on error
+			if cfg.OnError != "" {
+				if err = rel.setOnError(sField, cfg.OnError); err != nil {
+					return err
+				}
+			}
+
+			// set on patch
+			if cfg.OnPatch != "" {
+				if err = rel.setOnPatch(sField, cfg.OnPatch); err != nil {
+					return err
+				}
+			}
+
+			// set on patch
+			if cfg.OnDelete != "" {
+				if err = rel.setOnDelete(sField, cfg.OnDelete); err != nil {
+					return err
+				}
+			}
+
+			// set query order
+			rel.order = cfg.QueryOrder
+			break
+		}
+	}
+	return nil
+}
+
 func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	structField.fieldKind = KindForeignKey
 
@@ -833,6 +881,11 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	m.foreignKeys[structField.neuronName] = structField
 
 	return nil
+}
+
+func (m *ModelStruct) setLanguage(f *StructField) {
+	f.fieldFlags = f.fieldFlags | FLanguage
+	m.language = f
 }
 
 func (m *ModelStruct) setPrimaryField(structField *StructField) error {

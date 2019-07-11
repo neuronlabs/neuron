@@ -32,10 +32,20 @@ const (
 	// relation tag
 	AnnotationManyToMany = "many2many"
 
+	AnnotationOrder = "order"
+
+	AnnotationOnPatch  = "onpatch"
+	AnnotationOnDelete = "ondelete"
+
 	AnnotationRelationRestrict = "restrict"
 	AnnotationRelationNoAction = "no-action"
 	AnnotationRelationCascade  = "cascade"
 	AnnotationRelationSetNull  = "set-null"
+
+	AnnotationOnError = "onerror"
+
+	AnnotationFailOnError     = "fail"
+	AnnotationContinueOnError = "continue"
 
 	AnnotationDefault = "default"
 

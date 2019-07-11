@@ -304,11 +304,13 @@ func (s *Scope) List() error {
 	if !s.internal().IsMany() {
 		return errors.New(class.QueryValueType, "provided non slice value for the list query").SetDetail("Single value provided for the List process")
 	}
+	if log.Level() <= log.LDEBUG2 {
+		log.Debug2f("[SCOPE][%s] process list", s.ID())
+	}
 	// list from the processor
 	if err := s.defaultProcessor().List(context.Background(), (*scope.Scope)(s)); err != nil {
 		return err
 	}
-
 	return nil
 }
 

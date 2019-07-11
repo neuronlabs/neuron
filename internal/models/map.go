@@ -621,21 +621,7 @@ func getNestedStruct(
 						return nil, errors.Newf(class.ModelFieldType, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.FieldType(), nestedField.structField.Name())
 					}
 				case internal.AnnotationFlags:
-					for _, value := range tValue {
-						switch value {
-						case internal.AnnotationNoFilter:
-							nestedField.structField.setFlag(FNoFilter)
-						case internal.AnnotationHidden:
-							nestedField.structField.setFlag(FHidden)
-						case internal.AnnotationNotSortable:
-							nestedField.structField.setFlag(FSortable)
-						case internal.AnnotationISO8601:
-							nestedField.structField.setFlag(FISO8601)
-						case internal.AnnotationOmitEmpty:
-							nestedField.structField.setFlag(FOmitempty)
-						}
-
-					}
+					nestedField.structField.setFlags(tValue...)
 				}
 			}
 		}

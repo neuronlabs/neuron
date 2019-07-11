@@ -120,7 +120,6 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 		ctr  int
 		done bool
 	)
-
 	for {
 		select {
 		case <-ctx.Done():

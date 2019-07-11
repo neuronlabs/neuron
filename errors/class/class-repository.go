@@ -15,6 +15,7 @@ func registerRepositoryClasses() {
 	registerRepositoryModel()
 	registerRepostioryUnmappedError()
 	registerRepositoryConfig()
+	registerRepositoryReplica()
 }
 
 /**
@@ -94,6 +95,10 @@ var (
 	// RepositoryConnectionURI is the 'MjrRepository', 'MnrRepositoryConnection' error classification
 	// related with invalid connection URI for the repository.
 	RepositoryConnectionURI Class
+
+	// RepositoryConnectionSSL is the 'MjrRepository', 'MnrRepositoryConnection' error classification
+	// related with SSL for the repository connections.
+	RepositoryConnectionSSL Class
 )
 
 func registerRepositoryConnection() {
@@ -102,6 +107,7 @@ func registerRepositoryConnection() {
 	RepositoryConnection = MustNewMinorClass(MnrRepositoryConnection)
 	RepositoryConnectionTimedOut = MnrRepositoryConnection.MustRegisterIndex("Timed Out", "repository connection timed out").Class()
 	RepositoryConnectionURI = MnrRepositoryConnection.MustRegisterIndex("URI", "invalid URI provided for the repository connection").Class()
+	RepositoryConnectionSSL = MnrRepositoryConnection.MustRegisterIndex("SSL", "SSL failed").Class()
 
 }
 
@@ -235,4 +241,32 @@ func registerRepositoryConfig() {
 
 	RepositoryConfigAlreadyRegistered = MnrRepositoryConfig.MustRegisterIndex("Already Registered", "repository configuration already exists").Class()
 	RepositoryConfigInvalid = MnrRepositoryConfig.MustRegisterIndex("Invalid", "invalid repository configuration").Class()
+}
+
+var (
+	// MnrRepositoryReplica is the 'MjrRepository' minor error classification
+	// for replicas errors.
+	MnrRepositoryReplica Minor
+
+	// RepositoryReplicaSetNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
+	// where replica set is not found.
+	RepositoryReplicaSetNotFound Class
+	// RepositoryReplicaShardNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
+	// where replica shard is not found.
+	RepositoryReplicaShardNotFound Class
+	// RepositoryReplicaNodeNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
+	// where replica shard is not found.
+	RepositoryReplicaNodeNotFound Class
+
+	// RepositoryReplica is the 'MjrRepository', 'MnrRepositoryReplica' error classification for repository replicas.
+	RepositoryReplica Class
+)
+
+func registerRepositoryReplica() {
+	MnrRepositoryReplica = MjrRepository.MustRegisterMinor("Replica", "repository replicas")
+
+	RepositoryReplicaSetNotFound = MnrRepositoryReplica.MustRegisterIndex("Set Not Found", "replica set is not found").Class()
+	RepositoryReplicaShardNotFound = MnrRepositoryReplica.MustRegisterIndex("Shard Not Found", "replica shard not found").Class()
+	RepositoryReplicaNodeNotFound = MnrRepositoryReplica.MustRegisterIndex("Node Not Found", "replica node not found").Class()
+	RepositoryReplica = MustNewMinorClass(MnrRepositoryReplica)
 }

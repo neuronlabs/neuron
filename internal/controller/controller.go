@@ -70,10 +70,8 @@ func Default() *Controller {
 		if err != nil {
 			panic(err)
 		}
-
 		defaultController = c
 	}
-
 	return defaultController
 }
 
@@ -257,9 +255,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 		if log.Logger() == nil {
 			log.Default()
 		}
-
 		// get and set default logger
-		log.Default()
 		log.SetLevel(level)
 	}
 

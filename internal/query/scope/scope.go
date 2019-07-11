@@ -811,6 +811,9 @@ func newScope(modelStruct *models.ModelStruct) *Scope {
 		scope.fieldset[field.NeuronName()] = field
 	}
 
+	if log.Level() <= log.LDEBUG2 {
+		log.Debug2f("[SCOPE][%s] query new scope", scope.id.String())
+	}
 	return scope
 }
 

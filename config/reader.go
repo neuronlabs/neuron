@@ -109,6 +109,7 @@ func setDefaultControllerConfigs(v *viper.Viper) {
 		"patch_validator_alias":  "patch",
 		"log_level":              "info",
 		"processor":              DefaultProcessorConfig(),
+		"repositories":           map[string]*Repository{},
 	}
 
 	for k, value := range keys {

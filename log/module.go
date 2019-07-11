@@ -24,7 +24,6 @@ func NewModuleLogger(name string, moduleLogger ...unilogger.LeveledLogger) *Modu
 	mLogger := &ModuleLogger{
 		Name: name,
 	}
-
 	modules = append(modules, mLogger)
 
 	if len(moduleLogger) > 0 {
@@ -50,7 +49,6 @@ func NewModuleLogger(name string, moduleLogger ...unilogger.LeveledLogger) *Modu
 		mLogger.currentLevel = currentLevel
 		return mLogger
 	}
-
 	return mLogger
 }
 

@@ -22,6 +22,20 @@ type ModelConfig struct {
 	// AutoMigrate automatically migrates the model into the given repository structuring
 	// I.e. sql creates or updates the table
 	AutoMigrate bool `mapstructure:"automigrate"`
+
+	// Fields contains the model fields configuration.
+	Fields map[string]*Field
+}
+
+// Field is the model's field configuration.
+type Field struct {
+	Flags      []string `mapstructure:"flags" validate:"isdefault|oneof=client-id nofilter hidden nosort iso8601 i18n omitempty langtag"`
+	QueryOrder int      `mapstructure:"query_order" validate:"gte=0"`
+
+	OnError string `mapstructure:"on_error" validate:"isdefault|oneof=fail continue"`
+
+	OnDelete string `mapstructure:"on_delete" validate:"isdefault|oneof=restrict cascade noaction setnull"`
+	OnPatch  string `mapstructure:"on_patch" validate:"isdefault|oneof=restrict cascade noaction setnull"`
 }
 
 // Connection is the configuration for non local schemas credentials.

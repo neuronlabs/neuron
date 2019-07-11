@@ -115,6 +115,10 @@ var (
 	// ModelRelationshipBackreference is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship's back reference field.
 	ModelRelationshipBackreference Class
+
+	// ModelRelationshipOptions is the 'MjrModel', 'MnrModelRelationship' error classification
+	// on the issues with relationship options like: 'on error', 'on patch', 'on delete'.
+	ModelRelationshipOptions Class
 )
 
 func registerModelRelationship() {
@@ -124,6 +128,7 @@ func registerModelRelationship() {
 	ModelRelationshipForeign = MnrModelRelationship.MustRegisterIndex("Foreign", "invalid relationship's foreign key").Class()
 	ModelRelationshipJoinModel = MnrModelRelationship.MustRegisterIndex("Join Model", "issues related with relationship's join model").Class()
 	ModelRelationshipBackreference = MnrModelRelationship.MustRegisterIndex("Backreference", "issues related with backerefernece fields").Class()
+	ModelRelationshipOptions = MnrModelRelationship.MustRegisterIndex("Options", "options related issues").Class()
 }
 
 var (
