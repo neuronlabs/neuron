@@ -10,16 +10,12 @@ type RelationshipKind models.RelationshipKind
 const (
 	// RelUnknown unknown relationship kind.
 	RelUnknown RelationshipKind = iota
-
 	// RelBelongsTo 'belongs to' relationship kind.
 	RelBelongsTo
-
 	// RelHasOne 'has one' relationship kind.
 	RelHasOne
-
 	// RelHasMany 'has many' relationship kind.
 	RelHasMany
-
 	// RelMany2Many 'many 2 many' relationship kind.
 	RelMany2Many
 )
@@ -40,13 +36,13 @@ func (r RelationshipKind) String() string {
 	return "Unknown"
 }
 
-// RelationshipOption is the relationship field's option enum.
-type RelationshipOption models.RelationshipOption
+// ChangeStrategy is the relationship field's option enum.
+type ChangeStrategy models.ChangeStrategy
 
-// RelationshipOptions are used to define the default behaviour of the model's deleting and patching processes.
+// ChangeStrategies are used to define the default behaviour of the model's deleting processes.
 const (
 	// Restrict is a restrict relationship option.
-	Restrict RelationshipOption = iota
+	Restrict ChangeStrategy = iota
 	NoAction
 	Cascade
 	SetNull

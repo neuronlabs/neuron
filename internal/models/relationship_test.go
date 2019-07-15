@@ -13,7 +13,7 @@ import (
 // Model1WithMany2Many is the model with the many2many relationship.
 type Model1WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=_,SecondForeign"`
+	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=joinModel;foreign=_,SecondForeign;on_delete=on_error=continue,order=2"`
 }
 
 // Model2WithMany2Many is the second model with the many2many relationship.
@@ -107,7 +107,13 @@ func TestMappedRelationships(t *testing.T) {
 				relField, ok := first.relationships["synced"]
 				require.True(t, ok)
 
-				require.NotNil(t, relField.relationship)
+				rel := relField.relationship
+				require.NotNil(t, rel)
+
+				assert.True(t, rel.isMany2Many())
+				assert.Equal(t, uint(2), rel.onDelete.QueryOrder)
+				assert.Equal(t, Continue, rel.onDelete.OnError)
+
 				require.Equal(t, RelMany2Many, relField.relationship.kind)
 
 				assert.Equal(t, second, relField.relationship.mStruct)
@@ -196,7 +202,8 @@ func TestMappedRelationships(t *testing.T) {
 				err := m.RegisterModels(First{}, Second{})
 				require.Error(t, err)
 
-				e := err.(*errors.Error)
+				e, ok := err.(*errors.Error)
+				require.True(t, ok)
 				assert.Equal(t, class.ModelRelationshipJoinModel, e.Class)
 			})
 

@@ -19,9 +19,9 @@ type Error struct {
 	// Detail contains the detailed information.
 	Detail string
 
-	// InternalMessage is a message used as a string for the
+	// Message is a message used as a string for the
 	// golang error interface implementation.
-	InternalMessage string
+	Message string
 
 	// Opertaion is the operation name when the error occurred.
 	Operation string
@@ -29,7 +29,7 @@ type Error struct {
 
 // Error implements error interface.
 func (e *Error) Error() string {
-	return e.InternalMessage
+	return e.Message
 }
 
 // SetClass sets the error Class 'c'  and returns itself.
@@ -80,17 +80,17 @@ func (e *Error) wrapDetail(detail string) *Error {
 // New creates new error message with given 'class' and message 'message'.
 func New(c class.Class, message string) *Error {
 	return &Error{
-		ID:              uuid.New(),
-		Class:           c,
-		InternalMessage: message,
+		ID:      uuid.New(),
+		Class:   c,
+		Message: message,
 	}
 }
 
 // Newf creates new error instance with provided 'class' with formatted message.
 func Newf(c class.Class, format string, args ...interface{}) *Error {
 	return &Error{
-		ID:              uuid.New(),
-		Class:           c,
-		InternalMessage: fmt.Sprintf(format, args...),
+		ID:      uuid.New(),
+		Class:   c,
+		Message: fmt.Sprintf(format, args...),
 	}
 }

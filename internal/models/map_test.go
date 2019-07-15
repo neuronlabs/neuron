@@ -50,7 +50,7 @@ func TestRegisterModel(t *testing.T) {
 	t.Run("Embedded", func(t *testing.T) {
 		m := testingModelMap(t)
 		err := m.RegisterModels(&embeddedModel{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		ms, err := m.GetModelStruct(&embeddedModel{})
 		require.NoError(t, err)

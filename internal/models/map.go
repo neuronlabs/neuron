@@ -33,16 +33,13 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 	if c.Models == nil {
 		c.Models = make(map[string]*config.ModelConfig)
 	}
-
-	var modelMap = &ModelMap{
+	return &ModelMap{
 		models:            make(map[reflect.Type]*ModelStruct),
 		collections:       make(map[string]reflect.Type),
 		DefaultRepository: c.DefaultRepositoryName,
 		NamerFunc:         namerFunc,
 		Configs:           c.Models,
 	}
-
-	return modelMap
 }
 
 // ComputeNestedIncludedCount computes the limits for the nested included count for each model.

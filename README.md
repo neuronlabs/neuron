@@ -9,6 +9,7 @@ Neuron-core is the golang cloud-native, distributed ORM implementation.
 * [Install](#install)
 * [Docs](#docs)
 * [Quick Start](#quick-start)
+* [Packages](#packages)
 
 ## What is Neuron-Core?
 Neuron-core is a cloud-ready **Golang** ORM. It's design allows to
@@ -20,9 +21,9 @@ query multiple related models located on different datastores/repositories.
 
 ## Docs
 
-- Neuron-Core: `https://neuronlabs.github.io/neuron-core`
-- GoDoc: `https://godoc.org/github.com/neuronlabs/neuron-core`
-- Addons and Repositories: `https://neuronlabs.github.io/`
+- Neuron-Core: https://neuronlabs.github.io/neuron-core
+- GoDoc: https://godoc.org/github.com/neuronlabs/neuron-core
+- Addons and Repositories: https://neuronlabs.github.io/
 
 ## Quick Start
 
@@ -134,5 +135,18 @@ func main() {
     }
 ```
 
+## Packages
 
+The `neuron-core` is composed of the following packages:
 
+* `query` - used to query the model's repositories.
+* `controller` - is the neuron's core, that registers and stores the models and contains configurations required by other packages.
+* `mapping` - contains the information about the mapped models their fields and settings
+* `config` - contains the configurations structures.
+* `encoding/jsonapi` - allows to marshal and unmarshal the model's, and queries by the https://jsonapi.org/ specification
+* `errors` - used as a default error package for the neuron packages.
+* `errors/class` - contains errors classification system for the neuron packages
+* `repository` - is a package used to store, get and register the repositories nad their factories.
+* `log` - is the logging interface for the neuron based applications.
+* `i18n` - is the neuron based application supported internationalization
+* `common` - common neuron variables, functions and definitions.

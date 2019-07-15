@@ -815,7 +815,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	return nil
 }
 
-func (m *ModelStruct) setFieldsConfigs() (err error) {
+func (m *ModelStruct) setFieldsConfigs() error {
 	structFields := m.StructFields()
 	for field, cfg := range m.Config().Fields {
 		if cfg == nil {
@@ -840,28 +840,52 @@ func (m *ModelStruct) setFieldsConfigs() (err error) {
 			}
 
 			// set on error
-			if cfg.OnError != "" {
-				if err = rel.setOnError(sField, cfg.OnError); err != nil {
+			if cfg.Strategy == nil {
+				continue
+			}
+
+			var err *errors.Error
+			// on create
+			onCreate := cfg.Strategy.OnCreate
+			if onCreate.OnError != "" {
+				if err = rel.onCreate.parseOnError(onCreate.OnError); err != nil {
 					return err
 				}
 			}
 
-			// set on patch
-			if cfg.OnPatch != "" {
-				if err = rel.setOnPatch(sField, cfg.OnPatch); err != nil {
+			if onCreate.QueryOrder != 0 {
+				rel.onCreate.QueryOrder = onCreate.QueryOrder
+			}
+
+			// on create
+			onPatch := cfg.Strategy.OnPatch
+			if onPatch.OnError != "" {
+				if err = rel.onPatch.parseOnError(onPatch.OnError); err != nil {
 					return err
 				}
 			}
 
-			// set on patch
-			if cfg.OnDelete != "" {
-				if err = rel.setOnDelete(sField, cfg.OnDelete); err != nil {
+			if onPatch.QueryOrder != 0 {
+				rel.onPatch.QueryOrder = onPatch.QueryOrder
+			}
+
+			// on create
+			onDelete := cfg.Strategy.OnDelete
+			if onDelete.OnError != "" {
+				if err = rel.onDelete.parseOnError(onDelete.OnError); err != nil {
 					return err
 				}
 			}
 
-			// set query order
-			rel.order = cfg.QueryOrder
+			if onDelete.QueryOrder != 0 {
+				rel.onDelete.QueryOrder = onDelete.QueryOrder
+			}
+			if onDelete.RelationChange != "" {
+				err = rel.onDelete.parseOnChange(onDelete.RelationChange)
+				if err != nil {
+					return err
+				}
+			}
 			break
 		}
 	}

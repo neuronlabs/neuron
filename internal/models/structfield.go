@@ -3,7 +3,6 @@ package models
 import (
 	"net/url"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/neuronlabs/neuron-core/errors"
@@ -76,49 +75,34 @@ const (
 	FDefault fieldFlag = iota
 	// FOmitEmpty is a field flag for omitting empty value.
 	FOmitempty fieldFlag = 1 << (iota - 1)
-
 	// FISO8601 is a time field flag marking it usable with IS08601 formatting.
 	FISO8601
-
 	// FI18n is the i18n field flag.
 	FI18n
-
 	// FNoFilter is the 'no filter' field flag.
 	FNoFilter
-
 	// FLanguage is the language field flag.
 	FLanguage
-
 	// FHidden is a flag for hidden field.
 	FHidden
-
 	// FSortable is a flag used for sortable fields.
 	FSortable
-
 	// FClientID is flag used to mark field as allowable to set ClientID.
 	FClientID
-
 	// FTime  is a flag used to mark field type as a Time.
 	FTime
-
 	// FMap is a flag used to mark field as a map.
 	FMap
-
 	// FPtr is a flag used to mark field as a pointer.
 	FPtr
-
 	// FArray is a flag used to mark field as an array.
 	FArray
-
 	// FSlice is a flag used to mark field as a slice.
 	FSlice
-
 	// FBasePtr is flag used to mark field as a based pointer.
 	FBasePtr
-
 	// FNestedStruct is a flag used to mark field as a nested structure.
 	FNestedStruct
-
 	// FNested is a flag used to mark field as nested.
 	FNestedField
 )
@@ -613,6 +597,8 @@ func (s *StructField) setTagValues() error {
 		return nil
 	}
 
+	var multiError errors.MultiError
+
 	tagValues := s.TagValues(tag)
 	// iterate over structfield additional tags
 	for key, values := range tagValues {
@@ -646,32 +632,46 @@ func (s *StructField) setTagValues() error {
 				}
 			case 0:
 			default:
-				return errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
+				err := errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
+				multiError = append(multiError, err)
 			}
 			continue
 		}
 
-		if len(values) == 0 || len(values) > 1 {
-			return errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' has invalid values: '%v'", s.Struct().Type().Name(), s.Name(), key, values)
+		kv := make(map[string]string)
+		initLength := len(multiError)
+		for _, value := range values {
+			i := strings.IndexRune(value, '=')
+			if i == -1 {
+				err := errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
+				multiError = append(multiError, err)
+				continue
+			}
+			kv[value[:i]] = value[i+1:]
+		}
+		if initLength != len(multiError) {
+			continue
 		}
 
-		var err error
+		var errs errors.MultiError
+		//`neuron:"on_delete=order=1;on_error=fail;on_change=restrict"`
 		switch key {
 		case internal.AnnotationOnDelete:
-			err = r.setOnDelete(s, values[0])
+			errs = r.onDelete.parse(kv)
 		case internal.AnnotationOnPatch:
-			err = r.setOnPatch(s, values[0])
-		case internal.AnnotationOrder:
-			r.order, err = strconv.Atoi(values[0])
-			if err != nil {
-				err = errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' has invalid values: '%v'", s.Struct().Type().Name(), s.Name(), key, values).SetDetailf(err.Error())
-			}
-		case internal.AnnotationOnError:
-			err = r.setOnError(s, values[0])
+			errs = r.onPatch.parse(kv)
+		case internal.AnnotationOnCreate:
+			errs = r.onCreate.parse(kv)
+		default:
+			errs = append(errs, errors.Newf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
 		}
-		if err != nil {
-			return err
+
+		if len(errs) > 0 {
+			multiError = append(multiError, errs...)
 		}
+	}
+	if len(multiError) > 0 {
+		return multiError
 	}
 	return nil
 }
