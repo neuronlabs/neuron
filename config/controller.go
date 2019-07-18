@@ -15,27 +15,23 @@ type Controller struct {
 	// - snake
 	// - kebab
 	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lowercamel snake kebab"`
-
 	// Models defines the model's configurations.
 	Models map[string]*ModelConfig `mapstructure:"models"`
+	// Repositories contains the connection configs for the given repository instance name
+	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
 
 	// StrictUnmarshalMode is the flag that defines if the unmarshaling should be in a
 	// strict mode that checks if incoming values are all known to the controller
 	// As well as the query builder doesn't allow unknown queries
 	StrictUnmarshalMode bool `mapstructure:"strict_unmarshal"`
-
 	// EncodeLinks is the boolean used for encoding the links in the jsonapi encoder
 	EncodeLinks bool `mapstructure:"encode_links"`
 
 	// LogLevel is the current logging level
 	LogLevel string `mapstructure:"log_level" validate:"isdefault|oneof=debug3 debug2 debug info warning error critical"`
 
-	// Repositories contains the connection configs for the given repository instance name
-	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
-
 	// DefaultRepositoryName defines default repositoy name
 	DefaultRepositoryName string `mapstructure:"default_repository_name"`
-
 	// DefaultRepository defines controller default repository
 	DefaultRepository *Repository `mapstructure:"default_repository" validate:"-"`
 
@@ -44,10 +40,8 @@ type Controller struct {
 
 	// CreateValidatorAlias is the alias for the create validators
 	CreateValidatorAlias string `mapstructure:"create_validator_alias"`
-
 	// PatchValidatorAlias is the alis used for the Patch validator
 	PatchValidatorAlias string `mapstructure:"patch_validator_alias"`
-
 	// DefaultValidatorAlias is the alias used as a default validator alias
 	DefaultValidatorAlias string `mapstructure:"default_validator_alias"`
 }

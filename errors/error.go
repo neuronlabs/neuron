@@ -94,3 +94,15 @@ func Newf(c class.Class, format string, args ...interface{}) *Error {
 		Message: fmt.Sprintf(format, args...),
 	}
 }
+
+// IsNoResult checks if the provided model is the *Error instance with the class.QueryValueNoResult.
+func IsNoResult(err error) bool {
+	switch e := err.(type) {
+	case *Error:
+		return e.Class == class.QueryValueNoResult
+	case MultiError:
+		return len(e) == 1 && e[0] != nil && e[0].Class == class.QueryValueNoResult
+	default:
+		return false
+	}
+}

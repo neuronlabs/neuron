@@ -28,9 +28,20 @@ import (
 // get, create, patch or delete the data in the repository.
 type Scope scope.Scope
 
-// MustNewC creates new scope with given 'model' for the given internalController 'c'.
+// MustNewC creates new scope with given 'model' for the given controller 'c'.
+// Panics on error.
 func MustNewC(c *controller.Controller, model interface{}) *Scope {
 	s, err := newScope((*internalController.Controller)(c), model)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+// MustNew creates new scope with given 'model' for the default controller.
+// Panics on error.
+func MustNew(model interface{}) *Scope {
+	s, err := newScope(internalController.Default(), model)
 	if err != nil {
 		panic(err)
 	}
@@ -700,7 +711,6 @@ func (s *Scope) defaultProcessor() scope.Processor {
 	}
 
 	return p
-
 }
 
 func (s *Scope) formatQuery() url.Values {
@@ -969,19 +979,27 @@ func (s *Scope) tx() *Tx {
 
 func newScope(c *internalController.Controller, model interface{}) (*Scope, error) {
 	var (
-		err     error
-		mStruct *models.ModelStruct
+		err          error
+		mStruct      *models.ModelStruct
+		noModelValue bool
 	)
+
 	switch mt := model.(type) {
 	case *models.ModelStruct:
 		mStruct = mt
+		noModelValue = true
 	case *mapping.ModelStruct:
 		mStruct = (*models.ModelStruct)(mt)
+		noModelValue = true
 	default:
 		mStruct, err = c.GetModelStruct(model)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if noModelValue {
+		return newScopeWithModel(c, mStruct, false)
 	}
 
 	s := scope.New(mStruct)
@@ -1009,7 +1027,6 @@ func newScopeWithModel(c *controller.Controller, m *models.ModelStruct, isMany b
 	s := scope.NewRootScope(m)
 
 	s.StoreSet(internal.ControllerStoreKey, (*controller.Controller)(c))
-
 	if isMany {
 		s.Value = m.NewValueMany()
 		s.SetIsMany(true)

@@ -341,7 +341,7 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 	}
 
 	// copy the key value from the config
-	for k, v := range m.cfg.Map {
+	for k, v := range m.cfg.Store {
 		m.store[k] = v
 	}
 
@@ -615,7 +615,8 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		value := values[0]
 		switch value {
 		case internal.AnnotationPrimary, internal.AnnotationID,
-			internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
+			internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS,
+			internal.AnnotationPrimaryShort:
 			err = m.setPrimaryField(structField)
 			if err != nil {
 				return err
@@ -630,7 +631,8 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			if err != nil {
 				return err
 			}
-		case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull, internal.AnnotationForeignKeyFullS:
+		case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull,
+			internal.AnnotationForeignKeyFullS, internal.AnnotationForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
 				return err
 			}

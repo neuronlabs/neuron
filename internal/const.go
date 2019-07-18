@@ -10,9 +10,10 @@ const (
 	AnnotationPrimaryFull  = "primary_key"
 	AnnotationPrimaryFullS = "primarykey"
 	AnnotationID           = "id"
+	AnnotationPrimaryShort = "pk"
 
 	AnnotationClientID = "client-id"
-	AnnotationLanguage = "langtag"
+	AnnotationLanguage = "lang"
 
 	// attributes
 	AnnotationAttribute     = "attr"
@@ -26,6 +27,7 @@ const (
 	AnnotationForeignKey      = "foreign"
 	AnnotationForeignKeyFull  = "foreign_key"
 	AnnotationForeignKeyFullS = "foreignkey"
+	AnnotationForeignKeyShort = "fk"
 
 	AnnotationNestedField = "nested"
 
