@@ -3,8 +3,6 @@ package common
 import (
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
-
-	"github.com/neuronlabs/neuron-core/internal"
 )
 
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.
@@ -22,13 +20,13 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 	for i := 0; i < len(bracketed); i++ {
 		c := bracketed[i]
 		switch c {
-		case internal.AnnotationOpenedBracket:
+		case AnnotationOpenedBracket:
 			if startIndex > endIndex {
 				err = doubleOpen()
 				return nil, err
 			}
 			startIndex = i
-		case internal.AnnotationClosedBracket:
+		case AnnotationClosedBracket:
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {

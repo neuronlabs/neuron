@@ -14,7 +14,6 @@ type Type int
 const (
 	// TpOffset is the 'offset' based pagination type.
 	TpOffset Type = iota
-
 	// TpPage is the 'page' based pagination type.
 	TpPage
 )

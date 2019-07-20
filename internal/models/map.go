@@ -9,12 +9,12 @@ import (
 
 	"github.com/neuronlabs/inflection"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
@@ -279,10 +279,10 @@ func (m *ModelMap) setRelationships() error {
 			relationship := relField.Relationship()
 
 			// get structfield jsonapi tags
-			tags := relField.TagValues(relField.ReflectField().Tag.Get(internal.AnnotationNeuron))
+			tags := relField.TagValues(relField.ReflectField().Tag.Get(common.AnnotationNeuron))
 
 			// get proper foreign key field name
-			fkeyFieldNames := tags[internal.AnnotationForeignKey]
+			fkeyFieldNames := tags[common.AnnotationForeignKey]
 			log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), fkeyFieldNames)
 			// check field type
 			var (
@@ -610,14 +610,14 @@ func getNestedStruct(
 			tagValues := nestedField.structField.TagValues(tag)
 			for tKey, tValue := range tagValues {
 				switch tKey {
-				case internal.AnnotationName:
+				case common.AnnotationName:
 					nestedField.structField.neuronName = tValue[0]
-				case internal.AnnotationFieldType:
-					if tValue[0] != internal.AnnotationNestedField {
+				case common.AnnotationFieldType:
+					if tValue[0] != common.AnnotationNestedField {
 						log.Debugf("Invalid annotationNestedField value: '%s' for field: %s", tValue[0], nestedField.structField.Name())
 						return nil, errors.Newf(class.ModelFieldType, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.FieldType(), nestedField.structField.Name())
 					}
-				case internal.AnnotationFlags:
+				case common.AnnotationFlags:
 					nestedField.structField.setFlags(tValue...)
 				}
 			}

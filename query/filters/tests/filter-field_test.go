@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query/filters"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	internalController "github.com/neuronlabs/neuron-core/internal/controller"
 )
 
@@ -220,7 +220,7 @@ func TestFormatQuery(t *testing.T) {
 
 		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), filters.OpIn.Raw), k)
 		if assert.Len(t, v, 1) {
-			v = strings.Split(v[0], internal.AnnotationSeperator)
+			v = strings.Split(v[0], common.AnnotationSeparator)
 			assert.Equal(t, "1", v[0])
 			assert.Contains(t, v[1], "2.01")
 			assert.Equal(t, "30", v[2])
@@ -250,7 +250,7 @@ func TestFormatQuery(t *testing.T) {
 
 		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField().NeuronName(), relFilter.StructField().Relationship().ModelStruct().Primary().NeuronName(), filters.OpIn.Raw), k)
 		if assert.Len(t, v, 1) {
-			v = strings.Split(v[0], internal.AnnotationSeperator)
+			v = strings.Split(v[0], common.AnnotationSeparator)
 
 			assert.Equal(t, "1", v[0])
 			assert.Equal(t, "2", v[1])

@@ -1,12 +1,14 @@
 package internal
 
-// ForeignKeyModel is the interface used for getting and setting the value of foreign key fields for given model.
+// ForeignKeyModel is the interface used for getting and setting
+// the value of foreign key fields for given model.
 type ForeignKeyModel interface {
 	ForeignKeyGetter
 	ForeignKeySetter
 }
 
-// AttributeModel is the interface used for models that are allowed to get and set their attribute fields.
+// AttributeModel is the interface used for models that are allowed
+// to get and set their attribute fields.
 type AttributeModel interface {
 	AttributeGetter
 	AttributeSetter
@@ -28,7 +30,8 @@ type IDSetter interface {
 	SetID(id interface{}) error
 }
 
-// AttributeGetter is the interface used to get the attribute value from the model instance.
+// AttributeGetter is the interface used to get the attribute value
+// from the model instance.
 type AttributeGetter interface {
 	GetAttribute(name string) interface{}
 }
@@ -38,8 +41,8 @@ type AttributeSetter interface {
 	SetAttribute(name string, value interface{}) error
 }
 
-// ForeignKeyGetter is the interface used to get the value of the foreign key field with given name
-// from the model instance.
+// ForeignKeyGetter is the interface used to get the value of the
+// foreign key field with given name from the model instance.
 type ForeignKeyGetter interface {
 	GetForeignKey(name string) interface{}
 }

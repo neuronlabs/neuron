@@ -999,7 +999,7 @@ func newScope(c *internalController.Controller, model interface{}) (*Scope, erro
 	}
 
 	if noModelValue {
-		return newScopeWithModel(c, mStruct, false)
+		return (*Scope)(newScopeWithModel((*controller.Controller)(c), mStruct, false)), nil
 	}
 
 	s := scope.New(mStruct)

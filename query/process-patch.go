@@ -416,9 +416,9 @@ func patchHasOneRelationship(
 			// change the class of the error
 			if e.Class == class.QueryValueNoResult {
 				e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
-				err = errors.New(class.QueryValueNoResult, e.InternalMessage)
+				err = errors.New(class.QueryValueNoResult, e.Message)
 			} else {
-				err = errors.New(class.QueryRelation, e.InternalMessage)
+				err = errors.New(class.QueryRelation, e.Message)
 			}
 		}
 		return err
