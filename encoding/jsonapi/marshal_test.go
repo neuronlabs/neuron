@@ -22,6 +22,7 @@ import (
 	_ "github.com/neuronlabs/neuron-core/query/mocks"
 )
 
+// TestMarshal tests the marshal function.
 func TestMarshal(t *testing.T) {
 	buf := bytes.Buffer{}
 

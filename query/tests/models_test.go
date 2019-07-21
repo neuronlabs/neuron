@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"github.com/neuronlabs/neuron-core/query/mocks"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/neuronlabs/neuron-core/query/mocks"
 )
 
 // HasOneModel is the model that have has-one relationship.

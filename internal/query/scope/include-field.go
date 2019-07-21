@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
@@ -50,7 +51,7 @@ func (s *Scope) BuildIncludeList(includedList ...string) []*errors.Error {
 	// having multiple included in the query
 	for _, included := range includedList {
 		// check the nested level of every included
-		annotCount := strings.Count(included, internal.AnnotationNestedSeperator)
+		annotCount := strings.Count(included, common.AnnotationNestedSeparator)
 		if annotCount > s.maxNestedLevel {
 			errObj = errors.Newf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
 			errObj.SetDetail("Maximum nested include limit reached for the given query.")
@@ -172,7 +173,7 @@ func (s *Scope) ResetIncludedField() {
 
 // buildInclude searches for the relationship field within given scope
 // if not found, then tries to separate the 'included' argument
-// by the 'annotationNestedSeperator'. If separated correctly
+// by the 'annotationNestedSeparator'. If separated correctly
 // it tries to create nested fields.
 // adds IncludeScope for given field.
 func (s *Scope) buildInclude(included string) []*errors.Error {
@@ -184,7 +185,7 @@ func (s *Scope) buildInclude(included string) []*errors.Error {
 	relationField, ok := s.mStruct.RelationshipField(included)
 	if !ok {
 		// no relationship found check nesteds
-		index := strings.Index(included, internal.AnnotationNestedSeperator)
+		index := strings.Index(included, common.AnnotationNestedSeparator)
 		if index == -1 {
 			errs = append(errs, errNoRelationship(s.mStruct.Collection(), included))
 			return errs

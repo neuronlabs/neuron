@@ -5,11 +5,10 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
-
-	"github.com/neuronlabs/neuron-core/internal"
 )
 
 // FieldKind is an enum that defines the following field type (i.e. 'primary', 'attribute').
@@ -457,9 +456,9 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		return mp
 	}
 
-	seperated := strings.Split(tag, internal.AnnotationTagSeperator)
+	seperated := strings.Split(tag, common.AnnotationTagSeparator)
 	for _, option := range seperated {
-		i := strings.IndexRune(option, internal.AnnotationTagEqual)
+		i := strings.IndexRune(option, common.AnnotationTagEqual)
 		var values []string
 		if i == -1 {
 			mp[option] = values
@@ -467,7 +466,7 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		}
 		key := option[:i]
 		if i != len(option)-1 {
-			values = strings.Split(option[i+1:], internal.AnnotationSeperator)
+			values = strings.Split(option[i+1:], common.AnnotationSeparator)
 		}
 
 		mp[key] = values
@@ -592,7 +591,7 @@ func (s *StructField) isTime() bool {
 }
 
 func (s *StructField) setTagValues() error {
-	tag, hasTag := s.reflectField.Tag.Lookup(internal.AnnotationNeuron)
+	tag, hasTag := s.reflectField.Tag.Lookup(common.AnnotationNeuron)
 	if !hasTag {
 		return nil
 	}
@@ -603,15 +602,15 @@ func (s *StructField) setTagValues() error {
 	// iterate over structfield additional tags
 	for key, values := range tagValues {
 		switch key {
-		case internal.AnnotationFieldType, internal.AnnotationName, internal.AnnotationForeignKey, internal.AnnotationRelation:
+		case common.AnnotationFieldType, common.AnnotationName, common.AnnotationForeignKey, common.AnnotationRelation:
 			continue
-		case internal.AnnotationFlags:
+		case common.AnnotationFlags:
 			s.setFlags(values...)
 			continue
 		}
 
 		if !s.isRelationship() {
-			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, internal.AnnotationManyToMany)
+			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, common.AnnotationManyToMany)
 			return errors.Newf(class.ModelFieldTag, "%s tag on non relationship field", key)
 		}
 
@@ -621,7 +620,7 @@ func (s *StructField) setTagValues() error {
 			s.relationship = r
 		}
 
-		if key == internal.AnnotationManyToMany {
+		if key == common.AnnotationManyToMany {
 			r.kind = RelMany2Many
 			// first value is join model
 			// the second is the backreference field
@@ -656,11 +655,11 @@ func (s *StructField) setTagValues() error {
 		var errs errors.MultiError
 		//`neuron:"on_delete=order=1;on_error=fail;on_change=restrict"`
 		switch key {
-		case internal.AnnotationOnDelete:
+		case common.AnnotationOnDelete:
 			errs = r.onDelete.parse(kv)
-		case internal.AnnotationOnPatch:
+		case common.AnnotationOnPatch:
 			errs = r.onPatch.parse(kv)
-		case internal.AnnotationOnCreate:
+		case common.AnnotationOnCreate:
 			errs = r.onCreate.parse(kv)
 		default:
 			errs = append(errs, errors.Newf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
@@ -679,22 +678,22 @@ func (s *StructField) setTagValues() error {
 func (s *StructField) setFlags(flags ...string) {
 	for _, single := range flags {
 		switch single {
-		case internal.AnnotationClientID:
+		case common.AnnotationClientID:
 			s.setFlag(FClientID)
-		case internal.AnnotationNoFilter:
+		case common.AnnotationNoFilter:
 			s.setFlag(FNoFilter)
-		case internal.AnnotationHidden:
+		case common.AnnotationHidden:
 			s.setFlag(FHidden)
-		case internal.AnnotationNotSortable:
+		case common.AnnotationNotSortable:
 			s.setFlag(FSortable)
-		case internal.AnnotationISO8601:
+		case common.AnnotationISO8601:
 			s.setFlag(FISO8601)
-		case internal.AnnotationOmitEmpty:
+		case common.AnnotationOmitEmpty:
 			s.setFlag(FOmitempty)
-		case internal.AnnotationI18n:
+		case common.AnnotationI18n:
 			s.setFlag(FI18n)
 			s.mStruct.i18n = append(s.mStruct.i18n, s)
-		case internal.AnnotationLanguage:
+		case common.AnnotationLanguage:
 			s.mStruct.setLanguage(s)
 		default:
 			log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), single)

@@ -1,12 +1,12 @@
 package tests
 
 import (
-	"github.com/neuronlabs/neuron-core/controller"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/query"
 
 	"github.com/neuronlabs/neuron-core/internal/query/scope"

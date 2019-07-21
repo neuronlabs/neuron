@@ -22,7 +22,7 @@ type Repository struct {
 	Path string `mapstructure:"path" validate:"isdefault|uri"`
 
 	// Port is the connection port
-	Port interface{} `mapstructure:"port"`
+	Port int `mapstructure:"port"`
 
 	// Protocol is the protocol used in the connection
 	Protocol string `mapstructure:"protocol"`

@@ -24,7 +24,7 @@ type formatter struct {
 	Rel    *formatterRelation `neuron:"type=relation;foreign=FK"`
 	FK     int                `neuron:"type=foreign"`
 	Filter string             `neuron:"type=filterkey"`
-	Lang   string             `neuron:"type=attr;flags=langtag"`
+	Lang   string             `neuron:"type=attr;flags=lang"`
 }
 
 type formatterRelation struct {

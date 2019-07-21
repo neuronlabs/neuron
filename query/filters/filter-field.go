@@ -12,7 +12,6 @@ import (
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	internalController "github.com/neuronlabs/neuron-core/internal/controller"
 	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/filters"
@@ -225,7 +224,7 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 		if k[0] == '[' {
 			k = fmt.Sprintf("filter[%s]%s", collection, k)
 		}
-		query.Add(k, strings.Join(vals, internal.AnnotationSeperator))
+		query.Add(k, strings.Join(vals, common.AnnotationSeparator))
 	}
 	return query
 

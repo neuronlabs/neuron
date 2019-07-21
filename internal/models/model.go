@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/namer"
 )
 
@@ -341,7 +341,7 @@ func (m *ModelStruct) SetConfig(cfg *config.ModelConfig) error {
 	}
 
 	// copy the key value from the config
-	for k, v := range m.cfg.Map {
+	for k, v := range m.cfg.Store {
 		m.store[k] = v
 	}
 
@@ -575,7 +575,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			continue
 		}
 
-		tag, hasTag := tField.Tag.Lookup(internal.AnnotationNeuron)
+		tag, hasTag := tField.Tag.Lookup(common.AnnotationNeuron)
 		if tag == "-" {
 			continue
 		}
@@ -592,7 +592,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 		// Check if field contains the name
 		var neuronName string
-		name := tagValues.Get(internal.AnnotationName)
+		name := tagValues.Get(common.AnnotationName)
 		if name != "" {
 			neuronName = name
 		} else {
@@ -606,7 +606,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		}
 
 		// Set field type
-		values := tagValues[internal.AnnotationFieldType]
+		values := tagValues[common.AnnotationFieldType]
 		if len(values) == 0 {
 			return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
 		}
@@ -614,27 +614,29 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		// Set field type
 		value := values[0]
 		switch value {
-		case internal.AnnotationPrimary, internal.AnnotationID,
-			internal.AnnotationPrimaryFull, internal.AnnotationPrimaryFullS:
+		case common.AnnotationPrimary, common.AnnotationID,
+			common.AnnotationPrimaryFull, common.AnnotationPrimaryFullS,
+			common.AnnotationPrimaryShort:
 			err = m.setPrimaryField(structField)
 			if err != nil {
 				return err
 			}
-		case internal.AnnotationRelation, internal.AnnotationRelationFull:
+		case common.AnnotationRelation, common.AnnotationRelationFull:
 			err = m.setRelationshipField(structField)
 			if err != nil {
 				return err
 			}
-		case internal.AnnotationAttribute, internal.AnnotationAttributeFull:
+		case common.AnnotationAttribute, common.AnnotationAttributeFull:
 			err = m.setAttribute(structField)
 			if err != nil {
 				return err
 			}
-		case internal.AnnotationForeignKey, internal.AnnotationForeignKeyFull, internal.AnnotationForeignKeyFullS:
+		case common.AnnotationForeignKey, common.AnnotationForeignKeyFull,
+			common.AnnotationForeignKeyFullS, common.AnnotationForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
 				return err
 			}
-		case internal.AnnotationFilterKey:
+		case common.AnnotationFilterKey:
 			structField.fieldKind = KindFilterKey
 			_, ok := m.FilterKey(structField.NeuronName())
 			if ok {

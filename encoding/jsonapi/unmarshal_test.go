@@ -31,6 +31,7 @@ type UnmarshalModel struct {
 	StringSlice []string   `neuron:"type=attr"`
 }
 
+// TestUnmarshalScopeOne tests unmarshal scope one function.
 func TestUnmarshalScopeOne(t *testing.T) {
 	c := defaultTesting(t)
 

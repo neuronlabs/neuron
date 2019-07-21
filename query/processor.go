@@ -12,10 +12,11 @@ import (
 	"github.com/neuronlabs/neuron-core/internal/query/scope"
 )
 
-// processes contains registered processes by their name
+// processes contains registered processes mapped by their names.
 var processes = make(map[string]*Process)
 
-// RegisterProcess registers the process. If the process is already registered the function panics
+// RegisterProcess registers the process with it's unique name.
+// If the process is already registered the function panics.
 func RegisterProcess(p *Process) error {
 	_, ok := processes[p.Name]
 	if ok {
@@ -77,13 +78,15 @@ func init() {
 // ProcessFunc is the function that modifies or changes the scope value
 type ProcessFunc func(ctx context.Context, s *Scope) error
 
-// Process is the pair of the name and the ProcessFunction
+// Process is the structure that defines the query Processor function.
+// It is a pair of the 'Name' and the process function 'Func'.
+// The name is used by the config for specifying Processor's processes order.
 type Process struct {
 	Name string
 	Func ProcessFunc
 }
 
-// Processor is the struct that allows to query over the gateway's model's
+// Processor defines the processes chain for each of the repository methods.
 type Processor struct {
 	CreateChain ProcessChain
 	GetChain    ProcessChain
@@ -92,7 +95,6 @@ type Processor struct {
 	DeleteChain ProcessChain
 }
 
-// New creates the query processor
 func newProcessor(cfg *config.Processor) *Processor {
 	p := &Processor{}
 
@@ -146,7 +148,7 @@ func newProcessor(cfg *config.Processor) *Processor {
 
 var _ scope.Processor = &Processor{}
 
-// Create is the initializes the Create Process Chain for the Scope
+// Create initializes the Create Process Chain for the Scope.
 func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 	var processError error
 	for _, f := range p.CreateChain {
@@ -165,7 +167,7 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 	return processError
 }
 
-// Get initializes the Get Process chain for the scope
+// Get initializes the Get Process chain for the scope.
 func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 	var processError error
 	for _, f := range p.GetChain {
@@ -183,7 +185,7 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 	return processError
 }
 
-// List initializes the List Process Chain for the scope
+// List initializes the List Process Chain for the scope.
 func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 	var processError error
 	for _, f := range p.ListChain {
@@ -200,7 +202,7 @@ func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 	return processError
 }
 
-// Patch does the Patch Process Chain
+// Patch initializes the Patch Process Chain for the scope 's'.
 func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 	var processError error
 	for _, f := range p.PatchChain {
@@ -217,7 +219,7 @@ func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 	return processError
 }
 
-// Delete does the Delete process chain
+// Delete initializes the Delete Process Chain for the scope 's'.
 func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
 	var processError error
 	for _, f := range p.DeleteChain {

@@ -13,8 +13,8 @@ type ModelConfig struct {
 	// process...
 	RepositoryName string `mapstructure:"repository_name"`
 
-	// Map sets the model's Store values
-	Map map[string]interface{} `mapstructure:"map"`
+	// Store sets the model's Store values
+	Store map[string]interface{} `mapstructure:"map"`
 
 	// Repository defines the model's repository connection config
 	Repository *Repository `mapstructure:"repository"`

@@ -3,10 +3,10 @@ package scope
 import (
 	"strings"
 
+	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 )
@@ -151,12 +151,12 @@ func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*
 		ok        bool
 	)
 
-	splitted := strings.Split(sort, internal.AnnotationNestedSeperator)
+	splitted := strings.Split(sort, common.AnnotationNestedSeparator)
 	l := len(splitted)
 	switch {
 	// for length == 1 the sort must be an attribute, primary or a foreign key field
 	case l == 1:
-		if sort == internal.AnnotationID {
+		if sort == common.AnnotationID {
 			sField = s.mStruct.PrimaryField()
 		} else {
 			sField, ok = s.mStruct.Attribute(sort)
