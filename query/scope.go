@@ -293,7 +293,7 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 
 // Limit sets the maximum number of objects returned by the List process,
 // Offset sets the query result's offset. It says to skip as many object's from the repository
-// before beginning to return the result. 'Offset' 0 is the same as ommiting the 'Offset' clause.
+// before beginning to return the result. 'Offset' 0 is the same as ommitting the 'Offset' clause.
 func (s *Scope) Limit(limit, offset int) error {
 	if s.internal().Pagination() != nil {
 		return errors.New(class.QueryPaginationAlreadySet, "pagination already set")

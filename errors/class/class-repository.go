@@ -150,7 +150,7 @@ var (
 func registerRepositoryInterface() {
 	MnrRepositoryNotImplements = MjrRepository.MustRegisterMinor("NotImplements", "repository implenting interface issues")
 
-	RepositoryNotImplementsCreator = MnrRepositoryNotImplements.MustRegisterIndex("Creator", "repository doesn't implement creater").Class()
+	RepositoryNotImplementsCreator = MnrRepositoryNotImplements.MustRegisterIndex("Creator", "repository doesn't implement creator").Class()
 	RepositoryNotImplementsDeleter = MnrRepositoryNotImplements.MustRegisterIndex("Deleter", "repository doesn't implement deleter").Class()
 	RepositoryNotImplementsGetter = MnrRepositoryNotImplements.MustRegisterIndex("Getter", "repository doesn't implement getter").Class()
 	RepositoryNotImplementsLister = MnrRepositoryNotImplements.MustRegisterIndex("Lister", "repository doesn't implement lister").Class()

@@ -100,7 +100,7 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 		// cast the filter to the internal structure definition
 		filter := (*filters.FilterField)(rf)
 
-		// check the relatinoship kind
+		// check the relationship kind
 		switch rf.StructField().Relationship().Kind() {
 		case models.RelBelongsTo:
 			go convertBelongsToRelationshipFilterChan(ctx, s, i, filter, results)
@@ -186,7 +186,7 @@ func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
 		// cast the filter to the internal structure definition
 		filter := (*filters.FilterField)(rf)
 
-		// check the relatinoship kind
+		// check the relationship kind
 		switch rf.StructField().Relationship().Kind() {
 		case models.RelBelongsTo:
 			_, err = convertBelongsToRelationshipFilter(ctx, s, i, filter)

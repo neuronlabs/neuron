@@ -456,8 +456,8 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		return mp
 	}
 
-	seperated := strings.Split(tag, common.AnnotationTagSeparator)
-	for _, option := range seperated {
+	separated := strings.Split(tag, common.AnnotationTagSeparator)
+	for _, option := range separated {
 		i := strings.IndexRune(option, common.AnnotationTagEqual)
 		var values []string
 		if i == -1 {

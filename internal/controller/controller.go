@@ -63,7 +63,7 @@ func SetDefault(c *Controller) {
 	defaultController = c
 }
 
-// Default creates new Controller with default contorller config.
+// Default creates new Controller with default config.
 func Default() *Controller {
 	if defaultController == nil {
 		c, err := newController(config.ReadDefaultControllerConfig())

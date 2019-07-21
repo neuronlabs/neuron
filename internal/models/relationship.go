@@ -63,7 +63,7 @@ func (r RelationshipKind) String() string {
 // It's 'QueryOrder' is the querying order for multiple strategies.
 // It defines which strategies should be used firsts.
 // The 'OnError' error strategy defines how the relation should
-// react on the error occurrance while.
+// react on the error occurrence while.
 type Strategy struct {
 	QueryOrder uint
 	OnError    ErrorStrategy
@@ -224,7 +224,7 @@ func (r *Relationship) ForeignKey() *StructField {
 	return r.foreignKey
 }
 
-// IsManyToMany defines if the relaitonship is of many to many type.
+// IsManyToMany defines if the relationship is of many to many type.
 func (r Relationship) IsManyToMany() bool {
 	return r.isMany2Many()
 }

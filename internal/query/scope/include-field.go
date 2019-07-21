@@ -259,7 +259,7 @@ func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
 }
 
 // GetMissingPrimaries gets the id values from the RelatedScope, checks which id values were
-// already stored within the colleciton root scope and return new ones.
+// already stored within the collection root scope and return new ones.
 func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
 	return i.getMissingPrimaries()
 }

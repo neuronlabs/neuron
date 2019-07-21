@@ -5,7 +5,7 @@ var MjrLanguage Major
 
 var (
 	// MnrLanguageUnsupported is the 'MjrLanguage' minor error classification
-	// for unsupported langauges.
+	// for unsupported languages.
 	MnrLanguageUnsupported Minor
 
 	// LanguageUnsupportedTag is the 'MjrLanguage', 'MnrLanguageUnsupported' error

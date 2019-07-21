@@ -50,7 +50,7 @@ type Repository struct {
 	SSLMode string `mapstructure:"sslmode"`
 }
 
-// Parse parses the repository configuration from the whitespace seperated key value string.
+// Parse parses the repository configuration from the whitespace separated key value string.
 // I.e. 'host=172.16.1.1 port=5432 username=some password=pass drivername=pq'
 func (r *Repository) Parse(s string) error {
 	spaceSplit := strings.Split(s, " ")
