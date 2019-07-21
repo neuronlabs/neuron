@@ -69,6 +69,5 @@ func (c *Controller) MapRepositories() error {
 		model.Repository = repoConfig
 		log.Debugf("Mapped repository: %s for the model: %s", reponame, model.Collection)
 	}
-
 	return nil
 }
