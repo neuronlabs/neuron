@@ -82,6 +82,6 @@ func (c *container) registerFactory(f Factory) error {
 
 	c.factories[repoName] = f
 
-	log.Debugf("Repository Factory: '%s' registered succesfully.", repoName)
+	log.Debugf("Repository Factory: '%s' registered successfully.", repoName)
 	return nil
 }
