@@ -20,10 +20,9 @@ query multiple related models located on different datastores/repositories.
 `go get -u github.com/neuronlabs/neuron-core`
 
 ## Docs
-
-- Neuron-Core: https://neuronlabs.github.io/neuron-core
+- Neuron-Core: https://docs.neuronlabs.io/neuron-core
 - GoDoc: https://godoc.org/github.com/neuronlabs/neuron-core
-- Addons and Repositories: https://neuronlabs.github.io/
+- Project Neuron: https://docs.neuronlabs.io
 
 ## Quick Start
 
