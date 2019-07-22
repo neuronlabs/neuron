@@ -120,6 +120,118 @@ func DefaultProcessorConfig() map[string]interface{} {
 	}
 }
 
+// ThreadSafeProcessor creates the goroutine safe query processor configuration.
+func ThreadSafeProcessor() *Processor {
+	return &Processor{
+		DefaultTimeout: time.Second * 30,
+		CreateProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:hook_before_create",
+			"neuron:set_belongs_to_relationships",
+			"neuron:create",
+			"neuron:store_scope_primaries",
+			"neuron:patch_foreign_relationships_safe",
+			"neuron:hook_after_create",
+			"neuron:commit_or_rollback_transaction",
+		},
+		GetProcesses: ProcessList{
+			"neuron:fill_empty_fieldset",
+			"neuron:convert_relationship_filters_safe",
+			"neuron:hook_before_get",
+			"neuron:convert_relationship_filters_safe",
+			"neuron:get",
+			"neuron:get_foreign_relationships",
+		},
+		ListProcesses: ProcessList{
+			"neuron:fill_empty_fieldset",
+			"neuron:convert_relationship_filters_safe",
+			"neuron:hook_before_list",
+			"neuron:convert_relationship_filters_safe",
+			"neuron:list",
+			"neuron:get_foreign_relationships_safe",
+			"neuron:hook_after_list",
+			"neuron:get_included",
+		},
+		PatchProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:reduce_primary_filters",
+			"neuron:hook_before_patch",
+			"neuron:reduce_primary_filters",
+			"neuron:patch_belongs_to_relationships",
+			"neuron:patch",
+			"neuron:patch_foreign_relationships_safe",
+			"neuron:hook_after_patch",
+			"neuron:commit_or_rollback_transaction",
+		},
+		DeleteProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:reduce_primary_filters",
+			"neuron:hook_before_delete",
+			"neuron:reduce_primary_filters",
+			"neuron:delete",
+			"neuron:delete_foreign_relationships_safe",
+			"neuron:hook_after_delete",
+			"neuron:commit_or_rollback_transaction",
+		},
+	}
+}
+
+// ConcurrentProcessor creates the concurrent processor confuration.
+func ConcurrentProcessor() *Processor {
+	return &Processor{
+		DefaultTimeout: time.Second * 30,
+		CreateProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:hook_before_create",
+			"neuron:set_belongs_to_relationships",
+			"neuron:create",
+			"neuron:store_scope_primaries",
+			"neuron:patch_foreign_relationships",
+			"neuron:hook_after_create",
+			"neuron:commit_or_rollback_transaction",
+		},
+		GetProcesses: ProcessList{
+			"neuron:fill_empty_fieldset",
+			"neuron:convert_relationship_filters",
+			"neuron:hook_before_get",
+			"neuron:convert_relationship_filters",
+			"neuron:get",
+			"neuron:get_foreign_relationships",
+		},
+		ListProcesses: ProcessList{
+			"neuron:fill_empty_fieldset",
+			"neuron:convert_relationship_filters",
+			"neuron:hook_before_list",
+			"neuron:convert_relationship_filters",
+			"neuron:list",
+			"neuron:get_foreign_relationships",
+			"neuron:hook_after_list",
+			"neuron:get_included",
+		},
+		PatchProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:reduce_primary_filters",
+			"neuron:hook_before_patch",
+			"neuron:reduce_primary_filters",
+			"neuron:patch_belongs_to_relationships",
+			"neuron:patch",
+			"neuron:patch_foreign_relationships",
+			"neuron:hook_after_patch",
+			"neuron:commit_or_rollback_transaction",
+		},
+		DeleteProcesses: ProcessList{
+			"neuron:begin_transaction",
+			"neuron:reduce_primary_filters",
+			"neuron:hook_before_delete",
+			"neuron:reduce_primary_filters",
+			"neuron:delete",
+			"neuron:delete_foreign_relationships",
+			"neuron:hook_after_delete",
+			"neuron:commit_or_rollback_transaction",
+		},
+	}
+}
+
 // DefaultConcurrentProcessorConfig creates default concurrent config for the Processor.
 func DefaultConcurrentProcessorConfig() map[string]interface{} {
 	return map[string]interface{}{
