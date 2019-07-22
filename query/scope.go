@@ -76,9 +76,8 @@ func (s *Scope) AddFilter(filter *filters.FilterField) error {
 	return s.internal().AddFilterField((*internalFilters.FilterField)(filter))
 }
 
-// AddStringFilter parses the filter into the filters.FilterField and adds
-// it to the given scope.
-func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
+// Filter parses the filter into the filters.FilterField and adds it to the given scope.
+func (s *Scope) Filter(rawFilter string, values ...interface{}) error {
 	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, values...)
 	if err != nil {
 		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
