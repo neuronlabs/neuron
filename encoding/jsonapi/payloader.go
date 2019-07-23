@@ -1,10 +1,5 @@
 package jsonapi
 
-import (
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
-)
-
 // payloader is used to encapsulate the One and Many payload types
 type payloader interface {
 	clearIncluded()
@@ -28,6 +23,8 @@ func (p *onePayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
+var _ payloader = &manyPayload{}
+
 // manyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
 type manyPayload struct {
@@ -43,18 +40,6 @@ func (p *manyPayload) clearIncluded() {
 
 func (p *manyPayload) setIncluded(included []*node) {
 	p.Included = included
-}
-
-type singleTypeRecognizePayload struct {
-	Data *typeRecognizeNode `json:"data"`
-}
-
-type manyTypeRecognizePayload struct {
-	Data []*typeRecognizeNode `json:"data"`
-}
-
-type typeRecognizeNode struct {
-	Type string `json:"type"`
 }
 
 // node is used to represent a generic JSON API Resource
@@ -86,25 +71,6 @@ type relationshipManyNode struct {
 // Links is used to represent a `links` object.
 // http://jsonapi.org/format/#document-links
 type Links map[string]interface{}
-
-func (l *Links) validate() error {
-	// Each member of a links object is a “link”. A link MUST be represented as
-	// either:
-	//  - a string containing the link’s URL.
-	//  - an object (“link object”) which can contain the following members:
-	//    - href: a string containing the link’s URL.
-	//    - meta: a meta object containing non-standard meta-information about the
-	//            link.
-	for k, v := range *l {
-		_, isString := v.(string)
-		_, isLink := v.(Link)
-
-		if !(isString || isLink) {
-			return errors.Newf(class.EncodingUnmarshalInvalidType, "the %s member of the links object was not a string or link object", k)
-		}
-	}
-	return nil
-}
 
 // Link is used to represent a member of the `links` object.
 type Link struct {

@@ -343,10 +343,3 @@ func (m *ModuleLogger) Panic(args ...interface{}) {
 func (m *ModuleLogger) name() string {
 	return "[" + m.Name + "]"
 }
-
-func (m *ModuleLogger) log() unilogger.LeveledLogger {
-	if m.logger != nil {
-		return m.logger
-	}
-	return logger
-}

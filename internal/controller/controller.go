@@ -229,6 +229,12 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 		return tp, nil
 	case *mapping.ModelStruct:
 		return (*models.ModelStruct)(tp), nil
+	case string:
+		m := c.modelMap.GetByCollection(tp)
+		if m == nil {
+			return nil, errors.Newf(class.ModelNotMapped, "model: '%s' is not found", tp)
+		}
+		return m, nil
 	}
 
 	mStruct, err := c.modelMap.GetModelStruct(model)
@@ -256,7 +262,9 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 			log.Default()
 		}
 		// get and set default logger
-		log.SetLevel(level)
+		if err := log.SetLevel(level); err != nil {
+			return err
+		}
 	}
 
 	log.Debug2f("Creating new controller with config: '%#v'", cfg)

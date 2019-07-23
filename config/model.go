@@ -20,8 +20,8 @@ type ModelConfig struct {
 	AutoMigrate bool `mapstructure:"automigrate"`
 	// Fields contains the model fields configuration.
 	Fields map[string]*Field `mapstructure:"fields"`
-	// NestedIncludeLimit is the per model nested include limit.
-	NestedIncludeLimit *int `mapstructure:"nested_include_limit"`
+	// IncludedDepthLimit is the per model nested include depth limit.
+	IncludedDepthLimit *int `mapstructure:"included_depth_limit"`
 }
 
 // Field is the model's field configuration.

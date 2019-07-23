@@ -6,10 +6,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/uni-logger"
-
-	"github.com/neuronlabs/neuron-core/log"
 )
 
 func readConfigFile(t *testing.T, fileName string) {
@@ -24,9 +20,6 @@ func readConfigFile(t *testing.T, fileName string) {
 
 // TestModelConfig tests the model config.
 func TestModelConfig(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(unilogger.DEBUG)
-	}
 	readConfigFile(t, "model")
 
 	cfg := &ModelConfig{}

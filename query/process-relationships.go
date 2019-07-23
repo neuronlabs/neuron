@@ -156,11 +156,6 @@ func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	bufSize := 10
-	if len(relationshipFilters) < bufSize {
-		bufSize = len(relationshipFilters)
-	}
-
 	// create the cancelable context for the sub context
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
 	for _, rel := range relationshipFilters {
@@ -259,7 +254,9 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 	}
 
 	// we only need primary keys
-	relScope.SetFieldset(relScope.Struct().Primary())
+	if err := relScope.SetFieldset(relScope.Struct().Primary()); err != nil {
+		return 0, err
+	}
 
 	if err := relScope.ListContext(ctx); err != nil {
 		return 0, err
@@ -334,7 +331,9 @@ func convertHasManyRelationshipFilter(ctx context.Context, s *Scope, index int, 
 	}
 
 	// the only required field in fieldset is a foreign key
-	relScope.internal().SetFields(foreignKey)
+	if err := relScope.internal().SetFields(foreignKey); err != nil {
+		return 0, err
+	}
 
 	if err := relScope.ListContext(ctx); err != nil {
 		return 0, err
@@ -406,7 +405,9 @@ func convertHasOneRelationshipFilter(ctx context.Context, s *Scope, index int, f
 	}
 
 	// the only required field in fieldset is a foreign key
-	relScope.internal().SetFields(foreignKey)
+	if err := relScope.internal().SetFields(foreignKey); err != nil {
+		return 0, err
+	}
 
 	if err := relScope.ListContext(ctx); err != nil {
 		return 0, err
@@ -471,7 +472,9 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 		}
 
 		// the fieldset should contain only a backreference field
-		joinScope.SetFieldset(filter.StructField().Relationship().ForeignKey())
+		if err := joinScope.SetFieldset(filter.StructField().Relationship().ForeignKey()); err != nil {
+			return 0, err
+		}
 
 		// Do the ListProcess with the context
 		if err := joinScope.ListContext(ctx); err != nil {
@@ -568,19 +571,17 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	iScope := s.internal()
-
-	if iScope.IsRoot() && len(iScope.IncludedScopes()) == 0 {
+	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
 		return nil
 	}
 
-	if err := iScope.SetCollectionValues(); err != nil {
+	if err := s.internal().SetCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range iScope.IncludedScopes() {
+	for _, incScope := range s.internal().IncludedScopes() {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -597,7 +598,7 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := iScope.IncludedFields()
+	includedFields := s.internal().IncludedFields()
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job
@@ -654,19 +655,17 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	iScope := s.internal()
-
-	if iScope.IsRoot() && len(iScope.IncludedScopes()) == 0 {
+	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
 		return nil
 	}
 
-	if err := iScope.SetCollectionValues(); err != nil {
+	if err := s.internal().SetCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range iScope.IncludedScopes() {
+	for _, incScope := range s.internal().IncludedScopes() {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -683,7 +682,7 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := iScope.IncludedFields()
+	includedFields := s.internal().IncludedFields()
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job
@@ -983,7 +982,9 @@ func getForeignRelationshipHasOne(
 	// set filterfield
 	filter := filters.NewFilter(fk, filters.NewOpValuePair(op, filterValues...))
 
-	relatedScope.AddFilterField(filter)
+	if err := relatedScope.AddFilterField(filter); err != nil {
+		return err
+	}
 
 	// distinguish if the root scope has a single or many values
 	if s.internal().IsMany() {
@@ -1208,8 +1209,7 @@ func getForeignRelationshipHasMany(
 			}
 
 			// rootPK should be at index 'j'
-			var scopeElem reflect.Value
-			scopeElem = v.Index(j)
+			scopeElem := v.Index(j)
 			if scopeElem.Kind() == reflect.Ptr {
 				scopeElem = scopeElem.Elem()
 			}
@@ -1316,7 +1316,9 @@ func getForeignRelationshipManyToMany(
 
 	// Add filter on the backreference foreign key (root scope primary keys) to the join scope
 	filterField := filters.NewFilter(fk, filters.NewOpValuePair(op, filterValues...))
-	joinScope.AddFilterField(filterField)
+	if err := joinScope.AddFilterField(filterField); err != nil {
+		return err
+	}
 
 	// do the List process on the join scope
 	if err = (*Scope)(joinScope).ListContext(ctx); err != nil {

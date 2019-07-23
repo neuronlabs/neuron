@@ -26,9 +26,6 @@ func DefaultTesting(t testing.TB, cfg *config.Controller) *Controller {
 	if cfg == nil {
 		cfg = DefaultTestingConfig
 	}
-	if testing.Verbose() {
-		cfg.LogLevel = "debug3"
-	}
 
 	c, err := newController(cfg)
 	require.NoError(t, err)

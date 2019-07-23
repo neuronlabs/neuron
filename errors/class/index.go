@@ -80,11 +80,6 @@ type indexContainer struct {
 	lock         sync.Mutex
 }
 
-func (i *indexContainer) description(id Index) string {
-	i.expandIfRequired(id.containerIndex())
-	return i.descriptions[id.containerIndex()]
-}
-
 func (i *indexContainer) expandIfRequired(id uint16) {
 	size := len(i.names)
 

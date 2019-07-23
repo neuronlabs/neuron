@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -153,14 +152,12 @@ func TestDelete(t *testing.T) {
 
 			// Begin define
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Begin on deleteTMRelations")
 			}).Once().Return(nil)
 
 			_, err = s.Begin()
 			require.NoError(t, err)
 
 			repo.On("Delete", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Delete on deleteTMRelations")
 				s := a[1].(*query.Scope)
 
 				_, ok := s.StoreGet(internal.TxStateStoreKey)
@@ -180,11 +177,9 @@ func TestDelete(t *testing.T) {
 			defer clearRepository(repo2)
 
 			repo2.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-				log.Debug("Patch on deleteTMRelated")
 			}).Return(nil)
 
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-				log.Debug("Begin on deleteTMRelated")
 			}).Return(nil)
 
 			repo2.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
@@ -200,10 +195,8 @@ func TestDelete(t *testing.T) {
 
 			// Commit
 			repo.On("Commit", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Commit on deleteTMRelations")
 			}).Return(nil)
 			repo2.On("Commit", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Commit on deleteTMRelated")
 			}).Return(nil)
 			require.NoError(t, s.Commit())
 
@@ -259,11 +252,9 @@ func TestDelete(t *testing.T) {
 
 			// Rollback the result
 			repo2.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Rollback on deleteTMRelated")
 			}).Return(nil)
 
 			repo.On("Rollback", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Rollback on deleteTMRelations")
 			}).Return(nil)
 
 			err = s.Delete()

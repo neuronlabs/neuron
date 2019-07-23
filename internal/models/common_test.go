@@ -1,11 +1,5 @@
 package models
 
-import (
-	"testing"
-
-	"github.com/neuronlabs/neuron-core/log"
-)
-
 type baseModel struct {
 	ID         int    `neuron:"type=primary"`
 	StringAttr string `neuron:"type=attr"`
@@ -24,10 +18,4 @@ type embeddedModel struct {
 // Implements RepositoryNamer interface.
 func (m *embeddedModel) RepositoryName() string {
 	return defaultRepo
-}
-
-func setLogger() {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
 }

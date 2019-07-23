@@ -235,12 +235,18 @@ func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 		}
 	}
 
-	included, ok := s.internal().IncludeScopeByStruct((*models.ModelStruct)(mStruct))
+	included, ok := s.internal().IncludedScopeByStruct((*models.ModelStruct)(mStruct))
 	if !ok {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
 		return nil, errors.New(class.QueryNotIncluded, "provided model is not included within query's scope")
 	}
-	return included.Value, nil
+
+	v := included.Struct().NewReflectValueMany()
+	val := v.Elem()
+	for _, elem := range included.IncludedValues().Values() {
+		val.Set(reflect.Append(val, reflect.ValueOf(elem)))
+	}
+	return v.Interface(), nil
 }
 
 // InFieldset checks if the provided field is in the scope's fieldset.
@@ -908,7 +914,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 				}
 
 				errObj = errors.New(class.QueryValueMissingRequired, "missing required field")
-				errObj.SetDetailf("The field: %s, is required.", verr.Field())
+				errObj = errObj.SetDetailf("The field: %s, is required.", verr.Field())
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
@@ -920,7 +926,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "non default field value")
-					errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
+					errObj = errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else if strings.HasPrefix(tag, "len") {
@@ -933,13 +939,13 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
+					errObj = errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else {
 					errObj = errors.New(class.QueryValueValidation, "validation failed - invalid field value")
 					if verr.Field() != "" {
-						errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
+						errObj = errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
 					}
 
 					errs = append(errs, errObj)
@@ -986,7 +992,7 @@ func newScope(c *internalController.Controller, model interface{}) (*Scope, erro
 		return (*Scope)(newScopeWithModel((*controller.Controller)(c), mStruct, false)), nil
 	}
 
-	s := scope.New(mStruct)
+	s := scope.NewRootScope(mStruct)
 	s.StoreSet(internal.ControllerStoreKey, (*controller.Controller)(c))
 
 	t := reflect.TypeOf(model)

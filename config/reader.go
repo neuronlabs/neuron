@@ -7,11 +7,7 @@ import (
 	"github.com/neuronlabs/neuron-core/log"
 )
 
-var (
-	external      bool
-	defaultConfig *Controller
-	validate      = validator.New()
-)
+var validate = validator.New()
 
 // ViperSetDefaults sets the default values for the viper config.
 func ViperSetDefaults(v *viper.Viper) {
@@ -110,6 +106,7 @@ func setDefaultControllerConfigs(v *viper.Viper) {
 		"log_level":              "info",
 		"processor":              DefaultProcessorConfig(),
 		"repositories":           map[string]*Repository{},
+		"included_depth_limit":   2,
 	}
 
 	for k, value := range keys {

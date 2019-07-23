@@ -367,7 +367,7 @@ func patchHasOneRelationship(
 	if len(primaries) > 1 {
 		log.Debugf("SCOPE[%s] Patching multiple primary with HasOne relationship is unsupported.", s.ID())
 		err := errors.New(class.QueryValuePrimary, "patching has one relationship for many primaries")
-		err.SetDetailf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
+		err = err.SetDetailf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
 		return err
 	}
 
@@ -415,7 +415,7 @@ func patchHasOneRelationship(
 		if e, ok := err.(*errors.Error); ok {
 			// change the class of the error
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
+				e = e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
 				err = errors.New(class.QueryValueNoResult, e.Message)
 			} else {
 				err = errors.New(class.QueryRelation, e.Message)
@@ -511,7 +511,7 @@ func patchHasManyRelationship(
 	// check if there are multiple primaries
 	if len(primaries) > 1 {
 		err := errors.New(class.QueryValuePrimary, "multiple query primaries while patching has many relationship")
-		err.SetDetail("Can't patch multiple instances with the relation of type hasMany")
+		err = err.SetDetail("Can't patch multiple instances with the relation of type hasMany")
 		return err
 	}
 
@@ -540,7 +540,7 @@ func patchHasManyRelationship(
 	))
 	if err != nil {
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			err = clearScope.RollbackContext(ctx)
 		}
 		return err
 	}
@@ -555,7 +555,7 @@ func patchHasManyRelationship(
 		}
 		if err != nil {
 			if tx := s.Tx(); tx == nil {
-				clearScope.RollbackContext(ctx)
+				err = clearScope.RollbackContext(ctx)
 			}
 			return err
 		}
@@ -580,7 +580,9 @@ func patchHasManyRelationship(
 		tx := clearScope.Tx()
 		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
 		if err != nil {
-			clearScope.RollbackContext(ctx)
+			if err := clearScope.RollbackContext(ctx); err != nil {
+				return err
+			}
 			err = errors.New(class.InternalModelRelationNotMapped, err.Error())
 			return err
 		}
@@ -592,7 +594,9 @@ func patchHasManyRelationship(
 	))
 	if err != nil {
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			if err := clearScope.RollbackContext(ctx); err != nil {
+				log.Error(err.Error())
+			}
 		}
 		return err
 	}
@@ -601,12 +605,14 @@ func patchHasManyRelationship(
 	if err := relatedScope.PatchContext(ctx); err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetailf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
+				e = e.WrapDetailf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
 				return e
 			}
 		}
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			if err := clearScope.RollbackContext(ctx); err != nil {
+				log.Errorf("Rollback failed: %v", err.Error())
+			}
 		}
 		return err
 	}
@@ -708,7 +714,9 @@ func patchMany2ManyRelationship(
 		err := clearScope.internal().AddFilterField(f)
 		if err != nil {
 			if !rootTx {
-				clearScope.RollbackContext(ctx)
+				if err := clearScope.RollbackContext(ctx); err != nil {
+					log.Error(err)
+				}
 			}
 			return err
 		}
@@ -724,7 +732,9 @@ func patchMany2ManyRelationship(
 
 			if err != nil {
 				if !rootTx {
-					clearScope.RollbackContext(ctx)
+					if err := clearScope.RollbackContext(ctx); err != nil {
+						log.Debugf("[SCOPE][%s]Rollback failed for clearScope: %s", clearScope.ID(), err)
+					}
 				}
 				return err
 			}
@@ -759,7 +769,9 @@ func patchMany2ManyRelationship(
 		f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
 		if err := clearScope.internal().AddFilterField(f); err != nil {
 			if !rootTx {
-				clearScope.RollbackContext(ctx)
+				if err := clearScope.RollbackContext(ctx); err != nil {
+					log.Error("[SCOPE][%s] clearScope failed to rollback: %v", clearScope.ID(), err)
+				}
 			}
 			return err
 		}
@@ -775,7 +787,9 @@ func patchMany2ManyRelationship(
 
 			if err != nil {
 				if rootTx {
-					clearScope.RollbackContext(ctx)
+					if err := clearScope.RollbackContext(ctx); err != nil {
+						log.Errorf("[SCOPE][%s] clearScope failed to rollback: %v", clearScope.ID(), err)
+					}
 				}
 				return err
 			}
@@ -807,7 +821,9 @@ func patchMany2ManyRelationship(
 	// we would need only primary fields
 	checkScope.internal().SetEmptyFieldset()
 	checkScope.internal().SetFieldsetNoCheck(relField.Relationship().Struct().PrimaryField())
-	checkScope.internal().AddFilterField(filters.NewFilter(relField.Relationship().Struct().PrimaryField(), filters.NewOpValuePair(filters.OpIn, relatedPrimaries...)))
+	if err = checkScope.internal().AddFilterField(filters.NewFilter(relField.Relationship().Struct().PrimaryField(), filters.NewOpValuePair(filters.OpIn, relatedPrimaries...))); err != nil {
+		return err
+	}
 
 	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values in scope: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), checkScope.ID())
 	// get the values from the checkScope
@@ -815,8 +831,9 @@ func patchMany2ManyRelationship(
 	if err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetail("No many2many relationship values found with the provided ids")
+				e = e.WrapDetail("No many2many relationship values found with the provided ids")
 			}
+			err = e
 		}
 		if !justCreated && !rootTx {
 			err := clearScope.RollbackContext(ctx)

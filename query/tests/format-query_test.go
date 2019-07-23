@@ -46,7 +46,8 @@ func TestFormatQuery(t *testing.T) {
 			s, err := query.NewC(c, &formatter{})
 			require.NoError(t, err)
 
-			s.AddFilter(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
+			err = s.FilterField(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -61,7 +62,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.ForeignKey("fk")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, 1))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, 1))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -76,7 +78,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.Attr("attr")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, "some-value"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-value"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -93,7 +96,8 @@ func TestFormatQuery(t *testing.T) {
 
 			relPrim := field.Relationship().ModelStruct().Primary()
 
-			s.AddFilter(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
+			err = s.FilterField(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -108,7 +112,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.FilterKey("filter")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, "some-key"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-key"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -123,7 +128,8 @@ func TestFormatQuery(t *testing.T) {
 			field := mStruct.LanguageField()
 			require.NotNil(t, field)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpNotEqual, "pl"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpNotEqual, "pl"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -136,7 +142,8 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.SetPagination(query.LimitOffsetPagination(12, 0))
+		err = s.SetPagination(query.LimitOffsetPagination(12, 0))
+		require.NoError(t, err)
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
@@ -147,7 +154,8 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.SortBy("-id")
+		err = s.Sort("-id")
+		require.NoError(t, err)
 
 		q := s.FormatQuery()
 		require.Len(t, q, 1)

@@ -9,7 +9,7 @@ import (
 func SplitBracketParameter(bracketed string) (values []string, err error) {
 	doubleOpen := func() error {
 		err := errors.New(class.CommonParseBrackets, "double open square brackets")
-		err.SetDetailf("open square bracket '[' found, without closing ']' in: '%s'", bracketed)
+		err = err.SetDetailf("open square bracket '[' found, without closing ']' in: '%s'", bracketed)
 		return err
 	}
 
@@ -31,7 +31,7 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {
 				err := errors.New(class.CommonParseBrackets, "no opening bracket found")
-				err.SetDetailf("close square bracket ']' found, without opening '[' in '%s'", bracketed)
+				err = err.SetDetailf("close square bracket ']' found, without opening '[' in '%s'", bracketed)
 				return nil, err
 			}
 			endIndex = i

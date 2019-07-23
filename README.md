@@ -4,6 +4,7 @@ Neuron-core is the golang cloud-native, distributed ORM implementation.
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/neuronlabs/neuron-core)](https://goreportcard.com/report/github.com/neuronlabs/neuron-core)
 [![GoDoc](https://godoc.org/github.com/neuronlabs/neuron-core?status.svg)](https://godoc.org/github.com/neuronlabs/neuron-core)
+[![Build Status](https://travis-ci.com/neuronlabs/neuron-core.svg?branch=master)](https://travis-ci.com/neuronlabs/neuron-core)
 
 * [What is Neuron?](#what-is-neuron)
 * [Install](#install)

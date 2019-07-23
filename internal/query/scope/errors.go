@@ -7,6 +7,6 @@ import (
 
 func errNoRelationship(neuronName, included string) *errors.Error {
 	err := errors.New(class.QueryFilterUnknownField, "no relationship field found")
-	err.SetDetailf("Object: '%v', has no relationship named: '%v'.", neuronName, included)
+	err = err.SetDetailf("Object: '%v', has no relationship named: '%v'.", neuronName, included)
 	return err
 }

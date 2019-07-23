@@ -224,6 +224,15 @@ func (m *ModelStruct) MaxIncludedCount() int {
 	return thisIncluded + nestedIncludedInterface.(int)
 }
 
+// MaxIncludedDepth gets the maximum included field depth for the queries.
+func (m *ModelStruct) MaxIncludedDepth() int {
+	ic, ok := m.StoreGet(nestedIncludedCountKey)
+	if !ok {
+		return 0
+	}
+	return ic.(int)
+}
+
 // NamerFunc returns namer func for the given Model.
 func (m *ModelStruct) NamerFunc() namer.Namer {
 	v, _ := m.StoreGet(namerFuncKey)
@@ -385,6 +394,11 @@ func (m *ModelStruct) StoreDelete(key interface{}) {
 	delete(m.store, key)
 }
 
+// String implements fmt.Stringer interface.
+func (m *ModelStruct) String() string {
+	return m.Collection()
+}
+
 // StructFields return all the StructFields used in the ModelStruct
 func (m *ModelStruct) StructFields() (fields []*StructField) {
 	// add primary
@@ -406,9 +420,7 @@ func (m *ModelStruct) StructFields() (fields []*StructField) {
 	}
 
 	// add i18n fields
-	for _, f := range m.i18n {
-		fields = append(fields, f)
-	}
+	fields = append(fields, m.i18n...)
 
 	if m.language != nil {
 		// add language field
@@ -478,28 +490,11 @@ func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
 	sField, hasRelationship = m.relationships[field]
 	if !hasRelationship {
 		err := errors.Newf(class.ModelFieldNotFound, "field: '%s' not found", field)
-		err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		err = err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
 		return nil, err
 	}
 
 	return sField, nil
-}
-
-func (m *ModelStruct) checkFields(fields ...string) []*errors.Error {
-	var errs []*errors.Error
-	for _, field := range fields {
-		_, err := m.checkField(field)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return errs
-}
-
-func (m *ModelStruct) clearInitVars() {
-	m.StoreDelete(untaggedFieldKey)
-	m.StoreDelete(assignedFieldsKey)
 }
 
 // computeNestedIncludedCount computes the included count for given limit
@@ -608,7 +603,9 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		// Set field type
 		values := tagValues[common.AnnotationFieldType]
 		if len(values) == 0 {
-			return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+			// return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+			m.addUntaggedField(structField)
+			continue
 		}
 
 		// Set field type

@@ -229,20 +229,6 @@ func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 	return nil
 }
 
-func (s *Scope) deleteSelectedField(index int) error {
-	if index > len(s.selectedFields)-1 {
-		return errors.Newf(class.InternalQuerySelectedField, "deleting selected field is out of range: %d", index).SetOperation("deleteSelectedField")
-	}
-
-	// copy the last element
-	if index < len(s.selectedFields)-1 {
-		s.selectedFields[index] = s.selectedFields[len(s.selectedFields)-1]
-		s.selectedFields[len(s.selectedFields)-1] = nil
-	}
-	s.selectedFields = s.selectedFields[:len(s.selectedFields)-1]
-	return nil
-}
-
 func (s *Scope) isSelected(field interface{}, selectedFields *[]*models.StructField, erease bool) (bool, error) {
 	switch typedField := field.(type) {
 	case string:
@@ -269,29 +255,6 @@ func (s *Scope) isSelected(field interface{}, selectedFields *[]*models.StructFi
 		}
 	}
 	return false, nil
-}
-
-// selectedFieldValues gets the values for given
-func (s *Scope) selectedFieldValues(dialectNamer dialect.FieldNamer) (map[string]interface{}, error) {
-	if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "nil query value provided")
-	}
-
-	values := make(map[string]interface{})
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	for _, field := range s.selectedFields {
-		fieldName := dialectNamer(field)
-		// Skip empty fieldnames
-		if fieldName == "" {
-			continue
-		}
-		values[fieldName] = v.FieldByIndex(field.ReflectField().Index).Interface()
-	}
-	return values, nil
 }
 
 func (s *Scope) unselectFields(fields ...*models.StructField) error {
@@ -346,7 +309,7 @@ func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 	// check if the length of the fields in the fieldset is not bigger then the fields number for the model.
 	if len(fields) > s.mStruct.FieldCount() {
 		errObj = errors.New(class.QueryFieldsetTooBig, "too many fields to set for the query")
-		errObj.SetDetailf("Too many fields to set for the model: '%s'.", s.mStruct.Collection())
+		errObj = errObj.SetDetailf("Too many fields to set for the model: '%s'.", s.mStruct.Collection())
 		errs = append(errs, errObj)
 		return errs
 	}
@@ -371,7 +334,7 @@ func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 		if ok {
 			// duplicate
 			errObj = errors.New(class.QueryFieldsetDuplicate, "unknown field provided")
-			errObj.SetDetailf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
+			errObj = errObj.SetDetailf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
 			errs = append(errs, errObj)
 			if len(errs) > MaxPermissibleDuplicates {
 				return errs
@@ -461,8 +424,7 @@ func (s *Scope) SetNilFieldset() {
 // SetFields sets the fieldset from the provided fields
 func (s *Scope) SetFields(fields ...interface{}) error {
 	s.fieldset = map[string]*models.StructField{}
-	s.addToFieldset(fields...)
-	return nil
+	return s.addToFieldset(fields...)
 }
 
 func (s *Scope) addToFieldset(fields ...interface{}) error {
@@ -485,7 +447,7 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 				if !found {
 					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
 					err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-					err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+					err = err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
 					return err
 				}
 			}
@@ -500,7 +462,7 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
 				err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-				err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				err = err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
 				return err
 			}
 		default:

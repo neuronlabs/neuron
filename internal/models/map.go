@@ -41,7 +41,7 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 		DefaultRepository:   c.DefaultRepositoryName,
 		NamerFunc:           namerFunc,
 		Configs:             c.Models,
-		nestedIncludedLimit: c.NestedIncludedLimit,
+		nestedIncludedLimit: c.IncludedDepthLimit,
 	}
 }
 
@@ -129,6 +129,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			}
 		}
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
+		if err := mStruct.setFieldsConfigs(); err != nil {
+			return err
+		}
 	}
 
 	for _, modelStruct := range m.models {
@@ -202,22 +205,11 @@ func (m *ModelMap) computeNestedIncludedCount() {
 
 	for _, model := range m.models {
 		modelLimit := limit
-		if model.cfg.NestedIncludeLimit != nil {
-			modelLimit = *model.cfg.NestedIncludeLimit
+		if model.cfg.IncludedDepthLimit != nil {
+			modelLimit = *model.cfg.IncludedDepthLimit
 		}
 		model.computeNestedIncludedCount(modelLimit)
 	}
-}
-
-func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {
-	/**
-
-	TO IMPLEMENT:
-
-	find closest match collection
-
-	*/
-	return []string{}
 }
 
 func (m *ModelMap) getType(t reflect.Type) reflect.Type {
@@ -259,13 +251,10 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 				switch other.Type().Name() {
 				case name1:
 					rel.joinModel = other
-					break
 				case name2:
 					rel.joinModel = other
-					break
 				case rel.joinModelName:
 					rel.joinModel = other
-					break
 				default:
 					continue
 				}
