@@ -153,10 +153,10 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("ForeignKey", func(t *testing.T) {
-		filter, err := filters.NewStringFilter(c, "[testing_models][foreign_key][$ne]", "some string value")
+		_, err := filters.NewStringFilter(c, "[testing_models][foreign_key][$ne]", "some string value")
 		require.Error(t, err)
 
-		filter, err = filters.NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "some string value")
+		filter, err := filters.NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "some string value")
 		require.NoError(t, err)
 
 		attrField, ok := mStruct.FieldByName("ForeignKey")

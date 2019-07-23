@@ -73,9 +73,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 }
 
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
-	if strings.HasPrefix(filter, "filter") {
-		filter = filter[6:]
-	}
+	strings.TrimPrefix(filter, "filter")
 
 	params, err := common.SplitBracketParameter(filter)
 	if err != nil {

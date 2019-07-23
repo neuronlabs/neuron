@@ -325,7 +325,6 @@ func (s *Scope) clearRelationshipFilters() {
 
 func (s *Scope) setIDFilterValues(values ...interface{}) {
 	s.setPrimaryFilterValues(s.mStruct.PrimaryField(), values...)
-	return
 }
 
 func (s *Scope) setLanguageFilterValues(values ...interface{}) {
@@ -339,7 +338,6 @@ func (s *Scope) setLanguageFilterValues(values ...interface{}) {
 
 	fv.Values = append(fv.Values, values...)
 	filter.AppendValues(fv)
-	return
 }
 
 func (s *Scope) setPrimaryFilterValues(primField *models.StructField, values ...interface{}) {

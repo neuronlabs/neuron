@@ -16,6 +16,7 @@ func registerRepositoryClasses() {
 	registerRepostioryUnmappedError()
 	registerRepositoryConfig()
 	registerRepositoryReplica()
+	registerRepositoryNotFound()
 }
 
 /**

@@ -31,9 +31,6 @@ type modelWithNested struct {
 
 // TestNestedFields tests the nested field's definitions
 func TestNestedFields(t *testing.T) {
-
-	setLogger()
-
 	ms := testingModelMap(t)
 
 	err := ms.RegisterModels(modelWithNested{})

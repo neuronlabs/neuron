@@ -27,8 +27,6 @@ type FilterField struct {
 	// subfields (for given relation type).
 	// Relationships are the filter values for given relationship FilterField
 	nested []*FilterField
-
-	raw string
 }
 
 // Key returns the filter key if set.
@@ -90,7 +88,6 @@ func AddNestedField(f, nested *FilterField) {
 
 // AddsNestedField for given FilterField
 func addNestedField(f, nested *FilterField) {
-
 	// check if there already exists a nested filter
 	for _, nf := range f.nested {
 
@@ -102,16 +99,10 @@ func addNestedField(f, nested *FilterField) {
 	}
 
 	f.nested = append(f.nested, nested)
-	return
-
 }
 
 // SetValues sets the filter values for provided field, it's operator and possible i18n Support.
-func (f *FilterField) SetValues(
-	values []string,
-	op *Operator,
-	sup *i18n.Support,
-) error {
+func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support) error {
 	t := f.structField.GetDereferencedType()
 
 	// create new FilterValue
@@ -147,7 +138,7 @@ func (f *FilterField) SetValues(
 				if err.Class.IsMajor(class.MjrInternal) {
 					return err
 				}
-				err.WrapDetailf("Invalid filter value for primary field in collection: '%s'.", f.structField.Struct().Collection())
+				err = err.WrapDetailf("Invalid filter value for primary field in collection: '%s'.", f.structField.Struct().Collection())
 				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
@@ -189,7 +180,7 @@ func (f *FilterField) SetValues(
 							var confidence language.Confidence
 							tag, _, confidence = sup.Matcher.Match(tag)
 							if confidence <= language.Low {
-								err := errors.New(class.QueryFilterLanguage, err.Error())
+								err := errors.New(class.QueryFilterLanguage, "unsupported language filter")
 								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
 								return err
 							}
@@ -214,7 +205,7 @@ func (f *FilterField) SetValues(
 					return err
 				}
 
-				err.WrapDetailf("Invalid filter value for the attribute field: '%s' for collection: '%s'.", f.structField.NeuronName(), f.structField.Struct().Collection())
+				err = err.WrapDetailf("Invalid filter value for the attribute field: '%s' for collection: '%s'.", f.structField.NeuronName(), f.structField.Struct().Collection())
 				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())

@@ -7,11 +7,7 @@ import (
 	"github.com/neuronlabs/neuron-core/log"
 )
 
-var (
-	external      bool
-	defaultConfig *Controller
-	validate      = validator.New()
-)
+var validate = validator.New()
 
 // ViperSetDefaults sets the default values for the viper config.
 func ViperSetDefaults(v *viper.Viper) {

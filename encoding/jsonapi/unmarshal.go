@@ -119,12 +119,6 @@ func unmarshalScopeOne(
 	return unmarshalScope(c, in, model, false, addSelectedFields)
 }
 
-// UnmarshalWithRegister unmarshals the reader with the possibility to register provided model
-// into the schemas
-func unmarshalWithRegister(c *controller.Controller, in io.Reader, v interface{}) error {
-	return nil
-}
-
 func unmarshalScope(
 	c *controller.Controller,
 	in io.Reader,
@@ -248,7 +242,7 @@ func unmarshal(
 		if one.Data.Type != mStruct.Collection() {
 			log.Debugf("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
 			err := errors.New(class.EncodingUnmarshalCollection, "unmarshaling collection doesn't match the output value type")
-			err.SetDetailf("One of the input collection: '%s' doesn't match the root collection: '%s'", one.Data.Type, mStruct.Collection())
+			err = err.SetDetailf("One of the input collection: '%s' doesn't match the root collection: '%s'", one.Data.Type, mStruct.Collection())
 			return nil, err
 		}
 

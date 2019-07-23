@@ -63,9 +63,7 @@ func (c *Controller) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	repository.CloseAll(ctx)
-
-	return nil
+	return repository.CloseAll(ctx)
 }
 
 // GetRepository gets the repository for the provided model.

@@ -76,15 +76,7 @@ type modelWithHasOne struct {
 	HasOne *modelWithBelongsTo `neuron:"type=relation;foreign=ForeignKey"`
 }
 
-type manyWithoutJoin struct {
-	ID     int                   `neuron:"type=primary"`
-	Firsts []*manyWithoutJoinTwo `neuron:"type=relation;many2many"`
-}
-
-type manyWithoutJoinTwo struct {
-	ID int `neuron:"type=primary"`
-}
-
+// TestMappedRelationships tests the mapped relationships.
 func TestMappedRelationships(t *testing.T) {
 	t.Run("many2many", func(t *testing.T) {
 		t.Run("PredefinedFields", func(t *testing.T) {

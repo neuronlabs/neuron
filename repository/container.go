@@ -57,8 +57,7 @@ fl:
 // It contains mapping between repository name as well as the repository mapped to
 // the given ModelStruct
 type container struct {
-	factories      map[string]Factory
-	defaultFactory Factory
+	factories map[string]Factory
 }
 
 // newContainer creates the repository container

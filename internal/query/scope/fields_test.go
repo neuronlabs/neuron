@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/namer"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -15,10 +14,6 @@ import (
 
 // TestAutoSelectFields tests the auto select fields.
 func TestAutoSelectFields(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
-
 	t.Run("NonZeros", func(t *testing.T) {
 		schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 

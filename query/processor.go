@@ -17,7 +17,7 @@ var processes = make(map[string]*Process)
 
 // RegisterProcess registers the process with it's unique name.
 // If the process is already registered the function panics.
-func RegisterProcess(p *Process) error {
+func RegisterProcess(p *Process) {
 	_, ok := processes[p.Name]
 	if ok {
 		panic(fmt.Errorf("Process: '%s' already registered", p.Name))
@@ -25,8 +25,6 @@ func RegisterProcess(p *Process) error {
 	log.Debugf("Registered process: '%s'.", p.Name)
 	processes[p.Name] = p
 	internal.Processes[p.Name] = struct{}{}
-
-	return nil
 }
 
 func init() {

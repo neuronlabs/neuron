@@ -117,17 +117,14 @@ func setAttributeField(value string, fieldValue reflect.Value) *errors.Error {
 		} else {
 			// TODO: set the nested attribute struct
 			err = errors.New(class.QueryFilterValue, "filtering over nested structure is not supported yet")
-			err.SetDetail("Filtering over nested structures is not supported yet.")
-
+			err = err.SetDetail("Filtering over nested structures is not supported yet.")
 		}
 	default:
 		log.Debug("Filtering over unsupported type: '%s'", t.Name())
 
 		err = errors.New(class.QueryFilterValue, "filtering over nested structure is not supported yet")
-		err.SetDetail("Filtering over nested structures is not supported yet.")
-
+		err = err.SetDetail("Filtering over nested structures is not supported yet.")
 	}
-
 	return err
 }
 

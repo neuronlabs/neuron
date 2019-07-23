@@ -5,15 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron-core/log"
 )
 
 // TestReadDefaultConfig test the read default config function.
 func TestReadDefaultConfig(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
 	var c *Controller
 	require.NotPanics(t, func() {
 		c = ReadDefaultConfig()

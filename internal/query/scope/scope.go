@@ -102,9 +102,6 @@ type Scope struct {
 
 	isMany bool
 
-	count int
-
-	errorLimit        int
 	totalIncludeCount int
 	kind              Kind
 
@@ -115,7 +112,6 @@ type Scope struct {
 	rootScope *Scope
 
 	currentIncludedFieldIndex int
-	isRelationship            bool
 
 	// used within the root scope as a language tag for whole query.
 	queryLanguage language.Tag
@@ -449,59 +445,11 @@ PRIVATE METHODS
 
 // GetCollectionScope gets the collection root scope for given scope.
 // Used for included Field scopes for getting their model root scope, that contains all
-func (s *Scope) getCollectionScope() *Scope {
+func (s *Scope) GetCollectionScope() *Scope {
 	return s.collectionScope
 }
 
 // GetFieldValue
-func (s *Scope) getFieldValuePublic(field *models.StructField) (interface{}, error) {
-	if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "no query value provided")
-	}
-
-	if s.mStruct != field.Struct() {
-		return nil, errors.New(class.InternalQueryInvalidField, "provided invalid field for given model struct").SetOperation("getFieldValuePublic")
-	}
-
-	// get the field's value
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	return v.FieldByIndex(field.ReflectField().Index).Interface(), nil
-}
-
-// getLangtagValue returns the value of the langtag for given scope
-// returns error if:
-//		- the scope's model does not support i18n
-//		- provided nil Value for the scope
-//		- the scope's Value is of invalid type
-func (s *Scope) getLangtagValue() (string, error) {
-
-	langField := s.Struct().LanguageField()
-	if langField == nil {
-		return "", errors.New(class.QueryFilterLanguage, "no language field found for the model")
-	}
-
-	v := reflect.ValueOf(s.Value)
-	if v.IsNil() {
-		return "", errors.New(class.QueryNoValue, "no scope's value provided")
-	}
-
-	if v.Kind() != reflect.Ptr {
-		return "", errors.New(class.QueryValueType, "invalid query value")
-	}
-	v = v.Elem()
-
-	// allowed only for single scope value
-	if v.Kind() == reflect.Struct {
-		langField := v.Elem().FieldByIndex(langField.ReflectField().Index)
-		return langField.String(), nil
-	}
-
-	return "", errors.New(class.QueryValueType, "invalid query value type").SetOperation("getLangtagValue")
-}
 
 // isRoot checks if given scope is a root scope of the query
 func (s *Scope) isRoot() bool {
@@ -547,71 +495,6 @@ func (s *Scope) setLangtagValue(langtag string) error {
 	}
 
 	return errors.New(class.QueryValueType, "invalid query value")
-}
-
-// getRelatedScope gets the related scope with preset filter values.
-// The filter values are being taken form the root 's' Scope relationship id's.
-// Returns error if the scope was not build by controller BuildRelatedScope.
-func (s *Scope) getRelatedScope() (*Scope, error) {
-	if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "no scope value provided")
-	}
-
-	if len(s.includedFields) < 1 {
-		return nil, errors.Newf(class.InternalQueryIncluded, "The root scope of type: '%v' was not built using controller.BuildRelatedScope() method.", s.mStruct.Type())
-	}
-
-	var (
-		relScope *Scope
-		err      error
-	)
-
-	relatedField := s.includedFields[0]
-	relScope = relatedField.Scope
-
-	scopeValue := reflect.ValueOf(s.Value)
-	if scopeValue.Type().Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryValueType, "invalid scope's value type")
-	}
-
-	fieldValue := scopeValue.Elem().FieldByIndex(relatedField.FieldIndex())
-	var primaries []interface{}
-
-	// if no values are present within given field
-	// return nil scope.Value
-	if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
-		return relScope, nil
-	} else if fieldValue.Kind() == reflect.Slice && fieldValue.Len() == 0 {
-		relScope.isMany = true
-		return relScope, nil
-	}
-
-	primaries, err = relatedField.Relationship().Struct().PrimaryValues(fieldValue)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(primaries) == 0 {
-		return relScope, nil
-	}
-
-	filterValue := &filters.OpValuePair{}
-
-	if relatedField.FieldKind() == models.KindRelationshipSingle {
-		filterValue.SetOperator(filters.OpEqual)
-		filterValue.Values = append(filterValue.Values, primaries...)
-		relScope.newValueSingle()
-	} else {
-		filterValue.SetOperator(filters.OpIn)
-		filterValue.Values = primaries
-		relScope.isMany = true
-		relScope.newValueMany()
-	}
-
-	primaryFilter := filters.NewFilter(relatedField.StructField, filterValue)
-
-	relScope.primaryFilters = append(relScope.primaryFilters, primaryFilter)
-	return relScope, nil
 }
 
 // GetPrimaryFieldValues - gets the primary field values from the scope.
@@ -924,72 +807,6 @@ func (s *Scope) getFieldValue(sField *models.StructField) (reflect.Value, error)
 	return modelValueByStructField(s.Value, sField)
 }
 
-func (s *Scope) setBelongsToForeignKey() error {
-	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "provided nil value for the scope value")
-	}
-
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueUnaddressable, "scope's value is not addressable")
-	}
-
-	// switch the scope's value kind
-	switch v.Elem().Kind() {
-	case reflect.Struct:
-		// single type
-		err := setBelongsToForeigns(s.mStruct, v)
-		if err != nil {
-			return err
-		}
-
-	case reflect.Slice:
-		// is many
-		v = v.Elem()
-		for i := 0; i < v.Len(); i++ {
-			elem := v.Index(i)
-			err := setBelongsToForeigns(s.mStruct, elem)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (s *Scope) setBelongsToRelationWithFields(fields ...*models.StructField) error {
-	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "provided nil value for the scope").SetOperation("setBelongsToRelationWithFields")
-	}
-
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueUnaddressable, "provided scope value is not addressable")
-	}
-
-	switch v.Elem().Kind() {
-	case reflect.Struct:
-		err := setBelongsToRelationWithFields(s.mStruct, v, fields...)
-		if err != nil {
-			return err
-		}
-
-	case reflect.Slice:
-		v = v.Elem()
-		for i := 0; i < v.Len(); i++ {
-			elem := v.Index(i)
-			if elem.IsNil() {
-				continue
-			}
-
-			err := setBelongsToRelationWithFields(s.mStruct, elem.Elem(), fields...)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 func (s *Scope) checkField(field string) (*models.StructField, *errors.Error) {
 	sField, err := s.mStruct.CheckField(field)
 	if err != nil {
@@ -1016,166 +833,3 @@ func modelValueByStructField(model interface{}, sField *models.StructField) (ref
 
 	return v.FieldByIndex(sField.ReflectField().Index), nil
 }
-
-// func getURLVariables(req *http.Request, mStruct *models.ModelStruct, indexFirst, indexSecond int,
-// ) (valueFirst, valueSecond string, err error) {
-
-// 	path := req.URL.Path
-// 	var invalidURL = func() error {
-// 		return fmt.Errorf("Provided url is invalid for getting url variables: '%s' with indexes: '%d'/ '%d'", path, indexFirst, indexSecond)
-// 	}
-// 	pathSplitted := strings.Split(path, "/")
-// 	if indexFirst > len(pathSplitted)-1 {
-// 		err = invalidURL()
-// 		return
-// 	}
-// 	var collectionIndex = -1
-// 	if models.StructCollectionUrlIndex(mStruct) != -1 {
-// 		collectionIndex = models.StructCollectionUrlIndex(mStruct)
-// 	} else {
-// 		for i, splitted := range pathSplitted {
-// 			if splitted == mStruct.Collection() {
-// 				collectionIndex = i
-// 				break
-// 			}
-// 		}
-// 		if collectionIndex == -1 {
-// 			err = fmt.Errorf("The url for given request does not contain collection name: %s", mStruct.Collection())
-// 			return
-// 		}
-// 	}
-
-// 	if collectionIndex+indexFirst > len(pathSplitted)-1 {
-// 		err = invalidURL()
-// 		return
-// 	}
-// 	valueFirst = pathSplitted[collectionIndex+indexFirst]
-
-// 	if indexSecond > 0 {
-// 		if collectionIndex+indexSecond > len(pathSplitted)-1 {
-// 			err = invalidURL()
-// 			return
-// 		}
-// 		valueSecond = pathSplitted[collectionIndex+indexSecond]
-// 	}
-// 	return
-// }
-
-/**
-
-Preset
-
-*/
-
-func (s *Scope) copyPresetParameters() {
-	for _, includedField := range s.includedFields {
-		includedField.copyPresetFullParameters()
-	}
-}
-
-func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
-	scope := Scope{
-		id:                        uuid.New(),
-		Value:                     s.Value,
-		mStruct:                   s.mStruct,
-		store:                     make(map[interface{}]interface{}),
-		isMany:                    s.isMany,
-		count:                     s.count,
-		errorLimit:                s.errorLimit,
-		totalIncludeCount:         s.totalIncludeCount,
-		kind:                      s.kind,
-		currentIncludedFieldIndex: s.currentIncludedFieldIndex,
-		isRelationship:            s.isRelationship,
-		queryLanguage:             s.queryLanguage,
-		hasFieldNotInFieldset:     s.hasFieldNotInFieldset,
-		filterLock:                sync.Mutex{},
-	}
-
-	if isRoot {
-		scope.rootScope = nil
-		scope.collectionScope = &scope
-		root = &scope
-	} else {
-		if s.rootScope == nil {
-			scope.rootScope = nil
-		}
-		scope.collectionScope = root.getOrCreateModelsRootScope(s.mStruct)
-	}
-
-	if s.fieldset != nil {
-		scope.fieldset = make(map[string]*models.StructField)
-		for k, v := range s.fieldset {
-			scope.fieldset[k] = v
-		}
-	}
-
-	if s.primaryFilters != nil {
-		scope.primaryFilters = make([]*filters.FilterField, len(s.primaryFilters))
-		for i, v := range s.primaryFilters {
-
-			scope.primaryFilters[i] = filters.CopyFilter(v)
-		}
-	}
-
-	if s.attributeFilters != nil {
-		scope.attributeFilters = make([]*filters.FilterField, len(s.attributeFilters))
-		for i, v := range s.attributeFilters {
-			scope.attributeFilters[i] = filters.CopyFilter(v)
-		}
-	}
-
-	if s.relationshipFilters != nil {
-		for i, v := range s.relationshipFilters {
-			scope.relationshipFilters[i] = filters.CopyFilter(v)
-		}
-	}
-
-	if s.sortFields != nil {
-		scope.sortFields = make([]*sorts.SortField, len(s.sortFields))
-		for i, v := range s.sortFields {
-			scope.sortFields[i] = sorts.Copy(v)
-		}
-
-	}
-
-	if s.includedScopes != nil {
-		scope.includedScopes = make(map[*models.ModelStruct]*Scope)
-		for k, v := range s.includedScopes {
-			scope.includedScopes[k] = v.copy(false, root)
-		}
-	}
-
-	if s.includedFields != nil {
-		scope.includedFields = make([]*IncludeField, len(s.includedFields))
-		for i, v := range s.includedFields {
-			scope.includedFields[i] = v.copy(&scope, root)
-		}
-	}
-
-	if s.includedValues != nil {
-		scope.includedValues = safemap.New()
-		for k, v := range s.includedValues.Values() {
-			scope.includedValues.UnsafeSet(k, v)
-		}
-	}
-
-	return &scope
-}
-
-// func (s *Scope) buildPresetFields(model *models.ModelStruct, presetFields ...string) error {
-// 	l := len(presetFields)
-// 	switch {
-// 	case l < 1:
-// 		return fmt.Errorf("No preset field provided. For model: %s.", model.modelType.Name(), presetFields)
-// 	case l == 1:
-// 		if presetCollection := presetFields[0]; presetCollection != model.collectionType {
-// 			return fmt.Errorf("Invalid preset collection: '%s'. The collection does not match with provided model: '%s'.", presetCollection, model.modelType.Name())
-// 		}
-// 		return nil
-
-// 	case l > 2:
-// 		collection := presetFields[0]
-
-// 	}
-// 	return nil
-// }

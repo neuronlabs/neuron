@@ -12,7 +12,6 @@ import (
 	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/filters"
-	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 	"github.com/neuronlabs/neuron-core/internal/safemap"
 )
 
@@ -33,7 +32,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 	// check if the number of included fields is possible
 	if len(includedList) > s.mStruct.MaxIncludedCount() {
 		errObj = errors.New(class.QueryIncludeTooMany, "too many included fields provided")
-		errObj.SetDetailf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
+		errObj = errObj.SetDetailf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
 		errs = append(errs, errObj)
 		return errs
 	}
@@ -54,7 +53,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 		annotCount := strings.Count(included, common.AnnotationNestedSeparator)
 		if annotCount > s.Struct().MaxIncludedCount() {
 			errObj = errors.Newf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
-			errObj.SetDetail("Maximum nested include limit reached for the given query.")
+			errObj = errObj.SetDetail("Maximum nested include limit reached for the given query.")
 			errs = append(errs, errObj)
 			continue
 		}
@@ -225,12 +224,6 @@ func (s *Scope) copyIncludedBoundaries() {
 	}
 }
 
-// getTotalIncludeFieldCount gets the count for all included Fields. May be used
-// as a wait group counter.
-func (s *Scope) getTotalIncludeFieldCount() int {
-	return s.totalIncludeCount
-}
-
 /**
 
 INCLUDED FIELD DEFINITION
@@ -251,13 +244,6 @@ type IncludeField struct {
 	RelatedScope *Scope
 
 	NotInFieldset bool
-}
-
-func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
-	included := &IncludeField{StructField: i.StructField, NotInFieldset: i.NotInFieldset}
-	included.Scope = i.Scope.copy(false, root)
-	included.RelatedScope = relatedScope
-	return included
 }
 
 // GetMissingPrimaries gets the id values from the RelatedScope, checks which id values were
@@ -490,62 +476,4 @@ func (i *IncludeField) copyScopeBoundaries() {
 		nested.copyScopeBoundaries()
 	}
 
-}
-
-func (i *IncludeField) copyPresetFullParameters() {
-	// copy primaries
-	i.Scope.primaryFilters = make([]*filters.FilterField, len(i.Scope.collectionScope.primaryFilters))
-	copy(i.Scope.primaryFilters, i.Scope.collectionScope.primaryFilters)
-
-	// copy attribute filters
-	i.Scope.attributeFilters = make([]*filters.FilterField, len(i.Scope.collectionScope.attributeFilters))
-	copy(i.Scope.attributeFilters, i.Scope.collectionScope.attributeFilters)
-
-	// copy filterKeyFilters
-	i.Scope.keyFilters = make([]*filters.FilterField, len(i.Scope.collectionScope.keyFilters))
-	copy(i.Scope.keyFilters, i.Scope.collectionScope.keyFilters)
-
-	// relationships
-	i.Scope.relationshipFilters = make([]*filters.FilterField, len(i.Scope.collectionScope.relationshipFilters))
-	copy(i.Scope.relationshipFilters, i.Scope.collectionScope.relationshipFilters)
-
-	//copy foreignKeyFilters
-	i.Scope.foreignFilters = make([]*filters.FilterField, len(i.Scope.collectionScope.foreignFilters))
-	copy(i.Scope.foreignFilters, i.Scope.collectionScope.foreignFilters)
-
-	// copy language filters
-	if i.Scope.collectionScope.languageFilters != nil {
-		i.Scope.languageFilters = i.Scope.collectionScope.languageFilters
-	}
-
-	// fieldset is taken by reference - copied if there is nested
-	// i.Scope.fieldset = i.Scope.collectionScope.fieldset
-
-	i.Scope.sortFields = make([]*sorts.SortField, len(i.Scope.collectionScope.sortFields))
-	copy(i.Scope.sortFields, i.Scope.collectionScope.sortFields)
-
-	i.Scope.pagination = i.Scope.collectionScope.pagination
-	i.Scope.store[internal.ControllerStoreKey] = i.Scope.collectionScope.store[internal.ControllerStoreKey]
-
-	for _, nested := range i.Scope.includedFields {
-		// if the nested include is not found within the collection fieldset
-		// the 'i'.Scope should have a new (not reference) Fieldset
-		// with the nested field added to it
-		if nested.NotInFieldset {
-			// make a new fieldset if it is the same reference
-			if len(i.Scope.fieldset) == len(i.Scope.collectionScope.fieldset) {
-				// if there is more than one nested this would not happen
-				i.Scope.fieldset = make(map[string]*models.StructField)
-				// copy fieldset
-				for key, field := range i.Scope.collectionScope.fieldset {
-					i.Scope.fieldset[key] = field
-				}
-			}
-
-			//add nested
-			i.Scope.fieldset[nested.NeuronName()] = nested.StructField
-		}
-
-		nested.copyPresetFullParameters()
-	}
 }

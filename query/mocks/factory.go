@@ -14,8 +14,9 @@ const (
 )
 
 func init() {
-	// fmt.Printf("RegisterFactory: %v", debug.Stack())
-	repository.RegisterFactory(&Factory{})
+	if err := repository.RegisterFactory(&Factory{}); err != nil {
+		panic(err)
+	}
 }
 
 // Factory is the repository.Factory mock implementation

@@ -554,10 +554,6 @@ func (s *StructField) isNestedField() bool {
 	return s.fieldFlags&FNestedField != 0
 }
 
-func (s *StructField) isNestedStruct() bool {
-	return s.nested != nil
-}
-
 func (s *StructField) isNoFilter() bool {
 	return s.fieldFlags&FNoFilter != 0
 }

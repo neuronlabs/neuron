@@ -415,7 +415,7 @@ func patchHasOneRelationship(
 		if e, ok := err.(*errors.Error); ok {
 			// change the class of the error
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
+				e = e.WrapDetailf("Patching relationship: '%s' failed. Related resource not found.", relField.NeuronName())
 				err = errors.New(class.QueryValueNoResult, e.Message)
 			} else {
 				err = errors.New(class.QueryRelation, e.Message)
@@ -540,7 +540,7 @@ func patchHasManyRelationship(
 	))
 	if err != nil {
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			err = clearScope.RollbackContext(ctx)
 		}
 		return err
 	}
@@ -555,7 +555,7 @@ func patchHasManyRelationship(
 		}
 		if err != nil {
 			if tx := s.Tx(); tx == nil {
-				clearScope.RollbackContext(ctx)
+				err = clearScope.RollbackContext(ctx)
 			}
 			return err
 		}
@@ -580,7 +580,9 @@ func patchHasManyRelationship(
 		tx := clearScope.Tx()
 		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
 		if err != nil {
-			clearScope.RollbackContext(ctx)
+			if err = clearScope.RollbackContext(ctx); err != nil {
+				return err
+			}
 			err = errors.New(class.InternalModelRelationNotMapped, err.Error())
 			return err
 		}
@@ -601,7 +603,7 @@ func patchHasManyRelationship(
 	if err := relatedScope.PatchContext(ctx); err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetailf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
+				e = e.WrapDetailf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
 				return e
 			}
 		}
@@ -807,7 +809,9 @@ func patchMany2ManyRelationship(
 	// we would need only primary fields
 	checkScope.internal().SetEmptyFieldset()
 	checkScope.internal().SetFieldsetNoCheck(relField.Relationship().Struct().PrimaryField())
-	checkScope.internal().AddFilterField(filters.NewFilter(relField.Relationship().Struct().PrimaryField(), filters.NewOpValuePair(filters.OpIn, relatedPrimaries...)))
+	if err = checkScope.internal().AddFilterField(filters.NewFilter(relField.Relationship().Struct().PrimaryField(), filters.NewOpValuePair(filters.OpIn, relatedPrimaries...))); err != nil {
+		return err
+	}
 
 	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values in scope: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), checkScope.ID())
 	// get the values from the checkScope
@@ -815,7 +819,7 @@ func patchMany2ManyRelationship(
 	if err != nil {
 		if e, ok := err.(*errors.Error); ok {
 			if e.Class == class.QueryValueNoResult {
-				e.WrapDetail("No many2many relationship values found with the provided ids")
+				e = e.WrapDetail("No many2many relationship values found with the provided ids")
 			}
 		}
 		if !justCreated && !rootTx {

@@ -79,6 +79,10 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*sort
 		sortStructFields = append(sortStructFields, sortField)
 	}
 
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
 	return sortStructFields, nil
 }
 

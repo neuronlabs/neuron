@@ -46,7 +46,7 @@ func TestFormatQuery(t *testing.T) {
 			s, err := query.NewC(c, &formatter{})
 			require.NoError(t, err)
 
-			s.AddFilter(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
+			s.FilterField(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -61,7 +61,7 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.ForeignKey("fk")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, 1))
+			s.FilterField(filters.NewFilter(field, filters.OpEqual, 1))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -76,7 +76,7 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.Attr("attr")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, "some-value"))
+			s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-value"))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -93,7 +93,7 @@ func TestFormatQuery(t *testing.T) {
 
 			relPrim := field.Relationship().ModelStruct().Primary()
 
-			s.AddFilter(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
+			s.FilterField(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -108,7 +108,7 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.FilterKey("filter")
 			require.True(t, ok)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpEqual, "some-key"))
+			s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-key"))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -123,7 +123,7 @@ func TestFormatQuery(t *testing.T) {
 			field := mStruct.LanguageField()
 			require.NotNil(t, field)
 
-			s.AddFilter(filters.NewFilter(field, filters.OpNotEqual, "pl"))
+			s.FilterField(filters.NewFilter(field, filters.OpNotEqual, "pl"))
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -147,7 +147,7 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.SortBy("-id")
+		s.Sort("-id")
 
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
