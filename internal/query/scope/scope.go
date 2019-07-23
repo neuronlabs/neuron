@@ -437,13 +437,10 @@ PRIVATE METHODS
 */
 
 func (s *Scope) getCollectionScope() *Scope {
-// GetCollectionScope gets the collection root scope for given scope.
-// Used for included Field scopes for getting their model root scope, that contains all
-func (s *Scope) GetCollectionScope() *Scope {
+	// GetCollectionScope gets the collection root scope for given scope.
+	// Used for included Field scopes for getting their model root scope, that contains all
 	return s.collectionScope
 }
-
-// GetFieldValue
 
 // isRoot checks if given scope is a root scope of the query
 func (s *Scope) isRoot() bool {

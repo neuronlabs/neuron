@@ -228,8 +228,6 @@ func TestIncludeCopyScopeCommon(t *testing.T) {
 	errs := s.BuildIncludedFields("cars")
 	require.Empty(t, errs)
 
-	assert.Equal(t, 1, s.getTotalIncludeFieldCount())
-
 	usersValue := []*User{{ID: 1, Cars: []*Car{{ID: 1}, {ID: 2}}}, {ID: 2, Cars: []*Car{{ID: 2}, {ID: 4}}}}
 	s.Value = &usersValue
 
