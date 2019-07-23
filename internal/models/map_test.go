@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/namer"
 )
@@ -43,10 +42,6 @@ type OtherNotTaggedModel struct {
 
 // TestRegisterModel tests the register model function.
 func TestRegisterModel(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
-
 	t.Run("Embedded", func(t *testing.T) {
 		m := testingModelMap(t)
 		err := m.RegisterModels(&embeddedModel{})

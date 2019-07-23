@@ -11,7 +11,6 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
 	"github.com/neuronlabs/neuron-core/query/mocks"
@@ -123,11 +122,8 @@ type multiRelatedModel struct {
 	Relations []*relationModel `neuron:"type=relation;foreign=FK"`
 }
 
-// TestListRelationships tests the lists function with the relationship filters
-func TestListRelationships(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG2)
-	}
+// TestListRelationshipFilters tests the lists function with the relationship filters
+func TestListRelationshipFilters(t *testing.T) {
 	c := newController(t)
 
 	err := c.RegisterModels(&relationModel{}, &relatedModel{}, &multiRelatedModel{})

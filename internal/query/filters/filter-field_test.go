@@ -43,9 +43,6 @@ func TestSplitBracketParameter(t *testing.T) {
 
 // TestFilterOperators tests the filter operators registration process.
 func TestFilterOperators(t *testing.T) {
-	container := NewOpContainer()
-	container.registerManyOperators(defaultOperators...)
-
 	assert.True(t, OpEqual.isBasic())
 	assert.False(t, OpEqual.isRangable())
 	assert.False(t, OpEqual.isStringOnly())

@@ -914,7 +914,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 				}
 
 				errObj = errors.New(class.QueryValueMissingRequired, "missing required field")
-				errObj.SetDetailf("The field: %s, is required.", verr.Field())
+				errObj = errObj.SetDetailf("The field: %s, is required.", verr.Field())
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
@@ -926,7 +926,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "non default field value")
-					errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
+					errObj = errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else if strings.HasPrefix(tag, "len") {
@@ -939,13 +939,13 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
+					errObj = errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else {
 					errObj = errors.New(class.QueryValueValidation, "validation failed - invalid field value")
 					if verr.Field() != "" {
-						errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
+						errObj = errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
 					}
 
 					errs = append(errs, errObj)

@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/namer"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -26,10 +25,6 @@ type testModel struct {
 
 // TestGetPrimaryFieldValues tests the GetPrimaryFieldValues method.
 func TestGetPrimaryFieldValues(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
-
 	schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))
@@ -96,10 +91,6 @@ func TestGetPrimaryFieldValues(t *testing.T) {
 }
 
 func TestGetForeignKeyValues(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG)
-	}
-
 	schm := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
 	require.NoError(t, schm.RegisterModels(&testModel{}, &testRelatedModel{}))

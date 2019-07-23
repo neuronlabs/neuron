@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ctrl "github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query"
 
 	"github.com/neuronlabs/neuron-core/internal/controller"
@@ -29,10 +28,6 @@ func TestMarshal(t *testing.T) {
 	prepare := func(t *testing.T, models ...interface{}) *ctrl.Controller {
 		t.Helper()
 		c := controller.DefaultTesting(t, nil)
-
-		if testing.Verbose() {
-			log.SetLevel(log.LDEBUG3)
-		}
 
 		buf.Reset()
 		require.NoError(t, c.RegisterModels(models...))
@@ -256,11 +251,8 @@ func TestMarshal(t *testing.T) {
 
 }
 
+// TestMarshalScope tests marshaling the scope.
 func TestMarshalScope(t *testing.T) {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG2)
-	}
-
 	t.Run("Included", func(t *testing.T) {
 		// TODO: test when included works
 		t.Skip()
@@ -344,9 +336,11 @@ func TestMarshalScope(t *testing.T) {
 		c := (*ctrl.Controller)(controller.DefaultTesting(t, nil))
 		require.NoError(t, c.RegisterModels(&Pet{}, &User{}, &UserPets{}))
 
-		pet := &Pet{ID: 5, Owners: []*User{{ID: 2}, {ID: 3}}}
+		pet := &Pet{ID: 5, Owners: []*User{{ID: 2, privateField: 1}, {ID: 3}}}
 		s, err := query.NewC(c, pet)
 		require.NoError(t, err)
+
+		assert.Equal(t, 1, pet.Owners[0].privateField)
 
 		err = s.SetFieldset("Owners")
 		assert.NoError(t, err)
@@ -416,24 +410,31 @@ func TestMarshalScope(t *testing.T) {
 	})
 }
 
-func blogController(t *testing.T) *controller.Controller {
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG2)
-	}
+// func TestMarshalScopeRelationship(t *testing.T) {
+// 	c := blogController(t)
 
-	c := controller.DefaultTesting(t, nil)
+// 	scope := blogScope(t, c)
 
-	err := c.RegisterModels(&Blog{}, &Post{}, &Comment{})
-	require.NoError(t, err)
-	return c
-}
+// 	req := httptest.NewRequest("GET", "/blogs/1/relationships/posts", nil)
+// 	scope, errs, err := c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
 
-func blogScope(t *testing.T, c *controller.Controller) *scope.Scope {
-	s, err := query.NewC((*ctrl.Controller)(c), &Blog{})
-	require.NoError(t, err)
+// 	assert.Nil(t, err)
+// 	assert.Empty(t, errs)
 
-	return (*scope.Scope)(s)
-}
+// 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 3}}}
+
+// 	postsScope, err := scope.GetRelationshipScope()
+// 	assert.Nil(t, err)
+
+// 	payload, err := c.MarshalScope(postsScope)
+// 	assert.Nil(t, err)
+
+// 	buffer := bytes.NewBufferString("")
+
+// 	err = MarshalPayload(buffer, payload)
+// 	assert.Nil(t, err)
+
+// }
 
 // HiddenModel is the neuron model with hidden fields.
 type HiddenModel struct {

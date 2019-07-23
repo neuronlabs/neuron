@@ -12,7 +12,6 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -238,7 +237,6 @@ func TestPatch(t *testing.T) {
 
 			// Begin the transaction
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				log.Debug("Begin on patchTMRelations")
 			}).Return(nil)
 
 			_, err = s.Begin()

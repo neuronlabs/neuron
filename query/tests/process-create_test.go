@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ctrl "github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -558,11 +557,6 @@ func TestCreateTransactions(t *testing.T) {
 
 func newController(t testing.TB) *controller.Controller {
 	t.Helper()
-
 	c := controller.DefaultTesting(t, nil)
-	if testing.Verbose() {
-		log.SetLevel(log.LDEBUG3)
-	}
-
 	return c
 }

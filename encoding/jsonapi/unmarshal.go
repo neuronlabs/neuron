@@ -119,12 +119,6 @@ func unmarshalScopeOne(
 	return unmarshalScope(c, in, model, false, addSelectedFields)
 }
 
-// UnmarshalWithRegister unmarshals the reader with the possibility to register provided model
-// into the schemas
-func unmarshalWithRegister(c *controller.Controller, in io.Reader, v interface{}) error {
-	return nil
-}
-
 func unmarshalScope(
 	c *controller.Controller,
 	in io.Reader,
@@ -248,7 +242,7 @@ func unmarshal(
 		if one.Data.Type != mStruct.Collection() {
 			log.Debugf("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
 			err := errors.New(class.EncodingUnmarshalCollection, "unmarshaling collection doesn't match the output value type")
-			err.SetDetailf("One of the input collection: '%s' doesn't match the root collection: '%s'", one.Data.Type, mStruct.Collection())
+			err = err.SetDetailf("One of the input collection: '%s' doesn't match the root collection: '%s'", one.Data.Type, mStruct.Collection())
 			return nil, err
 		}
 
@@ -354,7 +348,7 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		return err
 	case *json.SyntaxError:
 		err := errors.New(class.EncodingUnmarshalInvalidFormat, "syntax error")
-		err.SetDetailf("Document syntax error: '%s'. At data offset: '%d'", e.Error(), e.Offset)
+		err = err.SetDetailf("Document syntax error: '%s'. At data offset: '%d'", e.Error(), e.Offset)
 		return err
 	case *json.UnmarshalTypeError:
 		if e.Type == reflect.TypeOf(onePayload{}) || e.Type == reflect.TypeOf(manyPayload{}) {
@@ -370,12 +364,12 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		case "relationships", "attributes", "links", "meta":
 			fieldType = "object"
 		}
-		err.SetDetailf("Invalid type for: '%s' field. Required type '%s' but is: '%v'", e.Field, fieldType, e.Value)
+		err = err.SetDetailf("Invalid type for: '%s' field. Required type '%s' but is: '%v'", e.Field, fieldType, e.Value)
 		return err
 	default:
 		if e == io.EOF {
 			err := errors.New(class.EncodingUnmarshalInvalidFormat, "reader io.EOF occurred")
-			err.SetDetailf("invalid document syntax")
+			err = err.SetDetailf("invalid document syntax")
 			return err
 		}
 		err := errors.Newf(class.EncodingUnmarshal, "unknown unmarshal error: %s", e.Error())
@@ -395,7 +389,7 @@ func unmarshalNode(
 	if mStruct == nil {
 		log.Debugf("Invalid collection type: %s", data.Type)
 		err := errors.New(class.EncodingUnmarshalCollection, "unmarshaling invalid collection name")
-		err.SetDetailf("Provided unsupported/unknown collection: '%s'", data.Type)
+		err = err.SetDetailf("Provided unsupported/unknown collection: '%s'", data.Type)
 		return err
 	}
 
@@ -404,7 +398,7 @@ func unmarshalNode(
 
 	if modelType != mStruct.Type() {
 		err := errors.New(class.EncodingUnmarshalCollection, "unmarshaling collection name doesn't match the root struct")
-		err.SetDetailf("Unmarshaling collection: '%s' doesn't match root collection:'%s'", data.Type, mStruct.Collection())
+		err = err.SetDetailf("Unmarshaling collection: '%s' doesn't match root collection:'%s'", data.Type, mStruct.Collection())
 		return err
 	}
 
@@ -423,7 +417,7 @@ func unmarshalNode(
 			if !ok || (ok && modelAttr.IsHidden()) {
 				if c.Config.StrictUnmarshalMode {
 					err := errors.New(class.EncodingUnmarshalUnknownField, "unknown field name")
-					err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", attrName, data.Type)
+					err = err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", attrName, data.Type)
 					return err
 				}
 				continue
@@ -444,7 +438,7 @@ func unmarshalNode(
 			if !ok || (ok && modelRel.IsHidden()) {
 				if c.Config.StrictUnmarshalMode {
 					err := errors.New(class.EncodingUnmarshalUnknownField, "unknown field name")
-					err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", relName, data.Type)
+					err = err.SetDetailf("Provided unknown field name: '%s', for the collection: '%s'.", relName, data.Type)
 					return err
 				}
 				continue
@@ -461,7 +455,7 @@ func unmarshalNode(
 				if err != nil {
 					log.Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
 					err := errors.New(class.EncodingUnmarshalInvalidFormat, "invalid relationship format")
-					err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
+					err = err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
 					return err
 				}
 
@@ -469,7 +463,7 @@ func unmarshalNode(
 				if err != nil {
 					log.Debugf("Controller.UnmarshalNode.relationshipMultiple json.Encode failed. %v", err)
 					err := errors.New(class.EncodingUnmarshalInvalidFormat, "invalid relationship format")
-					err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
+					err = err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
 					return err
 				}
 
@@ -493,14 +487,14 @@ func unmarshalNode(
 				if err = json.NewEncoder(buf).Encode(relValue); err != nil {
 					log.Debugf("Controller.UnmarshalNode.relationshipSingle json.Encode failed. %v", err)
 					err := errors.New(class.EncodingUnmarshalInvalidFormat, "invalid relationship format")
-					err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
+					err = err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
 					return err
 				}
 
 				if err = json.NewDecoder(buf).Decode(relationship); err != nil {
 					log.Debugf("Controller.UnmarshalNode.RelationshipSingel json.Decode failed. %v", err)
 					err := errors.New(class.EncodingUnmarshalInvalidFormat, "invalid relationship format")
-					err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
+					err = err.SetDetailf("The value for the relationship: '%s' is of invalid form.", relName)
 					return err
 				}
 
@@ -532,14 +526,14 @@ func unmarshalAttrFieldValue(
 
 	if modelAttr.IsSlice() || modelAttr.IsArray() {
 		var sliceValue reflect.Value
-		log.Debugf("Field Value: %s, modelAttr: %s", fieldValue.Type(), modelAttr.NeuronName())
+		log.Debug2f("Field Value: %s, modelAttr: %s", fieldValue.Type(), modelAttr.NeuronName())
 		sliceValue, err = unmarshalSliceValue(c, modelAttr, v, fieldType.Type, baseType)
 		if err != nil {
 			return err
 		}
 
-		log.Debugf("IsValid: %v", fieldValue.IsValid())
-		log.Debugf("IsValid: %v", sliceValue.IsValid())
+		log.Debug2f("IsValid: %v", fieldValue.IsValid())
+		log.Debug2f("IsValid: %v", sliceValue.IsValid())
 
 		fieldValue.Set(sliceValue)
 	} else if modelAttr.IsMap() {
@@ -558,7 +552,6 @@ func unmarshalAttrFieldValue(
 
 		fieldValue.Set(resultValue)
 	}
-
 	return nil
 }
 
@@ -596,7 +589,7 @@ func unmarshalMapValue(
 
 	if v.Kind() != reflect.Map {
 		err := errors.New(class.EncodingUnmarshalInvalidType, "map field is of invalid type")
-		err.SetDetailf("Field: '%s' should contain a value of object/map type.", modelAttr.NeuronName())
+		err = err.SetDetailf("Field: '%s' should contain a value of object/map type.", modelAttr.NeuronName())
 		return reflect.Value{}, err
 	}
 
@@ -664,7 +657,7 @@ func unmarshalSliceValue(
 
 	if slType.Kind() != reflect.Array && slType.Kind() != reflect.Slice {
 		err := errors.New(class.EncodingUnmarshalInvalidType, "slice field should be an array or slice")
-		err.SetDetailf("Field: '%s' should be an array", modelAttr.NeuronName())
+		err = err.SetDetailf("Field: '%s' should be an array", modelAttr.NeuronName())
 		log.Errorf("Attribute: %v, Err: %v", modelAttr.Name(), err)
 		return reflect.Value{}, err
 	}
@@ -688,7 +681,7 @@ func unmarshalSliceValue(
 		}
 
 		err := errors.New(class.EncodingUnmarshalFieldValue, "slice value is not a slice")
-		err.SetDetailf("Field: '%s' the slice value is not a slice.", modelAttr.NeuronName())
+		err = err.SetDetailf("Field: '%s' the slice value is not a slice.", modelAttr.NeuronName())
 		return reflect.Value{}, err
 	}
 
@@ -696,7 +689,7 @@ func unmarshalSliceValue(
 	if capSize != -1 {
 		if v.Len() > capSize {
 			err := errors.New(class.EncodingUnmarshalValueOutOfRange, "field value length is out of the possible size")
-			err.SetDetailf("Field: '%s' the slice value is too long. The maximum capacity is: '%d'", modelAttr.NeuronName(), capSize)
+			err = err.SetDetailf("Field: '%s' the slice value is too long. The maximum capacity is: '%d'", modelAttr.NeuronName(), capSize)
 			return reflect.Value{}, err
 		}
 	}
@@ -786,7 +779,7 @@ func unmarshalSingleFieldValue(
 
 	if !v.IsValid() {
 		err := errors.New(class.EncodingUnmarshalFieldValue, "invalid field value")
-		err.SetDetailf("Field: %v' has invalid value.", modelAttr.NeuronName())
+		err = err.SetDetailf("Field: %v' has invalid value.", modelAttr.NeuronName())
 		return reflect.Value{}, err
 	}
 
@@ -798,7 +791,7 @@ func unmarshalSingleFieldValue(
 				tm = v.Interface().(string)
 			} else {
 				err := errors.New(class.EncodingUnmarshalInvalidTime, "invalid ISO8601 time field")
-				err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
+				err = err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
 				return reflect.Value{}, err
 			}
 
@@ -806,7 +799,7 @@ func unmarshalSingleFieldValue(
 			t, err := time.Parse(ISO8601TimeFormat, tm)
 			if err != nil {
 				err := errors.New(class.EncodingUnmarshalInvalidTime, "invalid ISO8601 time field")
-				err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
+				err = err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
 				return reflect.Value{}, err
 			}
 
@@ -829,7 +822,7 @@ func unmarshalSingleFieldValue(
 			at = int64(v.Uint())
 		default:
 			err := errors.New(class.EncodingUnmarshalInvalidTime, "invalid time field format")
-			err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
+			err = err.SetDetailf("Time field: '%s' has invalid formatting.", modelAttr.NeuronName())
 			return reflect.Value{}, err
 		}
 
@@ -889,7 +882,7 @@ func unmarshalSingleFieldValue(
 		default:
 			log.Debugf("Unknown field number type: '%v'", baseType.String())
 			err := errors.New(class.EncodingUnmarshalInvalidType, "invalid field type")
-			err.SetDetailf("Field: '%s' has invalid type provided.", modelAttr.NeuronName())
+			err = err.SetDetailf("Field: '%s' has invalid type provided.", modelAttr.NeuronName())
 			return reflect.Value{}, err
 		}
 
@@ -928,7 +921,7 @@ func unmarshalSingleFieldValue(
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			if intValue < 0 {
 				err := errors.New(class.EncodingUnmarshalInvalidType, "invalid field value type")
-				err.SetDetailf("Field: '%s'. Provided value: '%d' is not an unsigned integer.", modelAttr.NeuronName(), intValue)
+				err = err.SetDetailf("Field: '%s'. Provided value: '%d' is not an unsigned integer.", modelAttr.NeuronName(), intValue)
 				return reflect.Value{}, err
 			}
 
@@ -958,7 +951,7 @@ func unmarshalSingleFieldValue(
 		default:
 			log.Debugf("Unknown field number type: '%v'", baseType.String())
 			err := errors.New(class.EncodingUnmarshalInvalidType, "invalid numerical field type")
-			err.SetDetailf("Field: '%s' has invalid type.", modelAttr.NeuronName())
+			err = err.SetDetailf("Field: '%s' has invalid type.", modelAttr.NeuronName())
 			return reflect.Value{}, err
 		}
 
@@ -973,7 +966,7 @@ func unmarshalSingleFieldValue(
 	value := v.Interface()
 	valueNotAllowed := func() error {
 		err := errors.New(class.EncodingUnmarshalFieldValue, "invalid field value")
-		err.SetDetailf("The value: '%v' for the field: '%s' is not allowed", value, modelAttr.NeuronName())
+		err = err.SetDetailf("The value: '%v' for the field: '%s' is not allowed", value, modelAttr.NeuronName())
 		return err
 	}
 
@@ -1056,7 +1049,7 @@ func unmarshalSingleFieldValue(
 		// As a final catch-all, ensure types line up to avoid a runtime panic.
 		log.Debugf("Invalid Value: %v with Kind: %v, should be: '%v' for field %v", v, v.Kind(), baseType.String(), modelAttr.Name())
 		err := errors.New(class.ModelFieldType, "invalid field type")
-		err.SetDetailf("Field: '%s' has invalid field type.", modelAttr.NeuronName())
+		err = err.SetDetailf("Field: '%s' has invalid field type.", modelAttr.NeuronName())
 		return reflect.Value{}, err
 	}
 	if modelAttr.IsBasePtr() {
@@ -1126,7 +1119,7 @@ func unmarshalIDField(fieldValue reflect.Value, dataValue string) error {
 		// We had a JSON float (numeric), but our field was not one of the
 		// allowed numeric types
 		err := errors.New(class.EncodingUnmarshalInvalidID, "unmarshaling invalid primary field type")
-		err.SetDetailf("Invalid primary field value: '%s'", dataValue)
+		err = err.SetDetailf("Invalid primary field value: '%s'", dataValue)
 		return err
 	}
 	assign(fieldValue, idValue)
@@ -1137,7 +1130,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 	mp, ok := value.(map[string]interface{})
 	if !ok {
 		err := errors.New(class.EncodingUnmarshalFieldValue, "invalid field value")
-		err.SetDetailf("Invalid field value for the subfield within attribute: '%s'", n.Attr().NeuronName())
+		err = err.SetDetailf("Invalid field value for the subfield within attribute: '%s'", n.Attr().NeuronName())
 		return reflect.Value{}, err
 	}
 
@@ -1150,7 +1143,7 @@ func unmarshalNestedStructValue(c *controller.Controller, n *models.NestedStruct
 				continue
 			}
 			err := errors.New(class.EncodingUnmarshalUnknownField, "nested field not found")
-			err.SetDetailf("No subfield named: '%s' within attr: '%s'", mpName, n.Attr().NeuronName())
+			err = err.SetDetailf("No subfield named: '%s' within attr: '%s'", mpName, n.Attr().NeuronName())
 			return reflect.Value{}, err
 		}
 

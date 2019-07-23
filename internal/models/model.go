@@ -420,9 +420,7 @@ func (m *ModelStruct) StructFields() (fields []*StructField) {
 	}
 
 	// add i18n fields
-	for _, f := range m.i18n {
-		fields = append(fields, f)
-	}
+	fields = append(fields, m.i18n...)
 
 	if m.language != nil {
 		// add language field
@@ -492,28 +490,11 @@ func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
 	sField, hasRelationship = m.relationships[field]
 	if !hasRelationship {
 		err := errors.Newf(class.ModelFieldNotFound, "field: '%s' not found", field)
-		err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		err = err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
 		return nil, err
 	}
 
 	return sField, nil
-}
-
-func (m *ModelStruct) checkFields(fields ...string) []*errors.Error {
-	var errs []*errors.Error
-	for _, field := range fields {
-		_, err := m.checkField(field)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return errs
-}
-
-func (m *ModelStruct) clearInitVars() {
-	m.StoreDelete(untaggedFieldKey)
-	m.StoreDelete(assignedFieldsKey)
 }
 
 // computeNestedIncludedCount computes the included count for given limit

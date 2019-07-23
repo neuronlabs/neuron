@@ -129,6 +129,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			}
 		}
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
+		if err := mStruct.setFieldsConfigs(); err != nil {
+			return err
+		}
 	}
 
 	for _, modelStruct := range m.models {
@@ -209,17 +212,6 @@ func (m *ModelMap) computeNestedIncludedCount() {
 	}
 }
 
-func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {
-	/**
-
-	TO IMPLEMENT:
-
-	find closest match collection
-
-	*/
-	return []string{}
-}
-
 func (m *ModelMap) getType(t reflect.Type) reflect.Type {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -259,13 +251,10 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 				switch other.Type().Name() {
 				case name1:
 					rel.joinModel = other
-					break
 				case name2:
 					rel.joinModel = other
-					break
 				case rel.joinModelName:
 					rel.joinModel = other
-					break
 				default:
 					continue
 				}

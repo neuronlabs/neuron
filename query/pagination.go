@@ -130,25 +130,3 @@ func newPaged(number, size int) *Pagination {
 func newLimitOffset(limit, offset int) *Pagination {
 	return (*Pagination)(paginations.NewLimitOffset(limit, offset))
 }
-
-// newPagination creates new pagination for the given query.
-// The arguments 'a' and 'b' means as follows:
-// - 'limit' and 'offset' for the type 'TpLimitOffset'
-// - 'pageNumber' and 'pageSize' for the type 'TpPage'
-func newPagination(a, b int, tp PaginationType) *Pagination {
-	p := &paginations.Pagination{}
-	switch tp {
-	case TpLimitOffset:
-		p.SetValue(a, paginations.ParamLimit)
-		p.SetValue(b, paginations.ParamOffset)
-		p.SetType(paginations.TpOffset)
-	case TpPage:
-		p.SetValue(a, paginations.ParamNumber)
-		p.SetValue(b, paginations.ParamSize)
-		p.SetType(paginations.TpPage)
-	default:
-		log.Debugf("Pagination type not found.")
-		// not implemented yet
-	}
-	return (*Pagination)(p)
-}

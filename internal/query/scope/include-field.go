@@ -32,7 +32,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 	// check if the number of included fields is possible
 	if len(includedList) > s.mStruct.MaxIncludedCount() {
 		errObj = errors.New(class.QueryIncludeTooMany, "too many included fields provided")
-		errObj.SetDetailf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
+		errObj = errObj.SetDetailf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
 		errs = append(errs, errObj)
 		return errs
 	}
@@ -53,7 +53,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 		annotCount := strings.Count(included, common.AnnotationNestedSeparator)
 		if annotCount > s.Struct().MaxIncludedDepth() {
 			errObj = errors.Newf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
-			errObj.SetDetail("Maximum nested include limit reached for the given query.")
+			errObj = errObj.SetDetail("Maximum nested include limit reached for the given query.")
 			errs = append(errs, errObj)
 			continue
 		}
@@ -68,7 +68,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 			if annotCount == 0 && includedCount > 1 {
 				if includedCount == 2 {
 					errObj = errors.New(class.QueryIncludeTooMany, "included fields duplicated")
-					errObj.SetDetailf("Included field '%s' used more than once.", included)
+					errObj = errObj.SetDetailf("Included parameter '%s' used more than once.", included)
 					errs = append(errs, errObj)
 					continue
 				} else if includedCount >= MaxPermissibleDuplicates {
@@ -217,12 +217,6 @@ func (s *Scope) copyIncludedBoundaries() {
 	}
 }
 
-// getTotalIncludeFieldCount gets the count for all included Fields. May be used
-// as a wait group counter.
-func (s *Scope) getTotalIncludeFieldCount() int {
-	return s.totalIncludeCount
-}
-
 /**
 
 INCLUDED FIELD DEFINITION
@@ -240,13 +234,6 @@ type IncludeField struct {
 	// RelatedScope is a pointer to the scope where the IncludedField is stored.
 	RelatedScope  *Scope
 	NotInFieldset bool
-}
-
-func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
-	included := &IncludeField{StructField: i.StructField, NotInFieldset: i.NotInFieldset}
-	included.Scope = i.Scope.copy(false, root)
-	included.RelatedScope = relatedScope
-	return included
 }
 
 // GetMissingPrimaries gets the id values from the RelatedScope, checks which id values were

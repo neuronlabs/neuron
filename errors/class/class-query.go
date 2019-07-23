@@ -17,6 +17,7 @@ func registerQueryClasses() {
 	registerQueryTransactions()
 	registerQueryViolation()
 	registerQueryRelations()
+	registerQueryProcessor()
 }
 
 /**
