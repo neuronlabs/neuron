@@ -71,52 +71,11 @@ func (s *Scope) AddTxChain(sub *Scope) {
 	s.internal().AddChainSubscope(sub.internal())
 }
 
-// AddFilter adds the filter field to the given query.
-func (s *Scope) AddFilter(filter *filters.FilterField) error {
-	return s.internal().AddFilterField((*internalFilters.FilterField)(filter))
-}
-
-// AddStringFilter parses the filter into the filters.FilterField and adds
-// it to the given scope.
-func (s *Scope) AddStringFilter(rawFilter string, values ...interface{}) error {
-	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, values...)
-	if err != nil {
-		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
-		return err
-	}
-	return s.AddFilter(filter)
-}
-
-// AddToFieldset adds the fields to the scope's fieldset.
-// The fields may be a mapping.StructField as well as field's NeuronName (string) or
-// the StructField Name (string).
-func (s *Scope) AddToFieldset(fields ...interface{}) error {
-	for i, field := range fields {
-		mField, ok := field.(*mapping.StructField)
-		if ok {
-			fields[i] = (*models.StructField)(mField)
-		}
-	}
-	return s.internal().AddToFieldset(fields...)
-}
-
-// AddSelectedFields adds provided fields into the scope's selected fields.
+// AppendSelectedFields adds provided fields into the scope's selected fields.
 // This would affect the Create or Patch processes where the SelectedFields are taken
-// as the unmarshaled fields.
-func (s *Scope) AddSelectedFields(fields ...interface{}) error {
+// as the unmarshaled fields. Returns error if the field is already selected.
+func (s *Scope) AppendSelectedFields(fields ...interface{}) error {
 	return s.selectFields(false, fields...)
-}
-
-// AddStringSortFields adds the sort fields in a string form.
-// The string form may look like: '[-field_1, field_2]' which means:
-//	 - Descending 'field_1'
-//	 - Ascending 'field_2'.
-func (s *Scope) AddStringSortFields(fields ...string) error {
-	errs := s.internal().BuildSortFields(fields...)
-	if len(errs) > 0 {
-		return errors.MultiError(errs)
-	}
-	return nil
 }
 
 // AttributeFilters returns scope's attribute filters.
@@ -188,6 +147,21 @@ func (s *Scope) Fieldset() (fs []*mapping.StructField) {
 		fs = append(fs, (*mapping.StructField)(f))
 	}
 	return fs
+}
+
+// Filter parses the filter into the filters.FilterField and adds it to the given scope.
+func (s *Scope) Filter(rawFilter string, values ...interface{}) error {
+	filter, err := filters.NewStringFilter(s.Controller(), rawFilter, values...)
+	if err != nil {
+		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
+		return err
+	}
+	return s.FilterField(filter)
+}
+
+// FilterField adds the filter field to the given query.
+func (s *Scope) FilterField(filter *filters.FilterField) error {
+	return s.internal().AddFilterField((*internalFilters.FilterField)(filter))
 }
 
 // FilterKeyFilters returns scope's primary key filters.
@@ -421,6 +395,19 @@ func (s *Scope) RollbackContext(ctx context.Context) error {
 	return s.rollback(ctx)
 }
 
+// SetFields adds the fields to the scope's fieldset.
+// The fields may be a mapping.StructField as well as field's NeuronName (string) or
+// the StructField Name (string).
+func (s *Scope) SetFields(fields ...interface{}) error {
+	for i, field := range fields {
+		mField, ok := field.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(mField)
+		}
+	}
+	return s.internal().AddToFieldset(fields...)
+}
+
 // SetPagination sets the Pagination for the scope.
 func (s *Scope) SetPagination(p *Pagination) error {
 	return s.internal().SetPagination((*paginations.Pagination)(p))
@@ -440,7 +427,7 @@ func (s *Scope) SelectField(name string) error {
 }
 
 // SelectFields clears current scope selected fields and set it to
-// the 'fields'. The fields might be a string (NeuronName, Name)
+// the provided 'fields'. The fields might be a string (NeuronName, Name)
 // or the *mapping.StructField.
 func (s *Scope) SelectFields(fields ...interface{}) error {
 	return s.selectFields(true, fields...)
@@ -466,9 +453,9 @@ func (s *Scope) SetFieldset(fields ...interface{}) error {
 	return s.internal().SetFields(fields...)
 }
 
-// SortBy adds the sort fields into given scope.
+// Sort adds the sort fields into given scope.
 // If the scope already have sorted fields or the fields are duplicated returns error.
-func (s *Scope) SortBy(fields ...string) error {
+func (s *Scope) Sort(fields ...string) error {
 	if log.Level().IsAllowed(log.LDEBUG3) {
 		log.Debug3f("[SCOPE][%s] Sorting by fields: %v ", s.ID(), fields)
 	}

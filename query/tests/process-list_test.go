@@ -138,7 +138,7 @@ func TestListRelationships(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), &[]*relationModel{})
 			require.NoError(t, err)
 
-			require.NoError(t, s.AddStringFilter("[relation_models][relation][some_attr][$eq]", "test-value"))
+			require.NoError(t, s.Filter("[relation_models][relation][some_attr][$eq]", "test-value"))
 
 			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestListRelationships(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), &([]*relationModel{}))
 			require.NoError(t, err)
 
-			require.NoError(t, s.AddStringFilter("[relation_models][relation][id][$eq]", 1))
+			require.NoError(t, s.Filter("[relation_models][relation][id][$eq]", 1))
 
 			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestListRelationships(t *testing.T) {
 		s, err := query.NewC((*controller.Controller)(c), &relatedValues)
 		require.NoError(t, err)
 
-		require.NoError(t, s.AddStringFilter("[related_models][relation][id][$eq]", "1"))
+		require.NoError(t, s.Filter("[related_models][relation][id][$eq]", "1"))
 
 		relatedRepo, err := s.Controller().GetRepository(&relatedModel{})
 		require.NoError(t, err)
@@ -316,7 +316,7 @@ func TestListRelationships(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), &relatedValues)
 			require.NoError(t, err)
 
-			require.NoError(t, s.AddStringFilter("[multi_related_models][relations][id][$in]", "1", "2"))
+			require.NoError(t, s.Filter("[multi_related_models][relations][id][$in]", "1", "2"))
 
 			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -432,7 +432,7 @@ func TestListRelationships(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), &[]*multiRelatedModel{})
 			require.NoError(t, err)
 
-			require.NoError(t, s.AddStringFilter("[multi_related_models][relations][id][$in]", "1", "2"))
+			require.NoError(t, s.Filter("[multi_related_models][relations][id][$in]", "1", "2"))
 
 			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -477,7 +477,7 @@ func TestListRelationships(t *testing.T) {
 			s, err := query.NewC((*controller.Controller)(c), &scopeValue)
 			require.NoError(t, err)
 
-			err = s.AddStringFilter("[many_2_many_models][many_2_many][id][$in]", "1", "2", "4")
+			err = s.Filter("[many_2_many_models][many_2_many][id][$in]", "1", "2", "4")
 			require.NoError(t, err)
 
 			m2mRepo, err := c.GetRepository(s.Struct())
@@ -625,7 +625,7 @@ func TestListRelationships(t *testing.T) {
 				s, err := query.NewC((*controller.Controller)(c), &scopeValue)
 				require.NoError(t, err)
 
-				err = s.AddStringFilter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
+				err = s.Filter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
 				require.NoError(t, err)
 
 				m2mRepo, err := c.GetRepository(s.Struct())
@@ -778,7 +778,7 @@ func TestListRelationships(t *testing.T) {
 				s, err := query.NewC((*controller.Controller)(c), &scopeValue)
 				require.NoError(t, err)
 
-				err = s.AddStringFilter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
+				err = s.Filter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
 				require.NoError(t, err)
 
 				relatedRepo, err := c.GetRepository(RelatedModel{})
