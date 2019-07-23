@@ -348,7 +348,7 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		return err
 	case *json.SyntaxError:
 		err := errors.New(class.EncodingUnmarshalInvalidFormat, "syntax error")
-		err.SetDetailf("Document syntax error: '%s'. At data offset: '%d'", e.Error(), e.Offset)
+		err = err.SetDetailf("Document syntax error: '%s'. At data offset: '%d'", e.Error(), e.Offset)
 		return err
 	case *json.UnmarshalTypeError:
 		if e.Type == reflect.TypeOf(onePayload{}) || e.Type == reflect.TypeOf(manyPayload{}) {
@@ -364,12 +364,12 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		case "relationships", "attributes", "links", "meta":
 			fieldType = "object"
 		}
-		err.SetDetailf("Invalid type for: '%s' field. Required type '%s' but is: '%v'", e.Field, fieldType, e.Value)
+		err = err.SetDetailf("Invalid type for: '%s' field. Required type '%s' but is: '%v'", e.Field, fieldType, e.Value)
 		return err
 	default:
 		if e == io.EOF {
 			err := errors.New(class.EncodingUnmarshalInvalidFormat, "reader io.EOF occurred")
-			err.SetDetailf("invalid document syntax")
+			err = err.SetDetailf("invalid document syntax")
 			return err
 		}
 		err := errors.Newf(class.EncodingUnmarshal, "unknown unmarshal error: %s", e.Error())

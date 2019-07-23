@@ -46,7 +46,8 @@ func TestFormatQuery(t *testing.T) {
 			s, err := query.NewC(c, &formatter{})
 			require.NoError(t, err)
 
-			s.FilterField(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
+			err = s.FilterField(filters.NewFilter(mStruct.Primary(), filters.OpEqual, 1))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -61,7 +62,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.ForeignKey("fk")
 			require.True(t, ok)
 
-			s.FilterField(filters.NewFilter(field, filters.OpEqual, 1))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, 1))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -76,7 +78,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.Attr("attr")
 			require.True(t, ok)
 
-			s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-value"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-value"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -136,7 +139,8 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.SetPagination(query.LimitOffsetPagination(12, 0))
+		err = s.SetPagination(query.LimitOffsetPagination(12, 0))
+		require.NoError(t, err)
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
@@ -147,7 +151,8 @@ func TestFormatQuery(t *testing.T) {
 		s, err := query.NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		s.Sort("-id")
+		err = s.Sort("-id")
+		require.NoError(t, err)
 
 		q := s.FormatQuery()
 		require.Len(t, q, 1)

@@ -68,7 +68,7 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 			if annotCount == 0 && includedCount > 1 {
 				if includedCount == 2 {
 					errObj = errors.New(class.QueryIncludeTooMany, "included fields duplicated")
-					errObj.SetDetailf("Included parameter '%s' used more than once.", included)
+					errObj = errObj.SetDetailf("Included parameter '%s' used more than once.", included)
 					errs = append(errs, errObj)
 					continue
 				} else if includedCount >= MaxPermissibleDuplicates {
@@ -419,7 +419,6 @@ func (i *IncludeField) setRelationshipValue(relatedValue reflect.Value) {
 	}
 
 	i.Scope.Value = includedScopeValue.Interface()
-	return
 }
 
 func (i *IncludeField) copyScopeBoundaries() {

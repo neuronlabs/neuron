@@ -39,5 +39,4 @@ func (f *Factory) DriverName() string {
 // Close closes the factory
 func (f *Factory) Close(ctx context.Context, done chan<- interface{}) {
 	done <- struct{}{}
-	return
 }

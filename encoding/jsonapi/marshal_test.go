@@ -340,6 +340,8 @@ func TestMarshalScope(t *testing.T) {
 		s, err := query.NewC(c, pet)
 		require.NoError(t, err)
 
+		assert.Equal(t, 1, pet.Owners[0].privateField)
+
 		err = s.SetFieldset("Owners")
 		assert.NoError(t, err)
 

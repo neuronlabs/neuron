@@ -9,7 +9,6 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/errors"
 	"github.com/neuronlabs/neuron-core/errors/class"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 
 	internalController "github.com/neuronlabs/neuron-core/internal/controller"
@@ -73,7 +72,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 }
 
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
-	strings.TrimPrefix(filter, "filter")
+	filter = strings.TrimPrefix(filter, "filter")
 
 	params, err := common.SplitBracketParameter(filter)
 	if err != nil {
@@ -83,7 +82,7 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 	mStruct := (*internalController.Controller)(c).ModelMap().GetByCollection(params[0])
 	if mStruct == nil {
 		err := errors.New(class.QueryFilterUnknownCollection, "provided filter collection not found")
-		err.SetDetailf("Filter model: '%s' not found", params[0])
+		err = err.SetDetailf("Filter model: '%s' not found", params[0])
 		return nil, err
 	}
 
@@ -97,7 +96,7 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 		op, ok = filters.Operators.Get(params[index])
 		if !ok {
 			err := errors.New(class.QueryFilterUnknownOperator, "operator not found")
-			err.SetDetailf("Unknown filte operator not found: %s", params[index])
+			err = err.SetDetailf("Unknown filte operator not found: %s", params[index])
 			return err
 		}
 		return nil
@@ -129,11 +128,8 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 				field, ok = mStruct.FilterKey(params[1])
 			}
 			if !ok {
-				log.Debugf("Filtering over unknown field: '%s'.", params[1])
-
 				err := errors.New(class.QueryFilterUnknownField, "field not found")
-				err.SetDetailf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
-
+				err = err.SetDetailf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
 				return nil, err
 			}
 		}
@@ -164,7 +160,7 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 				}
 				if !ok {
 					err := errors.New(class.QueryFilterInvalidField, "field not found")
-					err.SetDetailf("Field: '%s' not found within the relation ModelStruct: '%s'", params[2], relStruct.Collection())
+					err = err.SetDetailf("Field: '%s' not found within the relation ModelStruct: '%s'", params[2], relStruct.Collection())
 					return nil, err
 				}
 			}
@@ -174,12 +170,11 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 		} else if attr, ok := mStruct.Attribute(params[1]); ok {
 			// TODO: support nested struct filtering
 			err := errors.New(class.QueryFilterUnsupportedField, "nested fields filter is not supported")
-			err.SetDetailf("Field: '%s' is a composite field. Filtering nested attribute fields is not supported.", attr.NeuronName())
+			err = err.SetDetailf("Field: '%s' is a composite field. Filtering nested attribute fields is not supported.", attr.NeuronName())
 			return nil, err
 		} else {
-			log.Debugf("Filter over unknown field: '%s'.", params[1])
 			err := errors.New(class.QueryFilterUnknownField, "field not found")
-			err.SetDetailf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
+			err = err.SetDetailf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
 			return nil, err
 		}
 	}

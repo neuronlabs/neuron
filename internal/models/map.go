@@ -129,7 +129,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			}
 		}
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
-		mStruct.setFieldsConfigs()
+		if err := mStruct.setFieldsConfigs(); err != nil {
+			return err
+		}
 	}
 
 	for _, modelStruct := range m.models {

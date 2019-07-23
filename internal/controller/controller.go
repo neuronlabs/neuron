@@ -256,7 +256,9 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 			log.Default()
 		}
 		// get and set default logger
-		log.SetLevel(level)
+		if err := log.SetLevel(level); err != nil {
+			return err
+		}
 	}
 
 	log.Debug2f("Creating new controller with config: '%#v'", cfg)

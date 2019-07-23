@@ -130,7 +130,7 @@ func setAttributeField(value string, fieldValue reflect.Value) *errors.Error {
 
 func setTimeField(value string, fieldValue reflect.Value) *errors.Error {
 	err := errors.New(class.QueryFilterValue, "filtering over time field is not supported yet")
-	err.SetDetail("Filtering over time fields is not supported yet.")
+	err = err.SetDetail("Filtering over time fields is not supported yet.")
 	return err
 }
 

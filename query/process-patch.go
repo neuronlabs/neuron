@@ -580,7 +580,7 @@ func patchHasManyRelationship(
 		tx := clearScope.Tx()
 		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
 		if err != nil {
-			if err = clearScope.RollbackContext(ctx); err != nil {
+			if err := clearScope.RollbackContext(ctx); err != nil {
 				return err
 			}
 			err = errors.New(class.InternalModelRelationNotMapped, err.Error())
@@ -594,7 +594,9 @@ func patchHasManyRelationship(
 	))
 	if err != nil {
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			if err := clearScope.RollbackContext(ctx); err != nil {
+				log.Error(err.Error())
+			}
 		}
 		return err
 	}
@@ -608,7 +610,9 @@ func patchHasManyRelationship(
 			}
 		}
 		if tx := s.Tx(); tx == nil {
-			clearScope.RollbackContext(ctx)
+			if err := clearScope.RollbackContext(ctx); err != nil {
+				log.Errorf("Rollback failed: %v", err.Error())
+			}
 		}
 		return err
 	}
@@ -710,7 +714,9 @@ func patchMany2ManyRelationship(
 		err := clearScope.internal().AddFilterField(f)
 		if err != nil {
 			if !rootTx {
-				clearScope.RollbackContext(ctx)
+				if err := clearScope.RollbackContext(ctx); err != nil {
+					log.Error(err)
+				}
 			}
 			return err
 		}
@@ -821,6 +827,7 @@ func patchMany2ManyRelationship(
 			if e.Class == class.QueryValueNoResult {
 				e = e.WrapDetail("No many2many relationship values found with the provided ids")
 			}
+			err = e
 		}
 		if !justCreated && !rootTx {
 			err := clearScope.RollbackContext(ctx)

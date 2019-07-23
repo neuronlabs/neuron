@@ -908,7 +908,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 				}
 
 				errObj = errors.New(class.QueryValueMissingRequired, "missing required field")
-				errObj.SetDetailf("The field: %s, is required.", verr.Field())
+				errObj = errObj.SetDetailf("The field: %s, is required.", verr.Field())
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
@@ -920,7 +920,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "non default field value")
-					errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
+					errObj = errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else if strings.HasPrefix(tag, "len") {

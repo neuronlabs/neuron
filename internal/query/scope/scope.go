@@ -456,47 +456,6 @@ func (s *Scope) isRoot() bool {
 	return s.kind == RootKind
 }
 
-// setLangtagValue sets the langtag to the scope's value.
-// returns an error
-//		- if the Value is of invalid type or if the
-//		- if the model does not support i18n
-//		- if the scope's Value is nil pointer
-func (s *Scope) setLangtagValue(langtag string) error {
-
-	langField := s.Struct().LanguageField()
-	if langField == nil {
-		return errors.New(class.QueryFilterLanguage, "no language field found for the model")
-	}
-
-	v := reflect.ValueOf(s.Value)
-	if v.IsNil() {
-		return errors.New(class.QueryNoValue, "no scope's value provided")
-	}
-
-	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueType, "invalid query value")
-	}
-	v = v.Elem()
-
-	switch v.Kind() {
-	case reflect.Struct:
-		fieldValue := v.FieldByIndex(langField.ReflectField().Index)
-		fieldValue.SetString(langtag)
-		return nil
-	case reflect.Slice:
-		for i := 0; i < v.Len(); i++ {
-			elem := v.Index(i)
-			if elem.IsNil() {
-				continue
-			}
-			elem.Elem().FieldByIndex(langField.ReflectField().Index).SetString(langtag)
-		}
-		return nil
-	}
-
-	return errors.New(class.QueryValueType, "invalid query value")
-}
-
 // GetPrimaryFieldValues - gets the primary field values from the scope.
 // Returns the values within the []interface{} form.
 func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
