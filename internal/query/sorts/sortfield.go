@@ -135,7 +135,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 	// Subfields are available only for the relationships
 	if !s.structField.IsRelationship() {
 		err := errors.New(class.QuerySortRelatedFields, "given sub sortfield is not a relationship")
-		err.SetDetailf("Sort: field '%s' is not a relationship in the model: '%s'", s.structField.NeuronName(), s.structField.Struct().Collection())
+		err = err.SetDetailf("Sort: field '%s' is not a relationship in the model: '%s'", s.structField.NeuronName(), s.structField.Struct().Collection())
 		return err
 	}
 

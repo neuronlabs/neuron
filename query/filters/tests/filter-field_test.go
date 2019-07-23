@@ -12,7 +12,6 @@ import (
 	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query/filters"
 
 	internalController "github.com/neuronlabs/neuron-core/internal/controller"
@@ -172,9 +171,6 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("Relationship", func(t *testing.T) {
-		if testing.Verbose() {
-			log.SetLevel(log.LDEBUG)
-		}
 		filter, err := filters.NewStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
 		require.NoError(t, err)
 		attrField, ok := mStruct.FieldByName("Relation")

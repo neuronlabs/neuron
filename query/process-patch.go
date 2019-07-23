@@ -367,7 +367,7 @@ func patchHasOneRelationship(
 	if len(primaries) > 1 {
 		log.Debugf("SCOPE[%s] Patching multiple primary with HasOne relationship is unsupported.", s.ID())
 		err := errors.New(class.QueryValuePrimary, "patching has one relationship for many primaries")
-		err.SetDetailf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
+		err = err.SetDetailf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
 		return err
 	}
 
@@ -511,7 +511,7 @@ func patchHasManyRelationship(
 	// check if there are multiple primaries
 	if len(primaries) > 1 {
 		err := errors.New(class.QueryValuePrimary, "multiple query primaries while patching has many relationship")
-		err.SetDetail("Can't patch multiple instances with the relation of type hasMany")
+		err = err.SetDetail("Can't patch multiple instances with the relation of type hasMany")
 		return err
 	}
 
@@ -732,7 +732,9 @@ func patchMany2ManyRelationship(
 
 			if err != nil {
 				if !rootTx {
-					clearScope.RollbackContext(ctx)
+					if err := clearScope.RollbackContext(ctx); err != nil {
+						log.Debugf("[SCOPE][%s]Rollback failed for clearScope: %s", clearScope.ID(), err)
+					}
 				}
 				return err
 			}
@@ -767,7 +769,9 @@ func patchMany2ManyRelationship(
 		f := filters.NewFilter(relField.Relationship().ForeignKey(), filters.NewOpValuePair(filters.OpIn, primaries...))
 		if err := clearScope.internal().AddFilterField(f); err != nil {
 			if !rootTx {
-				clearScope.RollbackContext(ctx)
+				if err := clearScope.RollbackContext(ctx); err != nil {
+					log.Error("[SCOPE][%s] clearScope failed to rollback: %v", clearScope.ID(), err)
+				}
 			}
 			return err
 		}
@@ -783,7 +787,9 @@ func patchMany2ManyRelationship(
 
 			if err != nil {
 				if rootTx {
-					clearScope.RollbackContext(ctx)
+					if err := clearScope.RollbackContext(ctx); err != nil {
+						log.Errorf("[SCOPE][%s] clearScope failed to rollback: %v", clearScope.ID(), err)
+					}
 				}
 				return err
 			}

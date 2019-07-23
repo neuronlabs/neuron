@@ -119,13 +119,13 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 			if op.isStringOnly() || op == OpIsNull || op == OpNotNull || op == OpNotExists || op == OpExists {
 				// operations over
 				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
-				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		case reflect.String:
 			if !op.isBasic() {
 				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
-				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		}
@@ -153,7 +153,7 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 			// check if the operator is the string only - doesn't allow other types of values
 			if op.isStringOnly() {
 				err := errors.Newf(class.QueryFilterUnsupportedOperator, "string filter operator is not supported: '%s' for non string field", op)
-				err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		}
@@ -169,7 +169,7 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 							switch v := err.(type) {
 							case language.ValueError:
 								err := errors.New(class.QueryFilterLanguage, v.Error())
-								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.NeuronName(),
+								err = err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.NeuronName(),
 									f.structField.Struct().Collection(), v.Subtag())
 								return err
 							default:
@@ -181,7 +181,7 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 							tag, _, confidence = sup.Matcher.Match(tag)
 							if confidence <= language.Low {
 								err := errors.New(class.QueryFilterLanguage, "unsupported language filter")
-								err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
+								err = err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
 								return err
 							}
 						}
@@ -191,7 +191,7 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 				}
 			default:
 				err := errors.New(class.QueryFilterLanguage, "invalid query language filter operator")
-				err.SetDetailf("Provided operator: '%s' for the language field is not acceptable", op.String())
+				err = err.SetDetailf("Provided operator: '%s' for the language field is not acceptable", op.String())
 				return err
 			}
 		}

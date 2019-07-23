@@ -96,7 +96,8 @@ func TestFormatQuery(t *testing.T) {
 
 			relPrim := field.Relationship().ModelStruct().Primary()
 
-			s.FilterField(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
+			err = s.FilterField(filters.NewRelationshipFilter(field, filters.NewFilter(relPrim, filters.OpEqual, 12)))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -111,7 +112,8 @@ func TestFormatQuery(t *testing.T) {
 			field, ok := mStruct.FilterKey("filter")
 			require.True(t, ok)
 
-			s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-key"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpEqual, "some-key"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
@@ -126,7 +128,8 @@ func TestFormatQuery(t *testing.T) {
 			field := mStruct.LanguageField()
 			require.NotNil(t, field)
 
-			s.FilterField(filters.NewFilter(field, filters.OpNotEqual, "pl"))
+			err = s.FilterField(filters.NewFilter(field, filters.OpNotEqual, "pl"))
+			require.NoError(t, err)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)

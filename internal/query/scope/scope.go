@@ -244,7 +244,7 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	val, err := strconv.Atoi(value)
 	if err != nil {
 		err := errors.New(class.QueryPaginationValue, "invalid pagination value")
-		err.SetDetailf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
+		err = err.SetDetailf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
 		return err
 	}
 

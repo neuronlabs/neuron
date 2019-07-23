@@ -447,7 +447,7 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 				if !found {
 					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
 					err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-					err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+					err = err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
 					return err
 				}
 			}
@@ -462,7 +462,7 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
 				err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-				err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				err = err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
 				return err
 			}
 		default:

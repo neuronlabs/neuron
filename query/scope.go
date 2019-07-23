@@ -933,13 +933,13 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					}
 
 					errObj = errors.New(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
+					errObj = errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else {
 					errObj = errors.New(class.QueryValueValidation, "validation failed - invalid field value")
 					if verr.Field() != "" {
-						errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
+						errObj = errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
 					}
 
 					errs = append(errs, errObj)

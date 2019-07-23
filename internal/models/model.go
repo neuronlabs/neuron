@@ -476,7 +476,7 @@ func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
 	sField, hasRelationship = m.relationships[field]
 	if !hasRelationship {
 		err := errors.Newf(class.ModelFieldNotFound, "field: '%s' not found", field)
-		err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		err = err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
 		return nil, err
 	}
 
