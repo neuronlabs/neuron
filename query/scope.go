@@ -261,7 +261,7 @@ func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 		}
 	}
 
-	included, ok := s.internal().IncludeScopeByStruct((*models.ModelStruct)(mStruct))
+	included, ok := s.internal().IncludedScopeByStruct((*models.ModelStruct)(mStruct))
 	if !ok {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
 		return nil, errors.New(class.QueryNotIncluded, "provided model is not included within query's scope")

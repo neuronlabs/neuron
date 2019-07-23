@@ -196,22 +196,6 @@ func (s *Scope) GetScopeValueString() string {
 	return value
 }
 
-// GetRelationshipScope - for given root Scope 's' gets the value of the relationship
-// used for given request and set it's value into relationshipScope.
-// returns an error if the value is not set or there is no relationship includedField
-// for given scope.
-func (s *Scope) GetRelationshipScope() (relScope *Scope, err error) {
-	if len(s.includedFields) != 1 {
-		return nil, errors.New(class.InternalQueryIncluded, "provided invalid included fields for given scope.")
-	}
-
-	if err = s.setIncludedFieldValue(s.includedFields[0]); err != nil {
-		return
-	}
-	relScope = s.includedFields[0].Scope
-	return
-}
-
 // ID gets the scope's ID
 func (s *Scope) ID() uuid.UUID {
 	return s.id
@@ -478,7 +462,6 @@ func (s *Scope) getFieldValuePublic(field *models.StructField) (interface{}, err
 //		- provided nil Value for the scope
 //		- the scope's Value is of invalid type
 func (s *Scope) getLangtagValue() (string, error) {
-
 	langField := s.Struct().LanguageField()
 	if langField == nil {
 		return "", errors.New(class.QueryFilterLanguage, "no language field found for the model")
@@ -551,7 +534,6 @@ func (s *Scope) setLangtagValue(langtag string) error {
 
 // getRelatedScope gets the related scope with preset filter values.
 // The filter values are being taken form the root 's' Scope relationship id's.
-// Returns error if the scope was not build by controller BuildRelatedScope.
 func (s *Scope) getRelatedScope() (*Scope, error) {
 	if s.Value == nil {
 		return nil, errors.New(class.QueryNoValue, "no scope value provided")
@@ -872,45 +854,6 @@ func (s *Scope) createIncludedField(
 	return
 }
 
-// setIncludedFieldValue - used while getting the Relationship Scope,
-// and the 's' has the 'includedField' value in it's value.
-func (s *Scope) setIncludedFieldValue(includeField *IncludeField) error {
-	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "provided query with no value")
-	}
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueUnaddressable, "provided unadressable query value")
-	}
-	v = v.Elem()
-
-	switch v.Kind() {
-	case reflect.Struct:
-		if t := v.Type(); t != s.mStruct.Type() {
-			return errors.New(class.QueryValueType, "query value type doesn't match it's model struct")
-		}
-		includeField.setRelationshipValue(v)
-	// case reflect.Slice:
-	// TODO: set relationship value for slice value scope
-	// for i := 0; i < v.Len(); i++ {
-	// 	elem := v.Index(i)
-	// 	if elem.Kind() != reflect.Ptr {
-	// 		return errors.New(class.QueryValueUnaddressable, "one of the query values in slice is unadressable")
-	// 	}
-
-	// 	if elem.IsNil() {
-	// 		continue
-	// 	}
-
-	// 	elem = elem.Elem()
-	// 	include
-	// }
-	default:
-		return errors.New(class.QueryValueType, "query value type is of invalid ")
-	}
-	return nil
-}
-
 func (s *Scope) newValueSingle() {
 	s.Value = reflect.New(s.mStruct.Type()).Interface()
 }
@@ -1015,62 +958,6 @@ func modelValueByStructField(model interface{}, sField *models.StructField) (ref
 	}
 
 	return v.FieldByIndex(sField.ReflectField().Index), nil
-}
-
-// func getURLVariables(req *http.Request, mStruct *models.ModelStruct, indexFirst, indexSecond int,
-// ) (valueFirst, valueSecond string, err error) {
-
-// 	path := req.URL.Path
-// 	var invalidURL = func() error {
-// 		return fmt.Errorf("Provided url is invalid for getting url variables: '%s' with indexes: '%d'/ '%d'", path, indexFirst, indexSecond)
-// 	}
-// 	pathSplitted := strings.Split(path, "/")
-// 	if indexFirst > len(pathSplitted)-1 {
-// 		err = invalidURL()
-// 		return
-// 	}
-// 	var collectionIndex = -1
-// 	if models.StructCollectionUrlIndex(mStruct) != -1 {
-// 		collectionIndex = models.StructCollectionUrlIndex(mStruct)
-// 	} else {
-// 		for i, splitted := range pathSplitted {
-// 			if splitted == mStruct.Collection() {
-// 				collectionIndex = i
-// 				break
-// 			}
-// 		}
-// 		if collectionIndex == -1 {
-// 			err = fmt.Errorf("The url for given request does not contain collection name: %s", mStruct.Collection())
-// 			return
-// 		}
-// 	}
-
-// 	if collectionIndex+indexFirst > len(pathSplitted)-1 {
-// 		err = invalidURL()
-// 		return
-// 	}
-// 	valueFirst = pathSplitted[collectionIndex+indexFirst]
-
-// 	if indexSecond > 0 {
-// 		if collectionIndex+indexSecond > len(pathSplitted)-1 {
-// 			err = invalidURL()
-// 			return
-// 		}
-// 		valueSecond = pathSplitted[collectionIndex+indexSecond]
-// 	}
-// 	return
-// }
-
-/**
-
-Preset
-
-*/
-
-func (s *Scope) copyPresetParameters() {
-	for _, includedField := range s.includedFields {
-		includedField.copyPresetFullParameters()
-	}
 }
 
 func (s *Scope) copy(isRoot bool, root *Scope) *Scope {

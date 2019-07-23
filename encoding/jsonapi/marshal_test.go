@@ -435,32 +435,6 @@ func blogScope(t *testing.T, c *controller.Controller) *scope.Scope {
 	return (*scope.Scope)(s)
 }
 
-// func TestMarshalScopeRelationship(t *testing.T) {
-// 	c := blogController(t)
-
-// 	scope := blogScope(t, c)
-
-// 	req := httptest.NewRequest("GET", "/blogs/1/relationships/posts", nil)
-// 	scope, errs, err := c.BuildScopeRelationship(req, &Endpoint{Type: GetRelationship}, &ModelHandler{ModelType: reflect.TypeOf(Blog{})})
-
-// 	assert.Nil(t, err)
-// 	assert.Empty(t, errs)
-
-// 	scope.Value = &Blog{ID: 1, Posts: []*Post{{ID: 1}, {ID: 3}}}
-
-// 	postsScope, err := scope.GetRelationshipScope()
-// 	assert.Nil(t, err)
-
-// 	payload, err := c.MarshalScope(postsScope)
-// 	assert.Nil(t, err)
-
-// 	buffer := bytes.NewBufferString("")
-
-// 	err = MarshalPayload(buffer, payload)
-// 	assert.Nil(t, err)
-
-// }
-
 // HiddenModel is the neuron model with hidden fields.
 type HiddenModel struct {
 	ID          int    `neuron:"type=primary;flags=hidden"`

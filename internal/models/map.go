@@ -41,7 +41,7 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 		DefaultRepository:   c.DefaultRepositoryName,
 		NamerFunc:           namerFunc,
 		Configs:             c.Models,
-		nestedIncludedLimit: c.NestedIncludedLimit,
+		nestedIncludedLimit: c.IncludedDepthLimit,
 	}
 }
 
@@ -202,8 +202,8 @@ func (m *ModelMap) computeNestedIncludedCount() {
 
 	for _, model := range m.models {
 		modelLimit := limit
-		if model.cfg.NestedIncludeLimit != nil {
-			modelLimit = *model.cfg.NestedIncludeLimit
+		if model.cfg.IncludedDepthLimit != nil {
+			modelLimit = *model.cfg.IncludedDepthLimit
 		}
 		model.computeNestedIncludedCount(modelLimit)
 	}

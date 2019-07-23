@@ -47,6 +47,7 @@ type lister struct {
 	ID int `neuron:"type=primary"`
 }
 
+// TestList tests the list method for the processor.
 func TestList(t *testing.T) {
 	c := newController(t)
 
@@ -122,8 +123,8 @@ type multiRelatedModel struct {
 	Relations []*relationModel `neuron:"type=relation;foreign=FK"`
 }
 
-// TestListRelationshipFilters tests the lists function with the relationship filters
-func TestListRelationshipFilters(t *testing.T) {
+// TestListRelationships tests the lists function with the relationship filters
+func TestListRelationships(t *testing.T) {
 	if testing.Verbose() {
 		log.SetLevel(log.LDEBUG2)
 	}
@@ -821,5 +822,19 @@ func TestListRelationshipFilters(t *testing.T) {
 				})
 			})
 		})
+	})
+
+	t.Run("Include", func(t *testing.T) {
+		t.Run("InFieldset", func(t *testing.T) {
+			relatedValues := []*relatedModel{}
+
+			s, err := query.NewC(c, &relatedValues)
+			require.NoError(t, err)
+
+			err = s.IncludeFields("relation")
+			require.NoError(t, err)
+
+		})
+
 	})
 }
