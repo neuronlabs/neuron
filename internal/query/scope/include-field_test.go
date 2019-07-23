@@ -1,7 +1,6 @@
 package scope
 
 import (
-	"github.com/neuronlabs/neuron-core/log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,10 +34,6 @@ type CarBrand struct {
 
 // TestBuildIncludedFields tests the BuildIncludedFields function.
 func TestBuildIncludedFields(t *testing.T) {
-	if testing.Verbose() {
-		log.Default()
-		log.SetLevel(log.LDEBUG3)
-	}
 	t.Run("Valid", func(t *testing.T) {
 		m := models.NewModelMap(namer.NamingSnake, config.ReadDefaultControllerConfig())
 
