@@ -123,7 +123,7 @@ func main() {
     
     s := ncore.MustQueryC(c, &users)
     // the query scope may be filtered
-    s.AddStringFilter("filter[users][name][$in]","John", "Sam")
+    s.Filter("filter[users][name][$in]","John", "Sam")
     // it might also be sorted
     s.SortBy("-id")
     

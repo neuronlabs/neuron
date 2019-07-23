@@ -16,7 +16,8 @@ Encoding Marshal
 
 */
 var (
-	// MnrEncodingMarshal is the
+	// MnrEncodingMarshal is the minor error classification for the 'MjrEncoding' major.
+	// It is related with the encoding marshal errors.
 	MnrEncodingMarshal Minor
 
 	// EncodingMarshalOutputValue is the 'MjrEncoding', 'MnrEncodingMarshal' error classification

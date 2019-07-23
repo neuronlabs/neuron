@@ -22,8 +22,8 @@ SCOPE INCLUDED FIELDS
 
 */
 
-// BuildIncludeList builds the included fields for the given scope.
-func (s *Scope) BuildIncludeList(includedList ...string) []*errors.Error {
+// BuildIncludedFields builds the included fields for the given scope.
+func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 	var (
 		errorObjects []*errors.Error
 		errs         []*errors.Error
@@ -52,7 +52,7 @@ func (s *Scope) BuildIncludeList(includedList ...string) []*errors.Error {
 	for _, included := range includedList {
 		// check the nested level of every included
 		annotCount := strings.Count(included, common.AnnotationNestedSeparator)
-		if annotCount > s.maxNestedLevel {
+		if annotCount > s.Struct().MaxIncludedCount() {
 			errObj = errors.Newf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
 			errObj.SetDetail("Maximum nested include limit reached for the given query.")
 			errs = append(errs, errObj)
@@ -135,9 +135,11 @@ func (s *Scope) IncludedValues() *safemap.SafeHashMap {
 }
 
 // InitializeIncluded initializes the included scopes
-func (s *Scope) InitializeIncluded(maxNestedLevel int) {
+func (s *Scope) InitializeIncluded() {
+	if s.includedScopes != nil {
+		return
+	}
 	s.includedScopes = make(map[*models.ModelStruct]*Scope)
-	s.maxNestedLevel = maxNestedLevel
 }
 
 // CopyIncludedBoundaries copies all included data from scope's included fields

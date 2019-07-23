@@ -105,8 +105,6 @@ type Scope struct {
 	count int
 
 	errorLimit        int
-	maxNestedLevel    int
-	currentErrorCount int
 	totalIncludeCount int
 	kind              Kind
 
@@ -146,11 +144,6 @@ func (s *Scope) Chain() []*Scope {
 // (filters, fieldsets etc. for given collection scope)
 func (s *Scope) CreateModelsRootScope(mStruct *models.ModelStruct) *Scope {
 	return s.createModelsRootScope(mStruct)
-}
-
-// CurrentErrorCount returns current error count number
-func (s *Scope) CurrentErrorCount() int {
-	return s.currentErrorCount
 }
 
 // GetCollection Returns the collection name for given scope
@@ -222,11 +215,6 @@ func (s *Scope) GetRelationshipScope() (relScope *Scope, err error) {
 // ID gets the scope's ID
 func (s *Scope) ID() uuid.UUID {
 	return s.id
-}
-
-// IncreaseErrorCount adds another error count for the given scope
-func (s *Scope) IncreaseErrorCount(count int) {
-	s.currentErrorCount += count
 }
 
 // IsMany checks if the value is a slice
@@ -1094,8 +1082,6 @@ func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 		isMany:                    s.isMany,
 		count:                     s.count,
 		errorLimit:                s.errorLimit,
-		maxNestedLevel:            s.maxNestedLevel,
-		currentErrorCount:         s.currentErrorCount,
 		totalIncludeCount:         s.totalIncludeCount,
 		kind:                      s.kind,
 		currentIncludedFieldIndex: s.currentIncludedFieldIndex,

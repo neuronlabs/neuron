@@ -76,6 +76,11 @@ func (m *ModelStruct) LanguageField() *StructField {
 	return (*StructField)(m.internal().LanguageField())
 }
 
+// MaxIncludedDepth gets maximum number of included nested depth.
+func (m *ModelStruct) MaxIncludedDepth() int {
+	return m.internal().MaxIncludedCount()
+}
+
 // NamerFunc returns the namer func used by the given model.
 func (m *ModelStruct) NamerFunc() namer.Namer {
 	return (namer.Namer)(m.internal().NamerFunc())
