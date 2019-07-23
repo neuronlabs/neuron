@@ -1,4 +1,4 @@
-# neuron-core
+# Neuron Core
 
 Neuron-core is the golang cloud-native, distributed ORM implementation.
 
@@ -10,10 +10,20 @@ Neuron-core is the golang cloud-native, distributed ORM implementation.
 * [Docs](#docs)
 * [Quick Start](#quick-start)
 * [Packages](#packages)
+* [Design](#design)
 
 ## What is Neuron-Core?
+
 Neuron-core is a cloud-ready **Golang** ORM. It's design allows to
 query multiple related models located on different datastores/repositories.
+
+## Design
+
+The neuron-core is golang ORM implementation designed to process microservice repositories. This concept enhanced the requirements for the models mapping and query processor.
+
+The mapped models must have all the field's with [defined type](https://docs.neuronlabs.io/neuron-core/models/structure.html#model-structure). The initial model mapping was based on the [JSONAPI v1.0](https://jsonapi.org/format/#document-resource-objects) model definition. The distributed environment required each [relationship](https://docs.neuronlabs.io/neuron-core/models/relationship.html) to be specified of it's kind and type, just as their foreign keys.
+
+The query processor needs to work as the orchestrator, choreographer. As each model's repository might use different database, it needs to implement distributed [transactions](https://docs.neuronlabs.io/neuron-core/query/transactions.html). 
 
 ## Install
 
@@ -64,8 +74,8 @@ import(
 )
 
 import (
-    "github.com/neuronlabs/neuron-core/config"
     "github.com/neuronlabs/neuron-core"
+    "github.com/neuronlabs/neuron-core/config"
 )
 
 func main() {
@@ -125,12 +135,12 @@ func main() {
     // the query scope may be filtered
     s.Filter("filter[users][name][$in]","John", "Sam")
     // it might also be sorted
-    s.SortBy("-id")
+    s.Sort("-id")
     
     // list all the users with the name 'John' or 'Sam' with 'id' ordered 
     // descending.
     if err = s.List(); err != nil {
-        panic(err)
+        // resolve the error
     }
 ```
 
@@ -149,3 +159,4 @@ The `neuron-core` is composed of the following packages:
 * `log` - is the logging interface for the neuron based applications.
 * `i18n` - is the neuron based application supported internationalization
 * `common` - common neuron variables, functions and definitions.
+
