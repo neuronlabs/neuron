@@ -26,6 +26,8 @@ type ModelMap struct {
 
 	DefaultRepository string
 	NamerFunc         namer.Namer
+
+	nestedIncludedLimit int
 }
 
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
@@ -34,22 +36,12 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 		c.Models = make(map[string]*config.ModelConfig)
 	}
 	return &ModelMap{
-		models:            make(map[reflect.Type]*ModelStruct),
-		collections:       make(map[string]reflect.Type),
-		DefaultRepository: c.DefaultRepositoryName,
-		NamerFunc:         namerFunc,
-		Configs:           c.Models,
-	}
-}
-
-// ComputeNestedIncludedCount computes the limits for the nested included count for each model.
-func (m *ModelMap) ComputeNestedIncludedCount(limit int) {
-	for _, model := range m.models {
-		model.initComputeThisIncludedCount()
-	}
-
-	for _, model := range m.models {
-		model.computeNestedIncludedCount(limit)
+		models:              make(map[reflect.Type]*ModelStruct),
+		collections:         make(map[string]reflect.Type),
+		DefaultRepository:   c.DefaultRepositoryName,
+		NamerFunc:           namerFunc,
+		Configs:             c.Models,
+		nestedIncludedLimit: c.NestedIncludedLimit,
 	}
 }
 
@@ -168,11 +160,11 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 		m.SetByCollection(model)
 	}
 
+	m.computeNestedIncludedCount()
 	err := m.setRelationships()
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -198,6 +190,23 @@ func (m *ModelMap) Set(value *ModelStruct) error {
 // SetByCollection sets the model by it's collection.
 func (m *ModelMap) SetByCollection(ms *ModelStruct) {
 	m.collections[ms.Collection()] = ms.Type()
+}
+
+// computeNestedIncludedCount computes the limits for the nested included count for each model.
+func (m *ModelMap) computeNestedIncludedCount() {
+	limit := m.nestedIncludedLimit
+
+	for _, model := range m.models {
+		model.initComputeThisIncludedCount()
+	}
+
+	for _, model := range m.models {
+		modelLimit := limit
+		if model.cfg.NestedIncludeLimit != nil {
+			modelLimit = *model.cfg.NestedIncludeLimit
+		}
+		model.computeNestedIncludedCount(modelLimit)
+	}
 }
 
 func (m *ModelMap) getSimilarCollections(collection string) (simillar []string) {

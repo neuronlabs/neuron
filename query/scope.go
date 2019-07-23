@@ -236,20 +236,18 @@ func (s *Scope) ID() uuid.UUID {
 	return (*scope.Scope)(s).ID()
 }
 
-// // IncludeFields adds the included fields into the root scope
-// func (s *Scope) IncludeFields(fields ...string) error {
-// 	iscope := (*scope.Scope)(s)
-// 	iscope.InitializeIncluded((*internalController.Controller)(s.Controller()).QueryBuilder().Config.IncludeNestedLimit)
-// 	if errs := iscope.BuildIncludeList(fields...); len(errs) > 0 {
-// 		return errors.MultiAPIErrors(errs)
-// 	}
-// 	return nil
-// }
+// IncludeFields adds the included fields into query scope.
+func (s *Scope) IncludeFields(fields ...string) error {
+	if err := s.internal().BuildIncludedFields(fields...); len(err) > 0 {
+		return errors.MultiError(err)
+	}
+	return nil
+}
 
-// IncludedValue gets the scope's included values for the given 'model'.
+// IncludedModelValues gets the scope's included values for the given 'model'.
 // The returning value would be pointer to slice of pointer to models.
 // i.e.: type Model struct {}, the result would be returned as a *[]*Model{}.
-func (s *Scope) IncludedValue(model interface{}) (interface{}, error) {
+func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 	var (
 		mStruct *mapping.ModelStruct
 		ok      bool
@@ -268,7 +266,6 @@ func (s *Scope) IncludedValue(model interface{}) (interface{}, error) {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
 		return nil, errors.New(class.QueryNotIncluded, "provided model is not included within query's scope")
 	}
-
 	return included.Value, nil
 }
 

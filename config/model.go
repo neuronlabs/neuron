@@ -8,27 +8,25 @@ import (
 type ModelConfig struct {
 	// Collection is the model's collection name
 	Collection string `mapstructure:"collection"`
-
 	// RepositoryName is the model's repository name, with the name provided in the initialization
 	// process...
 	RepositoryName string `mapstructure:"repository_name"`
-
 	// Store sets the model's Store values
 	Store map[string]interface{} `mapstructure:"map"`
-
 	// Repository defines the model's repository connection config
 	Repository *Repository `mapstructure:"repository"`
-
 	// AutoMigrate automatically migrates the model into the given repository structuring
 	// I.e. sql creates or updates the table
 	AutoMigrate bool `mapstructure:"automigrate"`
-
 	// Fields contains the model fields configuration.
 	Fields map[string]*Field `mapstructure:"fields"`
+	// NestedIncludeLimit is the per model nested include limit.
+	NestedIncludeLimit *int `mapstructure:"nested_include_limit"`
 }
 
 // Field is the model's field configuration.
 type Field struct {
+	// Flags stores the field flags.
 	Flags     []string          `mapstructure:"flags" validate:"isdefault|oneof=client-id nofilter hidden nosort iso8601 i18n omitempty langtag many2many"`
 	Strategy  *RelationStrategy `mapstructure:"strategy"`
 	Many2Many *Many2Many        `mapstructure:"many2many"`
