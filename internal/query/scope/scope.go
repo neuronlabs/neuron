@@ -151,6 +151,12 @@ func (s *Scope) GetCollection() string {
 	return s.mStruct.Collection()
 }
 
+// GetCollectionScope gets the collection root scope for given scope.
+// Used for included Field scopes for getting their model root scope, that contains all
+func (s *Scope) GetCollectionScope() *Scope {
+	return s.collectionScope
+}
+
 // GetFieldValue gets the value of the provided field
 func (s *Scope) GetFieldValue(sField *models.StructField) (reflect.Value, error) {
 	return s.getFieldValue(sField)
@@ -270,28 +276,29 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	return nil
 }
 
-// Processor returns the scope's processor
+// Processor returns the scope's processor.
 func (s *Scope) Processor() Processor {
 	return s.processor
 }
 
-// QueryLanguage gets the QueryLanguage tag
+// QueryLanguage gets the QueryLanguage tag.
 func (s *Scope) QueryLanguage() language.Tag {
 	return s.queryLanguage
 }
 
-// SetIsMany sets the isMany variable from the provided argument
+// SetIsMany sets the isMany variable from the provided argument.
 func (s *Scope) SetIsMany(isMany bool) {
 	s.isMany = isMany
 }
 
-// SetCollectionScope sets the collection scope for given scope
+// SetCollectionScope sets the collection scope for given scope.
 func (s *Scope) SetCollectionScope(cs *Scope) {
 	s.collectionScope = cs
 }
 
 // SetCollectionValues iterate over the scope's Value field and add it to the collection root
-// scope.if the collection root scope contains value with given primary field it checks if given // scope containsincluded fields that are not within fieldset. If so it adds the included field
+// scope.if the collection root scope contains value with given primary field it checks if given
+// scope contains included fields that are not within fieldset. If so it adds the included field
 // value to the value that were inside the collection root scope.
 func (s *Scope) SetCollectionValues() error {
 	if s.collectionScope.includedValues == nil {
@@ -361,7 +368,9 @@ func (s *Scope) SetCollectionValues() error {
 			}
 		}
 	case reflect.Struct:
-		log.Debugf("Struct setValueToCollection")
+		if log.Level() == log.LDEBUG3 {
+			log.Debug3f("Struct setValueToCollection")
+		}
 		setValueToCollection(v)
 	default:
 		err := errors.New(class.QueryValueType, "invalid scope value type")
@@ -431,8 +440,6 @@ PRIVATE METHODS
 
 */
 
-// GetCollectionScope gets the collection root scope for given scope.
-// Used for included Field scopes for getting their model root scope, that contains all
 func (s *Scope) getCollectionScope() *Scope {
 	return s.collectionScope
 }

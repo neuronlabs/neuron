@@ -394,6 +394,11 @@ func (m *ModelStruct) StoreDelete(key interface{}) {
 	delete(m.store, key)
 }
 
+// String implements fmt.Stringer interface.
+func (m *ModelStruct) String() string {
+	return m.Collection()
+}
+
 // StructFields return all the StructFields used in the ModelStruct
 func (m *ModelStruct) StructFields() (fields []*StructField) {
 	// add primary
