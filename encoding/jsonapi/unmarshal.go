@@ -191,7 +191,7 @@ func unmarshalScope(
 
 	if usedFields && !useMany {
 		for _, field := range fields {
-			if err = s.AddSelectedFields(field); err != nil {
+			if err = s.AppendSelectedFields(field); err != nil {
 				return nil, err
 			}
 		}
