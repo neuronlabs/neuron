@@ -141,6 +141,8 @@ func ThreadSafeProcessor() *Processor {
 			"neuron:convert_relationship_filters_safe",
 			"neuron:get",
 			"neuron:get_foreign_relationships",
+			"neuron:hook_after_get",
+			"neuron:get_included",
 		},
 		ListProcesses: ProcessList{
 			"neuron:fill_empty_fieldset",
@@ -197,6 +199,7 @@ func ConcurrentProcessor() *Processor {
 			"neuron:convert_relationship_filters",
 			"neuron:get",
 			"neuron:get_foreign_relationships",
+			"neuron:hook_after_get",
 		},
 		ListProcesses: ProcessList{
 			"neuron:fill_empty_fieldset",

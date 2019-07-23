@@ -571,19 +571,17 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	iScope := s.internal()
-
-	if iScope.IsRoot() && len(iScope.IncludedScopes()) == 0 {
+	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
 		return nil
 	}
 
-	if err := iScope.SetCollectionValues(); err != nil {
+	if err := s.internal().SetCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range iScope.IncludedScopes() {
+	for _, incScope := range s.internal().IncludedScopes() {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -600,7 +598,7 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := iScope.IncludedFields()
+	includedFields := s.internal().IncludedFields()
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job
@@ -657,19 +655,17 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	iScope := s.internal()
-
-	if iScope.IsRoot() && len(iScope.IncludedScopes()) == 0 {
+	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
 		return nil
 	}
 
-	if err := iScope.SetCollectionValues(); err != nil {
+	if err := s.internal().SetCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range iScope.IncludedScopes() {
+	for _, incScope := range s.internal().IncludedScopes() {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -686,7 +682,7 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := iScope.IncludedFields()
+	includedFields := s.internal().IncludedFields()
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job

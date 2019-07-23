@@ -46,6 +46,7 @@ type lister struct {
 	ID int `neuron:"type=primary"`
 }
 
+// TestList tests the list method for the processor.
 func TestList(t *testing.T) {
 	c := newController(t)
 
@@ -816,6 +817,92 @@ func TestListRelationshipFilters(t *testing.T) {
 					require.Error(t, err)
 				})
 			})
+		})
+	})
+
+	t.Run("Include", func(t *testing.T) {
+		t.Run("InFieldset", func(t *testing.T) {
+			relatedValues := []*relatedModel{}
+
+			s, err := query.NewC((*controller.Controller)(c), &relatedValues)
+			require.NoError(t, err)
+
+			err = s.IncludeFields("relation")
+			require.NoError(t, err)
+
+			relatedRepo, err := c.GetRepository(s.Struct())
+			require.NoError(t, err)
+
+			relatedModelRepo, ok := relatedRepo.(*mocks.Repository)
+			require.True(t, ok)
+
+			// List the related model values
+			relatedModelRepo.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				values, ok := s.Value.(*[]*relatedModel)
+				require.True(t, ok)
+
+				(*values) = append((*values), &relatedModel{ID: 3})
+				(*values) = append((*values), &relatedModel{ID: 4})
+
+			}).Return(nil)
+
+			relField, ok := s.Struct().RelationField("Relation")
+			require.True(t, ok)
+
+			// get included values
+			relationRepo, err := c.GetRepository(relField.Relationship().ModelStruct())
+			require.NoError(t, err)
+
+			relationModelRepo, ok := relationRepo.(*mocks.Repository)
+			require.True(t, ok)
+
+			// get related models
+			relationModelRepo.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				values, ok := s.Value.(*[]*relationModel)
+				require.True(t, ok)
+
+				// check primary filter values
+
+				(*values) = append((*values), &relationModel{ID: 45, FK: 3})
+				(*values) = append((*values), &relationModel{ID: 56, FK: 4})
+			}).Return(nil)
+
+			firstIncluded := &relationModel{ID: 45, FK: 3}
+			secondIncluded := &relationModel{ID: 56, FK: 4}
+
+			// get included models
+			relationModelRepo.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*query.Scope)
+				require.True(t, ok)
+
+				values, ok := s.Value.(*[]*relationModel)
+				require.True(t, ok)
+
+				// check primary filter values
+
+				(*values) = append((*values), firstIncluded)
+				(*values) = append((*values), secondIncluded)
+			}).Return(nil)
+
+			err = s.List()
+			require.NoError(t, err)
+
+			values, err := s.IncludedModelValues(&relationModel{})
+			require.NoError(t, err)
+
+			rValues, ok := values.(*[]*relationModel)
+			require.True(t, ok, "%T", values)
+
+			if assert.Len(t, *rValues, 2) {
+				assert.Contains(t, *rValues, firstIncluded)
+				assert.Contains(t, *rValues, secondIncluded)
+			}
 		})
 	})
 }

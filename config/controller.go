@@ -45,9 +45,9 @@ type Controller struct {
 	// DefaultValidatorAlias is the alias used as a default validator alias
 	DefaultValidatorAlias string `mapstructure:"default_validator_alias"`
 
-	// NestedIncludedLimit is the default limit for the nested included query paremeter.
+	// IncludedDepthLimit is the default limit for the nested included query paremeter.
 	// Each model can specify its custom limit in the model's config.
-	NestedIncludedLimit int `mapstructure:"nested_included_limit"`
+	IncludedDepthLimit int `mapstructure:"included_depth_limit"`
 }
 
 // MapRepositories maps the repositories definitions from the controller with the model's repositories.

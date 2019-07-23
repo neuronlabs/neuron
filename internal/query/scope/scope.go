@@ -147,6 +147,12 @@ func (s *Scope) GetCollection() string {
 	return s.mStruct.Collection()
 }
 
+// GetCollectionScope gets the collection root scope for given scope.
+// Used for included Field scopes for getting their model root scope, that contains all
+func (s *Scope) GetCollectionScope() *Scope {
+	return s.collectionScope
+}
+
 // GetFieldValue gets the value of the provided field
 func (s *Scope) GetFieldValue(sField *models.StructField) (reflect.Value, error) {
 	return s.getFieldValue(sField)
@@ -190,22 +196,6 @@ func (s *Scope) GetScopeValueString() string {
 		value = fmt.Sprintf("%+v;", elem.Interface())
 	}
 	return value
-}
-
-// GetRelationshipScope - for given root Scope 's' gets the value of the relationship
-// used for given request and set it's value into relationshipScope.
-// returns an error if the value is not set or there is no relationship includedField
-// for given scope.
-func (s *Scope) GetRelationshipScope() (relScope *Scope, err error) {
-	if len(s.includedFields) != 1 {
-		return nil, errors.New(class.InternalQueryIncluded, "provided invalid included fields for given scope.")
-	}
-
-	if err = s.setIncludedFieldValue(s.includedFields[0]); err != nil {
-		return
-	}
-	relScope = s.includedFields[0].Scope
-	return
 }
 
 // ID gets the scope's ID
@@ -282,28 +272,29 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	return nil
 }
 
-// Processor returns the scope's processor
+// Processor returns the scope's processor.
 func (s *Scope) Processor() Processor {
 	return s.processor
 }
 
-// QueryLanguage gets the QueryLanguage tag
+// QueryLanguage gets the QueryLanguage tag.
 func (s *Scope) QueryLanguage() language.Tag {
 	return s.queryLanguage
 }
 
-// SetIsMany sets the isMany variable from the provided argument
+// SetIsMany sets the isMany variable from the provided argument.
 func (s *Scope) SetIsMany(isMany bool) {
 	s.isMany = isMany
 }
 
-// SetCollectionScope sets the collection scope for given scope
+// SetCollectionScope sets the collection scope for given scope.
 func (s *Scope) SetCollectionScope(cs *Scope) {
 	s.collectionScope = cs
 }
 
 // SetCollectionValues iterate over the scope's Value field and add it to the collection root
-// scope.if the collection root scope contains value with given primary field it checks if given // scope containsincluded fields that are not within fieldset. If so it adds the included field
+// scope.if the collection root scope contains value with given primary field it checks if given
+// scope contains included fields that are not within fieldset. If so it adds the included field
 // value to the value that were inside the collection root scope.
 func (s *Scope) SetCollectionValues() error {
 	if s.collectionScope.includedValues == nil {
@@ -373,7 +364,9 @@ func (s *Scope) SetCollectionValues() error {
 			}
 		}
 	case reflect.Struct:
-		log.Debugf("Struct setValueToCollection")
+		if log.Level() == log.LDEBUG3 {
+			log.Debug3f("Struct setValueToCollection")
+		}
 		setValueToCollection(v)
 	default:
 		err := errors.New(class.QueryValueType, "invalid scope value type")
@@ -442,14 +435,6 @@ func (s *Scope) UseI18n() bool {
 PRIVATE METHODS
 
 */
-
-// GetCollectionScope gets the collection root scope for given scope.
-// Used for included Field scopes for getting their model root scope, that contains all
-func (s *Scope) GetCollectionScope() *Scope {
-	return s.collectionScope
-}
-
-// GetFieldValue
 
 // isRoot checks if given scope is a root scope of the query
 func (s *Scope) isRoot() bool {
@@ -712,45 +697,6 @@ func (s *Scope) createIncludedField(
 
 	s.includedFields = append(s.includedFields, includeField)
 	return
-}
-
-// setIncludedFieldValue - used while getting the Relationship Scope,
-// and the 's' has the 'includedField' value in it's value.
-func (s *Scope) setIncludedFieldValue(includeField *IncludeField) error {
-	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "provided query with no value")
-	}
-	v := reflect.ValueOf(s.Value)
-	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueUnaddressable, "provided unadressable query value")
-	}
-	v = v.Elem()
-
-	switch v.Kind() {
-	case reflect.Struct:
-		if t := v.Type(); t != s.mStruct.Type() {
-			return errors.New(class.QueryValueType, "query value type doesn't match it's model struct")
-		}
-		includeField.setRelationshipValue(v)
-	// case reflect.Slice:
-	// TODO: set relationship value for slice value scope
-	// for i := 0; i < v.Len(); i++ {
-	// 	elem := v.Index(i)
-	// 	if elem.Kind() != reflect.Ptr {
-	// 		return errors.New(class.QueryValueUnaddressable, "one of the query values in slice is unadressable")
-	// 	}
-
-	// 	if elem.IsNil() {
-	// 		continue
-	// 	}
-
-	// 	elem = elem.Elem()
-	// 	include
-	// }
-	default:
-		return errors.New(class.QueryValueType, "query value type is of invalid ")
-	}
-	return nil
 }
 
 func (s *Scope) newValueSingle() {

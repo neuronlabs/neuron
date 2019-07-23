@@ -106,6 +106,7 @@ func setDefaultControllerConfigs(v *viper.Viper) {
 		"log_level":              "info",
 		"processor":              DefaultProcessorConfig(),
 		"repositories":           map[string]*Repository{},
+		"included_depth_limit":   2,
 	}
 
 	for k, value := range keys {
