@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -45,7 +45,7 @@ func listFunc(ctx context.Context, s *Scope) error {
 	listerRepo, ok := repo.(Lister)
 	if !ok {
 		log.Debug("Repository: %T is not a Lister repository.", repo)
-		return errors.New(class.RepositoryNotImplementsLister, "repository doesn't implement Lister interface")
+		return errors.NewDet(class.RepositoryNotImplementsLister, "repository doesn't implement Lister interface")
 	}
 
 	// List the
@@ -68,7 +68,7 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 
 	afterLister, ok := reflect.New(s.Struct().Type()).Interface().(AfterLister)
 	if !ok {
-		return errors.Newf(class.InternalModelNotCast, "Model: %s should cast into AfterLister interface.", s.Struct().Type().Name())
+		return errors.NewDetf(class.InternalModelNotCast, "Model: %s should cast into AfterLister interface.", s.Struct().Type().Name())
 	}
 
 	if err := afterLister.AfterList(ctx, s); err != nil {
@@ -90,7 +90,7 @@ func beforeListFunc(ctx context.Context, s *Scope) error {
 
 	beforeLister, ok := reflect.New(s.Struct().Type()).Interface().(BeforeLister)
 	if !ok {
-		return errors.Newf(class.InternalModelNotCast, "Model: %s should cast into BeforeLister interface.", s.Struct().Type().Name())
+		return errors.NewDetf(class.InternalModelNotCast, "Model: %s should cast into BeforeLister interface.", s.Struct().Type().Name())
 	}
 
 	if err := beforeLister.BeforeList(ctx, s); err != nil {

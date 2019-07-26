@@ -7,9 +7,9 @@ import (
 
 	"github.com/neuronlabs/uni-logger"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/repository"
@@ -169,7 +169,7 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 	// check if the repository is not already registered
 	_, ok := c.Config.Repositories[name]
 	if ok {
-		return errors.Newf(class.RepositoryConfigAlreadyRegistered, "repository: '%s' already exists", name)
+		return errors.NewDetf(class.RepositoryConfigAlreadyRegistered, "repository: '%s' already exists", name)
 	}
 	c.Config.Repositories[name] = cfg
 
@@ -187,12 +187,12 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 
 func (c *Controller) checkDefaultRepositories() error {
 	if c.Config.Repositories == nil {
-		return errors.New(class.ConfigValueNil, "no Repositories map found for the controller config")
+		return errors.NewDet(class.ConfigValueNil, "no Repositories map found for the controller config")
 	}
 
 	if c.Config.DefaultRepository != nil {
 		if c.Config.DefaultRepositoryName == "" {
-			return errors.Newf(class.RepositoryConfigInvalid, "no default repository name provided")
+			return errors.NewDetf(class.RepositoryConfigInvalid, "no default repository name provided")
 		}
 		// check if it is stored in repositories
 		_, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
@@ -204,7 +204,7 @@ func (c *Controller) checkDefaultRepositories() error {
 
 	// find if the repository is in the Repositories
 	if c.Config.DefaultRepositoryName == "" && len(c.Config.Repositories) == 0 {
-		return errors.New(class.RepositoryNotFound, "no repositories found for the controller")
+		return errors.NewDet(class.RepositoryNotFound, "no repositories found for the controller")
 	}
 
 	if c.Config.DefaultRepositoryName != "" {
@@ -213,15 +213,15 @@ func (c *Controller) checkDefaultRepositories() error {
 			c.Config.DefaultRepository = defaultRepo
 			return nil
 		}
-		return errors.Newf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.Config.DefaultRepositoryName)
+		return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.Config.DefaultRepositoryName)
 	}
 
-	return errors.New(class.ConfigValueNil, "no default repository set for the controller")
+	return errors.NewDet(class.ConfigValueNil, "no default repository set for the controller")
 }
 
 func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, error) {
 	if model == nil {
-		return nil, errors.New(class.ModelValueNil, "provided nil model value")
+		return nil, errors.NewDet(class.ModelValueNil, "provided nil model value")
 	}
 
 	switch tp := model.(type) {
@@ -232,7 +232,7 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 	case string:
 		m := c.modelMap.GetByCollection(tp)
 		if m == nil {
-			return nil, errors.Newf(class.ModelNotMapped, "model: '%s' is not found", tp)
+			return nil, errors.NewDetf(class.ModelNotMapped, "model: '%s' is not found", tp)
 		}
 		return m, nil
 	}
@@ -249,14 +249,14 @@ func (c *Controller) getModelStruct(model interface{}) (*models.ModelStruct, err
 func (c *Controller) setConfig(cfg *config.Controller) error {
 	// if there is no controller config provided throw an error.
 	if cfg == nil {
-		return errors.New(class.ConfigValueNil, "provided nil config value")
+		return errors.NewDet(class.ConfigValueNil, "provided nil config value")
 	}
 
 	// set the log level from the provided config.
 	if cfg.LogLevel != "" {
 		level := unilogger.ParseLevel(cfg.LogLevel)
 		if level == unilogger.UNKNOWN {
-			return errors.Newf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", cfg.LogLevel)
+			return errors.NewDetf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", cfg.LogLevel)
 		}
 		if log.Logger() == nil {
 			log.Default()
@@ -273,7 +273,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	cfg.NamingConvention = strings.ToLower(cfg.NamingConvention)
 
 	if err := validate.Struct(cfg); err != nil {
-		return errors.New(class.ConfigValueInvalid, "validating config failed")
+		return errors.NewDet(class.ConfigValueInvalid, "validating config failed")
 	}
 
 	if err := cfg.Processor.Validate(); err != nil {
@@ -304,7 +304,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 			cfg.Repositories[cfg.DefaultRepositoryName] = cfg.DefaultRepository
 		}
 	} else if cfg.DefaultRepository != nil && cfg.DefaultRepositoryName == "" {
-		return errors.New(class.ConfigValueInvalid, "default repository have no name defined in the Controller Config")
+		return errors.NewDet(class.ConfigValueInvalid, "default repository have no name defined in the Controller Config")
 	}
 
 	c.Config = cfg
@@ -320,7 +320,7 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	case "snake":
 		c.NamerFunc = namer.NamingSnake
 	default:
-		return errors.Newf(class.ConfigValueInvalid, "unknown naming convention name: %s", cfg.NamingConvention)
+		return errors.NewDetf(class.ConfigValueInvalid, "unknown naming convention name: %s", cfg.NamingConvention)
 	}
 
 	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
@@ -342,12 +342,12 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 func (c *Controller) mapModel(model *models.ModelStruct) error {
 	repoName := model.Config().Repository.DriverName
 	if repoName == "" {
-		return errors.New(class.ModelSchemaNotFound, "no default repository factory found")
+		return errors.NewDet(class.ModelSchemaNotFound, "no default repository factory found")
 	}
 
 	factory := repository.GetFactory(repoName)
 	if factory == nil {
-		err := errors.Newf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", repoName)
+		err := errors.NewDetf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", repoName)
 		log.Debug(err)
 		return err
 	}

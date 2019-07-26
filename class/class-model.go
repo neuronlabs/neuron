@@ -1,10 +1,14 @@
 package class
 
+import (
+	"github.com/neuronlabs/errors"
+)
+
 // MjrModel - major that classifies errors related with the models mapping.
-var MjrModel Major
+var MjrModel errors.Major
 
 func registerModelClasses() {
-	MjrModel = MustRegisterMajor("Models")
+	MjrModel = errors.NewMajor()
 
 	registerModelField()
 	registerModelSchema()
@@ -21,42 +25,47 @@ Model Field
 var (
 	// MnrModelField is the 'MjrModel' minor error classification
 	// on the model field's definitions.
-	MnrModelField Minor
+	MnrModelField errors.Minor
 
 	// ModelFieldForeignKeyNotFound is the 'MjrModel', 'MnrModelField' error classification
 	// when the model field's foreign key is not found issue.
-	ModelFieldForeignKeyNotFound Class
+	ModelFieldForeignKeyNotFound errors.Class
 
 	// ModelFieldName is the 'MjrModel', 'MnrModelField' error classification
 	// on the model field's name issue.
-	ModelFieldName Class
+	ModelFieldName errors.Class
 
 	// ModelFieldNestedType is the 'MjrModel', 'MnrModelField' error classification
 	// on the model field's nested field type issue.
-	ModelFieldNestedType Class
+	ModelFieldNestedType errors.Class
 
 	// ModelFieldNotFound is the 'MjrModel', 'MnrModelField' error classification
 	// when the model field is not found issue.
-	ModelFieldNotFound Class
+	ModelFieldNotFound errors.Class
 
 	// ModelFieldTag is the 'MjrModel', 'MnrModelField' error classification
 	// on the model field's tag issue.
-	ModelFieldTag Class
+	ModelFieldTag errors.Class
 
 	// ModelFieldType is the 'MjrModel', 'MnrModelField' error classification
 	// on the model field's type issue.
-	ModelFieldType Class
+	ModelFieldType errors.Class
 )
 
 func registerModelField() {
-	MnrModelField = MjrModel.MustRegisterMinor("Field", "model's fields related issues")
+	MnrModelField = errors.MustNewMinor(MjrModel)
 
-	ModelFieldForeignKeyNotFound = MnrModelField.MustRegisterIndex("FK Not Found", "foreign key is not found within model").Class()
-	ModelFieldName = MnrModelField.MustRegisterIndex("Name", "field's name is invalid").Class()
-	ModelFieldNestedType = MnrModelField.MustRegisterIndex("Nested Type", "invalid field's nested field type").Class()
-	ModelFieldNotFound = MnrModelField.MustRegisterIndex("Not Found", "field is not found within model").Class()
-	ModelFieldTag = MnrModelField.MustRegisterIndex("Tag", "invalid field's tag").Class()
-	ModelFieldType = MnrModelField.MustRegisterIndex("Type", "invalid field's type").Class()
+	mjr, mnr := MjrModel, MnrModelField
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	ModelFieldForeignKeyNotFound = newClass()
+	ModelFieldName = newClass()
+	ModelFieldNestedType = newClass()
+	ModelFieldNotFound = newClass()
+	ModelFieldTag = newClass()
+	ModelFieldType = newClass()
 }
 
 /**
@@ -67,27 +76,32 @@ Model Schema
 var (
 	// MnrModelSchema is the 'MjrModel' minor error classification
 	// on the model's schema issues.
-	MnrModelSchema Minor
+	MnrModelSchema errors.Minor
 
 	// ModelInSchemaAlreadyRegistered is the 'MjrModel', 'MnrModelSchema' error classifcation
 	// when the model is already registered within given schema.
-	ModelInSchemaAlreadyRegistered Class
+	ModelInSchemaAlreadyRegistered errors.Class
 
 	// ModelSchemaNotFound is the 'MjrModel', 'MnrModelSchema' error classification
 	// used when the model schema is not found.
-	ModelSchemaNotFound Class
+	ModelSchemaNotFound errors.Class
 
 	// ModelNotMapped is the 'MjrModel', 'MnrModelSchema' error classification
 	// used when the model is not mapped within schema.
-	ModelNotMappedInSchema Class
+	ModelNotMappedInSchema errors.Class
 )
 
 func registerModelSchema() {
-	MnrModelSchema = MjrModel.MustRegisterMinor("Schema", "model's schema related issues")
+	MnrModelSchema = errors.MustNewMinor(MjrModel)
 
-	ModelInSchemaAlreadyRegistered = MnrModelSchema.MustRegisterIndex("Already Registered", "model is already registered within given schema").Class()
-	ModelSchemaNotFound = MnrModelSchema.MustRegisterIndex("Not Found", "model schema not found").Class()
-	ModelNotMappedInSchema = MnrModelSchema.MustRegisterIndex("Not Mapped", "model not mapped within schema").Class()
+	mjr, mnr := MjrModel, MnrModelSchema
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	ModelInSchemaAlreadyRegistered = newClass()
+	ModelSchemaNotFound = newClass()
+	ModelNotMappedInSchema = newClass()
 }
 
 /**
@@ -98,75 +112,85 @@ Model Relationship
 var (
 	// MnrModelRelationship is the 'MjrModel' minor error classification
 	// on the issues with model relationships.
-	MnrModelRelationship Minor
+	MnrModelRelationship errors.Minor
 
 	// ModelRelationshipType is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship's type.
-	ModelRelationshipType Class
+	ModelRelationshipType errors.Class
 
 	// ModelRelationshipForeign is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship's invalid foreign key.
-	ModelRelationshipForeign Class
+	ModelRelationshipForeign errors.Class
 
 	// ModelRelationshipJoinModel is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship's join model.
-	ModelRelationshipJoinModel Class
+	ModelRelationshipJoinModel errors.Class
 
 	// ModelRelationshipBackreference is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship's back reference field.
-	ModelRelationshipBackreference Class
+	ModelRelationshipBackreference errors.Class
 
 	// ModelRelationshipOptions is the 'MjrModel', 'MnrModelRelationship' error classification
 	// on the issues with relationship options like: 'on error', 'on patch', 'on delete'.
-	ModelRelationshipOptions Class
+	ModelRelationshipOptions errors.Class
 )
 
 func registerModelRelationship() {
-	MnrModelRelationship = MjrModel.MustRegisterMinor("Relationship", "issues related with model's relationships")
+	MnrModelRelationship = errors.MustNewMinor(MjrModel)
 
-	ModelRelationshipType = MnrModelRelationship.MustRegisterIndex("Type", "invalid relationship's type").Class()
-	ModelRelationshipForeign = MnrModelRelationship.MustRegisterIndex("Foreign", "invalid relationship's foreign key").Class()
-	ModelRelationshipJoinModel = MnrModelRelationship.MustRegisterIndex("Join Model", "issues related with relationship's join model").Class()
-	ModelRelationshipBackreference = MnrModelRelationship.MustRegisterIndex("Backreference", "issues related with backerefernece fields").Class()
-	ModelRelationshipOptions = MnrModelRelationship.MustRegisterIndex("Options", "options related issues").Class()
+	mjr, mnr := MjrModel, MnrModelRelationship
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	ModelRelationshipType = newClass()
+	ModelRelationshipForeign = newClass()
+	ModelRelationshipJoinModel = newClass()
+	ModelRelationshipBackreference = newClass()
+	ModelRelationshipOptions = newClass()
 }
 
 var (
 	// MnrModelValue is the 'MjrModel' minor error classification used for model value issues.
-	MnrModelValue Minor
+	MnrModelValue errors.Minor
 
 	// ModelValueNil is the 'MjrModel', 'MnrModelValue' error classification
 	// for nil model values - while getting the model struct.
-	ModelValueNil Class
+	ModelValueNil errors.Class
 )
 
 func registerModelValues() {
-	MnrModelValue = MjrModel.MustRegisterMinor("Value", "issues related to model value")
+	MnrModelValue = errors.MustNewMinor(MjrModel)
 
-	ModelValueNil = MnrModelValue.MustRegisterIndex("Nil", "getting model struct with nil value").Class()
+	ModelValueNil = errors.MustNewClass(MjrModel, MnrModelValue, errors.MustNewIndex(MjrModel, MnrModelValue))
 }
 
 var (
 	// MnrModelMapping is the 'MjrModel' minor error classification for model mapping issues.
-	MnrModelMapping Minor
+	MnrModelMapping errors.Minor
 
 	// ModelMappingNoFields is the 'MjrModel', 'MnrModelMapping' error classification
 	// for model without required field or no fields at all.
-	ModelMappingNoFields Class
+	ModelMappingNoFields errors.Class
 
 	// ModelMappingInvalidType is the 'MjrModel', 'MnrModelMapping' error classification
 	// for invalid types (i.e. field).
-	ModelMappingInvalidType Class
+	ModelMappingInvalidType errors.Class
 
 	// ModelNotMapped is the 'MjrModel', 'MnrModelSchema' error classification
 	// used when the model is not mapped within schema.
-	ModelNotMapped Class
+	ModelNotMapped errors.Class
 )
 
 func registerModelMapping() {
-	MnrModelMapping = MjrModel.MustRegisterMinor("Mapping", "issues related with model mappings")
+	MnrModelMapping = errors.MustNewMinor(MjrModel)
 
-	ModelMappingNoFields = MnrModelMapping.MustRegisterIndex("No Fields", "issues for models without required field or no fields at all").Class()
-	ModelMappingInvalidType = MnrModelMapping.MustRegisterIndex("Invalid Type", "issues with the models (fields) type while mapping").Class()
-	ModelNotMapped = MnrModelMapping.MustRegisterIndex("Not Mapped", "issues with non mapped models").Class()
+	mjr, mnr := MjrModel, MnrModelMapping
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	ModelMappingNoFields = newClass()
+	ModelMappingInvalidType = newClass()
+	ModelNotMapped = newClass()
 }

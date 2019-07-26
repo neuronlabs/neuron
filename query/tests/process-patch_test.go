@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -721,7 +721,7 @@ func TestPatch(t *testing.T) {
 
 						_, ok := s.Value.(*[]*HasManyModel)
 						require.True(t, ok)
-					}).Return(errors.New(class.QueryValueNoResult, "no results"))
+					}).Return(errors.NewDet(class.QueryValueNoResult, "no results"))
 
 					hasMany.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -873,7 +873,7 @@ func TestPatch(t *testing.T) {
 						require.True(t, ok)
 
 						assert.Equal(t, model.ID, sv.ForeignKey)
-					}).Return(errors.New(class.QueryValueNoResult, "no results"))
+					}).Return(errors.NewDet(class.QueryValueNoResult, "no results"))
 
 					foreignModel.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 					foreignModel.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)

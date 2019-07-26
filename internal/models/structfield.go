@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -398,7 +398,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
-		return errors.Newf(class.ModelRelationshipType, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
+		return errors.NewDetf(class.ModelRelationshipType, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
 	}
 
 	switch modelType.Kind() {
@@ -486,17 +486,17 @@ func (s *StructField) initCheckFieldType() error {
 			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 			reflect.Uint32, reflect.Uint64:
 		default:
-			return errors.Newf(class.ModelFieldType, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
+			return errors.NewDetf(class.ModelFieldType, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 		}
 	case KindAttribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
-			return errors.Newf(class.ModelFieldType, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
+			return errors.NewDetf(class.ModelFieldType, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
 		}
 		if s.isLanguage() {
 			if fieldType.Kind() != reflect.String {
-				return errors.Newf(class.ModelFieldType, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
+				return errors.NewDetf(class.ModelFieldType, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
 			}
 		}
 
@@ -512,10 +512,10 @@ func (s *StructField) initCheckFieldType() error {
 				fieldType = fieldType.Elem()
 			}
 			if fieldType.Kind() != reflect.Struct {
-				return errors.Newf(class.ModelRelationshipType, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
+				return errors.NewDetf(class.ModelRelationshipType, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
 			}
 		default:
-			return errors.Newf(class.ModelRelationshipType, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
+			return errors.NewDetf(class.ModelRelationshipType, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
 		}
 	}
 	return nil
@@ -607,7 +607,7 @@ func (s *StructField) setTagValues() error {
 
 		if !s.isRelationship() {
 			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, common.AnnotationManyToMany)
-			return errors.Newf(class.ModelFieldTag, "%s tag on non relationship field", key)
+			return errors.NewDetf(class.ModelFieldTag, "%s tag on non relationship field", key)
 		}
 
 		r := s.relationship
@@ -627,7 +627,7 @@ func (s *StructField) setTagValues() error {
 				}
 			case 0:
 			default:
-				err := errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
+				err := errors.NewDet(class.ModelFieldTag, "relationship many2many tag has too many values")
 				multiError = append(multiError, err)
 			}
 			continue
@@ -638,7 +638,7 @@ func (s *StructField) setTagValues() error {
 		for _, value := range values {
 			i := strings.IndexRune(value, '=')
 			if i == -1 {
-				err := errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
+				err := errors.NewDetf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
 				multiError = append(multiError, err)
 				continue
 			}
@@ -658,7 +658,7 @@ func (s *StructField) setTagValues() error {
 		case common.AnnotationOnCreate:
 			errs = r.onCreate.parse(kv)
 		default:
-			errs = append(errs, errors.Newf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
+			errs = append(errs, errors.NewDetf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
 		}
 
 		if len(errs) > 0 {

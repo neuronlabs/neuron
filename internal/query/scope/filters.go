@@ -3,8 +3,8 @@ package scope
 import (
 	"reflect"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -65,7 +65,7 @@ func (s *Scope) ClearRelationshipFilters() {
 func (s *Scope) SetFiltersTo(to *Scope) error {
 	if s.mStruct != to.mStruct {
 		log.Errorf("SetFiltersTo mismatch scope's structs. Is: '%s' should be: '%s'", to.mStruct.Collection(), s.mStruct.Collection())
-		return errors.New(class.InternalQueryModelMismatch, "scope's model mismatch").SetOperation("SetFiltersTo")
+		return errors.NewDet(class.InternalQueryModelMismatch, "scope's model mismatch")
 	}
 
 	to.primaryFilters = s.primaryFilters
@@ -136,7 +136,7 @@ func (s *Scope) RelationshipFilters() []*filters.FilterField {
 // RemoveRelationshipFilter removes the relationship filter 'at' index in relationshipFilters array.
 func (s *Scope) RemoveRelationshipFilter(at int) error {
 	if at > len(s.relationshipFilters)-1 {
-		return errors.New(class.InternalQueryFilter, "removing relationship filter out of possible range").SetOperation("RemoveRelationshipFilter")
+		return errors.NewDet(class.InternalQueryFilter, "removing relationship filter out of possible range")
 	}
 
 	s.relationshipFilters = append(s.relationshipFilters[:at], s.relationshipFilters[at+1:]...)
@@ -167,7 +167,7 @@ func (s *Scope) SetLanguageFilter(languages ...interface{}) {
 // SetBelongsToForeignKeyFields sets the foreign key fields for the 'belongs to' relationships.
 func (s *Scope) SetBelongsToForeignKeyFields() error {
 	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "nil query scope value provided")
+		return errors.NewDet(class.QueryNoValue, "nil query scope value provided")
 	}
 
 	setField := func(v reflect.Value) ([]*models.StructField, error) {
@@ -176,7 +176,7 @@ func (s *Scope) SetBelongsToForeignKeyFields() error {
 		}
 
 		if v.Type() != s.Struct().Type() {
-			return nil, errors.New(class.QueryValueType, "model's struct mismatch")
+			return nil, errors.NewDet(class.QueryValueType, "model's struct mismatch")
 		}
 
 		var fks []*models.StructField
@@ -275,7 +275,7 @@ PRIVATE METHODS
 func (s *Scope) addFilterField(filter *filters.FilterField) error {
 	if filter.StructField().Struct() != s.mStruct {
 		log.Debugf("Filter's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField().Name(), filter.StructField().Struct().Type().Name())
-		err := errors.New(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
+		err := errors.NewDet(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
 		return err
 	}
 	switch filter.StructField().FieldKind() {
@@ -298,7 +298,7 @@ func (s *Scope) addFilterField(filter *filters.FilterField) error {
 	case models.KindFilterKey:
 		s.keyFilters = append(s.keyFilters, filter)
 	default:
-		err := errors.Newf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField().FieldKind())
+		err := errors.NewDetf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField().FieldKind())
 		return err
 	}
 	return nil

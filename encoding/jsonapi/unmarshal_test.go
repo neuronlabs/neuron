@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/query"
 
 	ictrl "github.com/neuronlabs/neuron-core/internal/controller"
@@ -81,9 +81,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidFormat, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidFormat, e.Class())
 			}
 		}
 
@@ -96,9 +96,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalCollection, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalCollection, e.Class())
 			}
 		}
 
@@ -111,9 +111,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidFormat, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidFormat, e.Class())
 			}
 		}
 
@@ -127,9 +127,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equalf(t, class.EncodingUnmarshalInvalidType, e.Class, "Is: %s, should be: %s", e.Class, class.EncodingUnmarshalInvalidID)
+				assert.Equalf(t, class.EncodingUnmarshalInvalidType, e.Class(), "Is: %s, should be: %s", e.Class(), class.EncodingUnmarshalInvalidID)
 			}
 		}
 
@@ -141,9 +141,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class())
 			}
 
 		}
@@ -155,9 +155,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class, "Is: %s", e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class(), "Is: %s", e.Class())
 			}
 		}
 	})
@@ -168,9 +168,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class())
 			}
 		}
 	})
@@ -181,9 +181,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class())
 			}
 		}
 	})
@@ -195,9 +195,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalInvalidType, e.Class())
 			}
 		}
 	})
@@ -212,9 +212,9 @@ func TestUnmarshalScopeOne(t *testing.T) {
 		s, err := UnmarshalSingleScopeC(c, in, &Blog{})
 		assert.Nil(t, s)
 		if assert.NotNil(t, err) {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if assert.True(t, ok) {
-				assert.Equal(t, class.EncodingUnmarshalUnknownField, e.Class)
+				assert.Equal(t, class.EncodingUnmarshalUnknownField, e.Class())
 			}
 		}
 	})

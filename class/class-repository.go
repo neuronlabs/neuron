@@ -1,11 +1,15 @@
 package class
 
+import (
+	"github.com/neuronlabs/errors"
+)
+
 // MjrRepository is the major error classification
 // related with the repositories.
-var MjrRepository Major
+var MjrRepository errors.Major
 
 func registerRepositoryClasses() {
-	MjrRepository = MustRegisterMajor("Repository", "repositories related errors")
+	MjrRepository = errors.NewMajor()
 
 	registerRepositoryUnavailable()
 	registerRepositoryAuth()
@@ -28,29 +32,32 @@ Repository Unavailable
 var (
 	// MnrRepositoryUnavailable is a 'MjrRepository' minor error classification
 	// for unavailable repository access.
-	MnrRepositoryUnavailable Minor
+	MnrRepositoryUnavailable errors.Minor
 
 	// RepositoryUnavailableInsufficientResources is the 'MjrRepository', 'MnrRepositoryUnavailable' error classification
 	// when the repository has insufficitent system resources to run.
-	RepositoryUnavailableInsufficientResources Class
+	RepositoryUnavailableInsufficientResources errors.Class
 
 	// RepositoryUnavailableProgramLimit is the 'MjrRepository', 'MnrRepositoryUnavailable' error classification
 	// when the repository reached program limit - i.e. tried to extract too many columns at once.
-	RepositoryUnavailableProgramLimit Class
+	RepositoryUnavailableProgramLimit errors.Class
 
 	// RepositoryUnavailableShutdown is the 'MjrRepository', 'MnrRepositoryUnavailable' error classification
 	// when the repository is actually shutting down.
-	RepositoryUnavailableShutdown Class
+	RepositoryUnavailableShutdown errors.Class
 )
 
 func registerRepositoryUnavailable() {
-	MnrRepositoryUnavailable = MjrRepository.MustRegisterMinor("Unavailable", "current repository access is unavailable")
+	MnrRepositoryUnavailable = errors.MustNewMinor(MjrRepository)
 
-	RepositoryUnavailableInsufficientResources = MnrRepositoryUnavailable.MustRegisterIndex("Insufficient Resources",
-		"current repository is out of possible resources").Class()
-	RepositoryUnavailableProgramLimit = MnrRepositoryUnavailable.MustRegisterIndex("Program Limit",
-		"reached program limit - i.e. too many fields to return").Class()
-	RepositoryUnavailableShutdown = MnrRepositoryUnavailable.MustRegisterIndex("Shutdown", "repository is currently shutting down").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryUnavailable
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryUnavailableInsufficientResources = newClass()
+	RepositoryUnavailableProgramLimit = newClass()
+	RepositoryUnavailableShutdown = newClass()
 }
 
 /**
@@ -62,16 +69,16 @@ Repository Authorization / Authentication
 var (
 	// MnrRepositoryAuth is the 'MjrRepository' minor error classification
 	// related with Authorization or Authentication issues.
-	MnrRepositoryAuth Minor
+	MnrRepositoryAuth errors.Minor
 
 	// RepositoryAuthPrivileges is the 'MjrRepository', 'MnrRepositoryAuth' error classification
 	// for insufficient authorization privileges issues.
-	RepositoryAuthPrivileges Class
+	RepositoryAuthPrivileges errors.Class
 )
 
 func registerRepositoryAuth() {
-	MnrRepositoryAuth = MjrRepository.MustRegisterMinor("Authorization", "repositories authorization issues")
-	RepositoryAuthPrivileges = MnrRepositoryAuth.MustRegisterIndex("Privileges", "insufficient authorization privileges issues").Class()
+	MnrRepositoryAuth = errors.MustNewMinor(MjrRepository)
+	RepositoryAuthPrivileges = errors.MustNewClass(MjrRepository, MnrRepositoryAuth, errors.MustNewIndex(MjrRepository, MnrRepositoryAuth))
 }
 
 /**
@@ -83,32 +90,37 @@ Repository Connection
 var (
 	// MnrRepositoryConnection is the 'MjrRepository' minor error classification
 	// for the repository connection issues.
-	MnrRepositoryConnection Minor
+	MnrRepositoryConnection errors.Minor
 
 	// RepositoryConnection is the 'MjrRepository', 'MnrRepositoryConnection'
 	// error classification related with repository connection.
-	RepositoryConnection Class
+	RepositoryConnection errors.Class
 
 	// RepositoryConnectionTimedOut is the 'MjrRepository', 'MnrRepositoryConnection'
 	// error classification related with timed out connection.
-	RepositoryConnectionTimedOut Class
+	RepositoryConnectionTimedOut errors.Class
 
 	// RepositoryConnectionURI is the 'MjrRepository', 'MnrRepositoryConnection' error classification
 	// related with invalid connection URI for the repository.
-	RepositoryConnectionURI Class
+	RepositoryConnectionURI errors.Class
 
 	// RepositoryConnectionSSL is the 'MjrRepository', 'MnrRepositoryConnection' error classification
 	// related with SSL for the repository connections.
-	RepositoryConnectionSSL Class
+	RepositoryConnectionSSL errors.Class
 )
 
 func registerRepositoryConnection() {
-	MnrRepositoryConnection = MjrRepository.MustRegisterMinor("Connection", "repository connection issues")
+	MnrRepositoryConnection = errors.MustNewMinor(MjrRepository)
 
-	RepositoryConnection = MustNewMinorClass(MnrRepositoryConnection)
-	RepositoryConnectionTimedOut = MnrRepositoryConnection.MustRegisterIndex("Timed Out", "repository connection timed out").Class()
-	RepositoryConnectionURI = MnrRepositoryConnection.MustRegisterIndex("URI", "invalid URI provided for the repository connection").Class()
-	RepositoryConnectionSSL = MnrRepositoryConnection.MustRegisterIndex("SSL", "SSL failed").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryConnection
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryConnection = errors.MustNewMinorClass(mjr, mnr)
+	RepositoryConnectionTimedOut = newClass()
+	RepositoryConnectionURI = newClass()
+	RepositoryConnectionSSL = newClass()
 
 }
 
@@ -121,153 +133,178 @@ Repository Interface
 var (
 	// MnrRepositoryNotImplements is the 'MjrRepository' minor error classification
 	// for the repository interfaces.
-	MnrRepositoryNotImplements Minor
+	MnrRepositoryNotImplements errors.Minor
 
 	// RepositoryNotImplementsTransactioner is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement transactioner interfaces.
-	RepositoryNotImplementsTransactioner Class
+	RepositoryNotImplementsTransactioner errors.Class
 
 	// RepositoryNotImplementsCreator is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Creator interfaces.
-	RepositoryNotImplementsCreator Class
+	RepositoryNotImplementsCreator errors.Class
 
 	// RepositoryNotImplementsDeleter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Deleter interfaces.
-	RepositoryNotImplementsDeleter Class
+	RepositoryNotImplementsDeleter errors.Class
 
 	// RepositoryNotImplementsPatcher is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Patcher interfaces.
-	RepositoryNotImplementsPatcher Class
+	RepositoryNotImplementsPatcher errors.Class
 
 	// RepositoryNotImplementsLister is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Lister interfaces.
-	RepositoryNotImplementsLister Class
+	RepositoryNotImplementsLister errors.Class
 
 	// RepositoryNotImplementsGetter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement getter interfaces.
-	RepositoryNotImplementsGetter Class
+	RepositoryNotImplementsGetter errors.Class
 )
 
 func registerRepositoryInterface() {
-	MnrRepositoryNotImplements = MjrRepository.MustRegisterMinor("NotImplements", "repository implenting interface issues")
+	MnrRepositoryNotImplements = errors.MustNewMinor(MjrRepository)
 
-	RepositoryNotImplementsCreator = MnrRepositoryNotImplements.MustRegisterIndex("Creator", "repository doesn't implement creator").Class()
-	RepositoryNotImplementsDeleter = MnrRepositoryNotImplements.MustRegisterIndex("Deleter", "repository doesn't implement deleter").Class()
-	RepositoryNotImplementsGetter = MnrRepositoryNotImplements.MustRegisterIndex("Getter", "repository doesn't implement getter").Class()
-	RepositoryNotImplementsLister = MnrRepositoryNotImplements.MustRegisterIndex("Lister", "repository doesn't implement lister").Class()
-	RepositoryNotImplementsPatcher = MnrRepositoryNotImplements.MustRegisterIndex("Patcher", "repository doesn't implement patcher").Class()
-	RepositoryNotImplementsTransactioner = MnrRepositoryNotImplements.MustRegisterIndex("Transactioner", "repository doesn't implement transactioner").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryNotImplements
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryNotImplementsCreator = newClass()
+	RepositoryNotImplementsDeleter = newClass()
+	RepositoryNotImplementsGetter = newClass()
+	RepositoryNotImplementsLister = newClass()
+	RepositoryNotImplementsPatcher = newClass()
+	RepositoryNotImplementsTransactioner = newClass()
 }
 
 var (
 	// MnrRepositoryNotFound is the 'MjrRepository' minor error classification
 	// when the repository is not found.
-	MnrRepositoryNotFound Minor
+	MnrRepositoryNotFound errors.Minor
 
 	// RepositoryNotFound is the 'MjrRepository', 'MnrRepositoryNotFound' errors classification
 	// when the repository for model is not found.
-	RepositoryNotFound Class
+	RepositoryNotFound errors.Class
 )
 
 func registerRepositoryNotFound() {
-	MnrRepositoryNotFound = MjrRepository.MustRegisterMinor("Not Found", "repository not found")
+	MnrRepositoryNotFound = errors.MustNewMinor(MjrRepository)
 
-	RepositoryNotFound = MustNewMinorClass(MnrRepositoryNotFound)
+	RepositoryNotFound = errors.MustNewMinorClass(MjrRepository, MnrRepositoryNotFound)
 }
 
 var (
 	// MnrRepositoryFactory is the 'MjrRepository' minor error classification
 	// for repository factories issues.
-	MnrRepositoryFactory Minor
+	MnrRepositoryFactory errors.Minor
 
 	// RepositoryFactoryNotFound is the 'MjrRepository', 'MnrRepositoryFactory' error classification
 	// for not found repository factory.
-	RepositoryFactoryNotFound Class
+	RepositoryFactoryNotFound errors.Class
 
 	// RepositoryFactoryAlreadyRegistered is the 'MjrRepository', 'MnrRepositoryFactory' error classification
 	// for the factories that were already registered.
-	RepositoryFactoryAlreadyRegistered Class
+	RepositoryFactoryAlreadyRegistered errors.Class
 )
 
 func registerRepositoryFactory() {
-	MnrRepositoryFactory = MjrRepository.MustRegisterMinor("Factory", "isseus with the repository factory")
+	MnrRepositoryFactory = errors.MustNewMinor(MjrRepository)
 
-	RepositoryFactoryNotFound = MnrRepositoryFactory.MustRegisterIndex("Not Found", "repository factory not found").Class()
-	RepositoryFactoryAlreadyRegistered = MnrRepositoryFactory.MustRegisterIndex("Already Registered", "repository factory already registered").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryFactory
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryFactoryNotFound = newClass()
+	RepositoryFactoryAlreadyRegistered = newClass()
 }
 
 // MnrRepositoryModel is the minor error classification for the repository model issues.
-var MnrRepositoryModel Minor
+var MnrRepositoryModel errors.Minor
 
 var (
 	// RepositoryModelReservedName is the 'MjrRepository', 'MnrRepositoryModel' error classification
 	// for reserved names in the repositories.
-	RepositoryModelReservedName Class
+	RepositoryModelReservedName errors.Class
 
 	// RepositoryModelTags is the 'MjrRepository', 'MnrRepositoryModel' error classification
 	// for invalid repository specific field tags.
-	RepositoryModelTags Class
+	RepositoryModelTags errors.Class
 )
 
 func registerRepositoryModel() {
-	MnrRepositoryModel = MjrRepository.MustRegisterMinor("Model", "repository specific model issues")
+	MnrRepositoryModel = errors.MustNewMinor(MjrRepository)
 
-	RepositoryModelReservedName = MnrRepositoryModel.MustRegisterIndex("Reserved Name", "reserved name violation").Class()
-	RepositoryModelTags = MnrRepositoryModel.MustRegisterIndex("Tags", "repository specific tags issues").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryModel
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryModelReservedName = newClass()
+	RepositoryModelTags = newClass()
 }
 
 // RepositoryUnmappedError is the error 'MjrRepository' classification used for unmapped
 // repository specific error classes, types or codes.
-var RepositoryUnmappedError Class
+var RepositoryUnmappedError errors.Class
 
 func registerRepostioryUnmappedError() {
-	RepositoryUnmappedError = MustNewMinorClass(MjrRepository.MustRegisterMinor("Unmapped Error", "unmapped repository errors"))
+	RepositoryUnmappedError = errors.MustNewMinorClass(MjrRepository, errors.MustNewMinor(MjrRepository))
 }
 
 var (
 	// MnrRepositoryConfig is the 'MjrRepository' error classification for repository configurations
-	MnrRepositoryConfig Minor
+	MnrRepositoryConfig errors.Minor
 
 	// RepositoryConfigAlreadyRegistered is the 'MjrRepository', 'MnrRepositoryConfig' error classification
 	// for already registered repository configurations.
-	RepositoryConfigAlreadyRegistered Class
+	RepositoryConfigAlreadyRegistered errors.Class
 
 	// RepositoryConfigInvalid is the 'MjrRepository', 'MnrRepositoryConfig' error classification
 	// for invalid repository configuration.
-	RepositoryConfigInvalid Class
+	RepositoryConfigInvalid errors.Class
 )
 
 func registerRepositoryConfig() {
-	MnrRepositoryConfig = MjrRepository.MustRegisterMinor("Config", "repository configurations")
+	MnrRepositoryConfig = errors.MustNewMinor(MjrRepository)
 
-	RepositoryConfigAlreadyRegistered = MnrRepositoryConfig.MustRegisterIndex("Already Registered", "repository configuration already exists").Class()
-	RepositoryConfigInvalid = MnrRepositoryConfig.MustRegisterIndex("Invalid", "invalid repository configuration").Class()
+	mjr, mnr := MjrRepository, MnrRepositoryConfig
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryConfigAlreadyRegistered = newClass()
+	RepositoryConfigInvalid = newClass()
 }
 
 var (
 	// MnrRepositoryReplica is the 'MjrRepository' minor error classification
 	// for replicas errors.
-	MnrRepositoryReplica Minor
+	MnrRepositoryReplica errors.Minor
 
 	// RepositoryReplicaSetNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
 	// where replica set is not found.
-	RepositoryReplicaSetNotFound Class
+	RepositoryReplicaSetNotFound errors.Class
 	// RepositoryReplicaShardNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
 	// where replica shard is not found.
-	RepositoryReplicaShardNotFound Class
+	RepositoryReplicaShardNotFound errors.Class
 	// RepositoryReplicaNodeNotFound is the 'MjrRepository', 'MnrRepositoryReplica' error classification
 	// where replica shard is not found.
-	RepositoryReplicaNodeNotFound Class
+	RepositoryReplicaNodeNotFound errors.Class
 
 	// RepositoryReplica is the 'MjrRepository', 'MnrRepositoryReplica' error classification for repository replicas.
-	RepositoryReplica Class
+	RepositoryReplica errors.Class
 )
 
 func registerRepositoryReplica() {
-	MnrRepositoryReplica = MjrRepository.MustRegisterMinor("Replica", "repository replicas")
+	MnrRepositoryReplica = errors.MustNewMinor(MjrRepository)
 
-	RepositoryReplicaSetNotFound = MnrRepositoryReplica.MustRegisterIndex("Set Not Found", "replica set is not found").Class()
-	RepositoryReplicaShardNotFound = MnrRepositoryReplica.MustRegisterIndex("Shard Not Found", "replica shard not found").Class()
-	RepositoryReplicaNodeNotFound = MnrRepositoryReplica.MustRegisterIndex("Node Not Found", "replica node not found").Class()
-	RepositoryReplica = MustNewMinorClass(MnrRepositoryReplica)
+	mjr, mnr := MjrRepository, MnrRepositoryReplica
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	RepositoryReplicaSetNotFound = newClass()
+	RepositoryReplicaShardNotFound = newClass()
+	RepositoryReplicaNodeNotFound = newClass()
+	RepositoryReplica = errors.MustNewMinorClass(mjr, mnr)
 }

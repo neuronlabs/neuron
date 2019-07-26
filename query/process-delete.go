@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -66,7 +66,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 	dRepo, ok := repo.(Deleter)
 	if !ok {
 		log.Warningf("Repository for model: '%v' doesn't implement Deleter interface", s.Struct().Type().Name())
-		return errors.Newf(class.RepositoryNotImplementsDeleter, "repository: %T doesn't implement Deleter interface", repo)
+		return errors.NewDetf(class.RepositoryNotImplementsDeleter, "repository: %T doesn't implement Deleter interface", repo)
 	}
 
 	// do the delete operation
@@ -280,8 +280,8 @@ func deleteHasOneRelationships(ctx context.Context, s *Scope, field *models.Stru
 	// patch the clearScope
 	if err = clearScope.PatchContext(ctx); err != nil {
 		switch e := err.(type) {
-		case *errors.Error:
-			if e.Class == class.QueryValueNoResult {
+		case errors.DetailedError:
+			if e.Class() == class.QueryValueNoResult {
 				err = nil
 			}
 		}
@@ -330,8 +330,8 @@ func deleteHasManyRelationships(ctx context.Context, s *Scope, field *models.Str
 	err = clearScope.PatchContext(ctx)
 	if err != nil {
 		switch e := err.(type) {
-		case *errors.Error:
-			if e.Class == class.QueryValueNoResult {
+		case errors.DetailedError:
+			if e.Class() == class.QueryValueNoResult {
 				err = nil
 			}
 		}
@@ -381,8 +381,8 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *models.S
 	err = clearScope.DeleteContext(ctx)
 	if err != nil {
 		switch e := err.(type) {
-		case *errors.Error:
-			if e.Class == class.QueryValueNoResult {
+		case errors.DetailedError:
+			if e.Class() == class.QueryValueNoResult {
 				err = nil
 			}
 		}
@@ -491,7 +491,9 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	}
 
 	if len(primaries) == 0 && !reduce {
-		return errors.New(class.QueryFilterMissingRequired, "no primary filter or values provided").SetDetail("No primary field nor primary filters provided while patching the model")
+		err := errors.NewDet(class.QueryFilterMissingRequired, "no primary filter or values provided")
+		err.SetDetails("No primary field nor primary filters provided while patching the model")
+		return err
 	}
 
 	// if no reduction needed just add the primary filter and deselect the
@@ -525,7 +527,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	}
 
 	if len(primaries) == 0 {
-		return errors.New(class.QueryValueNoResult, "query value no results")
+		return errors.NewDet(class.QueryValueNoResult, "query value no results")
 	}
 
 	// clear all filters in the root scope

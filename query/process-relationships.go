@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 
@@ -111,7 +111,7 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 		case models.RelMany2Many:
 			go convertMany2ManyRelationshipFilterChan(ctx, s, i, filter, results)
 		default:
-			err := errors.Newf(class.InternalQueryInvalidField, "invalid field's relationship kind. Model: %s, Field: %s", s.Struct().Type().Name(), rf.StructField().Name())
+			err := errors.NewDetf(class.InternalQueryInvalidField, "invalid field's relationship kind. Model: %s, Field: %s", s.Struct().Type().Name(), rf.StructField().Name())
 			results <- err
 		}
 	}
@@ -269,7 +269,8 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 
 	if len(primaries) == 0 {
 		log.Debugf("SCOPE[%s] getting BelongsTo relationship filters no results found.", s.ID().String())
-		err = errors.New(class.QueryValueNoResult, "no result found").SetDetailf("relationship: '%s' values not found", filter.StructField().NeuronName())
+		err := errors.NewDet(class.QueryValueNoResult, "no result found")
+		err.SetDetailsf("relationship: '%s' values not found", filter.StructField().NeuronName())
 		return 0, err
 	}
 
@@ -347,7 +348,8 @@ func convertHasManyRelationshipFilter(ctx context.Context, s *Scope, index int, 
 
 	if len(foreignValues) == 0 {
 		log.Debugf("No results found for the relationship filter for field: %s", filter.StructField().NeuronName())
-		err = errors.New(class.QueryValueNoResult, "no relationship filter values found").SetDetailf("relationship: '%s' values not found", filter.StructField().NeuronName())
+		err := errors.NewDet(class.QueryValueNoResult, "no relationship filter values found")
+		err.SetDetailsf("relationship: '%s' values not found", filter.StructField().NeuronName())
 		return 0, err
 	}
 
@@ -420,7 +422,8 @@ func convertHasOneRelationshipFilter(ctx context.Context, s *Scope, index int, f
 	}
 
 	if len(foreignValues) == 0 {
-		err = errors.New(class.QueryValueNoResult, "no result found").SetDetailf("relationship: '%s' values not found", filter.StructField().NeuronName())
+		err := errors.NewDet(class.QueryValueNoResult, "no result found")
+		err.SetDetailsf("relationship: '%s' values not found", filter.StructField().NeuronName())
 		return 0, err
 	}
 
@@ -539,7 +542,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 	}
 
 	if len(primaries) == 0 {
-		err = errors.New(class.QueryValueNoResult, "related filter values doesn't exist")
+		err = errors.NewDet(class.QueryValueNoResult, "related filter values doesn't exist")
 		return 0, err
 	}
 
@@ -749,7 +752,7 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 		v := reflect.ValueOf(s.Value)
 		if v.IsNil() {
 			log.Infof("[SCOPE][%s] Nil scope's value while taking foreign relationships", s.ID())
-			return errors.New(class.QueryNoValue, "scope has nil value")
+			return errors.NewDet(class.QueryNoValue, "scope has nil value")
 		}
 		v = v.Elem()
 
@@ -841,7 +844,7 @@ func getForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
 		v := reflect.ValueOf(s.Value)
 		if v.IsNil() {
 			log.Infof("[SCOPE][%s] Nil scope's value while taking foreign relationships", s.ID())
-			return errors.New(class.QueryNoValue, "scope has nil value")
+			return errors.NewDet(class.QueryNoValue, "scope has nil value")
 		}
 		v = v.Elem()
 
@@ -990,9 +993,9 @@ func getForeignRelationshipHasOne(
 	if s.internal().IsMany() {
 		err = (*Scope)(relatedScope).ListContext(ctx)
 		if err != nil {
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			if ok {
-				if e.Class == class.QueryValueNoResult {
+				if e.Class() == class.QueryValueNoResult {
 					return nil
 				}
 			}
@@ -1003,8 +1006,7 @@ func getForeignRelationshipHasOne(
 		relVal := reflect.ValueOf(relatedScope.Value)
 		if relVal.IsNil() {
 			log.Errorf("Relationship field's scope has nil value after List. Rel: %s", relField.NeuronName())
-			err = errors.New(class.InternalQueryNilValue, "related scope has nil value").SetOperation("getForeignRelationshipValue")
-			return err
+			return errors.NewDet(class.InternalQueryNilValue, "related scope has nil value")
 		}
 
 		// iterate over related values and match their foreign key's with the root primaries.
@@ -1055,8 +1057,8 @@ func getForeignRelationshipHasOne(
 	} else {
 		err = (*Scope)(relatedScope).GetContext(ctx)
 		if err != nil {
-			if e, ok := err.(*errors.Error); ok {
-				if e.Class == class.QueryValueNoResult {
+			if e, ok := err.(errors.DetailedError); ok {
+				if e.Class() == class.QueryValueNoResult {
 					return nil
 				}
 			}
@@ -1114,7 +1116,7 @@ func getForeignRelationshipHasMany(
 
 		if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
 			// if the primary value is not set the function should not enter here
-			err = errors.New(class.InternalQueryInvalidField, "primary field value should not be 'zero'").SetOperation("getForeignRelationshipValue")
+			err = errors.NewDet(class.InternalQueryInvalidField, "primary field value should not be 'zero'")
 			log.Errorf("Getting related HasMany scope failed. Primary field should not be zero. pk:%v, Scope: %#v", pk, s)
 			return err
 		}
@@ -1175,8 +1177,8 @@ func getForeignRelationshipHasMany(
 	relatedScope.SetFieldsetNoCheck(relatedScope.Struct().PrimaryField(), fk)
 
 	if err = (*Scope)(relatedScope).ListContext(ctx); err != nil {
-		if e, ok := err.(*errors.Error); ok {
-			if e.Class == class.QueryValueNoResult {
+		if e, ok := err.(errors.DetailedError); ok {
+			if e.Class() == class.QueryValueNoResult {
 				return nil
 			}
 		}
@@ -1264,7 +1266,7 @@ func getForeignRelationshipManyToMany(
 		pk := pkVal.Interface()
 
 		if reflect.DeepEqual(pk, reflect.Zero(pkVal.Type()).Interface()) {
-			err = errors.New(class.InternalQueryFilter, "many2many relationship, no primary values are set for the scope")
+			err = errors.NewDet(class.InternalQueryFilter, "many2many relationship, no primary values are set for the scope")
 			return err
 		}
 
@@ -1322,9 +1324,9 @@ func getForeignRelationshipManyToMany(
 
 	// do the List process on the join scope
 	if err = (*Scope)(joinScope).ListContext(ctx); err != nil {
-		if e, ok := err.(*errors.Error); ok {
+		if e, ok := err.(errors.DetailedError); ok {
 			// if the error is ErrNoResult don't throw an error - no relationship values
-			if e.Class == class.QueryValueNoResult {
+			if e.Class() == class.QueryValueNoResult {
 				return nil
 			}
 		}
@@ -1335,7 +1337,7 @@ func getForeignRelationshipManyToMany(
 	relVal := reflect.ValueOf(joinScope.Value)
 	if relVal.IsNil() {
 		log.Errorf("Related Field scope: %s is nil after getting m2m relationships.", relField.NeuronName())
-		err = errors.New(class.InternalQueryNilValue, "nil value after listing many to many relationships").SetOperation("getForeignRelationshipValue")
+		err = errors.NewDet(class.InternalQueryNilValue, "nil value after listing many to many relationships")
 		return err
 	}
 
@@ -1447,7 +1449,7 @@ func getForeignRelationshipBelongsTo(
 			}
 			relVal = relVal.Elem()
 		} else if relVal.Kind() != reflect.Struct {
-			err = errors.Newf(class.InternalQueryInvalidField, "belongs to field with invalid type: '%s'", relVal.Type().Name())
+			err = errors.NewDetf(class.InternalQueryInvalidField, "belongs to field with invalid type: '%s'", relVal.Type().Name())
 			log.Warning(err)
 			return err
 		}
@@ -1479,7 +1481,7 @@ func getForeignRelationshipBelongsTo(
 				}
 				relVal = relVal.Elem()
 			} else if relVal.Kind() != reflect.Struct {
-				err = errors.Newf(class.InternalQueryInvalidField, "relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
+				err = errors.NewDetf(class.InternalQueryInvalidField, "relation Field signed as BelongsTo with unknown field type. Model: %#v, Relation: %#v", s.Struct().Collection(), rel)
 				log.Warning(err)
 				return err
 			}

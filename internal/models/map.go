@@ -9,10 +9,10 @@ import (
 
 	"github.com/neuronlabs/inflection"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/namer"
@@ -68,7 +68,7 @@ func (m *ModelMap) GetModelStruct(model interface{}) (*ModelStruct, error) {
 	t := reflect.TypeOf(model)
 	mStruct = m.Get(t)
 	if mStruct == nil {
-		return nil, errors.Newf(class.ModelNotMapped, "model: '%s' is not mapped", t.Name())
+		return nil, errors.NewDetf(class.ModelNotMapped, "model: '%s' is not mapped", t.Name())
 	}
 	return mStruct, nil
 }
@@ -140,12 +140,12 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 		}
 
 		if modelStruct.assignedFields() == 0 {
-			err := errors.Newf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
+			err := errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
 			return err
 		}
 
 		if modelStruct.primary == nil {
-			err := errors.Newf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
+			err := errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
 			return err
 		}
 	}
@@ -176,12 +176,12 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 func (m *ModelMap) Set(value *ModelStruct) error {
 	_, ok := m.models[value.modelType]
 	if ok {
-		return errors.Newf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
+		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
 	}
 
 	_, ok = m.collections[value.collectionType]
 	if ok {
-		return errors.Newf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
+		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
 	}
 
 	m.models[value.modelType] = value
@@ -231,7 +231,7 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 
 		val := m.Get(relType)
 		if val == nil {
-			return errors.Newf(class.InternalModelRelationNotMapped, "model: %v, not precalculated but is used in relationships for: %v field in %v model", relType, relField.FieldName(), model.Type().Name())
+			return errors.NewDetf(class.InternalModelRelationNotMapped, "model: %v, not precalculated but is used in relationships for: %v field in %v model", relType, relField.FieldName(), model.Type().Name())
 		}
 
 		relField.SetRelatedModel(val)
@@ -261,7 +261,7 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 			}
 
 			if rel.joinModel == nil {
-				return errors.Newf(class.ModelRelationshipJoinModel, "Join Model not found for model: '%s' relationship: '%s'", model.Type().Name(), relField.Name())
+				return errors.NewDetf(class.ModelRelationshipJoinModel, "Join Model not found for model: '%s' relationship: '%s'", model.Type().Name(), relField.Name())
 			}
 
 			rel.joinModel.isJoin = true
@@ -307,7 +307,7 @@ func (m *ModelMap) setRelationships() error {
 				}
 			default:
 				log.Errorf("Too many foreign key tag values for the relationship field: '%s' in model: '%s' ", relField.Name(), model.Type().Name())
-				return errors.New(class.ModelRelationshipForeign, "relationship field tag 'foreign key' has too values")
+				return errors.NewDet(class.ModelRelationshipForeign, "relationship field tag 'foreign key' has too values")
 			}
 			log.Debugf("ForeignKeys: %v", fkeyFieldNames)
 
@@ -329,12 +329,12 @@ func (m *ModelMap) setRelationships() error {
 					fk, ok := modelWithFK.ForeignKey(fkeyName)
 					if !ok {
 						log.Errorf("Foreign key: '%s' not found within Model: '%s'", foreignKey, modelWithFK.Type().Name())
-						return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKey, relField.Name(), model.Type().Name())
+						return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKey, relField.Name(), model.Type().Name())
 					}
 					// the primary field type of the model should match current's model type.
 					if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
 						log.Errorf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
-						return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						return errors.NewDetf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
 					}
 					relationship.setForeignKey(fk)
 
@@ -350,13 +350,13 @@ func (m *ModelMap) setRelationships() error {
 					m2mFK, ok := modelWithFK.ForeignKey(m2mForeignKeyName)
 					if !ok {
 						log.Debugf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
-						return errors.Newf(class.ModelFieldForeignKeyNotFound, "Related Model Foreign Key: '%s' not found for the relationship: '%s'. Model: '%s'", m2mForeignKeyName, relField.Name(), model.Type().Name())
+						return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "Related Model Foreign Key: '%s' not found for the relationship: '%s'. Model: '%s'", m2mForeignKeyName, relField.Name(), model.Type().Name())
 					}
 
 					// the primary field type of the model should match current's model type.
 					if relationship.mStruct.PrimaryField().ReflectField().Type != m2mFK.ReflectField().Type {
 						log.Debugf("the foreign key of the related model: '%v' for the many-to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", relationship.mStruct.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
-						return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						return errors.NewDetf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
 					}
 
 					relationship.mtmRelatedForeignKey = m2mFK
@@ -379,13 +379,13 @@ func (m *ModelMap) setRelationships() error {
 						fk, ok = modelWithFK.ForeignKey(m.NamerFunc(foreignKey))
 						if !ok {
 							log.Errorf("Foreign key: '%s' not found within Model: '%s'", fkeyName, modelWithFK.Type().Name())
-							return errors.Newf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+							return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
 						}
 					}
 					// the primary field type of the model should match current's model type.
 					if model.PrimaryField().ReflectField().Type != fk.ReflectField().Type {
 						log.Debugf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.PrimaryField().ReflectField().Type, fk.ReflectField().Type)
-						return errors.Newf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
+						return errors.NewDetf(class.ModelRelationshipForeign, "foreign key type doesn't match the primary field type of the root model")
 					}
 					relationship.setForeignKey(fk)
 				}
@@ -422,7 +422,7 @@ func (m *ModelMap) setRelationships() error {
 						fk, ok = relationship.mStruct.ForeignKey(m.NamerFunc(modelsForeign))
 						if !ok {
 							// provided invalid foreign field name
-							return errors.Newf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+							return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
 						}
 					}
 					// if the foreign key is not found it must be a has one model or an invalid field name was provided
@@ -460,7 +460,7 @@ func (m *ModelMap) setRelationships() error {
 					relField.RelatedModelType().Name(),
 					relField.RelatedModelStruct().PrimaryField().ReflectField().Type,
 					relField.relationship.foreignKey.ReflectField().Type)
-				return errors.Newf(class.ModelRelationshipForeign, "foreign key: '%s' doesn't match model's: '%s' primary key type", relField.relationship.foreignKey.Name(), relField.relationship.mStruct.Type().Name())
+				return errors.NewDetf(class.ModelRelationshipForeign, "foreign key: '%s' doesn't match model's: '%s' primary key type", relField.relationship.foreignKey.Name(), relField.relationship.mStruct.Type().Name())
 			}
 		}
 	}
@@ -535,7 +535,7 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 		modelType = modelType.Elem()
 	}
 	if modelType.Kind() != reflect.Struct {
-		err = errors.Newf(class.ModelMappingInvalidType, `provided model in invalid format. The model must be of struct or ptr type, but is: %v`, modelType)
+		err = errors.NewDetf(class.ModelMappingInvalidType, `provided model in invalid format. The model must be of struct or ptr type, but is: %v`, modelType)
 		return nil, err
 	}
 
@@ -613,7 +613,7 @@ func getNestedStruct(
 				case common.AnnotationFieldType:
 					if tValue[0] != common.AnnotationNestedField {
 						log.Debugf("Invalid annotationNestedField value: '%s' for field: %s", tValue[0], nestedField.structField.Name())
-						return nil, errors.Newf(class.ModelFieldType, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.FieldType(), nestedField.structField.Name())
+						return nil, errors.NewDetf(class.ModelFieldType, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.FieldType(), nestedField.structField.Name())
 					}
 				case common.AnnotationFlags:
 					nestedField.structField.setFlags(tValue...)
@@ -627,7 +627,7 @@ func getNestedStruct(
 
 		switch nestedField.structField.NeuronName() {
 		case "relationships", "links":
-			return nil, errors.Newf(class.ModelFieldName, "nested field within: '%s' field in the model: '%s' has forbidden Neuron name: '%s'",
+			return nil, errors.NewDetf(class.ModelFieldName, "nested field within: '%s' field in the model: '%s' has forbidden Neuron name: '%s'",
 				nestedStruct.Attr().Name(),
 				nestedStruct.Attr().Struct().Type().Name(),
 				nestedField.structField.NeuronName(),
@@ -635,7 +635,7 @@ func getNestedStruct(
 		}
 
 		if _, ok = NestedStructSubField(nestedStruct, nestedField.structField.NeuronName()); ok {
-			return nil, errors.Newf(class.ModelFieldName, "nestedStruct: %v already has one nestedField: '%s'. The fields must be uniquely named", nestedStruct.Type().Name(), nestedField.structField.Name())
+			return nil, errors.NewDetf(class.ModelFieldName, "nestedStruct: %v already has one nestedField: '%s'. The fields must be uniquely named", nestedStruct.Type().Name(), nestedField.structField.Name())
 		}
 		NestedStructSetSubfield(nestedStruct, nestedField)
 
@@ -726,7 +726,7 @@ func getNestedStruct(
 					}
 				case reflect.Slice, reflect.Array, reflect.Map:
 					// disallow nested map, arrs, maps in ptr type slices
-					return nil, errors.Newf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", nestedField.structField.Name())
+					return nil, errors.NewDetf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", nestedField.structField.Name())
 				default:
 				}
 			}
@@ -761,7 +761,7 @@ func getNestedStruct(
 					nestedField.structField.nested = nStruct
 				}
 			case reflect.Slice, reflect.Ptr, reflect.Map, reflect.Array:
-				return nil, errors.Newf(class.ModelFieldType, "nested field can't be a slice of pointer to slices|map|arrays. NestedField: '%s' within NestedStruct:'%s'", nestedField.structField.Name(), nestedStruct.modelType.Name())
+				return nil, errors.NewDetf(class.ModelFieldType, "nested field can't be a slice of pointer to slices|map|arrays. NestedField: '%s' within NestedStruct:'%s'", nestedField.structField.Name(), nestedStruct.modelType.Name())
 			}
 		default:
 			// basic type (ints, uints, string, floats)

@@ -1,8 +1,8 @@
 package query
 
 import (
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 // ProcessChain is the slice (chain) of processes.
@@ -22,7 +22,7 @@ func (c *ProcessChain) InsertBefore(before string, processes ...*Process) error 
 		}
 	}
 	if !found {
-		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", before)
+		return errors.NewDetf(class.QueryProcessorNotFound, "process: '%s' not found", before)
 	}
 
 	var chain = ProcessChain{}
@@ -53,7 +53,7 @@ func (c *ProcessChain) InsertAfter(after string, processes ...*Process) error {
 		}
 	}
 	if !found {
-		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", after)
+		return errors.NewDetf(class.QueryProcessorNotFound, "process: '%s' not found", after)
 	}
 
 	var chain = ProcessChain{}
@@ -84,7 +84,7 @@ func (c *ProcessChain) Replace(toReplace string, process *Process) error {
 	}
 
 	if !found {
-		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", toReplace)
+		return errors.NewDetf(class.QueryProcessorNotFound, "process: '%s' not found", toReplace)
 	}
 
 	(*c)[index] = process
@@ -107,7 +107,7 @@ func (c *ProcessChain) DeleteProcess(processName string) error {
 	}
 
 	if !found {
-		return errors.Newf(class.QueryProcessorNotFound, "process: '%s' not found", processName)
+		return errors.NewDetf(class.QueryProcessorNotFound, "process: '%s' not found", processName)
 	}
 
 	chain := ProcessChain{}

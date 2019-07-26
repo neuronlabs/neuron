@@ -8,8 +8,8 @@ import (
 
 	"github.com/neuronlabs/uni-logger"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 const (
@@ -189,7 +189,7 @@ func Panicf(format string, args ...interface{}) {
 // SetLevel sets the level if possible for the logger file.
 func SetLevel(level unilogger.Level) error {
 	if level == LUNKNOWN {
-		return errors.New(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
+		return errors.NewDet(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
 	}
 
 	// level is already the same
@@ -205,7 +205,7 @@ func SetLevel(level unilogger.Level) error {
 
 	lvl, ok := logger.(unilogger.LevelSetter)
 	if !ok {
-		return errors.New(class.CommonLoggerNotImplement, "logger doesn't implement LevelSetter interface")
+		return errors.NewDet(class.CommonLoggerNotImplement, "logger doesn't implement LevelSetter interface")
 	}
 
 	lvl.SetLevel(currentLevel)
@@ -244,7 +244,7 @@ func SetLogger(log unilogger.LeveledLogger) {
 // SetModulesLevel sets the 'level' for all modules.
 func SetModulesLevel(level unilogger.Level) error {
 	if level == LUNKNOWN {
-		return errors.New(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
+		return errors.NewDet(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
 	}
 	for _, module := range modules {
 		module.SetLevel(level)

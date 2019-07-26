@@ -1,11 +1,15 @@
 package class
 
+import (
+	"github.com/neuronlabs/errors"
+)
+
 // MjrQuery - major that classifies all the errors related with
 // creating, operating on or changing the queries.
-var MjrQuery Major
+var MjrQuery errors.Major
 
 func registerQueryClasses() {
-	MjrQuery = MustRegisterMajor("Query")
+	MjrQuery = errors.NewMajor()
 
 	registerQueryFieldset()
 	registerQuerySelectedFields()
@@ -29,37 +33,42 @@ Query Fieldset
 var (
 	// MnrQueryFieldset is the 'MjrQuery' minor error classification
 	// for query fieldset related issues.
-	MnrQueryFieldset Minor
+	MnrQueryFieldset errors.Minor
 
 	// QueryFieldsetTooBig is the 'MjrQuery', 'MnrQueryFieldset' error classification
 	// used when provided more than possible fields in the fieldset.
-	QueryFieldsetTooBig Class
+	QueryFieldsetTooBig errors.Class
 
 	// QueryFieldsetUnknownField is the 'MjrQuery', 'MnrQueryFieldset' error classificatio
 	// used when the provided fieldset field is not found within the model's collection.
-	QueryFieldsetUnknownField Class
+	QueryFieldsetUnknownField errors.Class
 
 	// QueryFieldsetDuplicate is the 'MjrQuery', 'MnrQueryFieldset' error classificatio
 	// for duplicated fieldset field's name.
-	QueryFieldsetDuplicate Class
+	QueryFieldsetDuplicate errors.Class
 
 	// QueryFieldsetInvalid is the 'MjrQuery', 'MnrQueryFieldset' error classification
 	// for invalid fieldset issues.
-	QueryFieldsetInvalid Class
+	QueryFieldsetInvalid errors.Class
 
 	// QueryFieldsetEmpty is the 'MjrQuery', 'MnrQueryFieldset' error classification
 	// for empty fieldset issues.
-	QueryFieldsetEmpty Class
+	QueryFieldsetEmpty errors.Class
 )
 
 func registerQueryFieldset() {
-	MnrQueryFieldset = MjrQuery.MustRegisterMinor("Fieldset", "issues related with the query fieldset")
+	MnrQueryFieldset = errors.MustNewMinor(MjrQuery)
 
-	QueryFieldsetDuplicate = MnrQueryFieldset.MustRegisterIndex("Duplicates", "duplicated field found within the fieldset").Class()
-	QueryFieldsetEmpty = MnrQueryFieldset.MustRegisterIndex("Empty", "empty fieldset issues").Class()
-	QueryFieldsetInvalid = MnrQueryFieldset.MustRegisterIndex("Invalid", "invalid fieldset field type").Class()
-	QueryFieldsetTooBig = MnrQueryFieldset.MustRegisterIndex("Too Big", "too many fields tried to be set within the query fieldset").Class()
-	QueryFieldsetUnknownField = MnrQueryFieldset.MustRegisterIndex("Unknown Field", "provided fieldset field not found within the model's collection").Class()
+	mjr, mnr := MjrQuery, MnrQueryFieldset
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryFieldsetDuplicate = newClass()
+	QueryFieldsetEmpty = newClass()
+	QueryFieldsetInvalid = newClass()
+	QueryFieldsetTooBig = newClass()
+	QueryFieldsetUnknownField = newClass()
 }
 
 /**
@@ -71,37 +80,42 @@ Query Selected Fields
 var (
 	// MnrQuerySelectedFields is the 'MjrQuery' minor error classifcation
 	// for the selected fields issues.
-	MnrQuerySelectedFields Minor
+	MnrQuerySelectedFields errors.Minor
 
 	// QuerySelectedFieldsNotFound is the 'MjrQuery', 'MnrQuerySelectedFields' error classifcation
 	// when the selected fields is not found.
-	QuerySelectedFieldsNotFound Class
+	QuerySelectedFieldsNotFound errors.Class
 
 	// QuerySelectedFieldsNotSelected is the 'MjrQuery', 'MnrQuerySelectedFields' error classifcation
 	// when unselecting fields which were not selected.
-	QuerySelectedFieldsNotSelected Class
+	QuerySelectedFieldsNotSelected errors.Class
 
 	// QuerySelectedFieldsInvalidModel is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
 	// when provided selected field is of invalid or non matched model.
-	QuerySelectedFieldsInvalidModel Class
+	QuerySelectedFieldsInvalidModel errors.Class
 
 	// QuerySelectedFieldInvalid is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
 	// when the selected field is not valid.
-	QuerySelectedFieldInvalid Class
+	QuerySelectedFieldInvalid errors.Class
 
 	// QuerySelectedFieldAlreadyUsed is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
 	// whenthe selected field is already 'selected'.
-	QuerySelectedFieldAlreadyUsed Class
+	QuerySelectedFieldAlreadyUsed errors.Class
 )
 
 func registerQuerySelectedFields() {
-	MnrQuerySelectedFields = MjrQuery.MustRegisterMinor("Selected Fields", "issues related with the query selected fields")
+	MnrQuerySelectedFields = errors.MustNewMinor(MjrQuery)
 
-	QuerySelectedFieldsNotFound = MnrQuerySelectedFields.MustRegisterIndex("Not Found", "selected fields not found").Class()
-	QuerySelectedFieldsNotSelected = MnrQuerySelectedFields.MustRegisterIndex("Not Selected", "unselecting fields which were not selected").Class()
-	QuerySelectedFieldsInvalidModel = MnrQuerySelectedFields.MustRegisterIndex("Invalid Model", "provided seleceted field's model is invalid or doesn't match given query model").Class()
-	QuerySelectedFieldInvalid = MnrQuerySelectedFields.MustRegisterIndex("Invalid", "invalid selected field").Class()
-	QuerySelectedFieldAlreadyUsed = MnrQuerySelectedFields.MustRegisterIndex("AlreadyUsed", "field is already selected").Class()
+	mjr, mnr := MjrQuery, MnrQuerySelectedFields
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QuerySelectedFieldsNotFound = newClass()
+	QuerySelectedFieldsNotSelected = newClass()
+	QuerySelectedFieldsInvalidModel = newClass()
+	QuerySelectedFieldInvalid = newClass()
+	QuerySelectedFieldAlreadyUsed = newClass()
 }
 
 /**
@@ -112,71 +126,76 @@ Query Filters
 
 var (
 	// MnrQueryFilter is the 'MjrQuery' minor that classifies errors related with the query filters.
-	MnrQueryFilter Minor
+	MnrQueryFilter errors.Minor
 
 	// QueryFilterInvalidField is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for invalid query filters field - name.
-	QueryFilterInvalidField Class
+	QueryFilterInvalidField errors.Class
 
 	// QueryFilterInvalidFormat is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for invalid query filter format.
-	QueryFilterInvalidFormat Class
+	QueryFilterInvalidFormat errors.Class
 
 	// QueryFilterLanguage is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for invalid query language filter.	.
-	QueryFilterLanguage Class
+	QueryFilterLanguage errors.Class
 
 	// QueryFilterMissingRequired is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for missing query filters.
-	QueryFilterMissingRequired Class
+	QueryFilterMissingRequired errors.Class
 
 	// QueryFilterUnknownCollection is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for unknown query filter collection provided.
-	QueryFilterUnknownCollection Class
+	QueryFilterUnknownCollection errors.Class
 
 	// QueryFilterUnknownField is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for unknown query filter field.
-	QueryFilterUnknownField Class
+	QueryFilterUnknownField errors.Class
 
 	// QueryFilterUnknownOperator is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for unknown - invalid filter operator.
-	QueryFilterUnknownOperator Class
+	QueryFilterUnknownOperator errors.Class
 
 	// QueryFilterUnsupportedField is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for unsupported field types.
-	QueryFilterUnsupportedField Class
+	QueryFilterUnsupportedField errors.Class
 
 	// QueryFilterUnsupportedOperator is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for unsupported query filter operator.
-	QueryFilterUnsupportedOperator Class
+	QueryFilterUnsupportedOperator errors.Class
 
 	// QueryFilterValue is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for invalid filter values.
-	QueryFilterValue Class
+	QueryFilterValue errors.Class
 
 	// QueryFitlerNonMatched is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for non matched model structures or field structures to models.
-	QueryFitlerNonMatched Class
+	QueryFitlerNonMatched errors.Class
 
 	// QueryFilterFieldKind is the 'MjrQuery', 'MnrQueryFilter' error classification
 	// for invalid, unknown or unsupported filter field kind.
-	QueryFilterFieldKind Class
+	QueryFilterFieldKind errors.Class
 )
 
 func registerQueryFilters() {
-	MnrQueryFilter = MjrQuery.MustRegisterMinor("Filters", "defines errors related with the query filters")
+	MnrQueryFilter = errors.MustNewMinor(MjrQuery)
 
-	QueryFilterInvalidField = MnrQueryFilter.MustRegisterIndex("Invalid Field", "define errors related with invalid filter field").Class()
-	QueryFilterInvalidFormat = MnrQueryFilter.MustRegisterIndex("Invalid Format", "define errors related with invalid query filter format").Class()
-	QueryFilterLanguage = MnrQueryFilter.MustRegisterIndex("Language", "language filter related issues").Class()
-	QueryFilterMissingRequired = MnrQueryFilter.MustRegisterIndex("Missing Required", "missing required filter field").Class()
-	QueryFilterUnknownCollection = MnrQueryFilter.MustRegisterIndex("Unknown Collection", "define errors related with unknown/invalid query filter operator").Class()
-	QueryFilterUnknownField = MnrQueryFilter.MustRegisterIndex("Unknown Field", "defines errors related with unknown/invalid filter query field").Class()
-	QueryFilterUnknownOperator = MnrQueryFilter.MustRegisterIndex("Unknown Operator", "define errors related with unknown query filter operator").Class()
-	QueryFilterUnsupportedField = MnrQueryFilter.MustRegisterIndex("Unsupported Field", "unsupported field type issues").Class()
-	QueryFilterUnsupportedOperator = MnrQueryFilter.MustRegisterIndex("Unsupported Operator", "define errors related with unsupported query filter operator").Class()
-	QueryFilterValue = MnrQueryFilter.MustRegisterIndex("Value", "define errors related with invalid query filter value").Class()
-	QueryFitlerNonMatched = MnrQueryFilter.MustRegisterIndex("NonMatched", "model structures doesn't match").Class()
+	mjr, mnr := MjrQuery, MnrQueryFilter
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryFilterInvalidField = newClass()
+	QueryFilterInvalidFormat = newClass()
+	QueryFilterLanguage = newClass()
+	QueryFilterMissingRequired = newClass()
+	QueryFilterUnknownCollection = newClass()
+	QueryFilterUnknownField = newClass()
+	QueryFilterUnknownOperator = newClass()
+	QueryFilterUnsupportedField = newClass()
+	QueryFilterUnsupportedOperator = newClass()
+	QueryFilterValue = newClass()
+	QueryFitlerNonMatched = newClass()
 }
 
 /**
@@ -187,33 +206,37 @@ Query Sorts
 
 var (
 	// MnrQuerySorts is the 'MjrQuery' minor that classifies errors related with the sorts.
-	MnrQuerySorts Minor
+	MnrQuerySorts errors.Minor
 
 	// QuerySortField is the 'MjrQuery', 'MnrQuerySorts' error classification
 	// for unknown, unsupported fields.
-	QuerySortField Class
+	QuerySortField errors.Class
 
 	// QuerySortFormat is the 'MjrQuery', 'MnrQuerySorts' error classification
 	// for invalid sorting format.
-	QuerySortFormat Class
+	QuerySortFormat errors.Class
 
 	// QuerySortTooManyFields is the 'MjrQuery', 'MnrQuerySorts' error classification
 	// when too many sorting fields provided.
-	QuerySortTooManyFields Class
+	QuerySortTooManyFields errors.Class
 
 	// QuerySortRelatedFields is the 'MjrQuery', 'MnrQuerySorts' error classification
 	// for unsupported sorting by related fields.
-	QuerySortRelatedFields Class
+	QuerySortRelatedFields errors.Class
 )
 
 func registerQuerySorts() {
-	MnrQuerySorts = MjrQuery.MustRegisterMinor("Sorts", "related with the query sorts")
+	MnrQuerySorts = errors.MustNewMinor(MjrQuery)
 
-	QuerySortField = MnrQuerySorts.MustRegisterIndex("Field", "related with the query sort field").Class()
-	QuerySortFormat = MnrQuerySorts.MustRegisterIndex("Format", "related with the query sort format").Class()
-	QuerySortTooManyFields = MnrQuerySorts.MustRegisterIndex("Too Many Fields", "too many fields while adding sorting fields").Class()
-	QuerySortRelatedFields = MnrQuerySorts.MustRegisterIndex("Related Fields", "related with unsupported query sorts by related fields").Class()
+	mjr, mnr := MjrQuery, MnrQuerySorts
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
 
+	QuerySortField = newClass()
+	QuerySortFormat = newClass()
+	QuerySortTooManyFields = newClass()
+	QuerySortRelatedFields = newClass()
 }
 
 /**
@@ -224,27 +247,32 @@ Query Pagination
 
 var (
 	// MnrQueryPagination is the 'MjrQuery' minor that classifies errors related with the pagination.
-	MnrQueryPagination Minor
+	MnrQueryPagination errors.Minor
 
 	// QueryPaginationValue is the 'MjrQuery', 'MnrQueryPagination' error classification
 	// for invalid pagination values. I.e. invalid limit, offset value.
-	QueryPaginationValue Class
+	QueryPaginationValue errors.Class
 
 	// QueryPaginationType is the 'MjrQuery', 'MnrQueryPagination' error classification
 	// for invalid pagination type provided.
-	QueryPaginationType Class
+	QueryPaginationType errors.Class
 
 	// QueryPaginationAlreadySet is the 'MjrQuery', 'MnrQueryPagination' error classification
 	// while trying to add pagination when it is already set.
-	QueryPaginationAlreadySet Class
+	QueryPaginationAlreadySet errors.Class
 )
 
 func registerQueryPagination() {
-	MnrQueryPagination = MjrQuery.MustRegisterMinor("Pagination", "defines errors related with query paginatinos")
+	MnrQueryPagination = errors.MustNewMinor(MjrQuery)
 
-	QueryPaginationValue = MnrQueryPagination.MustRegisterIndex("Value", "invalid query pagination's value - i.e. invalid / unsupported limit or offset value").Class()
-	QueryPaginationType = MnrQueryPagination.MustRegisterIndex("Type", "invalid query pagination type").Class()
-	QueryPaginationAlreadySet = MnrQueryPagination.MustRegisterIndex("Already Set", "pagination is already set").Class()
+	mjr, mnr := MjrQuery, MnrQueryPagination
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryPaginationValue = newClass()
+	QueryPaginationType = newClass()
+	QueryPaginationAlreadySet = newClass()
 }
 
 /**
@@ -255,47 +283,52 @@ Query Value
 
 var (
 	// MnrQueryValue is the 'MjrQuery' minor that classifies errors related with the query values.
-	MnrQueryValue Minor
+	MnrQueryValue errors.Minor
 
 	// QueryNoValue is the 'MjrQuery', 'MnrQueryValue' error classification
 	// for queries with no values provided.
-	QueryNoValue Class
+	QueryNoValue errors.Class
 
 	// QueryValueMissingRequired is the 'MjrQuery', 'MnrQueryValue' error classifcation
 	// occurred on missing required field values.
-	QueryValueMissingRequired Class
+	QueryValueMissingRequired errors.Class
 
 	// QueryValueNoResult is the 'MjrQuery', 'MnrQueryValue' error classifaction
 	// when query returns no results.
-	QueryValueNoResult Class
+	QueryValueNoResult errors.Class
 
 	// QueryValuePrimary is the 'MjrQuery', 'MnrQueryValue' error classification
 	// for queries with invalid primary field value.
-	QueryValuePrimary Class
+	QueryValuePrimary errors.Class
 
 	// QueryValueType is the 'MjrQuery', 'MnrQueryValue' error classification
 	// for queries with invalid or unsupported value type provided.
-	QueryValueType Class
+	QueryValueType errors.Class
 
 	// QueryValueUnaddressable is the 'MjrQuery', 'MnrQueryValue' error classifcation
 	// for queries with unadresable value type provided.
-	QueryValueUnaddressable Class
+	QueryValueUnaddressable errors.Class
 
 	// QueryValueValidation is the 'MjrQuery', 'MnrQueryValue' error classifaction
 	// for queries with non validated values - validator failed.
-	QueryValueValidation Class
+	QueryValueValidation errors.Class
 )
 
 func registerQueryValue() {
-	MnrQueryValue = MjrQuery.MustRegisterMinor("Value", "defines errors related with the query value")
+	MnrQueryValue = errors.MustNewMinor(MjrQuery)
 
-	QueryNoValue = MnrQueryValue.MustRegisterIndex("Nil", "no value provided for the query").Class()
-	QueryValueMissingRequired = MnrQueryValue.MustRegisterIndex("Missing Required", "missing required field values").Class()
-	QueryValueNoResult = MnrQueryValue.MustRegisterIndex("No Result", "query returns no result value").Class()
-	QueryValuePrimary = MnrQueryValue.MustRegisterIndex("Primary", "query primary field value is not valid").Class()
-	QueryValueType = MnrQueryValue.MustRegisterIndex("Type", "invalid or unsupported query filter value type").Class()
-	QueryValueUnaddressable = MnrQueryValue.MustRegisterIndex("Unaddressable", "provided unaddressable query value").Class()
-	QueryValueValidation = MnrQueryValue.MustRegisterIndex("Validation", "query value not validated within the process").Class()
+	mjr, mnr := MjrQuery, MnrQueryValue
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryNoValue = newClass()
+	QueryValueMissingRequired = newClass()
+	QueryValueNoResult = newClass()
+	QueryValuePrimary = newClass()
+	QueryValueType = newClass()
+	QueryValueUnaddressable = newClass()
+	QueryValueValidation = newClass()
 }
 
 /**
@@ -307,22 +340,27 @@ Query Include
 var (
 	// MnrQueryInclude is the 'MjrQuery' minor error classifcation
 	// for the query includes issues.
-	MnrQueryInclude Minor
+	MnrQueryInclude errors.Minor
 
 	// QueryIncludeTooMany is the 'MjrQuery', 'MnrQueryInclude' error classifcation
 	// used on when provided too many includes or too deep included field.
-	QueryIncludeTooMany Class
+	QueryIncludeTooMany errors.Class
 
 	// QueryNotIncluded is the 'MjrQuery', 'MnrQueryInclude' error classification
 	// used when the provided query collection / model is not included.
-	QueryNotIncluded Class
+	QueryNotIncluded errors.Class
 )
 
 func registerQueryInclude() {
-	MnrQueryInclude = MjrQuery.MustRegisterMinor("Include", "issues related with the included fields")
+	MnrQueryInclude = errors.MustNewMinor(MjrQuery)
 
-	QueryIncludeTooMany = MnrQueryInclude.MustRegisterIndex("Too Many", "included too many or too deep than possible included fields").Class()
-	QueryNotIncluded = MnrQueryInclude.MustRegisterIndex("Not Included", "given model is not included within given query").Class()
+	mjr, mnr := MjrQuery, MnrQueryInclude
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryIncludeTooMany = newClass()
+	QueryNotIncluded = newClass()
 }
 
 /**
@@ -333,62 +371,67 @@ Query Transactions
 
 var (
 	// MnrQueryTransaction is the 'MjrQuery' minor error classification that defines issues with the query transactions.
-	MnrQueryTransaction Minor
+	MnrQueryTransaction errors.Minor
 
 	// QueryTxBegin is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// for query tranasaction begins.
-	QueryTxBegin Class
+	QueryTxBegin errors.Class
 
 	// QueryTxAlreadyBegin is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction had already begin.
-	QueryTxAlreadyBegin Class
+	QueryTxAlreadyBegin errors.Class
 
 	// QueryTxAlreadyResolved is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction had already resolved.
-	QueryTxAlreadyResolved Class
+	QueryTxAlreadyResolved errors.Class
 
 	// QueryTxNotFound is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction transaction not found for given query.
-	QueryTxNotFound Class
+	QueryTxNotFound errors.Class
 
 	// QueryTxRollback is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction with rollback issues.
-	QueryTxRollback Class
+	QueryTxRollback errors.Class
 
 	// QueryTxFailed is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction failed.
-	QueryTxFailed Class
+	QueryTxFailed errors.Class
 
 	// QueryTxUnknownState is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction state is unknown.
-	QueryTxUnknownState Class
+	QueryTxUnknownState errors.Class
 
 	// QueryTxUnknownIsolationLevel is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction isolation level is unknown.
-	QueryTxUnknownIsolationLevel Class
+	QueryTxUnknownIsolationLevel errors.Class
 
 	// QueryTxTermination is the 'MjrQuery', 'MnrQueryTransaction' error classifaction
 	// when query transaction is invalidly terminated.
-	QueryTxTermination Class
+	QueryTxTermination errors.Class
 
 	// QueryTxLockTimeOut is the 'MjrQuery', 'MnrQueryTransaction' error classification
 	// when query transaction lock had timed out.
-	QueryTxLockTimeOut Class
+	QueryTxLockTimeOut errors.Class
 )
 
 func registerQueryTransactions() {
-	MnrQueryTransaction = MjrQuery.MustRegisterMinor("Transaction", "query transaction issues")
+	MnrQueryTransaction = errors.MustNewMinor(MjrQuery)
 
-	QueryTxAlreadyBegin = MnrQueryTransaction.MustRegisterIndex("Already Begin", "query transaction already begin").Class()
-	QueryTxAlreadyResolved = MnrQueryTransaction.MustRegisterIndex("Already Resolved", "query transaction already resolved").Class()
-	QueryTxBegin = MnrQueryTransaction.MustRegisterIndex("Begin", "query transaction begin").Class()
-	QueryTxFailed = MnrQueryTransaction.MustRegisterIndex("Failed", "transaction failed").Class()
-	QueryTxNotFound = MnrQueryTransaction.MustRegisterIndex("Not Found", "transaction not found for given query").Class()
-	QueryTxRollback = MnrQueryTransaction.MustRegisterIndex("Rollback", "query transaction with rollback issues").Class()
-	QueryTxUnknownState = MnrQueryTransaction.MustRegisterIndex("Unknown State", "transaction state unknown").Class()
-	QueryTxUnknownIsolationLevel = MnrQueryTransaction.MustRegisterIndex("Unknown Isolation Level", "transaction isolation level unknown").Class()
-	QueryTxTermination = MnrQueryTransaction.MustRegisterIndex("Termination", "invalid transaction termination").Class()
-	QueryTxLockTimeOut = MnrQueryTransaction.MustRegisterIndex("Lock Timed Out", "transaction lock had timed out").Class()
+	mjr, mnr := MjrQuery, MnrQueryTransaction
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryTxAlreadyBegin = newClass()
+	QueryTxAlreadyResolved = newClass()
+	QueryTxBegin = newClass()
+	QueryTxFailed = newClass()
+	QueryTxNotFound = newClass()
+	QueryTxRollback = newClass()
+	QueryTxUnknownState = newClass()
+	QueryTxUnknownIsolationLevel = newClass()
+	QueryTxTermination = newClass()
+	QueryTxLockTimeOut = newClass()
 }
 
 /**
@@ -400,81 +443,86 @@ Query Violation
 var (
 	// MnrQueryViolation is the 'MjrQuery' minor error classifaction
 	// related with query violations.
-	MnrQueryViolation Minor
+	MnrQueryViolation errors.Minor
 
 	// QueryViolationIntegrityConstraint is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the query violates integrity constraint in example no foreign key exists for given insertion query.
-	QueryViolationIntegrityConstraint Class
+	QueryViolationIntegrityConstraint errors.Class
 
 	// QueryViolationNotNull is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the not null restriction is violated by the given insertion, patching query.
-	QueryViolationNotNull Class
+	QueryViolationNotNull errors.Class
 
 	// QueryViolationForeignKey is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the foreign key is being violated.
-	QueryViolationForeignKey Class
+	QueryViolationForeignKey errors.Class
 
 	// QueryViolationUnique is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the uniqueness of the field is being violated. I.e. user defined primary key is not unique.
-	QueryViolationUnique Class
+	QueryViolationUnique errors.Class
 
 	// QueryViolationCheck is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the repository value check is violated. I.e. SQL Check value.
-	QueryViolationCheck Class
+	QueryViolationCheck errors.Class
 
 	// QueryViolationDataType is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// when the inserted data type violates the allowed data types.
-	QueryViolationDataType Class
+	QueryViolationDataType errors.Class
 
 	// QueryViolationRestrict is the 'MjrQuery', 'MnrQueryViolation' error classifcation
 	// while doing restricted operation. I.e. SQL based repository with field marked as RESTRICT.
-	QueryViolationRestrict Class
+	QueryViolationRestrict errors.Class
 )
 
 func registerQueryViolation() {
-	MnrQueryViolation = MjrQuery.MustRegisterMinor("Violation", "query violates some constraints")
+	MnrQueryViolation = errors.MustNewMinor(MjrQuery)
 
-	QueryViolationIntegrityConstraint = MnrQueryViolation.MustRegisterIndex("Intergrity Constraint", "the integrity constraint is violated by the query").Class()
-	QueryViolationNotNull = MnrQueryViolation.MustRegisterIndex("Not Null", "Not null constraint is violated by the query").Class()
-	QueryViolationForeignKey = MnrQueryViolation.MustRegisterIndex("Foreign Key", "inserting or patching foreign key of non existing model instance").Class()
-	QueryViolationUnique = MnrQueryViolation.MustRegisterIndex("Unique", "violating unique restriction on the field").Class()
-	QueryViolationCheck = MnrQueryViolation.MustRegisterIndex("Check", "repository based data value check failed").Class()
-	QueryViolationDataType = MnrQueryViolation.MustRegisterIndex("Data Type", "inserting or patching invalid data type value").Class()
-	QueryViolationRestrict = MnrQueryViolation.MustRegisterIndex("Restrict", "restricted operation").Class()
+	mjr, mnr := MjrQuery, MnrQueryViolation
+	newClass := func() errors.Class {
+		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	}
+
+	QueryViolationIntegrityConstraint = newClass()
+	QueryViolationNotNull = newClass()
+	QueryViolationForeignKey = newClass()
+	QueryViolationUnique = newClass()
+	QueryViolationCheck = newClass()
+	QueryViolationDataType = newClass()
+	QueryViolationRestrict = newClass()
 }
 
 var (
 	// MnrQueryProcessor is the 'MjrQuery' error classification related with
 	// the issues with the processes and a processor.
-	MnrQueryProcessor Minor
+	MnrQueryProcessor errors.Minor
 
 	// QueryProcessorNotFound is the 'MjrQuery', 'MnrQueryProcessor' error classification
 	// for the query processes not found.
-	QueryProcessorNotFound Class
+	QueryProcessorNotFound errors.Class
 )
 
 func registerQueryProcessor() {
-	MnrQueryProcessor = MjrQuery.MustRegisterMinor("Processor", "issues related with the query processes / processor")
+	MnrQueryProcessor = errors.MustNewMinor(MjrQuery)
 
-	QueryProcessorNotFound = MnrQueryProcessor.MustRegisterIndex("Not Found", "query process / processor not found").Class()
+	QueryProcessorNotFound = errors.MustNewClass(MjrQuery, MnrQueryProcessor, errors.MustNewIndex(MjrQuery, MnrQueryProcessor))
 }
 
 var (
 	// MnrQueryRelation is the 'MjrQuery' minor error classification related
 	// with the issues while querying the relations.
-	MnrQueryRelation Minor
+	MnrQueryRelation errors.Minor
 
 	// QueryRelation is the 'MjrQuery', 'MnrQueryRelation' error classification
 	// for general issues while querying the relations.
-	QueryRelation Class
+	QueryRelation errors.Class
 	// QueryRelationNotFound is the 'MjrQuery', 'MnrQueryRelations' error classification
 	// used when the relation query instance is not found.
-	QueryRelationNotFound Class
+	QueryRelationNotFound errors.Class
 )
 
 func registerQueryRelations() {
-	MnrQueryRelation = MjrQuery.MustRegisterMinor("Relation", "issues with querying, patching, creating relations")
+	MnrQueryRelation = errors.MustNewMinor(MjrQuery)
 
-	QueryRelation = MustNewMinorClass(MnrQueryRelation)
-	QueryRelationNotFound = MnrQueryRelation.MustRegisterIndex("Not Found", "queried relation is not found").Class()
+	QueryRelation = errors.MustNewMinorClass(MjrQuery, MnrQueryRelation)
+	QueryRelationNotFound = errors.MustNewClass(MjrQuery, MnrQueryRelation, errors.MustNewIndex(MjrQuery, MnrQueryRelation))
 }

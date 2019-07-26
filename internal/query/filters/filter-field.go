@@ -5,8 +5,8 @@ import (
 
 	"golang.org/x/text/language"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/i18n"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -118,14 +118,14 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 			// check if id is of proper type
 			if op.isStringOnly() || op == OpIsNull || op == OpNotNull || op == OpNotExists || op == OpExists {
 				// operations over
-				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
-				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err := errors.NewDetf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
+				err.SetDetailsf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		case reflect.String:
 			if !op.isBasic() {
-				err := errors.Newf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
-				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err := errors.NewDetf(class.QueryFilterUnsupportedOperator, "filter operator is not supported: '%s' for given field", op)
+				err.SetDetailsf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		}
@@ -135,10 +135,10 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 
 			err := setPrimaryField(value, fieldValue)
 			if err != nil {
-				if err.Class.IsMajor(class.MjrInternal) {
+				if err.Class().Major() == class.MjrInternal {
 					return err
 				}
-				err = err.WrapDetailf("Invalid filter value for primary field in collection: '%s'.", f.structField.Struct().Collection())
+				err.WrapDetailsf("Invalid filter value for primary field in collection: '%s'.", f.structField.Struct().Collection())
 				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
@@ -152,8 +152,8 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 		default:
 			// check if the operator is the string only - doesn't allow other types of values
 			if op.isStringOnly() {
-				err := errors.Newf(class.QueryFilterUnsupportedOperator, "string filter operator is not supported: '%s' for non string field", op)
-				err = err.SetDetailf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
+				err := errors.NewDetf(class.QueryFilterUnsupportedOperator, "string filter operator is not supported: '%s' for non string field", op)
+				err.SetDetailsf("The filter operator: '%s' is not supported for the field: '%s'.", op, f.structField.NeuronName())
 				return err
 			}
 		}
@@ -168,20 +168,20 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 						if err != nil {
 							switch v := err.(type) {
 							case language.ValueError:
-								err := errors.New(class.QueryFilterLanguage, v.Error())
-								err = err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.NeuronName(),
+								err := errors.NewDet(class.QueryFilterLanguage, v.Error())
+								err.SetDetailsf("The value: '%s' for the '%s' filter field within the collection '%s', is not a valid language. Cannot recognize subfield: '%s'.", value, f.structField.NeuronName(),
 									f.structField.Struct().Collection(), v.Subtag())
 								return err
 							default:
-								return errors.New(class.QueryFilterLanguage, err.Error())
+								return errors.NewDet(class.QueryFilterLanguage, err.Error())
 							}
 						}
 						if op == OpEqual {
 							var confidence language.Confidence
 							tag, _, confidence = sup.Matcher.Match(tag)
 							if confidence <= language.Low {
-								err := errors.New(class.QueryFilterLanguage, "unsupported language filter")
-								err = err.SetDetailf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
+								err := errors.NewDet(class.QueryFilterLanguage, "unsupported language filter")
+								err.SetDetailsf("The value: '%s' for the '%s' filter field within the collection '%s' does not match any supported languages.", value, f.structField.NeuronName(), f.structField.Struct().Collection())
 								return err
 							}
 						}
@@ -190,8 +190,8 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 					}
 				}
 			default:
-				err := errors.New(class.QueryFilterLanguage, "invalid query language filter operator")
-				err = err.SetDetailf("Provided operator: '%s' for the language field is not acceptable", op.String())
+				err := errors.NewDet(class.QueryFilterLanguage, "invalid query language filter operator")
+				err.SetDetailsf("Provided operator: '%s' for the language field is not acceptable", op.String())
 				return err
 			}
 		}
@@ -201,11 +201,11 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 			fieldValue := reflect.New(t).Elem()
 			err := setAttributeField(value, fieldValue)
 			if err != nil {
-				if err.Class.IsMajor(class.MjrInternal) {
+				if err.Class().Major() == class.MjrInternal {
 					return err
 				}
 
-				err = err.WrapDetailf("Invalid filter value for the attribute field: '%s' for collection: '%s'.", f.structField.NeuronName(), f.structField.Struct().Collection())
+				err.WrapDetailsf("Invalid filter value for the attribute field: '%s' for collection: '%s'.", f.structField.NeuronName(), f.structField.Struct().Collection())
 				return err
 			}
 			fv.Values = append(fv.Values, fieldValue.Interface())
@@ -213,7 +213,7 @@ func (f *FilterField) SetValues(values []string, op *Operator, sup *i18n.Support
 
 		f.values = append(f.values, fv)
 	default:
-		return errors.Newf(class.InternalQueryFilter, "setting filter values for invalid field: '%s'", f.structField.Name())
+		return errors.NewDetf(class.InternalQueryFilter, "setting filter values for invalid field: '%s'", f.structField.Name())
 	}
 	return nil
 }

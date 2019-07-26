@@ -3,9 +3,9 @@ package query
 import (
 	"context"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -52,7 +52,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 	creator, ok := repo.(Creator)
 	if !ok {
 		log.Errorf("The repository doesn't implement Creator interface for model: %s", (*scope.Scope)(s).Struct().Collection())
-		return errors.New(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
+		return errors.NewDet(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
 	if err := creator.Create(ctx, s); err != nil {

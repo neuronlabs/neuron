@@ -3,9 +3,9 @@ package sorts
 import (
 	"strings"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -77,11 +77,13 @@ func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*Sort
 			sField, ok = m.Attribute(sort)
 			if !ok {
 				if disallowFK {
-					return nil, errors.New(class.QuerySortField, "sort field not found")
+					return nil, errors.NewDet(class.QuerySortField, "sort field not found")
 				}
 				sField, ok = m.ForeignKey(sort)
 				if !ok {
-					return nil, errors.New(class.QuerySortField, "sort field not found").SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+					err := errors.NewDet(class.QuerySortField, "sort field not found")
+					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+					return nil, err
 				}
 			}
 		}
@@ -92,7 +94,7 @@ func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*Sort
 		// Get Relationship
 		sField, ok = m.RelationshipField(splitted[0])
 		if !ok {
-			return nil, errors.New(class.QuerySortRelatedFields, "relationship field not found")
+			return nil, errors.NewDet(class.QuerySortRelatedFields, "relationship field not found")
 		}
 
 		sortField = newSortField(sField, AscendingOrder)
@@ -102,7 +104,9 @@ func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*Sort
 			return nil, err
 		}
 	default:
-		return nil, errors.New(class.QuerySortField, "sort field not found").SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+		err := errors.NewDet(class.QuerySortField, "sort field not found")
+		err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+		return nil, err
 	}
 
 	return sortField, nil
@@ -121,12 +125,12 @@ func (s *SortField) copy() *SortField {
 }
 
 // SetSubfield sets the subfield for given sortfield
-func (s *SortField) SetSubfield(sortSplitted []string, order Order, disallowFK bool) *errors.Error {
+func (s *SortField) SetSubfield(sortSplitted []string, order Order, disallowFK bool) errors.DetailedError {
 	return s.setSubfield(sortSplitted, order, disallowFK)
 }
 
 // setSubfield sets sortfield for subfield of given relationship field.
-func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK bool) *errors.Error {
+func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK bool) errors.DetailedError {
 	var (
 		subField *SortField
 		sField   *models.StructField
@@ -134,8 +138,8 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 
 	// Subfields are available only for the relationships
 	if !s.structField.IsRelationship() {
-		err := errors.New(class.QuerySortRelatedFields, "given sub sortfield is not a relationship")
-		err = err.SetDetailf("Sort: field '%s' is not a relationship in the model: '%s'", s.structField.NeuronName(), s.structField.Struct().Collection())
+		err := errors.NewDet(class.QuerySortRelatedFields, "given sub sortfield is not a relationship")
+		err.SetDetailsf("Sort: field '%s' is not a relationship in the model: '%s'", s.structField.NeuronName(), s.structField.Struct().Collection())
 		return err
 	}
 
@@ -144,7 +148,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 	switch len(sortSplitted) {
 	case 0:
 		log.Debug2("No sort field found")
-		return errors.New(class.InternalQuerySort, "setting sub sortfield failed with 0 length")
+		return errors.NewDet(class.InternalQuerySort, "setting sub sortfield failed with 0 length")
 	case 1:
 		// if len is equal to one then it should be primary or attribute field
 		relatedModel := s.structField.Relationship().Struct()
@@ -159,13 +163,17 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 			sField, ok = relatedModel.Attribute(sort)
 			if !ok {
 				if disallowFK {
-					return errors.New(class.QuerySortField, "sort field not found").SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+					err := errors.NewDet(class.QuerySortField, "sort field not found")
+					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+					return err
 				}
 
 				// if the foreign key sorting is allowed check if given foreign key exists
 				sField, ok = relatedModel.ForeignKey(sort)
 				if !ok {
-					return errors.New(class.QuerySortField, "sort field not found").SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+					err := errors.NewDet(class.QuerySortField, "sort field not found")
+					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+					return err
 				}
 			}
 		}
@@ -180,7 +188,9 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 
 		sField, ok = relatedModel.RelationshipField(sortSplitted[0])
 		if !ok {
-			return errors.New(class.QuerySortField, "sort field not found").SetDetailf("Sort: field '%s' not found in the model: '%s'", sortSplitted[0], relatedModel.Collection())
+			err := errors.NewDet(class.QuerySortField, "sort field not found")
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sortSplitted[0], relatedModel.Collection())
+			return err
 		}
 
 		// search for the subfields if already created

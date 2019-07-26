@@ -1,10 +1,14 @@
 package class
 
+import (
+	"github.com/neuronlabs/errors"
+)
+
 // MjrEncoding - major that classifies errors related with the 'jsonapi' encoding
-var MjrEncoding Major
+var MjrEncoding errors.Major
 
 func registerEncodingClasses() {
-	MjrEncoding = MustRegisterMajor("Encoding", "encoding related issues")
+	MjrEncoding = errors.NewMajor()
 
 	registerEncodingMarshal()
 	registerEncodingUnmarshal()
@@ -18,37 +22,38 @@ Encoding Marshal
 var (
 	// MnrEncodingMarshal is the minor error classification for the 'MjrEncoding' major.
 	// It is related with the encoding marshal errors.
-	MnrEncodingMarshal Minor
+	MnrEncodingMarshal errors.Minor
 
 	// EncodingMarshalOutputValue is the 'MjrEncoding', 'MnrEncodingMarshal' error classification
 	// when the setting the output value.
-	EncodingMarshalOutputValue Class
+	EncodingMarshalOutputValue errors.Class
 
 	// EncodingMarshalModelNotMapped is the 'MjrEncoding', 'MnrEncodingMarshal' error classification
 	// when marshaling unmapped model.
-	EncodingMarshalModelNotMapped Class
+	EncodingMarshalModelNotMapped errors.Class
 
 	// EncodingMarshalNilValue is the 'MjrEncoding', 'MnrEncodingMarshal' error classification
 	// when the provided marshaling value is nil.
-	EncodingMarshalNilValue Class
+	EncodingMarshalNilValue errors.Class
 
 	// EncodingMarshalNonAddressable is the 'MjrEncoding', 'MnrEncodingMarshal' error classification
 	// when the provided marshaling value is not addressable.
-	EncodingMarshalNonAddressable Class
+	EncodingMarshalNonAddressable errors.Class
 
 	// EncodingMarshalInput is the 'MjrEncoding', 'MnrEncodingMarshal' error classification
 	// when the provided marshaling value is invalid. I.e. provided value is not a model structure.
-	EncodingMarshalInput Class
+	EncodingMarshalInput errors.Class
 )
 
 func registerEncodingMarshal() {
-	MnrEncodingMarshal = MjrEncoding.MustRegisterMinor("Marshal", "marshaling to given encoding")
+	MnrEncodingMarshal = errors.MustNewMinor(MjrEncoding)
 
-	EncodingMarshalOutputValue = MnrEncodingMarshal.MustRegisterIndex("Output Value", "marshaling process failed on setting the output value").Class()
-	EncodingMarshalModelNotMapped = MnrEncodingMarshal.MustRegisterIndex("Model Not Mapped", "trying to marshal unmapped model").Class()
-	EncodingMarshalNilValue = MnrEncodingMarshal.MustRegisterIndex("Nil value", "marshaling nil value when it should exists").Class()
-	EncodingMarshalNonAddressable = MnrEncodingMarshal.MustRegisterIndex("Non Addressable", "marshaling unaddressable value").Class()
-	EncodingMarshalInput = MnrEncodingMarshal.MustRegisterIndex("Input", "marshaling invalid input value / type").Class()
+	mjr, mnr := MjrEncoding, MnrEncodingMarshal
+	EncodingMarshalOutputValue = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingMarshalModelNotMapped = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingMarshalNilValue = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingMarshalNonAddressable = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingMarshalInput = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
 }
 
 /**
@@ -60,65 +65,66 @@ Encoding Unmarshal
 var (
 	// MnrEncodingUnmarshal is the 'MjrEncoding' minor classification
 	// for the unmarshall process.
-	MnrEncodingUnmarshal Minor
+	MnrEncodingUnmarshal errors.Minor
 
 	// EncodingUnmarshal is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// for general purpose unmarshal errors.
-	EncodingUnmarshal Class
+	EncodingUnmarshal errors.Class
 
 	// EncodingUnmarshalCollection is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// when unmarshaling the input data that has undefined model collection.
-	EncodingUnmarshalCollection Class
+	EncodingUnmarshalCollection errors.Class
 
 	// EncodingUnmarshalFieldValue is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// When unmarshaling field with invalid value.
-	EncodingUnmarshalFieldValue Class
+	EncodingUnmarshalFieldValue errors.Class
 
 	// EncodingUnmarshalInvalidFormat is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// while unmarshaling the input data has invalid format. I.e. invalid json formatting.
-	EncodingUnmarshalInvalidFormat Class
+	EncodingUnmarshalInvalidFormat errors.Class
 
 	// EncodingUnmarshalInvalidID is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// while unmarshaling the document with invalid primary field format or value.
-	EncodingUnmarshalInvalidID Class
+	EncodingUnmarshalInvalidID errors.Class
 
 	// EncodingUnmarshalInvalidOutput is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// while unmarshaling the document with invalid output model or slice.
-	EncodingUnmarshalInvalidOutput Class
+	EncodingUnmarshalInvalidOutput errors.Class
 
 	// EncodingUnmarshalInvalidTime is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// when unmarshaling time defined field with invalid type or value.
-	EncodingUnmarshalInvalidTime Class
+	EncodingUnmarshalInvalidTime errors.Class
 
 	// EncodingUnmarshalInvalidType is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// while unmarshaling field with invalid value type.
-	EncodingUnmarshalInvalidType Class
+	EncodingUnmarshalInvalidType errors.Class
 
 	// EncodingUnmarshalNoData is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// while unmarshaling the empty data, when it is not allowed.
-	EncodingUnmarshalNoData Class
+	EncodingUnmarshalNoData errors.Class
 
 	// EncodingUnmarshalUnknownField is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// when trying to unmarshal undefined or unknown field. Used when 'strict' mode is set.
-	EncodingUnmarshalUnknownField Class
+	EncodingUnmarshalUnknownField errors.Class
 
 	// EncodingUnmarshalValueOutOfRange is a 'MjrEncoding', 'MnrEncodingUnmarshal' error classification
 	// when trying to unmarshal value with some range that exceeds defined maximum.
-	EncodingUnmarshalValueOutOfRange Class
+	EncodingUnmarshalValueOutOfRange errors.Class
 )
 
 func registerEncodingUnmarshal() {
-	MnrEncodingUnmarshal = MjrEncoding.MustRegisterMinor("Unmarshal", "unmarshaling from some encoding failed")
+	MnrEncodingUnmarshal = errors.MustNewMinor(MjrEncoding)
 
-	EncodingUnmarshal = MustNewMinorClass(MnrEncodingUnmarshal)
-	EncodingUnmarshalCollection = MnrEncodingUnmarshal.MustRegisterIndex("No Collection", "unmarshaling the input with no or invalid model collection").Class()
-	EncodingUnmarshalFieldValue = MnrEncodingUnmarshal.MustRegisterIndex("Field Value", "unmarshaling the field with invalid value").Class()
-	EncodingUnmarshalInvalidFormat = MnrEncodingUnmarshal.MustRegisterIndex("Invalid Format", "unmarshaling the input with invalid format").Class()
-	EncodingUnmarshalInvalidID = MnrEncodingUnmarshal.MustRegisterIndex("Invalid ID", "unmarshaling primary field with invalid type, value or formatting").Class()
-	EncodingUnmarshalInvalidOutput = MnrEncodingUnmarshal.MustRegisterIndex("Invalid Output", "invalid output value, type or model type").Class()
-	EncodingUnmarshalInvalidTime = MnrEncodingUnmarshal.MustRegisterIndex("Invalid Time", "unmarshaling time defined field with invalid value or formatting").Class()
-	EncodingUnmarshalInvalidType = MnrEncodingUnmarshal.MustRegisterIndex("Invalid Type", "unmarshaling the field or other data with invalid type").Class()
-	EncodingUnmarshalNoData = MnrEncodingUnmarshal.MustRegisterIndex("No Data", "unmarshaling the input without or with nil data").Class()
-	EncodingUnmarshalUnknownField = MnrEncodingUnmarshal.MustRegisterIndex("Unknown Field", "unmarshaling undefined field - in strict mode").Class()
-	EncodingUnmarshalValueOutOfRange = MnrEncodingUnmarshal.MustRegisterIndex("Out Of Range", "unmarshaling some data with out of possible range").Class()
+	mjr, mnr := MjrEncoding, MnrEncodingUnmarshal
+	EncodingUnmarshal = errors.MustNewMinorClass(mjr, mnr)
+	EncodingUnmarshalCollection = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalFieldValue = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalInvalidFormat = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalInvalidID = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalInvalidOutput = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalInvalidTime = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalInvalidType = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalNoData = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalUnknownField = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
+	EncodingUnmarshalValueOutOfRange = errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
 }

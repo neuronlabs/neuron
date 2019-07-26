@@ -3,9 +3,9 @@ package query
 import (
 	"context"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -50,7 +50,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 	getter, ok := repo.(Getter)
 	if !ok {
 		log.Errorf("No Getter repository found for the model: %s", s.Struct().Collection())
-		return errors.New(class.RepositoryNotImplementsGetter, "repository doesn't implement Getter interface")
+		return errors.NewDet(class.RepositoryNotImplementsGetter, "repository doesn't implement Getter interface")
 	}
 
 	// 	Get the value from the getter

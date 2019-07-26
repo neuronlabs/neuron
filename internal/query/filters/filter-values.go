@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -45,8 +45,8 @@ func (o *OpValuePair) copy() *OpValuePair {
 	return fv
 }
 
-func setPrimaryField(value string, fieldValue reflect.Value) *errors.Error {
-	var err *errors.Error
+func setPrimaryField(value string, fieldValue reflect.Value) errors.DetailedError {
+	var err errors.DetailedError
 	// if the id field is of string type set it to the strValue
 	t := fieldValue.Type()
 
@@ -70,14 +70,14 @@ func setPrimaryField(value string, fieldValue reflect.Value) *errors.Error {
 	case reflect.Uint64:
 		err = setUintField(value, fieldValue, 64)
 	default:
-		err = errors.Newf(class.InternalQueryFilter, "model primary invalid format type: '%s'", t.Name())
+		err = errors.NewDetf(class.InternalQueryFilter, "model primary invalid format type: '%s'", t.Name())
 	}
 
 	return err
 }
 
-func setAttributeField(value string, fieldValue reflect.Value) *errors.Error {
-	var err *errors.Error
+func setAttributeField(value string, fieldValue reflect.Value) errors.DetailedError {
+	var err errors.DetailedError
 	// the attribute can be:
 	t := fieldValue.Type()
 
@@ -116,29 +116,31 @@ func setAttributeField(value string, fieldValue reflect.Value) *errors.Error {
 
 		} else {
 			// TODO: set the nested attribute struct
-			err = errors.New(class.QueryFilterValue, "filtering over nested structure is not supported yet")
-			err = err.SetDetail("Filtering over nested structures is not supported yet.")
+			err = errors.NewDet(class.QueryFilterValue, "filtering over nested structure is not supported yet")
+			err.SetDetails("Filtering over nested structures is not supported yet.")
 		}
 	default:
 		log.Debug("Filtering over unsupported type: '%s'", t.Name())
 
-		err = errors.New(class.QueryFilterValue, "filtering over nested structure is not supported yet")
-		err = err.SetDetail("Filtering over nested structures is not supported yet.")
+		err = errors.NewDet(class.QueryFilterValue, "filtering over nested structure is not supported yet")
+		err.SetDetails("Filtering over nested structures is not supported yet.")
 	}
 	return err
 }
 
-func setTimeField(value string, fieldValue reflect.Value) *errors.Error {
-	err := errors.New(class.QueryFilterValue, "filtering over time field is not supported yet")
-	err = err.SetDetail("Filtering over time fields is not supported yet.")
+func setTimeField(value string, fieldValue reflect.Value) errors.DetailedError {
+	err := errors.NewDet(class.QueryFilterValue, "filtering over time field is not supported yet")
+	err.SetDetails("Filtering over time fields is not supported yet.")
 	return err
 }
 
-func setUintField(value string, fieldValue reflect.Value, bitSize int) *errors.Error {
+func setUintField(value string, fieldValue reflect.Value, bitSize int) errors.DetailedError {
 	// Parse unsigned int
 	uintValue, err := strconv.ParseUint(value, 10, bitSize)
 	if err != nil {
-		return errors.New(class.QueryFilterValue, "invalid unsinged integer value").SetDetailf("Invalid unsigned integer value.")
+		err := errors.NewDet(class.QueryFilterValue, "invalid unsinged integer value")
+		err.SetDetailsf("Invalid unsigned integer value.")
+		return err
 	}
 
 	// Set uint
@@ -146,10 +148,12 @@ func setUintField(value string, fieldValue reflect.Value, bitSize int) *errors.E
 	return nil
 }
 
-func setIntField(value string, fieldValue reflect.Value, bitSize int) *errors.Error {
+func setIntField(value string, fieldValue reflect.Value, bitSize int) errors.DetailedError {
 	intValue, err := strconv.ParseInt(value, 10, bitSize)
 	if err != nil {
-		return errors.New(class.QueryFilterValue, "invalid unsinged integer value").SetDetailf("Invalid integer value.")
+		err := errors.NewDet(class.QueryFilterValue, "invalid unsinged integer value")
+		err.SetDetailsf("Invalid integer value.")
+		return err
 	}
 
 	// Set value if no error
@@ -157,18 +161,20 @@ func setIntField(value string, fieldValue reflect.Value, bitSize int) *errors.Er
 	return nil
 }
 
-func setFloatField(value string, fieldValue reflect.Value, bitSize int) *errors.Error {
+func setFloatField(value string, fieldValue reflect.Value, bitSize int) errors.DetailedError {
 	// Parse float
 	floatValue, err := strconv.ParseFloat(value, bitSize)
 	if err != nil {
-		return errors.New(class.QueryFilterValue, "invalid unsinged integer value").SetDetailf("Invalid float value.")
+		err := errors.NewDet(class.QueryFilterValue, "invalid unsinged integer value")
+		err.SetDetailsf("Invalid float value.")
+		return err
 	}
 	fieldValue.SetFloat(floatValue)
 
 	return nil
 }
 
-func setBoolField(value string, fieldValue reflect.Value) *errors.Error {
+func setBoolField(value string, fieldValue reflect.Value) errors.DetailedError {
 	// set default if empty
 	if value == "" {
 		value = "false"
@@ -176,7 +182,9 @@ func setBoolField(value string, fieldValue reflect.Value) *errors.Error {
 
 	boolValue, err := strconv.ParseBool(value)
 	if err != nil {
-		return errors.New(class.QueryFilterValue, "invalid unsinged integer value").SetDetailf("Invalid boolean value.")
+		err := errors.NewDet(class.QueryFilterValue, "invalid unsinged integer value")
+		err.SetDetailsf("Invalid boolean value.")
+		return err
 	}
 
 	fieldValue.SetBool(boolValue)

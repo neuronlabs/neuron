@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
 	"github.com/neuronlabs/neuron-core/query/mocks"
@@ -455,10 +455,10 @@ func TestListRelationshipFilters(t *testing.T) {
 			err = s.List()
 			require.Error(t, err)
 
-			e, ok := err.(*errors.Error)
+			e, ok := err.(errors.DetailedError)
 			require.True(t, ok)
 
-			assert.Equal(t, class.QueryValueNoResult, e.Class)
+			assert.Equal(t, class.QueryValueNoResult, e.Class())
 		})
 	})
 
@@ -810,7 +810,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					assert.Len(t, fieldSet, 1)
 					_, isPrimary := s.InFieldset("ID")
 					assert.True(t, isPrimary)
-				}).Return(errors.New(class.QueryValueNoResult, "no results"))
+				}).Return(errors.NewDet(class.QueryValueNoResult, "no results"))
 
 				require.NotPanics(t, func() {
 					err = s.List()

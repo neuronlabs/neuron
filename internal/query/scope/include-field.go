@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -22,17 +22,17 @@ SCOPE INCLUDED FIELDS
 */
 
 // BuildIncludedFields builds the included fields for the given scope.
-func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
+func (s *Scope) BuildIncludedFields(includedList ...string) []errors.DetailedError {
 	var (
-		errorObjects []*errors.Error
-		errs         []*errors.Error
-		errObj       *errors.Error
+		errorObjects []errors.DetailedError
+		errs         []errors.DetailedError
+		errObj       errors.DetailedError
 	)
 
 	// check if the number of included fields is possible
 	if len(includedList) > s.mStruct.MaxIncludedCount() {
-		errObj = errors.New(class.QueryIncludeTooMany, "too many included fields provided")
-		errObj = errObj.SetDetailf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
+		errObj = errors.NewDet(class.QueryIncludeTooMany, "too many included fields provided")
+		errObj.SetDetailsf("Too many included parameter values for: '%s' collection.", s.mStruct.Collection())
 		errs = append(errs, errObj)
 		return errs
 	}
@@ -52,8 +52,8 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 		// check the nested level of every included
 		annotCount := strings.Count(included, common.AnnotationNestedSeparator)
 		if annotCount > s.Struct().MaxIncludedDepth() {
-			errObj = errors.Newf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
-			errObj = errObj.SetDetail("Maximum nested include limit reached for the given query.")
+			errObj = errors.NewDetf(class.QueryIncludeTooMany, "reached the maximum nested include limit")
+			errObj.SetDetails("Maximum nested include limit reached for the given query.")
 			errs = append(errs, errObj)
 			continue
 		}
@@ -67,8 +67,8 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []*errors.Error {
 
 			if annotCount == 0 && includedCount > 1 {
 				if includedCount == 2 {
-					errObj = errors.New(class.QueryIncludeTooMany, "included fields duplicated")
-					errObj = errObj.SetDetailf("Included parameter '%s' used more than once.", included)
+					errObj = errors.NewDet(class.QueryIncludeTooMany, "included fields duplicated")
+					errObj.SetDetailsf("Included parameter '%s' used more than once.", included)
 					errs = append(errs, errObj)
 					continue
 				} else if includedCount >= MaxPermissibleDuplicates {
@@ -143,7 +143,7 @@ func (s *Scope) CopyIncludedBoundaries() {
 // CurrentIncludedField gets current included field, based on the index
 func (s *Scope) CurrentIncludedField() (*IncludeField, error) {
 	if s.currentIncludedFieldIndex == -1 || s.currentIncludedFieldIndex > len(s.includedFields)-1 {
-		return nil, errors.New(class.InternalQueryIncluded, "getting non-existing included field")
+		return nil, errors.NewDet(class.InternalQueryIncluded, "getting non-existing included field")
 	}
 
 	return s.includedFields[s.currentIncludedFieldIndex], nil
@@ -170,10 +170,10 @@ func (s *Scope) ResetIncludedField() {
 // by the 'common.AnnotationNestedSeparator'. If separated correctly
 // it tries to create nested fields.
 // adds IncludeScope for given field.
-func (s *Scope) buildInclude(included string) []*errors.Error {
+func (s *Scope) buildInclude(included string) []errors.DetailedError {
 	var (
 		includedField *IncludeField
-		errs          []*errors.Error
+		errs          []errors.DetailedError
 	)
 	// search for the 'included' in the model's
 	relationField, ok := s.mStruct.RelationshipField(included)
@@ -276,7 +276,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 
 	// RelatedScope Value must be a pointer type
 	if v.Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryValueType, "included scope with invalid value")
+		return nil, errors.NewDet(class.QueryValueType, "included scope with invalid value")
 	}
 
 	// Check if is nil
@@ -312,7 +312,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 			}
 		default:
 			log.Errorf("Unexpected Included Scope Value type: %s", v.Type())
-			err := errors.New(class.QueryValueType, "unexpected included scope value type")
+			err := errors.NewDet(class.QueryValueType, "unexpected included scope value type")
 			return nil, err
 		}
 	}
@@ -381,7 +381,7 @@ func (i *IncludeField) getMissingFromSingle(value reflect.Value, uniqueMissing m
 		setCollectionValues(fieldValue)
 	default:
 		log.Debug3f("Unexpect type: '%s' in the relationship field's value.", fieldValue.Type())
-		err := errors.New(class.QueryValueType, "unexpected included scope value type")
+		err := errors.NewDet(class.QueryValueType, "unexpected included scope value type")
 		return err
 	}
 	return nil

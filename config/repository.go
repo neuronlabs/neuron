@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -57,7 +57,7 @@ func (r *Repository) Parse(s string) error {
 	for _, pair := range spaceSplit {
 		eqSign := strings.IndexRune(pair, '=')
 		if eqSign == -1 {
-			return errors.Newf(class.RepositoryConfigInvalid, "invalid repository config, key value pair: '%s' - equal sign not found", pair)
+			return errors.NewDetf(class.RepositoryConfigInvalid, "invalid repository config, key value pair: '%s' - equal sign not found", pair)
 		}
 
 		key := pair[:eqSign]
@@ -72,7 +72,7 @@ func (r *Repository) Parse(s string) error {
 		case "port":
 			port, err := strconv.Atoi(value)
 			if err != nil {
-				return errors.Newf(class.RepositoryConfigInvalid, "repository port configuration is not an integer: '%s'", value)
+				return errors.NewDetf(class.RepositoryConfigInvalid, "repository port configuration is not an integer: '%s'", value)
 			}
 			r.Port = port
 		case "protocol":
@@ -86,7 +86,7 @@ func (r *Repository) Parse(s string) error {
 		case "max_timeout":
 			d, err := time.ParseDuration(value)
 			if err != nil {
-				return errors.Newf(class.RepositoryConfigInvalid, "repository config max_timeout parse duration failed: '%v'", err)
+				return errors.NewDetf(class.RepositoryConfigInvalid, "repository config max_timeout parse duration failed: '%v'", err)
 			}
 			r.MaxTimeout = &d
 		case "dbname":
