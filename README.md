@@ -1,10 +1,9 @@
-# Neuron Core
+![Neuron Logo](logo_teal.svg)
+
+# Neuron Core [![Go Report Card](https://goreportcard.com/badge/github.com/neuronlabs/neuron-core)](https://goreportcard.com/report/github.com/neuronlabs/neuron-core) [![GoDoc](https://godoc.org/github.com/neuronlabs/neuron-core?status.svg)](https://godoc.org/github.com/neuronlabs/neuron-core) [![Build Status](https://travis-ci.com/neuronlabs/neuron-core.svg?branch=master)](https://travis-ci.com/neuronlabs/neuron-core) ![GitHub](https://img.shields.io/github/license/neuronlabs/neuron-core)
+
 
 Neuron-core is the golang cloud-native, distributed ORM implementation.
-
-[![Go Report Card](https://goreportcard.com/badge/github.com/neuronlabs/neuron-core)](https://goreportcard.com/report/github.com/neuronlabs/neuron-core)
-[![GoDoc](https://godoc.org/github.com/neuronlabs/neuron-core?status.svg)](https://godoc.org/github.com/neuronlabs/neuron-core)
-[![Build Status](https://travis-ci.com/neuronlabs/neuron-core.svg?branch=master)](https://travis-ci.com/neuronlabs/neuron-core)
 
 * [What is Neuron?](#what-is-neuron)
 * [Install](#install)
@@ -68,11 +67,9 @@ func (p *Pet) RepositoryName() string {
 ```go
 package main
 
-import(
-    // blank imported repository registers it's factory
-    // and the driver.
-    _ "github.com/neuronlabs/neuron-pq"
-)
+// blank imported repository registers it's factory
+// and the driver.
+import _ "github.com/neuronlabs/neuron-pq"
 
 import (
     "github.com/neuronlabs/neuron-core"
@@ -103,7 +100,7 @@ func main() {
         DBName: "main",
     }
     if err := c.RegisterRepository("main", mainDB); err != nil {
-        panic(err)
+        // handle error
     }
 
     // We can register and use different repository for other models.
@@ -118,16 +115,17 @@ func main() {
 
     // Register secondary repository.
     if err := c.RegisterRepository("secondary", secondaryDB); err != nil {
-        panic(err)
+        // handle error
     }
 ```
 
 * Register models 
 ```go
     if err := c.RegisterModels(models.User{}, models.Pet{}); err != nil {
-        panic(err)
+        // handle error
     }
 ```
+
 * Query registered models
 ```go
     users := []*User{}
@@ -154,8 +152,7 @@ The `neuron-core` is composed of the following packages:
 * `mapping` - contains the information about the mapped models their fields and settings
 * `config` - contains the configurations structures.
 * `encoding/jsonapi` - allows to marshal and unmarshal the model's, and queries by the https://jsonapi.org/ specification
-* `errors` - used as a default error package for the neuron packages.
-* `errors/class` - contains errors classification system for the neuron packages
+* `class` - contains `github.com/neuronlabs/errors` class instances used by the neuron-core package.
 * `repository` - is a package used to store, get and register the repositories nad their factories.
 * `log` - is the logging interface for the neuron based applications.
 * `i18n` - is the neuron based application supported internationalization
