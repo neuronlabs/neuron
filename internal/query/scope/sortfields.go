@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
@@ -157,12 +157,12 @@ func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*
 		ok        bool
 	)
 
-	splitted := strings.Split(sort, common.AnnotationNestedSeparator)
+	splitted := strings.Split(sort, annotation.NestedSeparator)
 	l := len(splitted)
 	switch {
 	// for length == 1 the sort must be an attribute, primary or a foreign key field
 	case l == 1:
-		if sort == common.AnnotationID {
+		if sort == annotation.ID {
 			sField = s.mStruct.PrimaryField()
 		} else {
 			sField, ok = s.mStruct.Attribute(sort)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -40,7 +39,7 @@ var (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -66,7 +65,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 
 // beforeCreate is the function that is used before the create process
 func beforeCreateFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -86,7 +85,7 @@ func beforeCreateFunc(ctx context.Context, s *Scope) error {
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
 func afterCreateFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -103,7 +102,7 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 }
 
 func storeScopePrimaries(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 

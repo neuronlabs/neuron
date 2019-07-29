@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/mapping"
 
@@ -20,6 +20,11 @@ import (
 type QueryValuer interface {
 	QueryValue(sField *mapping.StructField) string
 }
+
+const (
+	// QueryParamLanguage is the language query parameter used in the url.Values.
+	QueryParamLanguage = "lang"
+)
 
 // FilterField is a struct that keeps information about given query filters.
 // It is based on the mapping.StructField.
@@ -74,7 +79,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
 	filter = strings.TrimPrefix(filter, "filter")
 
-	params, err := common.SplitBracketParameter(filter)
+	params, err := SplitBracketParameter(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +222,7 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 		if k[0] == '[' {
 			k = fmt.Sprintf("filter[%s]%s", collection, k)
 		}
-		query.Add(k, strings.Join(vals, common.AnnotationSeparator))
+		query.Add(k, strings.Join(vals, annotation.Separator))
 	}
 	return query
 
@@ -250,7 +255,7 @@ func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 		if len(relName) > 0 {
 			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField().NeuronName(), fv.Operator().Raw)
 		} else if (*filters.FilterField)(f).StructField().IsLanguage() {
-			fk = common.QueryParamLanguage
+			fk = QueryParamLanguage
 		} else {
 			fk = fmt.Sprintf("[%s][%s]", f.StructField().NeuronName(), fv.Operator().Raw)
 		}

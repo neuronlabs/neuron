@@ -10,7 +10,6 @@ import (
 
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	ctrl "github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query"
@@ -564,7 +563,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 
 			if linkableModel, ok := sc.Value.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.NeuronName())
-			} else if value, ok := sc.StoreGet(common.EncodeLinksCtxKey); ok {
+			} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 				if encodeLinks, ok := value.(bool); ok && encodeLinks {
 					link := make(map[string]interface{})
 					link["self"] = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
@@ -613,7 +612,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 
 	if linkable, ok := sc.Value.(Linkable); ok {
 		node.Links = linkable.JSONAPILinks()
-	} else if value, ok := sc.StoreGet(common.EncodeLinksCtxKey); ok {
+	} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 		if encodeLinks, ok := value.(bool); ok && encodeLinks {
 
 			links := make(map[string]interface{})

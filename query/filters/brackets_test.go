@@ -1,4 +1,4 @@
-package common
+package filters
 
 import (
 	"testing"
@@ -37,5 +37,37 @@ func TestSplitBracketParameter(t *testing.T) {
 		testCase := "[collection"
 		_, err := SplitBracketParameter(testCase)
 		require.Error(t, err)
+	})
+
+	t.Run("Multiple", func(t *testing.T) {
+		type stringBool struct {
+			Str string
+			Val bool
+		}
+
+		values := []stringBool{
+			{"[some][thing]", true},
+			{"[no][closing", false},
+			{"no][opening]", false},
+			{"]justclosing", false},
+			{"[doubleopen[]", false},
+			{"[doubleclose]]", false},
+		}
+
+		var splitted []string
+		var err error
+		for _, v := range values {
+			splitted, err = SplitBracketParameter(v.Str)
+			if !v.Val {
+				assert.Error(t, err)
+				// t.Log(err)
+				if err == nil {
+					t.Log(v.Str)
+				}
+			} else {
+				assert.Nil(t, err)
+				assert.NotEmpty(t, splitted)
+			}
+		}
 	})
 }

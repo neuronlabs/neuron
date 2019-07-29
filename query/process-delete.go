@@ -6,7 +6,6 @@ import (
 
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -53,7 +52,7 @@ var (
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -78,7 +77,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeDeleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -94,7 +93,7 @@ func beforeDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterDeleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -110,7 +109,7 @@ func afterDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -182,7 +181,7 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -393,7 +392,7 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *models.S
 // reducePrimaryFilters is the process func that changes the delete scope filters so that
 // if the root model contains any nonBelongsTo relationship then the filters must be converted into primary field filter
 func reducePrimaryFilters(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 

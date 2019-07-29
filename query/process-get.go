@@ -5,7 +5,6 @@ import (
 
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -37,7 +36,7 @@ var (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -63,7 +62,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook.
 func beforeGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -80,7 +79,7 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 

@@ -4,10 +4,38 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/query/paginations"
+)
+
+// Pagination constants
+const (
+	// ParamPage is a JSON API query parameter used as for pagination.
+	ParamPage = "page"
+
+	// ParamPageNumber is a JSON API query parameter used in a page based
+	// pagination strategy in conjunction with ParamPageSize.
+	ParamPageNumber = "page[number]"
+	// ParamPageSize is a JSON API query parameter used in a page based
+	// pagination strategy in conjunction with ParamPageNumber.
+	ParamPageSize = "page[size]"
+
+	// ParamPageOffset is a JSON API query parameter used in an offset based
+	// pagination strategy in conjunction with ParamPageLimit.
+	ParamPageOffset = "page[offset]"
+	// ParamPageLimit is a JSON API query parameter used in an offset based
+	// pagination strategy in conjunction with ParamPageOffset.
+	ParamPageLimit = "page[limit]"
+
+	// ParamPageCursor is a JSON API query parameter used with a cursor-based
+	// strategy.
+	ParamPageCursor = "page[cursor]"
+
+	// ParamPageTotal is a JSON API query parameter used in pagination
+	// It tells to API to add information about total-pages or total-count
+	// (depending on the current strategy).
+	ParamPageTotal = "page[total]"
 )
 
 // PaginationType defines the pagination type.
@@ -49,25 +77,25 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 	case TpLimitOffset:
 		limit, offset := p.GetLimitOffset()
 		if limit != 0 {
-			k = common.QueryParamPageLimit
+			k = ParamPageLimit
 			v = strconv.Itoa(limit)
 			query.Set(k, v)
 		}
 		if offset != 0 {
-			k = common.QueryParamPageOffset
+			k = ParamPageOffset
 			v = strconv.Itoa(offset)
 			query.Set(k, v)
 		}
 	case TpPage:
 		number, size := (*paginations.Pagination)(p).GetNumberSize()
 		if number != 0 {
-			k = common.QueryParamPageNumber
+			k = ParamPageNumber
 			v = strconv.Itoa(number)
 			query.Set(k, v)
 		}
 
 		if size != 0 {
-			k = common.QueryParamPageSize
+			k = ParamPageSize
 			v = strconv.Itoa(size)
 			query.Set(k, v)
 		}

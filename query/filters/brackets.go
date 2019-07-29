@@ -1,7 +1,8 @@
-package common
+package filters
 
 import (
 	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
 	"github.com/neuronlabs/neuron-core/class"
 )
 
@@ -20,13 +21,13 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 	for i := 0; i < len(bracketed); i++ {
 		c := bracketed[i]
 		switch c {
-		case AnnotationOpenedBracket:
+		case annotation.OpenedBracket:
 			if startIndex > endIndex {
 				err = doubleOpen()
 				return nil, err
 			}
 			startIndex = i
-		case AnnotationClosedBracket:
+		case annotation.ClosedBracket:
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {

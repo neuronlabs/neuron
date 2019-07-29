@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/log"
 
@@ -155,7 +154,7 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debug2f("Scope[%s][%s] Creating failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), f.Name, err)
-			s.StoreSet(common.ProcessError, err)
+			s.StoreSet(processErrorKey, err)
 			processError = err
 		}
 
@@ -174,7 +173,7 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debug2f("Scope[%s][%s] Getting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), f.Name, err)
-			s.StoreSet(common.ProcessError, err)
+			s.StoreSet(processErrorKey, err)
 			processError = err
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
@@ -192,7 +191,7 @@ func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debug2f("Scope[%s][%s] Listing failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), f.Name, err)
-			s.StoreSet(common.ProcessError, err)
+			s.StoreSet(processErrorKey, err)
 			processError = err
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
@@ -209,7 +208,7 @@ func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 		ts := (*Scope)(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debug2f("Scope[%s][%s] Patching failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), f.Name, err)
-			s.StoreSet(common.ProcessError, err)
+			s.StoreSet(processErrorKey, err)
 			processError = err
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
@@ -226,10 +225,15 @@ func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
 		ts := queryS(s)
 		if err := f.Func(ctx, ts); err != nil {
 			log.Debug2f("Scope[%s][%s] Deleting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), f.Name, err)
-			s.StoreSet(common.ProcessError, err)
+			s.StoreSet(processErrorKey, err)
 			processError = err
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
 	return processError
 }
+
+// process error key instance
+var processErrorKey = processError{}
+
+type processError struct{}

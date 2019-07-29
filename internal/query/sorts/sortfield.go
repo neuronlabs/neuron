@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -65,13 +65,13 @@ func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*Sort
 		order = AscendingOrder
 	}
 
-	splitted := strings.Split(sort, common.AnnotationNestedSeparator)
+	splitted := strings.Split(sort, annotation.NestedSeparator)
 	l := len(splitted)
 
 	switch {
 	// for length == 1 the sort must be an attribute or a primary field
 	case l == 1:
-		if sort == common.AnnotationID {
+		if sort == annotation.ID {
 			sField = m.PrimaryField()
 		} else {
 			sField, ok = m.Attribute(sort)
@@ -154,7 +154,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 		relatedModel := s.structField.Relationship().Struct()
 		sort := sortSplitted[0]
 
-		if sort == common.AnnotationID {
+		if sort == annotation.ID {
 			log.Debug2("Primary sort field")
 			sField = relatedModel.PrimaryField()
 		} else {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 
@@ -60,7 +59,7 @@ var (
 )
 
 func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -147,7 +146,7 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 }
 
 func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -570,7 +569,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 
 // processGetIncluded gets the included fields for the
 func getIncludedFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -654,7 +653,7 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 }
 
 func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -726,7 +725,7 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 }
 
 func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -818,7 +817,7 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func getForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -1494,7 +1493,7 @@ func getForeignRelationshipBelongsTo(
 
 // setBelongsToRelationshipsFunc sets the value from the belongs to relationship ID's to the foreign keys
 func setBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 

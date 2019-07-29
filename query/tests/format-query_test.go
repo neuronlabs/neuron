@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/query"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -134,7 +133,7 @@ func TestFormatQuery(t *testing.T) {
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			assert.Equal(t, "pl", q.Get(common.QueryParamLanguage), fmt.Sprintf("%v", q))
+			assert.Equal(t, "pl", q.Get(filters.QueryParamLanguage), fmt.Sprintf("%v", q))
 		})
 	})
 
@@ -147,7 +146,7 @@ func TestFormatQuery(t *testing.T) {
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "12", q.Get(common.QueryParamPageLimit))
+		assert.Equal(t, "12", q.Get(query.ParamPageLimit))
 	})
 
 	t.Run("Sorts", func(t *testing.T) {
@@ -160,6 +159,6 @@ func TestFormatQuery(t *testing.T) {
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "-id", q.Get(common.QueryParamSort))
+		assert.Equal(t, "-id", q.Get(query.ParamSort))
 	})
 }
