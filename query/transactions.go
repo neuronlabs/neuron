@@ -271,7 +271,7 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 
 	cm, ok := repo.(Transactioner)
 	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.RepositoryName())
+		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.FactoryName())
 		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement Transactioner")
 		return
 	}
@@ -300,7 +300,7 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 
 	rb, ok := repo.(Transactioner)
 	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.RepositoryName())
+		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.FactoryName())
 		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
 		results <- err
 		return
