@@ -3,9 +3,8 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -37,7 +36,7 @@ var (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -50,7 +49,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 	getter, ok := repo.(Getter)
 	if !ok {
 		log.Errorf("No Getter repository found for the model: %s", s.Struct().Collection())
-		return errors.New(class.RepositoryNotImplementsGetter, "repository doesn't implement Getter interface")
+		return errors.NewDet(class.RepositoryNotImplementsGetter, "repository doesn't implement Getter interface")
 	}
 
 	// 	Get the value from the getter
@@ -63,7 +62,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook.
 func beforeGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 
@@ -80,7 +79,7 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(common.ProcessError); ok {
+	if _, ok := s.StoreGet(processErrorKey); ok {
 		return nil
 	}
 

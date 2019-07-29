@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/neuronlabs/neuron-core/common"
 	"github.com/neuronlabs/neuron-core/mapping"
 
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 )
+
+// ParamSort is the url query parameter name for the sorting fields.
+const ParamSort = "sort"
 
 // SortField is a field that contains sorting information.
 type SortField sorts.SortField
@@ -45,7 +47,7 @@ func (s *SortField) FormatQuery(q ...url.Values) url.Values {
 	}
 
 	var v string
-	if vals, ok := query[common.QueryParamSort]; ok {
+	if vals, ok := query[ParamSort]; ok {
 		if len(vals) > 0 {
 			v = vals[0]
 		}
@@ -57,7 +59,7 @@ func (s *SortField) FormatQuery(q ...url.Values) url.Values {
 
 	v += fmt.Sprintf("%s%s", sign, s.StructField().NeuronName())
 
-	query.Set(common.QueryParamSort, v)
+	query.Set(ParamSort, v)
 
 	return query
 }

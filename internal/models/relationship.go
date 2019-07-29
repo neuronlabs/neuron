@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 // RelationshipKind is the enum used to define the Relationship's kind.
@@ -74,46 +74,48 @@ func (s *Strategy) parse(values map[string]string) errors.MultiError {
 	var multiErr errors.MultiError
 	for key, value := range values {
 		switch strings.ToLower(key) {
-		case common.AnnotationOrder:
+		case annotation.Order:
 			err := s.parseOrder(value)
 			if err != nil {
 				multiErr = append(multiErr, err)
 			}
-		case common.AnnotationOnError:
+		case annotation.OnError:
 			err := s.parseOnError(value)
 			if err != nil {
 				multiErr = append(multiErr, err)
 			}
 		default:
-			multiErr = append(multiErr, errors.Newf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key).SetDetail(key))
+			err := errors.NewDetf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key)
+			err.SetDetails(key)
+			multiErr = append(multiErr, err)
 		}
 	}
 	return multiErr
 }
 
-func (s *Strategy) parseOrder(value string) *errors.Error {
+func (s *Strategy) parseOrder(value string) errors.DetailedError {
 	o, err := strconv.Atoi(value)
 	if err != nil {
-		err := errors.Newf(class.ModelRelationshipOptions, "relationship strategy order value is not an integer: '%s'", value)
+		err := errors.NewDetf(class.ModelRelationshipOptions, "relationship strategy order value is not an integer: '%s'", value)
 		return err
 	}
 
 	if o < 0 {
-		err := errors.New(class.ModelRelationshipOptions, "relationship strategy order is lower than 0")
+		err := errors.NewDet(class.ModelRelationshipOptions, "relationship strategy order is lower than 0")
 		return err
 	}
 	s.QueryOrder = uint(o)
 	return nil
 }
 
-func (s *Strategy) parseOnError(value string) *errors.Error {
+func (s *Strategy) parseOnError(value string) errors.DetailedError {
 	switch strings.ToLower(value) {
-	case common.AnnotationFailOnError:
+	case annotation.FailOnError:
 		s.OnError = Fail
-	case common.AnnotationContinueOnError:
+	case annotation.ContinueOnError:
 		s.OnError = Continue
 	default:
-		err := errors.Newf(class.ModelRelationshipOptions, "invalid on_error option: '%s'", value)
+		err := errors.NewDetf(class.ModelRelationshipOptions, "invalid on_error option: '%s'", value)
 		return err
 	}
 	return nil
@@ -131,40 +133,42 @@ func (d *DeleteStrategy) parse(values map[string]string) errors.MultiError {
 	var multiErr errors.MultiError
 	for key, value := range values {
 		switch strings.ToLower(key) {
-		case common.AnnotationOrder:
+		case annotation.Order:
 			err := d.parseOrder(value)
 			if err != nil {
 				multiErr = append(multiErr, err)
 			}
-		case common.AnnotationOnError:
+		case annotation.OnError:
 			err := d.parseOnError(value)
 			if err != nil {
 				multiErr = append(multiErr, err)
 			}
-		case common.AnnotationOnChange:
+		case annotation.OnChange:
 			err := d.parseOnChange(value)
 			if err != nil {
 				multiErr = append(multiErr, err)
 			}
 		default:
-			multiErr = append(multiErr, errors.Newf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key).SetDetail(key))
+			err := errors.NewDetf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key)
+			err.SetDetails(key)
+			multiErr = append(multiErr, err)
 		}
 	}
 	return multiErr
 }
 
-func (d *DeleteStrategy) parseOnChange(value string) *errors.Error {
+func (d *DeleteStrategy) parseOnChange(value string) errors.DetailedError {
 	switch value {
-	case common.AnnotationRelationSetNull:
+	case annotation.RelationSetNull:
 		d.OnChange = SetNull
-	case common.AnnotationRelationCascade:
+	case annotation.RelationCascade:
 		d.OnChange = Cascade
-	case common.AnnotationRelationRestrict:
+	case annotation.RelationRestrict:
 		d.OnChange = Restrict
-	case common.AnnotationRelationNoAction:
+	case annotation.RelationNoAction:
 		d.OnChange = NoAction
 	default:
-		return errors.Newf(class.ModelRelationshipOptions, "relationship invalid 'on delete' option: '%s'", value)
+		return errors.NewDetf(class.ModelRelationshipOptions, "relationship invalid 'on delete' option: '%s'", value)
 	}
 	return nil
 }

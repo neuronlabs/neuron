@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -398,7 +398,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
-		return errors.Newf(class.ModelRelationshipType, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
+		return errors.NewDetf(class.ModelRelationshipType, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
 	}
 
 	switch modelType.Kind() {
@@ -456,9 +456,9 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		return mp
 	}
 
-	separated := strings.Split(tag, common.AnnotationTagSeparator)
+	separated := strings.Split(tag, annotation.TagSeparator)
 	for _, option := range separated {
-		i := strings.IndexRune(option, common.AnnotationTagEqual)
+		i := strings.IndexRune(option, annotation.TagEqual)
 		var values []string
 		if i == -1 {
 			mp[option] = values
@@ -466,7 +466,7 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		}
 		key := option[:i]
 		if i != len(option)-1 {
-			values = strings.Split(option[i+1:], common.AnnotationSeparator)
+			values = strings.Split(option[i+1:], annotation.Separator)
 		}
 
 		mp[key] = values
@@ -486,17 +486,17 @@ func (s *StructField) initCheckFieldType() error {
 			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 			reflect.Uint32, reflect.Uint64:
 		default:
-			return errors.Newf(class.ModelFieldType, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
+			return errors.NewDetf(class.ModelFieldType, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 		}
 	case KindAttribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
-			return errors.Newf(class.ModelFieldType, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
+			return errors.NewDetf(class.ModelFieldType, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
 		}
 		if s.isLanguage() {
 			if fieldType.Kind() != reflect.String {
-				return errors.Newf(class.ModelFieldType, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
+				return errors.NewDetf(class.ModelFieldType, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
 			}
 		}
 
@@ -512,10 +512,10 @@ func (s *StructField) initCheckFieldType() error {
 				fieldType = fieldType.Elem()
 			}
 			if fieldType.Kind() != reflect.Struct {
-				return errors.Newf(class.ModelRelationshipType, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
+				return errors.NewDetf(class.ModelRelationshipType, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
 			}
 		default:
-			return errors.Newf(class.ModelRelationshipType, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
+			return errors.NewDetf(class.ModelRelationshipType, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
 		}
 	}
 	return nil
@@ -587,7 +587,7 @@ func (s *StructField) isTime() bool {
 }
 
 func (s *StructField) setTagValues() error {
-	tag, hasTag := s.reflectField.Tag.Lookup(common.AnnotationNeuron)
+	tag, hasTag := s.reflectField.Tag.Lookup(annotation.Neuron)
 	if !hasTag {
 		return nil
 	}
@@ -598,16 +598,16 @@ func (s *StructField) setTagValues() error {
 	// iterate over structfield additional tags
 	for key, values := range tagValues {
 		switch key {
-		case common.AnnotationFieldType, common.AnnotationName, common.AnnotationForeignKey, common.AnnotationRelation:
+		case annotation.FieldType, annotation.Name, annotation.ForeignKey, annotation.Relation:
 			continue
-		case common.AnnotationFlags:
+		case annotation.Flags:
 			s.setFlags(values...)
 			continue
 		}
 
 		if !s.isRelationship() {
-			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, common.AnnotationManyToMany)
-			return errors.Newf(class.ModelFieldTag, "%s tag on non relationship field", key)
+			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, annotation.ManyToMany)
+			return errors.NewDetf(class.ModelFieldTag, "%s tag on non relationship field", key)
 		}
 
 		r := s.relationship
@@ -616,7 +616,7 @@ func (s *StructField) setTagValues() error {
 			s.relationship = r
 		}
 
-		if key == common.AnnotationManyToMany {
+		if key == annotation.ManyToMany {
 			r.kind = RelMany2Many
 			// first value is join model
 			// the second is the backreference field
@@ -627,7 +627,7 @@ func (s *StructField) setTagValues() error {
 				}
 			case 0:
 			default:
-				err := errors.New(class.ModelFieldTag, "relationship many2many tag has too many values")
+				err := errors.NewDet(class.ModelFieldTag, "relationship many2many tag has too many values")
 				multiError = append(multiError, err)
 			}
 			continue
@@ -638,7 +638,7 @@ func (s *StructField) setTagValues() error {
 		for _, value := range values {
 			i := strings.IndexRune(value, '=')
 			if i == -1 {
-				err := errors.Newf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
+				err := errors.NewDetf(class.ModelFieldTag, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
 				multiError = append(multiError, err)
 				continue
 			}
@@ -651,14 +651,14 @@ func (s *StructField) setTagValues() error {
 		var errs errors.MultiError
 		//`neuron:"on_delete=order=1;on_error=fail;on_change=restrict"`
 		switch key {
-		case common.AnnotationOnDelete:
+		case annotation.OnDelete:
 			errs = r.onDelete.parse(kv)
-		case common.AnnotationOnPatch:
+		case annotation.OnPatch:
 			errs = r.onPatch.parse(kv)
-		case common.AnnotationOnCreate:
+		case annotation.OnCreate:
 			errs = r.onCreate.parse(kv)
 		default:
-			errs = append(errs, errors.Newf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
+			errs = append(errs, errors.NewDetf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
 		}
 
 		if len(errs) > 0 {
@@ -674,22 +674,22 @@ func (s *StructField) setTagValues() error {
 func (s *StructField) setFlags(flags ...string) {
 	for _, single := range flags {
 		switch single {
-		case common.AnnotationClientID:
+		case annotation.ClientID:
 			s.setFlag(FClientID)
-		case common.AnnotationNoFilter:
+		case annotation.NoFilter:
 			s.setFlag(FNoFilter)
-		case common.AnnotationHidden:
+		case annotation.Hidden:
 			s.setFlag(FHidden)
-		case common.AnnotationNotSortable:
+		case annotation.NotSortable:
 			s.setFlag(FSortable)
-		case common.AnnotationISO8601:
+		case annotation.ISO8601:
 			s.setFlag(FISO8601)
-		case common.AnnotationOmitEmpty:
+		case annotation.OmitEmpty:
 			s.setFlag(FOmitempty)
-		case common.AnnotationI18n:
+		case annotation.I18n:
 			s.setFlag(FI18n)
 			s.mStruct.i18n = append(s.mStruct.i18n, s)
-		case common.AnnotationLanguage:
+		case annotation.Language:
 			s.mStruct.setLanguage(s)
 		default:
 			log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), single)

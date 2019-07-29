@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
@@ -230,11 +230,11 @@ func (s *Scope) Pagination() *paginations.Pagination {
 }
 
 // PreparePaginatedValue prepares paginated value for given key, value and index
-func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Parameter) *errors.Error {
+func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Parameter) errors.DetailedError {
 	val, err := strconv.Atoi(value)
 	if err != nil {
-		err := errors.New(class.QueryPaginationValue, "invalid pagination value")
-		err = err.SetDetailf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
+		err.SetDetailsf("Provided query parameter: %v, contains invalid value: %v. Positive integer value is required.", key, value)
 		return err
 	}
 
@@ -246,25 +246,33 @@ func (s *Scope) PreparePaginatedValue(key, value string, index paginations.Param
 	switch index {
 	case 0:
 		if s.pagination.Type() == paginations.TpPage {
-			return errors.New(class.QueryPaginationType, "multiple pagination types").SetDetail("Multiple pagination types in the query")
+			err := errors.NewDet(class.QueryPaginationType, "multiple pagination types")
+			err.SetDetails("Multiple pagination types in the query")
+			return err
 		}
 		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpOffset)
 	case 1:
 		if s.pagination.Type() == paginations.TpPage {
-			return errors.New(class.QueryPaginationType, "multiple pagination types").SetDetail("Multiple pagination types in the query")
+			err := errors.NewDet(class.QueryPaginationType, "multiple pagination types")
+			err.SetDetails("Multiple pagination types in the query")
+			return err
 		}
 		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpOffset)
 	case 2:
 		if s.pagination.Type() == paginations.TpOffset && !s.pagination.IsZero() {
-			return errors.New(class.QueryPaginationType, "multiple pagination types").SetDetail("Multiple pagination types in the query")
+			err := errors.NewDet(class.QueryPaginationType, "multiple pagination types")
+			err.SetDetails("Multiple pagination types in the query")
+			return err
 		}
 		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpPage)
 	case 3:
 		if s.pagination.Type() == paginations.TpOffset && !s.pagination.IsZero() {
-			return errors.New(class.QueryPaginationType, "multiple pagination types").SetDetail("Multiple pagination types in the query")
+			err := errors.NewDet(class.QueryPaginationType, "multiple pagination types")
+			err.SetDetails("Multiple pagination types in the query")
+			return err
 		}
 		s.pagination.SetValue(val, index)
 		s.pagination.SetType(paginations.TpPage)
@@ -345,7 +353,7 @@ func (s *Scope) SetCollectionValues() error {
 
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() != reflect.Ptr {
-		return errors.New(class.QueryValueType, "invalid scope value type")
+		return errors.NewDet(class.QueryValueType, "invalid scope value type")
 	}
 	if v.IsNil() {
 		return nil
@@ -357,7 +365,7 @@ func (s *Scope) SetCollectionValues() error {
 		for i := 0; i < tempV.Len(); i++ {
 			elem := tempV.Index(i)
 			if elem.Type().Kind() != reflect.Ptr {
-				return errors.New(class.QueryValueType, "invalid scope value type")
+				return errors.NewDet(class.QueryValueType, "invalid scope value type")
 			}
 			if !elem.IsNil() {
 				setValueToCollection(elem)
@@ -369,7 +377,7 @@ func (s *Scope) SetCollectionValues() error {
 		}
 		setValueToCollection(v)
 	default:
-		err := errors.New(class.QueryValueType, "invalid scope value type")
+		err := errors.NewDet(class.QueryValueType, "invalid scope value type")
 		return err
 	}
 
@@ -445,7 +453,7 @@ func (s *Scope) isRoot() bool {
 // Returns the values within the []interface{} form.
 func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
 	if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "no scope value provided")
+		return nil, errors.NewDet(class.QueryNoValue, "no scope value provided")
 	}
 
 	primaryIndex := s.mStruct.PrimaryField().FieldIndex()
@@ -458,7 +466,7 @@ func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
 
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryValueType, "invalid query value type")
+		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 	v = v.Elem()
 
@@ -468,7 +476,7 @@ func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
 			single := v.Index(i)
 			if single.Kind() != reflect.Ptr {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one fo the slice values is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one fo the slice values is of invalid type")
 			}
 
 			if single.IsNil() {
@@ -478,14 +486,14 @@ func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
 			single = single.Elem()
 			if single.Kind() != reflect.Struct {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one fo the slice values is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one fo the slice values is of invalid type")
 			}
 			addPrimaryValue(single)
 		}
 	case reflect.Struct:
 		addPrimaryValue(v)
 	default:
-		return nil, errors.New(class.QueryValueType, "one query value is of invalid type")
+		return nil, errors.NewDet(class.QueryValueType, "one query value is of invalid type")
 	}
 
 	return values, nil
@@ -495,12 +503,12 @@ func (s *Scope) GetPrimaryFieldValues() ([]interface{}, error) {
 func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{}, error) {
 	if s.mStruct != foreign.Struct() {
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
-		return nil, errors.New(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
+		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
 	} else if foreign.FieldKind() != models.KindForeignKey {
 		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.FieldKind())
-		return nil, errors.New(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
+		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
 	} else if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "provided nil scope value")
+		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")
 	}
 
 	// initialize the array
@@ -514,7 +522,7 @@ func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{},
 
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryNoValue, "provided no scope value")
+		return nil, errors.NewDet(class.QueryNoValue, "provided no scope value")
 	}
 	v = v.Elem()
 
@@ -525,7 +533,7 @@ func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{},
 
 			if single.Kind() != reflect.Ptr {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one of the scope's slice value is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one of the scope's slice value is of invalid type")
 			}
 
 			if single.IsNil() {
@@ -534,7 +542,7 @@ func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{},
 			single = single.Elem()
 			if single.Kind() != reflect.Struct {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one of the scope's slice value is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one of the scope's slice value is of invalid type")
 			}
 
 			addForeignKey(single)
@@ -542,7 +550,7 @@ func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{},
 	case reflect.Struct:
 		addForeignKey(v)
 	default:
-		return nil, errors.New(class.QueryValueType, "invalid query value type")
+		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 
 	return values, nil
@@ -552,12 +560,12 @@ func (s *Scope) GetForeignKeyValues(foreign *models.StructField) ([]interface{},
 func (s *Scope) GetUniqueForeignKeyValues(foreign *models.StructField) ([]interface{}, error) {
 	if s.mStruct != foreign.Struct() {
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
-		return nil, errors.New(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
+		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
 	} else if foreign.FieldKind() != models.KindForeignKey {
 		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.FieldKind())
-		return nil, errors.New(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
+		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
 	} else if s.Value == nil {
-		return nil, errors.New(class.QueryNoValue, "provided nil scope value")
+		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")
 	}
 
 	// initialize the array
@@ -572,7 +580,7 @@ func (s *Scope) GetUniqueForeignKeyValues(foreign *models.StructField) ([]interf
 
 	v := reflect.ValueOf(s.Value)
 	if v.Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryNoValue, "provided no scope value")
+		return nil, errors.NewDet(class.QueryNoValue, "provided no scope value")
 	}
 	v = v.Elem()
 
@@ -583,7 +591,7 @@ func (s *Scope) GetUniqueForeignKeyValues(foreign *models.StructField) ([]interf
 
 			if single.Kind() != reflect.Ptr {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one of the scope's slice value is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one of the scope's slice value is of invalid type")
 			}
 
 			if single.IsNil() {
@@ -592,7 +600,7 @@ func (s *Scope) GetUniqueForeignKeyValues(foreign *models.StructField) ([]interf
 			single = single.Elem()
 			if single.Kind() != reflect.Struct {
 				log.Debugf("Getting Primary values from the toMany scope. One of the scope values is of invalid type: %T", single.Interface())
-				return nil, errors.New(class.QueryValueType, "one of the scope's slice value is of invalid type")
+				return nil, errors.NewDet(class.QueryValueType, "one of the scope's slice value is of invalid type")
 			}
 
 			addForeignKey(single)
@@ -600,7 +608,7 @@ func (s *Scope) GetUniqueForeignKeyValues(foreign *models.StructField) ([]interf
 	case reflect.Struct:
 		addForeignKey(v)
 	default:
-		return nil, errors.New(class.QueryValueType, "invalid query value type")
+		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 
 	for foreign := range foreigns {
@@ -712,7 +720,7 @@ func (s *Scope) getFieldValue(sField *models.StructField) (reflect.Value, error)
 	return modelValueByStructField(s.Value, sField)
 }
 
-func (s *Scope) checkField(field string) (*models.StructField, *errors.Error) {
+func (s *Scope) checkField(field string) (*models.StructField, errors.DetailedError) {
 	sField, err := s.mStruct.CheckField(field)
 	if err != nil {
 		return nil, err
@@ -723,17 +731,17 @@ func (s *Scope) checkField(field string) (*models.StructField, *errors.Error) {
 // modelValueByStrucfField gets the value by the provided StructField
 func modelValueByStructField(model interface{}, sField *models.StructField) (reflect.Value, error) {
 	if model == nil {
-		return reflect.Value{}, errors.New(class.QueryNoValue, "empty value provided").SetOperation("modelValueByStructField")
+		return reflect.Value{}, errors.NewDet(class.QueryNoValue, "empty value provided")
 	}
 
 	v := reflect.ValueOf(model)
 	if v.Kind() != reflect.Ptr {
-		return v, errors.New(class.QueryValueUnaddressable, "non addressable value provided")
+		return v, errors.NewDet(class.QueryValueUnaddressable, "non addressable value provided")
 	}
 	v = v.Elem()
 
 	if v.Kind() == reflect.Slice {
-		return reflect.Value{}, errors.New(class.QueryValueType, "invalid value type provided for the function").SetOperation("modelValueByStructField")
+		return reflect.Value{}, errors.NewDet(class.QueryValueType, "invalid value type provided for the function")
 	}
 
 	return v.FieldByIndex(sField.ReflectField().Index), nil

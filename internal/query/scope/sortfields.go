@@ -3,9 +3,9 @@ package scope
 import (
 	"strings"
 
-	"github.com/neuronlabs/neuron-core/common"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
+	"github.com/neuronlabs/neuron-core/class"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
@@ -21,7 +21,7 @@ func (s *Scope) AppendSortFields(fromStart bool, sortFields ...*sorts.SortField)
 }
 
 // BuildSortFields sets the sort fields for given string array with the disallowed foreign keys.
-func (s *Scope) BuildSortFields(sortFields ...string) []*errors.Error {
+func (s *Scope) BuildSortFields(sortFields ...string) []errors.DetailedError {
 	return s.buildSortFields(true, sortFields...)
 }
 
@@ -65,7 +65,9 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*sort
 		fields[sort] = count
 		if count > 1 {
 			if count == 2 {
-				errs = append(errs, errors.New(class.QuerySortField, "duplicated sort field").SetDetailf("Sort parameter: %v used more than once.", sort))
+				er := errors.NewDet(class.QuerySortField, "duplicated sort field")
+				er.SetDetailsf("Sort parameter: %v used more than once.", sort)
+				errs = append(errs, er)
 				continue
 			} else if count > 2 {
 				break
@@ -87,10 +89,10 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*sort
 }
 
 // setSortFields sets the sort fields for given string array.
-func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []*errors.Error {
+func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []errors.DetailedError {
 	var (
-		err   *errors.Error
-		errs  []*errors.Error
+		err   errors.DetailedError
+		errs  []errors.DetailedError
 		order sorts.Order
 	)
 
@@ -98,15 +100,15 @@ func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []*errors
 
 	// define the common error adder
 	badField := func(fieldName string) {
-		err = errors.New(class.QuerySortField, "invalid sort field provided")
-		err = err.SetDetailf("Provided sort parameter: '%v' is not valid for '%v' collection.", fieldName, s.mStruct.Collection())
+		err = errors.NewDet(class.QuerySortField, "invalid sort field provided")
+		err.SetDetailsf("Provided sort parameter: '%v' is not valid for '%v' collection.", fieldName, s.mStruct.Collection())
 		errs = append(errs, err)
 	}
 
 	// If the number of sort fields is too long then do not allow
 	if len(sortFields) > s.mStruct.SortScopeCount() {
-		err = errors.New(class.QuerySortTooManyFields, "too many sort fields provided for given model")
-		err = err.SetDetailf("There are too many sort parameters for the '%v' collection.", s.mStruct.Collection())
+		err = errors.NewDet(class.QuerySortTooManyFields, "too many sort fields provided for given model")
+		err.SetDetailsf("There are too many sort parameters for the '%v' collection.", s.mStruct.Collection())
 		errs = append(errs, err)
 		return errs
 	}
@@ -126,8 +128,8 @@ func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []*errors
 		fields[sort] = count
 		if count > 1 {
 			if count == 2 {
-				err = errors.New(class.QuerySortField, "duplicated sort field provided")
-				err = err.SetDetailf("Sort parameter: %v used more than once.", sort)
+				err = errors.NewDet(class.QuerySortField, "duplicated sort field provided")
+				err.SetDetailsf("Sort parameter: %v used more than once.", sort)
 				errs = append(errs, err)
 				continue
 			} else if count > 2 {
@@ -147,34 +149,34 @@ func (s *Scope) buildSortFields(disallowFK bool, sortFields ...string) []*errors
 	return errs
 }
 
-func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*sorts.SortField, *errors.Error) {
+func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*sorts.SortField, errors.DetailedError) {
 	var (
 		sField    *models.StructField
 		sortField *sorts.SortField
-		err       *errors.Error
+		err       errors.DetailedError
 		ok        bool
 	)
 
-	splitted := strings.Split(sort, common.AnnotationNestedSeparator)
+	splitted := strings.Split(sort, annotation.NestedSeparator)
 	l := len(splitted)
 	switch {
 	// for length == 1 the sort must be an attribute, primary or a foreign key field
 	case l == 1:
-		if sort == common.AnnotationID {
+		if sort == annotation.ID {
 			sField = s.mStruct.PrimaryField()
 		} else {
 			sField, ok = s.mStruct.Attribute(sort)
 			if !ok {
 				if disallowFK {
-					err = errors.New(class.QuerySortField, "sort field not found")
-					err = err.SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
+					err = errors.NewDet(class.QuerySortField, "sort field not found")
+					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
 					return nil, err
 				}
 
 				sField, ok = s.mStruct.ForeignKey(sort)
 				if !ok {
-					err = errors.New(class.QuerySortField, "sort field not found")
-					err = err.SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
+					err = errors.NewDet(class.QuerySortField, "sort field not found")
+					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
 					return nil, err
 				}
 			}
@@ -184,8 +186,8 @@ func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*
 	case l <= (sorts.MaxNestedRelLevel + 1):
 		sField, ok = s.mStruct.RelationshipField(splitted[0])
 		if !ok {
-			err = errors.New(class.QuerySortField, "sort field not found")
-			err = err.SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
+			err = errors.NewDet(class.QuerySortField, "sort field not found")
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
 			return nil, err
 		}
 
@@ -196,8 +198,8 @@ func (s *Scope) newSortField(sort string, order sorts.Order, disallowFK bool) (*
 		}
 		s.sortFields = append(s.sortFields, sortField)
 	default:
-		err = errors.New(class.QuerySortField, "sort field not found")
-		err = err.SetDetailf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
+		err = errors.NewDet(class.QuerySortField, "sort field not found")
+		err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, s.mStruct.Collection())
 		return nil, err
 	}
 

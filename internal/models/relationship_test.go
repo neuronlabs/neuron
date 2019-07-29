@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 // Model1WithMany2Many is the model with the many2many relationship.
@@ -194,9 +194,9 @@ func TestMappedRelationships(t *testing.T) {
 				err := m.RegisterModels(First{}, Second{})
 				require.Error(t, err)
 
-				e, ok := err.(*errors.Error)
+				e, ok := err.(errors.DetailedError)
 				require.True(t, ok)
-				assert.Equal(t, class.ModelRelationshipJoinModel, e.Class)
+				assert.Equal(t, class.ModelRelationshipJoinModel, e.Class())
 			})
 
 			t.Run("NotDefinedInTag", func(t *testing.T) {

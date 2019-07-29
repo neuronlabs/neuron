@@ -132,7 +132,7 @@ func (_m *Repository) Rollback(ctx context.Context, s *query.Scope) error {
 	return r0
 }
 
-// RepositoryName provides a mock function with given fields:
-func (_m *Repository) RepositoryName() string {
+// FactoryName provides a mock function with given fields:
+func (_m *Repository) FactoryName() string {
 	return "mock"
 }

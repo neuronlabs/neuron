@@ -6,8 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron-core/common"
 )
 
 // TestFormatQuery tests the FormatQuery method.
@@ -21,8 +19,8 @@ func TestFormatQuery(t *testing.T) {
 		p.FormatQuery(q)
 		require.Len(t, q, 2)
 
-		assert.Equal(t, "10", q.Get(common.QueryParamPageNumber))
-		assert.Equal(t, "2", q.Get(common.QueryParamPageSize))
+		assert.Equal(t, "10", q.Get(ParamPageNumber))
+		assert.Equal(t, "2", q.Get(ParamPageSize))
 	})
 
 	t.Run("Limited", func(t *testing.T) {
@@ -33,7 +31,7 @@ func TestFormatQuery(t *testing.T) {
 		q := p.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "10", q.Get(common.QueryParamPageLimit))
+		assert.Equal(t, "10", q.Get(ParamPageLimit))
 	})
 
 	t.Run("Offseted", func(t *testing.T) {
@@ -44,7 +42,7 @@ func TestFormatQuery(t *testing.T) {
 		q := p.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "10", q.Get(common.QueryParamPageOffset))
+		assert.Equal(t, "10", q.Get(ParamPageOffset))
 	})
 
 	t.Run("LimitOffset", func(t *testing.T) {
@@ -55,7 +53,7 @@ func TestFormatQuery(t *testing.T) {
 		q := p.FormatQuery()
 		require.Len(t, q, 2)
 
-		assert.Equal(t, "10", q.Get(common.QueryParamPageLimit))
-		assert.Equal(t, "140", q.Get(common.QueryParamPageOffset))
+		assert.Equal(t, "10", q.Get(ParamPageLimit))
+		assert.Equal(t, "140", q.Get(ParamPageOffset))
 	})
 }

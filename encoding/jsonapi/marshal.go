@@ -8,10 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	ctrl "github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query"
 
@@ -72,7 +71,7 @@ type ErrorsPayload struct {
 func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 	if v == nil {
 		// TODO: allow marshaling nil or empty values of given type.
-		return errors.New(class.EncodingMarshalNilValue, "nil value provided")
+		return errors.NewDet(class.EncodingMarshalNilValue, "nil value provided")
 	}
 
 	// get the value reflection
@@ -84,7 +83,7 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	} else {
-		return errors.New(class.EncodingMarshalNonAddressable, "provided unaddressable value")
+		return errors.NewDet(class.EncodingMarshalNonAddressable, "provided unaddressable value")
 	}
 
 	// check if value is a slice
@@ -100,12 +99,12 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 
 	// the type kind should be a structure.
 	if t.Kind() != reflect.Struct {
-		return errors.New(class.EncodingMarshalInput, "provided value is not a struct based")
+		return errors.NewDet(class.EncodingMarshalInput, "provided value is not a struct based")
 	}
 
 	mStruct := c.ModelMap().Get(t)
 	if mStruct == nil {
-		return errors.Newf(class.EncodingMarshalModelNotMapped, "model: '%s' is not registered.", t.Name())
+		return errors.NewDetf(class.EncodingMarshalModelNotMapped, "model: '%s' is not registered.", t.Name())
 	}
 
 	var payload payloader
@@ -153,7 +152,7 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) 
 	scopeValue := reflect.ValueOf(sc.Value)
 	t := scopeValue.Type()
 	if t.Kind() != reflect.Ptr {
-		err = errors.New(class.EncodingMarshalNonAddressable, "scope's value is non addressable")
+		err = errors.NewDet(class.EncodingMarshalNonAddressable, "scope's value is non addressable")
 		return nil, err
 	}
 
@@ -163,7 +162,7 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) 
 	case reflect.Struct:
 		payload, err = marshalScopeOne(c, sc)
 	default:
-		err = errors.Newf(class.EncodingMarshalInput, "invalid scope's value type: '%T'", sc.Value)
+		err = errors.NewDetf(class.EncodingMarshalInput, "invalid scope's value type: '%T'", sc.Value)
 	}
 	if err != nil {
 		return nil, err
@@ -299,7 +298,7 @@ func visitNode(
 ) (*node, error) {
 	// check if any of the multiple nodes is not a struct
 	if indirect := reflect.Indirect(value); indirect.Kind() != reflect.Struct {
-		return nil, errors.Newf(class.EncodingMarshalInput, "one of the provided values is of invalid type: '%s'", indirect.Type().Name())
+		return nil, errors.NewDetf(class.EncodingMarshalInput, "one of the provided values is of invalid type: '%s'", indirect.Type().Name())
 	}
 
 	valInt := value.Interface()
@@ -471,7 +470,7 @@ func visitNode(
 
 func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope) (*node, error) {
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
-		return nil, errors.New(class.EncodingMarshalInput, "one of the provided values is of invalid type")
+		return nil, errors.NewDet(class.EncodingMarshalInput, "one of the provided values is of invalid type")
 	}
 
 	node := &node{Type: sc.Struct().Collection()}
@@ -564,7 +563,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 
 			if linkableModel, ok := sc.Value.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONAPIRelationshipLinks(field.NeuronName())
-			} else if value, ok := sc.StoreGet(common.EncodeLinksCtxKey); ok {
+			} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 				if encodeLinks, ok := value.(bool); ok && encodeLinks {
 					link := make(map[string]interface{})
 					link["self"] = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
@@ -613,7 +612,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 
 	if linkable, ok := sc.Value.(Linkable); ok {
 		node.Links = linkable.JSONAPILinks()
-	} else if value, ok := sc.StoreGet(common.EncodeLinksCtxKey); ok {
+	} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 		if encodeLinks, ok := value.(bool); ok && encodeLinks {
 
 			links := make(map[string]interface{})
@@ -625,7 +624,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			case scope.RelatedKind:
 				rootScope := sc.GetModelsRootScope(sc.Struct())
 				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-					err := errors.Newf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
+					err := errors.NewDetf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
 					return nil, err
 				}
 
@@ -634,7 +633,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			case scope.RelationshipKind:
 				rootScope := sc.GetModelsRootScope(sc.Struct())
 				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-					err := errors.Newf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
+					err := errors.NewDetf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
 					return nil, err
 				}
 				relatedName := rootScope.IncludedFields()[0].NeuronName()
@@ -719,7 +718,7 @@ func setNodePrimary(value reflect.Value, node *node) error {
 	case reflect.Uint64:
 		node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
 	default:
-		return errors.Newf(class.InternalEncodingUnsupportedID, "unsupported primary field type: '%s'", v.Type().Name())
+		return errors.NewDetf(class.InternalEncodingUnsupportedID, "unsupported primary field type: '%s'", v.Type().Name())
 	}
 	return nil
 }
@@ -727,7 +726,7 @@ func setNodePrimary(value reflect.Value, node *node) error {
 func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 	vals := reflect.ValueOf(*i)
 	if vals.Kind() != reflect.Slice {
-		return nil, errors.New(class.InternalEncodingValue, "value is not a slice")
+		return nil, errors.NewDet(class.InternalEncodingValue, "value is not a slice")
 	}
 	var response []interface{}
 	for x := 0; x < vals.Len(); x++ {

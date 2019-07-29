@@ -1,10 +1,14 @@
 package class
 
+import (
+	"github.com/neuronlabs/errors"
+)
+
 // MjrConfig - major that classifies errors related with the config.
-var MjrConfig Major
+var MjrConfig errors.Major
 
 func registerConfigClasses() {
-	MjrConfig = MustRegisterMajor("Config", "config related issues")
+	MjrConfig = errors.NewMajor()
 
 	registerConfigRead()
 	registerConfigValue()
@@ -13,51 +17,51 @@ func registerConfigClasses() {
 var (
 	// MnrConfigRead is the 'MjrConfig' minor error classification
 	// for the config read issues.
-	MnrConfigRead Minor
+	MnrConfigRead errors.Minor
 
 	// ConfigReadNotFound is the 'MjrConfig', 'MnrConfigRead' error classification
 	// for the read config not found issue.
-	ConfigReadNotFound Class
+	ConfigReadNotFound errors.Class
 )
 
 func registerConfigRead() {
-	MnrConfigRead = MjrConfig.MustRegisterMinor("Read", "config read issues")
+	MnrConfigRead = errors.MustNewMinor(MjrConfig)
 
-	ConfigReadNotFound = MnrConfigRead.MustRegisterIndex("Not Found", "config not found while reading").Class()
+	ConfigReadNotFound = errors.MustNewClass(MjrConfig, MnrConfigRead, errors.MustNewIndex(MjrConfig, MnrConfigRead))
 }
 
 var (
 	// MnrConfigValue is the 'MjrConfig' minor error classification
 	// for the config value issues.
-	MnrConfigValue Minor
+	MnrConfigValue errors.Minor
 
 	// ConfigValueGateway is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of gateway.
-	ConfigValueGateway Class
+	ConfigValueGateway errors.Class
 
 	// ConfigValueProcessor is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of processor.
-	ConfigValueProcessor Class
+	ConfigValueProcessor errors.Class
 
 	// ConfigValueFlag is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of flag.
-	ConfigValueFlag Class
+	ConfigValueFlag errors.Class
 
 	// ConfigValueNil is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues related to the nil config value.
-	ConfigValueNil Class
+	ConfigValueNil errors.Class
 
 	// ConfigValueInvalid is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for config validation failures.
-	ConfigValueInvalid Class
+	ConfigValueInvalid errors.Class
 )
 
 func registerConfigValue() {
-	MnrConfigValue = MjrConfig.MustRegisterMinor("Value", "config value issues")
+	MnrConfigValue = errors.MustNewMinor(MjrConfig)
 
-	ConfigValueGateway = MnrConfigValue.MustRegisterIndex("Gateway", "config gateway value issues").Class()
-	ConfigValueProcessor = MnrConfigValue.MustRegisterIndex("Processor", "config processor value issues").Class()
-	ConfigValueFlag = MnrConfigValue.MustRegisterIndex("Flag", "config flag value issues").Class()
-	ConfigValueNil = MnrConfigValue.MustRegisterIndex("Nil", "provided nil config value").Class()
-	ConfigValueInvalid = MnrConfigValue.MustRegisterIndex("Invalid", "validating config failed").Class()
+	ConfigValueGateway = errors.MustNewClass(MjrConfig, MnrConfigValue, errors.MustNewIndex(MjrConfig, MnrConfigValue))
+	ConfigValueProcessor = errors.MustNewClass(MjrConfig, MnrConfigValue, errors.MustNewIndex(MjrConfig, MnrConfigValue))
+	ConfigValueFlag = errors.MustNewClass(MjrConfig, MnrConfigValue, errors.MustNewIndex(MjrConfig, MnrConfigValue))
+	ConfigValueNil = errors.MustNewClass(MjrConfig, MnrConfigValue, errors.MustNewIndex(MjrConfig, MnrConfigValue))
+	ConfigValueInvalid = errors.MustNewClass(MjrConfig, MnrConfigValue, errors.MustNewIndex(MjrConfig, MnrConfigValue))
 }

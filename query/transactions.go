@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/repository"
@@ -165,7 +165,7 @@ func (s *TxState) UnmarshalJSON(data []byte) error {
 		*s = 0
 	default:
 		log.Errorf("Unknown transaction state: %s", str)
-		return errors.New(class.QueryTxUnknownState, "unknown transaction state")
+		return errors.NewDet(class.QueryTxUnknownState, "unknown transaction state")
 	}
 	return nil
 }
@@ -236,7 +236,7 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 		*i = LevelLinearizable
 	default:
 		log.Debugf("Unknown transaction isolation level: %s", string(data))
-		return errors.Newf(class.QueryTxUnknownIsolationLevel, "unknown transaction isolation level: %s", string(data))
+		return errors.NewDetf(class.QueryTxUnknownIsolationLevel, "unknown transaction isolation level: %s", string(data))
 	}
 
 	return nil
@@ -271,8 +271,8 @@ func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
 
 	cm, ok := repo.(Transactioner)
 	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.RepositoryName())
-		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement Transactioner")
+		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.FactoryName())
+		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement Transactioner")
 		return
 	}
 
@@ -300,8 +300,8 @@ func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) 
 
 	rb, ok := repo.(Transactioner)
 	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.RepositoryName())
-		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
+		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.FactoryName())
+		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
 		results <- err
 		return
 	}

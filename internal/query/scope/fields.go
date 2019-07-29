@@ -3,8 +3,8 @@ package scope
 import (
 	"reflect"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/models"
@@ -58,7 +58,7 @@ func (s *Scope) AutoSelectFields() error {
 	}
 
 	if s.Value == nil {
-		return errors.New(class.QueryNoValue, "no value provided for scope")
+		return errors.NewDet(class.QueryNoValue, "no value provided for scope")
 	}
 
 	if log.Level() == log.LDEBUG3 {
@@ -75,7 +75,7 @@ func (s *Scope) AutoSelectFields() error {
 
 	// check if the value is a struct
 	if v.Kind() != reflect.Struct {
-		return errors.New(class.QuerySelectedFieldsInvalidModel, "auto select fields model is not a single struct model")
+		return errors.NewDet(class.QuerySelectedFieldsInvalidModel, "auto select fields model is not a single struct model")
 	}
 
 	for _, field := range s.mStruct.StructFields() {
@@ -188,7 +188,7 @@ func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 			}
 			if !found {
 				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-				return errors.Newf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f, s.mStruct.Type().Name())
+				return errors.NewDetf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f, s.mStruct.Type().Name())
 			}
 		case *models.StructField:
 			for _, sField := range s.mStruct.Fields() {
@@ -201,11 +201,11 @@ func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 			}
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
-				return errors.Newf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f.Name(), s.mStruct.Type().Name())
+				return errors.NewDetf(class.QuerySelectedFieldsNotFound, "field '%s' not found within model: '%s'", f.Name(), s.mStruct.Type().Name())
 			}
 		default:
 			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
-			return errors.Newf(class.QuerySelectedFieldInvalid, "unknown selected field type: %T", f)
+			return errors.NewDetf(class.QuerySelectedFieldInvalid, "unknown selected field type: %T", f)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 		_, ok := selectedFields[alreadySelected]
 		if ok {
 			log.Errorf("Field: %s already set for the given scope.", alreadySelected.Name())
-			return errors.Newf(class.QuerySelectedFieldAlreadyUsed, "field: '%s' were already selected", alreadySelected.Name())
+			return errors.NewDetf(class.QuerySelectedFieldAlreadyUsed, "field: '%s' were already selected", alreadySelected.Name())
 		}
 	}
 
@@ -242,7 +242,7 @@ func (s *Scope) isSelected(field interface{}, selectedFields *[]*models.StructFi
 		}
 	case *models.StructField:
 		if typedField.Struct() != s.Struct() {
-			return false, errors.New(class.QuerySelectedFieldsInvalidModel, "selected field's model doesn't match query model")
+			return false, errors.NewDet(class.QuerySelectedFieldsInvalidModel, "selected field's model doesn't match query model")
 		}
 		for i := 0; i < len(*selectedFields); i++ {
 			selectedField := (*selectedFields)[i]
@@ -281,7 +281,7 @@ scopeFields:
 		for _, field := range fields {
 			notEreased += field.NeuronName() + " "
 		}
-		return errors.Newf(class.QuerySelectedFieldsNotSelected, "unselecting non selected fields: '%s'", notEreased)
+		return errors.NewDetf(class.QuerySelectedFieldsNotSelected, "unselecting non selected fields: '%s'", notEreased)
 	}
 	return nil
 }
@@ -301,15 +301,15 @@ func (s *Scope) AddToFieldset(fields ...interface{}) error {
 }
 
 // BuildFieldset builds the fieldset for the provided scope's string fields in an NeuronName form field1, field2.
-func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
+func (s *Scope) BuildFieldset(fields ...string) []errors.DetailedError {
 	var (
-		errObj *errors.Error
-		errs   []*errors.Error
+		errObj errors.DetailedError
+		errs   []errors.DetailedError
 	)
 	// check if the length of the fields in the fieldset is not bigger then the fields number for the model.
 	if len(fields) > s.mStruct.FieldCount() {
-		errObj = errors.New(class.QueryFieldsetTooBig, "too many fields to set for the query")
-		errObj = errObj.SetDetailf("Too many fields to set for the model: '%s'.", s.mStruct.Collection())
+		errObj = errors.NewDet(class.QueryFieldsetTooBig, "too many fields to set for the query")
+		errObj.SetDetailsf("Too many fields to set for the model: '%s'.", s.mStruct.Collection())
 		errs = append(errs, errObj)
 		return errs
 	}
@@ -333,8 +333,8 @@ func (s *Scope) BuildFieldset(fields ...string) []*errors.Error {
 		_, ok := s.fieldset[sField.NeuronName()]
 		if ok {
 			// duplicate
-			errObj = errors.New(class.QueryFieldsetDuplicate, "unknown field provided")
-			errObj = errObj.SetDetailf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
+			errObj = errors.NewDet(class.QueryFieldsetDuplicate, "unknown field provided")
+			errObj.SetDetailsf("Duplicated fieldset parameter: '%s' for: '%s' collection.", field, s.mStruct.Collection())
 			errs = append(errs, errObj)
 			if len(errs) > MaxPermissibleDuplicates {
 				return errs
@@ -446,8 +446,8 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 				}
 				if !found {
 					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-					err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-					err = err.SetDetailf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+					err := errors.NewDet(class.QueryFieldsetUnknownField, "field not found in the model")
+					err.SetDetailsf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
 					return err
 				}
 			}
@@ -461,13 +461,13 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 			}
 			if !found {
 				log.Debugf("Field: '%v' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
-				err := errors.New(class.QueryFieldsetUnknownField, "field not found in the model")
-				err = err.SetDetailf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
+				err := errors.NewDet(class.QueryFieldsetUnknownField, "field not found in the model")
+				err.SetDetailsf("Field: '%s' not found for model:'%s'", f.Name(), s.mStruct.Type().Name())
 				return err
 			}
 		default:
 			log.Debugf("Unknown field type: %v", reflect.TypeOf(f))
-			return errors.Newf(class.QueryFieldsetInvalid, "provided invalid field type: '%T'", f)
+			return errors.NewDetf(class.QueryFieldsetInvalid, "provided invalid field type: '%T'", f)
 		}
 	}
 	return nil

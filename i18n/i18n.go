@@ -6,9 +6,9 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 )
 
 // Support defines the internationalization coverage.
@@ -24,7 +24,7 @@ func New(cfg *config.I18nConfig) (*Support, error) {
 	for _, langTag := range cfg.SupportedLanguages {
 		tag, err := language.Parse(langTag)
 		if err != nil {
-			return nil, errors.Newf(class.LanguageParsingFailed, "parsing language: '%s' failed. %s'", langTag, err.Error())
+			return nil, errors.NewDetf(class.LanguageParsingFailed, "parsing language: '%s' failed. %s'", langTag, err.Error())
 		}
 		tags = append(tags, tag)
 	}

@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -76,7 +76,7 @@ func (c *container) registerFactory(f Factory) error {
 	_, ok := c.factories[repoName]
 	if ok {
 		log.Debugf("Repository already registered: %s", repoName)
-		return errors.Newf(class.RepositoryFactoryAlreadyRegistered, "factory: '%s' already registered", repoName)
+		return errors.NewDetf(class.RepositoryFactoryAlreadyRegistered, "factory: '%s' already registered", repoName)
 	}
 
 	c.factories[repoName] = f

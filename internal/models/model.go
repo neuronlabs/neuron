@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/neuron-core/common"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/annotation"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal/namer"
@@ -97,7 +97,7 @@ func (m *ModelStruct) Attribute(field string) (*StructField, bool) {
 }
 
 // CheckField checks if the field exists within given modelstruct.
-func (m *ModelStruct) CheckField(field string) (sField *StructField, err *errors.Error) {
+func (m *ModelStruct) CheckField(field string) (sField *StructField, err errors.DetailedError) {
 	return m.checkField(field)
 }
 
@@ -272,7 +272,7 @@ func (m *ModelStruct) PrimaryField() *StructField {
 // PrimaryValues gets the primary values for the provided value.
 func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{}, err error) {
 	if value.IsNil() {
-		err = errors.New(class.QueryNoValue, "nil value provided")
+		err = errors.NewDet(class.QueryNoValue, "nil value provided")
 		return nil, err
 	}
 
@@ -294,7 +294,7 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{
 	switch value.Type().Kind() {
 	case reflect.Slice:
 		if value.Type().Elem().Kind() != reflect.Ptr {
-			err = errors.New(class.QueryValueType, "provided invalid value - the slice doesn't contain pointers to models")
+			err = errors.NewDet(class.QueryValueType, "provided invalid value - the slice doesn't contain pointers to models")
 			return nil, err
 		}
 
@@ -311,11 +311,11 @@ func (m *ModelStruct) PrimaryValues(value reflect.Value) (primaries []interface{
 	case reflect.Struct:
 		primaryValue := value.FieldByIndex(primaryIndex)
 		if !appendPrimary(primaryValue) {
-			err = errors.Newf(class.QueryValueType, "provided invalid value for model: %v", m.Type())
+			err = errors.NewDetf(class.QueryValueType, "provided invalid value for model: %v", m.Type())
 			return nil, err
 		}
 	default:
-		err = errors.New(class.QueryValueType, "unknown value type")
+		err = errors.NewDet(class.QueryValueType, "unknown value type")
 		return nil, err
 	}
 
@@ -476,7 +476,7 @@ func (m *ModelStruct) increaseAssignedFields() {
 	m.store[assignedFieldsKey] = assignedFields
 }
 
-func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
+func (m *ModelStruct) checkField(field string) (*StructField, errors.DetailedError) {
 	var (
 		hasAttribute, hasRelationship bool
 		sField                        *StructField
@@ -489,8 +489,8 @@ func (m *ModelStruct) checkField(field string) (*StructField, *errors.Error) {
 
 	sField, hasRelationship = m.relationships[field]
 	if !hasRelationship {
-		err := errors.Newf(class.ModelFieldNotFound, "field: '%s' not found", field)
-		err = err.SetDetailf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
+		err := errors.NewDetf(class.ModelFieldNotFound, "field: '%s' not found", field)
+		err.SetDetailsf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
 		return nil, err
 	}
 
@@ -570,7 +570,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			continue
 		}
 
-		tag, hasTag := tField.Tag.Lookup(common.AnnotationNeuron)
+		tag, hasTag := tField.Tag.Lookup(annotation.Neuron)
 		if tag == "-" {
 			continue
 		}
@@ -587,7 +587,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 		// Check if field contains the name
 		var neuronName string
-		name := tagValues.Get(common.AnnotationName)
+		name := tagValues.Get(annotation.Name)
 		if name != "" {
 			neuronName = name
 		} else {
@@ -601,9 +601,9 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		}
 
 		// Set field type
-		values := tagValues[common.AnnotationFieldType]
+		values := tagValues[annotation.FieldType]
 		if len(values) == 0 {
-			// return errors.Newf(class.ModelFieldTag, "StructField.annotationFieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+			// return errors.NewDetf(class.ModelFieldTag, "StructField.annotation.FieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
 			m.addUntaggedField(structField)
 			continue
 		}
@@ -611,38 +611,38 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		// Set field type
 		value := values[0]
 		switch value {
-		case common.AnnotationPrimary, common.AnnotationID,
-			common.AnnotationPrimaryFull, common.AnnotationPrimaryFullS,
-			common.AnnotationPrimaryShort:
+		case annotation.Primary, annotation.ID,
+			annotation.PrimaryFull, annotation.PrimaryFullS,
+			annotation.PrimaryShort:
 			err = m.setPrimaryField(structField)
 			if err != nil {
 				return err
 			}
-		case common.AnnotationRelation, common.AnnotationRelationFull:
+		case annotation.Relation, annotation.RelationFull:
 			err = m.setRelationshipField(structField)
 			if err != nil {
 				return err
 			}
-		case common.AnnotationAttribute, common.AnnotationAttributeFull:
+		case annotation.Attribute, annotation.AttributeFull:
 			err = m.setAttribute(structField)
 			if err != nil {
 				return err
 			}
-		case common.AnnotationForeignKey, common.AnnotationForeignKeyFull,
-			common.AnnotationForeignKeyFullS, common.AnnotationForeignKeyShort:
+		case annotation.ForeignKey, annotation.ForeignKeyFull,
+			annotation.ForeignKeyFullS, annotation.ForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
 				return err
 			}
-		case common.AnnotationFilterKey:
+		case annotation.FilterKey:
 			structField.fieldKind = KindFilterKey
 			_, ok := m.FilterKey(structField.NeuronName())
 			if ok {
-				return errors.Newf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+				return errors.NewDetf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
 			}
 
 			m.filterKeys[structField.neuronName] = structField
 		default:
-			return errors.Newf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
+			return errors.NewDetf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
 		}
 
 		if err = structField.setTagValues(); err != nil {
@@ -657,7 +657,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	// check if no duplicates
 	_, ok := m.attributes[structField.neuronName]
 	if ok {
-		return errors.Newf(class.ModelFieldName, "duplicated neuron attribute name: '%s' for model: '%v'.",
+		return errors.NewDetf(class.ModelFieldName, "duplicated neuron attribute name: '%s' for model: '%v'.",
 			structField.neuronName, m.modelType.Name())
 	}
 
@@ -754,7 +754,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 				}
 			case reflect.Slice, reflect.Array, reflect.Map:
 				// disallow nested map, arrs, maps in ptr type slices
-				return errors.Newf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
+				return errors.NewDetf(class.ModelFieldType, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
 			default:
 			}
 		default:
@@ -799,10 +799,10 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 			}
 		case reflect.Map:
 			// map should not be allow as slice nested field
-			return errors.Newf(class.ModelFieldType, "map can't be a base of the slice. Field: '%s'", structField.Name())
+			return errors.NewDetf(class.ModelFieldType, "map can't be a base of the slice. Field: '%s'", structField.Name())
 		case reflect.Array, reflect.Slice:
 			// cannot use slice of ptr slices
-			return errors.Newf(class.ModelFieldType, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
+			return errors.NewDetf(class.ModelFieldType, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
 		default:
 		}
 	default:
@@ -843,7 +843,7 @@ func (m *ModelStruct) setFieldsConfigs() error {
 				continue
 			}
 
-			var err *errors.Error
+			var err errors.DetailedError
 			// on create
 			onCreate := cfg.Strategy.OnCreate
 			if onCreate.OnError != "" {
@@ -897,7 +897,7 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	// Check if already exists
 	_, ok := m.ForeignKey(structField.NeuronName())
 	if ok {
-		return errors.Newf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+		return errors.NewDetf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
 	}
 
 	m.fields = append(m.fields, structField)
@@ -914,7 +914,7 @@ func (m *ModelStruct) setLanguage(f *StructField) {
 func (m *ModelStruct) setPrimaryField(structField *StructField) error {
 	structField.fieldKind = KindPrimary
 	if m.primary != nil {
-		return errors.Newf(class.ModelFieldName, "primary field is already defined for the model: '%s'", m.Type().Name())
+		return errors.NewDetf(class.ModelFieldName, "primary field is already defined for the model: '%s'", m.Type().Name())
 	}
 	m.primary = structField
 	m.fields = append(m.fields, structField)
@@ -934,7 +934,7 @@ func (m *ModelStruct) setRelationshipField(structField *StructField) error {
 	// check duplicates
 	_, ok := m.relationships[structField.neuronName]
 	if ok {
-		return errors.Newf(class.ModelFieldName, "duplicated jsonapi relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
+		return errors.NewDetf(class.ModelFieldName, "duplicated jsonapi relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
 	}
 
 	// set relationship field

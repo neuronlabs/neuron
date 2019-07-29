@@ -3,8 +3,6 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/common"
-
 	"github.com/neuronlabs/neuron-core/internal"
 )
 
@@ -24,7 +22,7 @@ var (
 )
 
 func beginTransactionFunc(ctx context.Context, s *Scope) error {
-	_, ok := s.StoreGet(common.ProcessError)
+	_, ok := s.StoreGet(processErrorKey)
 	if ok {
 		return nil
 	}
@@ -54,7 +52,7 @@ func commitOrRollbackFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	_, ok = s.StoreGet(common.ProcessError)
+	_, ok = s.StoreGet(processErrorKey)
 	if !ok {
 		if err := tx.CommitContext(ctx); err != nil {
 			return err

@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/go-playground/validator.v9"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/query/filters"
@@ -213,7 +213,16 @@ func (s *Scope) ID() uuid.UUID {
 // IncludeFields adds the included fields into query scope.
 func (s *Scope) IncludeFields(fields ...string) error {
 	if err := s.internal().BuildIncludedFields(fields...); len(err) > 0 {
-		return errors.MultiError(err)
+		if len(err) == 1 {
+			return err[0]
+		}
+
+		var multi errors.MultiError
+
+		for _, e := range err {
+			multi = append(multi, e.(errors.ClassError))
+		}
+		return multi
 	}
 	return nil
 }
@@ -238,7 +247,7 @@ func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 	included, ok := s.internal().IncludedScopeByStruct((*models.ModelStruct)(mStruct))
 	if !ok {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
-		return nil, errors.New(class.QueryNotIncluded, "provided model is not included within query's scope")
+		return nil, errors.NewDet(class.QueryNotIncluded, "provided model is not included within query's scope")
 	}
 
 	v := included.Struct().NewReflectValueMany()
@@ -273,7 +282,7 @@ func (s *Scope) LanguageFilter() *filters.FilterField {
 // before beginning to return the result. 'Offset' 0 is the same as omitting the 'Offset' clause.
 func (s *Scope) Limit(limit, offset int) error {
 	if s.internal().Pagination() != nil {
-		return errors.New(class.QueryPaginationAlreadySet, "pagination already set")
+		return errors.NewDet(class.QueryPaginationAlreadySet, "pagination already set")
 	}
 
 	p := newLimitOffset(limit, offset)
@@ -290,7 +299,9 @@ func (s *Scope) Limit(limit, offset int) error {
 func (s *Scope) List() error {
 	// Check the scope's values is an array
 	if !s.internal().IsMany() {
-		return errors.New(class.QueryValueType, "provided non slice value for the list query").SetDetail("Single value provided for the List process")
+		err := errors.NewDet(class.QueryValueType, "provided non slice value for the list query")
+		err.SetDetails("Single value provided for the List process")
+		return err
 	}
 	if log.Level() <= log.LDEBUG2 {
 		log.Debug2f("[SCOPE][%s] process list", s.ID())
@@ -356,7 +367,7 @@ func (s *Scope) PatchContext(ctx context.Context) error {
 // Page sets the pagination of the type TpPage with the page 'number' and page 'size'.
 func (s *Scope) Page(number, size int) error {
 	if s.internal().Pagination() != nil {
-		return errors.New(class.QueryPaginationAlreadySet, "pagination already set")
+		return errors.NewDet(class.QueryPaginationAlreadySet, "pagination already set")
 	}
 
 	p := newPaged(number, size)
@@ -426,7 +437,7 @@ func (s *Scope) SelectField(name string) error {
 	field, ok := s.Struct().FieldByName(name)
 	if !ok {
 		log.Debug("Field not found: '%s'", name)
-		return errors.Newf(class.QuerySelectedFieldsNotFound, "field: '%s' not found", name)
+		return errors.NewDetf(class.QuerySelectedFieldsNotFound, "field: '%s' not found", name)
 	}
 	s.internal().AddSelectedField((*models.StructField)(field))
 	return nil
@@ -481,7 +492,11 @@ func (s *Scope) Sort(fields ...string) error {
 	case 1:
 		return errs[0]
 	default:
-		return errors.MultiError(errs)
+		var multi errors.MultiError
+		for _, e := range errs {
+			multi = append(multi, e.(errors.ClassError))
+		}
+		return multi
 	}
 }
 
@@ -519,13 +534,13 @@ func (s *Scope) Tx() *Tx {
 
 // ValidateCreate validates the scope's value with respect to the 'create validator' and
 // the 'create' validation tags.
-func (s *Scope) ValidateCreate() []*errors.Error {
+func (s *Scope) ValidateCreate() []errors.DetailedError {
 	v := s.Controller().CreateValidator
 	return s.validate(v, "CreateValidator")
 }
 
 // ValidatePatch validates the scope's value with respect to the 'Patch Validator'.
-func (s *Scope) ValidatePatch() []*errors.Error {
+func (s *Scope) ValidatePatch() []errors.DetailedError {
 	v := s.Controller().PatchValidator
 	return s.validate(v, "PatchValidator")
 }
@@ -536,7 +551,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 		txn := v.(*Tx)
 		if checkError {
 			if txn.State != TxDone {
-				return nil, errors.New(class.QueryTxAlreadyBegin, "transaction had already began")
+				return nil, errors.NewDet(class.QueryTxAlreadyBegin, "transaction had already began")
 			}
 		}
 	}
@@ -557,7 +572,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 	var err error
 	txn.ID, err = uuid.NewRandom()
 	if err != nil {
-		return nil, errors.Newf(class.InternalCommon, "new uuid failed: '%s'", err.Error())
+		return nil, errors.NewDetf(class.InternalCommon, "new uuid failed: '%s'", err.Error())
 	}
 	log.Debug3f("SCOPE[%s][%s] Begins transaction[%s]", s.ID(), s.Struct().Collection(), txn.ID)
 
@@ -575,7 +590,7 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 	transactioner, ok := repo.(Transactioner)
 	if !ok {
 		log.Errorf("The repository doesn't implement Creator interface for model: %s", s.Struct().Collection())
-		err = errors.New(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
+		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
 	}
 
 	if err = transactioner.Begin(ctx, s); err != nil {
@@ -589,14 +604,14 @@ func (s *Scope) commit(ctx context.Context) error {
 	txV, ok := s.StoreGet(internal.TxStateStoreKey)
 	if txV == nil || !ok {
 		log.Debugf("COMMIT: No transaction found for the scope")
-		return errors.New(class.QueryTxNotFound, "transaction not found for the scope")
+		return errors.NewDet(class.QueryTxNotFound, "transaction not found for the scope")
 	}
 
 	tx := txV.(*Tx)
 
 	if tx != nil && ok && tx.State != TxBegin {
 		log.Debugf("COMMIT: Transaction already resolved: %s", tx.State)
-		return errors.New(class.QueryTxAlreadyResolved, "transaction already resolved")
+		return errors.NewDet(class.QueryTxAlreadyResolved, "transaction already resolved")
 	}
 
 	chain := s.internal().Chain()
@@ -639,9 +654,9 @@ func (s *Scope) commit(ctx context.Context) error {
 				}
 
 				//check if value is an error
-				if err, ok := v.(*errors.Error); ok {
-					if err.Class != class.RepositoryNotImplementsTransactioner &&
-						err.Class != class.QueryTxAlreadyResolved {
+				if err, ok := v.(errors.DetailedError); ok {
+					if err.Class() != class.RepositoryNotImplementsTransactioner &&
+						err.Class() != class.QueryTxAlreadyResolved {
 						return err
 					}
 				}
@@ -671,7 +686,7 @@ func (s *Scope) commit(ctx context.Context) error {
 func (s *Scope) createContext(ctx context.Context) error {
 	if s.internal().IsMany() {
 		// TODO: add create many
-		return errors.New(class.QueryValueType, "creating with multiple values in are not supported yet")
+		return errors.NewDet(class.QueryValueType, "creating with multiple values in are not supported yet")
 	}
 
 	// if no fields were selected set automatically non zero
@@ -770,7 +785,7 @@ func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, err
 func (s *Scope) patch(ctx context.Context) error {
 	// check if scope's value is single
 	if s.internal().IsMany() {
-		return errors.New(class.QueryValueType, "patching multiple values are not supported yet")
+		return errors.NewDet(class.QueryValueType, "patching multiple values are not supported yet")
 	}
 
 	// if no fields were selected set automatically non zero
@@ -788,13 +803,13 @@ func (s *Scope) rollback(ctx context.Context) error {
 	txV, ok := s.StoreGet(internal.TxStateStoreKey)
 	if txV == nil || !ok {
 		log.Debugf("ROLLBACK: No transaction found for the scope")
-		return errors.New(class.QueryTxNotFound, "transaction not found within the scope")
+		return errors.NewDet(class.QueryTxNotFound, "transaction not found within the scope")
 	}
 
 	tx := txV.(*Tx)
 	if tx != nil && ok && tx.State != TxBegin {
 		log.Debugf("ROLLBACK: Transaction already resolved: %s", tx.State)
-		return errors.New(class.QueryTxAlreadyResolved, "transaction already resolved")
+		return errors.NewDet(class.QueryTxAlreadyResolved, "transaction already resolved")
 	}
 
 	chain := s.internal().Chain()
@@ -840,9 +855,9 @@ func (s *Scope) rollback(ctx context.Context) error {
 					break fl
 				}
 
-				if err, ok := v.(*errors.Error); ok {
-					if err.Class != class.RepositoryNotImplementsTransactioner &&
-						err.Class != class.QueryTxAlreadyResolved {
+				if err, ok := v.(errors.DetailedError); ok {
+					if err.Class() != class.RepositoryNotImplementsTransactioner &&
+						err.Class() != class.QueryTxAlreadyResolved {
 						return err
 					}
 				}
@@ -863,8 +878,8 @@ func (s *Scope) rollback(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case v := <-single:
-		if err, ok := v.(*errors.Error); ok {
-			if err.Class != class.QueryTxAlreadyResolved {
+		if err, ok := v.(errors.DetailedError); ok {
+			if err.Class() != class.QueryTxAlreadyResolved {
 				return err
 			}
 		}
@@ -887,7 +902,7 @@ func (s *Scope) selectFields(initContainer bool, fields ...interface{}) error {
 	return s.internal().AddSelectedFields(fields...)
 }
 
-func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.Error {
+func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.DetailedError {
 	err := v.Struct(s.Value)
 	if err == nil {
 		return nil
@@ -897,36 +912,36 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 	case *validator.InvalidValidationError:
 		// Invalid argument passed to validator
 		log.Errorf("[%s] %s-> Invalid Validation Error: %v", s.ID().String(), validatorName, er)
-		e := errors.New(class.InternalQueryValidation, "invalid validation error")
-		return []*errors.Error{e}
+		e := errors.NewDet(class.InternalQueryValidation, "invalid validation error")
+		return []errors.DetailedError{e}
 	case validator.ValidationErrors:
-		var errs []*errors.Error
+		var errs []errors.DetailedError
 		for _, verr := range er {
 			tag := verr.Tag()
 
-			var errObj *errors.Error
+			var errObj errors.DetailedError
 			if tag == "required" {
 				// if field is required and the field tag is empty
 				if verr.Field() == "" {
 					log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
-					errObj = errors.New(class.InternalQueryValidation, "empty field tag")
+					errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
 					return append(errs, errObj)
 				}
 
-				errObj = errors.New(class.QueryValueMissingRequired, "missing required field")
-				errObj = errObj.SetDetailf("The field: %s, is required.", verr.Field())
+				errObj = errors.NewDet(class.QueryValueMissingRequired, "missing required field")
+				errObj.SetDetailsf("The field: %s, is required.", verr.Field())
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
 				if verr.Field() == "" {
 					if verr.Field() == "" {
 						log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
-						errObj = errors.New(class.InternalQueryValidation, "empty field tag")
+						errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
 						return append(errs, errObj)
 					}
 
-					errObj = errors.New(class.QueryValueValidation, "non default field value")
-					errObj = errObj.SetDetailf("The field: '%s' must be of zero value.", verr.Field())
+					errObj = errors.NewDet(class.QueryValueValidation, "non default field value")
+					errObj.SetDetailsf("The field: '%s' must be of zero value.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else if strings.HasPrefix(tag, "len") {
@@ -934,18 +949,18 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 					if verr.Field() == "" {
 						log.Errorf("[%s] Model: '%v'. %s failed. Field must have specific length and the field tag is empty.", s.ID().String(),
 							validatorName, s.Struct().Type().String())
-						errObj = errors.New(class.InternalQueryValidation, "empty field tag")
+						errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
 						return append(errs, errObj)
 					}
 
-					errObj = errors.New(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj = errObj.SetDetailf("The value of the field: %s is of invalid length.", verr.Field())
+					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - field of invalid length")
+					errObj.SetDetailsf("The value of the field: %s is of invalid length.", verr.Field())
 					errs = append(errs, errObj)
 					continue
 				} else {
-					errObj = errors.New(class.QueryValueValidation, "validation failed - invalid field value")
+					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - invalid field value")
 					if verr.Field() != "" {
-						errObj = errObj.SetDetailf("Invalid value for the field: '%s'.", verr.Field())
+						errObj.SetDetailsf("Invalid value for the field: '%s'.", verr.Field())
 					}
 
 					errs = append(errs, errObj)
@@ -955,7 +970,7 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []*errors.
 		}
 		return errs
 	default:
-		return []*errors.Error{errors.Newf(class.InternalQueryValidation, "invalid error type: '%T'", er)}
+		return []errors.DetailedError{errors.NewDetf(class.InternalQueryValidation, "invalid error type: '%T'", er)}
 	}
 }
 
@@ -997,7 +1012,7 @@ func newScope(c *internalController.Controller, model interface{}) (*Scope, erro
 
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
-		return nil, errors.New(class.QueryValueUnaddressable, "unaddressable query value provided")
+		return nil, errors.NewDet(class.QueryValueUnaddressable, "unaddressable query value provided")
 	}
 
 	s.Value = model
@@ -1007,7 +1022,7 @@ func newScope(c *internalController.Controller, model interface{}) (*Scope, erro
 	case reflect.Array, reflect.Slice:
 		s.SetIsMany(true)
 	default:
-		return nil, errors.New(class.QueryValueType, "invalid query value type")
+		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 
 	return (*Scope)(s), nil

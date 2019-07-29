@@ -3,8 +3,8 @@ package paginations
 import (
 	"fmt"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 )
 
@@ -167,28 +167,36 @@ func (p *Pagination) checkValues() error {
 	case TpPage:
 		return p.checkPageBasedValues()
 	default:
-		return errors.Newf(class.QueryPaginationType, "unsupported pagination type: '%v'", p.Type())
+		return errors.NewDetf(class.QueryPaginationType, "unsupported pagination type: '%v'", p.Type())
 	}
 }
 
 func (p *Pagination) checkOffsetBasedValues() error {
 	if p.first < 0 {
-		return errors.New(class.QueryPaginationValue, "invalid pagination").SetDetail("Pagination limit lower than -1")
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err.SetDetails("Pagination limit lower than -1")
+		return err
 	}
 
 	if p.second < 0 {
-		return errors.New(class.QueryPaginationValue, "invalid pagination").SetDetail("Pagination offset lower than 0")
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err.SetDetails("Pagination offset lower than 0")
+		return err
 	}
 	return nil
 }
 
 func (p *Pagination) checkPageBasedValues() error {
 	if p.first < 0 {
-		return errors.New(class.QueryPaginationValue, "invalid pagination value").SetDetail("Pagination page-number lower than 0")
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
+		err.SetDetails("Pagination page-number lower than 0")
+		return err
 	}
 
 	if p.second < 0 {
-		return errors.New(class.QueryPaginationValue, "invalid pagination value").SetDetail("Pagination page-size lower than 0")
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
+		err.SetDetails("Pagination page-size lower than 0")
+		return err
 	}
 	return nil
 }

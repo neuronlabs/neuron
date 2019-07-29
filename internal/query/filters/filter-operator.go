@@ -3,8 +3,8 @@ package filters
 import (
 	"sync"
 
-	"github.com/neuronlabs/neuron-core/errors"
-	"github.com/neuronlabs/neuron-core/errors/class"
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 // Operators contains all the registered operators.
@@ -154,10 +154,10 @@ func (c *OperatorContainer) registerManyOperators(ops ...*Operator) error {
 func (c *OperatorContainer) registerOperator(op *Operator, nextID uint16) error {
 	for _, o := range c.operators {
 		if o.Name == op.Name {
-			return errors.Newf(class.InternalQueryFilter, "Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
+			return errors.NewDetf(class.InternalQueryFilter, "Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
 		}
 		if o.Raw == op.Raw {
-			return errors.Newf(class.InternalQueryFilter, "Operator already registered. %+v", op)
+			return errors.NewDetf(class.InternalQueryFilter, "Operator already registered. %+v", op)
 		}
 	}
 

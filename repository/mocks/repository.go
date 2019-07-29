@@ -15,9 +15,8 @@ type Repository struct {
 	mock.Mock
 }
 
-// RepositoryName returns the repository name
-// Implements repositories.RepositoryNamer interface
-func (r *Repository) RepositoryName() string {
+// FactoryName implements repository.Repository interface
+func (r *Repository) FactoryName() string {
 	return "mocks"
 }
 
