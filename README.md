@@ -156,5 +156,4 @@ The `neuron-core` is composed of the following packages:
 * `repository` - is a package used to store, get and register the repositories nad their factories.
 * `log` - is the logging interface for the neuron based applications.
 * `i18n` - is the neuron based application supported internationalization
-* `common` - common neuron variables, functions and definitions.
 
