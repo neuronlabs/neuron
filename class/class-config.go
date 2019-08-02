@@ -8,7 +8,7 @@ import (
 var MjrConfig errors.Major
 
 func registerConfigClasses() {
-	MjrConfig = errors.NewMajor()
+	MjrConfig = errors.MustNewMajor()
 
 	registerConfigRead()
 	registerConfigValue()

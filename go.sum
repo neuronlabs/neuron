@@ -71,8 +71,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/neuronlabs/errors v1.1.0 h1:y8P8Enh00/pgS4Ocnmzq6N2SSCV34Z6s7k9pffu7kOU=
-github.com/neuronlabs/errors v1.1.0/go.mod h1:5XKrARpZvFkOmk8NFPPlRWCDdamLN7sxO7eO51M/tn4=
+github.com/neuronlabs/errors v1.2.0 h1:ZNd5FCpwCvrLopuKcJD1eOi4dwTdJnooDCjU7FvG/s4=
+github.com/neuronlabs/errors v1.2.0/go.mod h1:5XKrARpZvFkOmk8NFPPlRWCDdamLN7sxO7eO51M/tn4=
 github.com/neuronlabs/inflection v1.0.1 h1:LDuwbM1jYKEf6DDcA7XV7JRn3Sv9/PBiW6iUojZhTZ4=
 github.com/neuronlabs/inflection v1.0.1/go.mod h1:gnqNj1uxAGPYT1LsHRvSyBcd57vvIKTuTmS3ffdgRd8=
 github.com/neuronlabs/strcase v1.0.0 h1:F/7Scr7ojAL6l5g3MQiCENGlMI/NK6LwAfaURcUiI7U=

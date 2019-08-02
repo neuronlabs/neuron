@@ -8,7 +8,7 @@ import (
 var MjrEncoding errors.Major
 
 func registerEncodingClasses() {
-	MjrEncoding = errors.NewMajor()
+	MjrEncoding = errors.MustNewMajor()
 
 	registerEncodingMarshal()
 	registerEncodingUnmarshal()
