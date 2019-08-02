@@ -45,7 +45,7 @@ var (
 )
 
 func registerCommonClasses() {
-	MjrCommon = errors.NewMajor()
+	MjrCommon = errors.MustNewMajor()
 
 	MnrCommonParse = errors.MustNewMinor(MjrCommon)
 	CommonParseBrackets = errors.MustNewClass(MjrCommon, MnrCommonParse, errors.MustNewIndex(MjrCommon, MnrCommonParse))

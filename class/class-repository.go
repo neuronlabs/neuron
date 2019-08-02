@@ -9,7 +9,7 @@ import (
 var MjrRepository errors.Major
 
 func registerRepositoryClasses() {
-	MjrRepository = errors.NewMajor()
+	MjrRepository = errors.MustNewMajor()
 
 	registerRepositoryUnavailable()
 	registerRepositoryAuth()

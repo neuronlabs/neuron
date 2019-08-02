@@ -25,7 +25,7 @@ var (
 )
 
 func registerLanguageClasses() {
-	MjrLanguage = errors.NewMajor()
+	MjrLanguage = errors.MustNewMajor()
 
 	MnrLanguageUnsupported = errors.MustNewMinor(MjrLanguage)
 	LanguageUnsupportedTag = errors.MustNewClass(MjrLanguage, MnrLanguageUnsupported, errors.MustNewIndex(MjrLanguage, MnrLanguageUnsupported))

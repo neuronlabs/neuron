@@ -9,7 +9,7 @@ import (
 var MjrQuery errors.Major
 
 func registerQueryClasses() {
-	MjrQuery = errors.NewMajor()
+	MjrQuery = errors.MustNewMajor()
 
 	registerQueryFieldset()
 	registerQuerySelectedFields()

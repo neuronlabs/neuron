@@ -8,7 +8,7 @@ import (
 var MjrModel errors.Major
 
 func registerModelClasses() {
-	MjrModel = errors.NewMajor()
+	MjrModel = errors.MustNewMajor()
 
 	registerModelField()
 	registerModelSchema()

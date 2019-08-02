@@ -8,7 +8,7 @@ import (
 var MjrInternal errors.Major
 
 func registerInternalClasses() {
-	MjrInternal = errors.NewMajor()
+	MjrInternal = errors.MustNewMajor()
 
 	registerInternalQuery()
 	registerInternalEncoding()
