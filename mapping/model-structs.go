@@ -102,6 +102,17 @@ func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
 	return (*StructField)(s), true
 }
 
+// RelationFields gets all model's relationship fields.
+func (m *ModelStruct) RelationFields() []*StructField {
+	modelRelations := m.internal().RelationshipFields()
+
+	output := make([]*StructField, len(modelRelations))
+	for i, rel := range modelRelations {
+		output[i] = (*StructField)(rel)
+	}
+	return output
+}
+
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
 	(*models.ModelStruct)(m).StoreSet(key, value)

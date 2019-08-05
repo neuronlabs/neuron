@@ -18,10 +18,8 @@ var MaxNestedRelLevel = 1
 // SortField is a field that describes the sorting rules for given query.
 type SortField struct {
 	structField *models.StructField
-
 	// Order defines if the sorting order (ascending or descending)
 	order Order
-
 	// SubFields is the relationship sub field sorts
 	subFields []*SortField
 }
@@ -36,6 +34,11 @@ func (s *SortField) StructField() *models.StructField {
 	return s.structField
 }
 
+// SubFields returns sortFields nested sort fields.
+func (s *SortField) SubFields() []*SortField {
+	return s.subFields
+}
+
 // Copy copies provided SortField.
 func Copy(s *SortField) *SortField {
 	return s.copy()
@@ -47,69 +50,144 @@ func NewSortField(sField *models.StructField, o Order, subs ...*SortField) *Sort
 	return newSortField(sField, o, subs...)
 }
 
-// NewRawSortField creates and returns new sort field for given model 'm', with sort field value 'sort'
-// and a flag if foreign key should be disallowed - 'disallowFK'
-func NewRawSortField(m *models.ModelStruct, sort string, disallowFK bool) (*SortField, error) {
+// NewUniques creates new unique sort fiellds for provided model 'm'.
+func NewUniques(m *models.ModelStruct, disallowFK bool, sorts ...string) ([]*SortField, error) {
 	var (
-		sField    *models.StructField
-		sortField *SortField
-		order     Order
-		ok        bool
+		err  errors.DetailedError
+		errs errors.MultiError
 	)
 
-	// Get the order of sort
-	if sort[0] == '-' {
-		order = DescendingOrder
-		sort = sort[1:]
-	} else {
-		order = AscendingOrder
+	fields := make(map[string]int)
+	// If the number of sort fields is too long then do not allow
+	if len(sorts) > m.SortScopeCount() {
+		err = errors.NewDet(class.QuerySortTooManyFields, "too many sort fields provided for given model")
+		err.SetDetailsf("There are too many sort parameters for the '%v' collection.", m.Collection())
+		errs = append(errs, err)
+		return nil, errs
 	}
 
-	splitted := strings.Split(sort, annotation.NestedSeparator)
-	l := len(splitted)
+	var sortFields []*SortField
 
-	switch {
-	// for length == 1 the sort must be an attribute or a primary field
-	case l == 1:
-		if sort == annotation.ID {
-			sField = m.PrimaryField()
-		} else {
-			sField, ok = m.Attribute(sort)
-			if !ok {
-				if disallowFK {
-					return nil, errors.NewDet(class.QuerySortField, "sort field not found")
-				}
-				sField, ok = m.ForeignKey(sort)
-				if !ok {
-					err := errors.NewDet(class.QuerySortField, "sort field not found")
-					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
-					return nil, err
-				}
+	for _, sort := range sorts {
+		var order Order
+		if sort[0] == '-' {
+			order = DescendingOrder
+			sort = sort[1:]
+		}
+
+		// check if no dups provided
+		count := fields[sort]
+		count++
+
+		fields[sort] = count
+		if count > 1 {
+			if count == 2 {
+				err = errors.NewDet(class.QuerySortField, "duplicated sort field provided")
+				err.SetDetailsf("Sort parameter: %v used more than once.", sort)
+				errs = append(errs, err)
+				continue
+			} else if count > 2 {
+				break
 			}
 		}
 
-		// create sortfield
-		sortField = newSortField(sField, order)
-	case l <= (MaxNestedRelLevel + 1):
-		// Get Relationship
-		sField, ok = m.RelationshipField(splitted[0])
-		if !ok {
-			return nil, errors.NewDet(class.QuerySortRelatedFields, "relationship field not found")
+		sortField, err := newStringSortField(m, sort, order, disallowFK)
+		if err != nil {
+			errs = append(errs, err.(errors.ClassError))
+			continue
 		}
 
-		sortField = newSortField(sField, AscendingOrder)
+		sortFields = append(sortFields, sortField)
+	}
 
-		err := sortField.setSubfield(splitted[1:], order, disallowFK)
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return sortFields, nil
+}
+
+// New creates new SortField based on the provided model 'm', string 'sort', flag 'disallowFK' - which doesn't allow to create foreign keys,
+// and optional order.
+func New(m *models.ModelStruct, sort string, disallowFK bool, order ...Order) (*SortField, error) {
+	// Get the order of sort
+	var o Order
+	if len(order) > 0 {
+		o = order[0]
+	} else {
+		if sort[0] == '-' {
+			o = DescendingOrder
+			sort = sort[1:]
+		}
+	}
+	return newStringSortField(m, sort, o, disallowFK)
+}
+
+// newStringSortField creates and returns new sort field for given model 'm', with sort field value 'sort'
+// and a flag if foreign key should be disallowed - 'disallowFK'.
+func newStringSortField(m *models.ModelStruct, sort string, order Order, disallowFK bool) (*SortField, errors.DetailedError) {
+	var (
+		sField    *models.StructField
+		sortField *SortField
+		ok        bool
+		err       errors.DetailedError
+	)
+
+	splitted := strings.Split(sort, annotation.NestedSeparator)
+	l := len(splitted)
+	switch {
+	case l == 1:
+		// for length == 1 the sort must be an attribute, primary or a foreign key field
+		if sort == annotation.ID {
+			sField = m.PrimaryField()
+			sortField = newSortField(sField, order)
+			return sortField, nil
+		}
+
+		// check attributes
+		sField, ok = m.Attribute(sort)
+		if ok {
+			sortField = newSortField(sField, order)
+			return sortField, nil
+		}
+
+		if disallowFK {
+			// field not found for the model.
+			err = errors.NewDetf(class.QuerySortField, "sort field: '%s' not found", sort)
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			return nil, err
+		}
+
+		// check foreign key
+		sField, ok = m.ForeignKey(sort)
+		if !ok {
+			// field not found for the model.
+			err = errors.NewDetf(class.QuerySortField, "sort field: '%s' not found", sort)
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			return nil, err
+		}
+		sortField = newSortField(sField, order)
+		return sortField, nil
+	case l <= (MaxNestedRelLevel + 1):
+		// for splitted length greater than 1 it must be a relationship
+		sField, ok = m.RelationshipField(splitted[0])
+		if !ok {
+			err = errors.NewDet(class.QuerySortField, "sort field not found")
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			return nil, err
+		}
+
+		sortField = newSortField(sField, order)
+		err := sortField.SetSubfield(splitted[1:], order, disallowFK)
 		if err != nil {
 			return nil, err
 		}
+		return sortField, nil
 	default:
-		err := errors.NewDet(class.QuerySortField, "sort field not found")
-		err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+		err = errors.NewDet(class.QuerySortField, "sort field nested level too deep")
+		err.SetDetailsf("Sort: field '%s' nested level is too deep: '%d'", sort, l)
 		return nil, err
 	}
-
-	return sortField, nil
 }
 
 func (s *SortField) copy() *SortField {
@@ -124,7 +202,7 @@ func (s *SortField) copy() *SortField {
 
 }
 
-// SetSubfield sets the subfield for given sortfield
+// SetSubfield sets the subfield for given sortfield.
 func (s *SortField) SetSubfield(sortSplitted []string, order Order, disallowFK bool) errors.DetailedError {
 	return s.setSubfield(sortSplitted, order, disallowFK)
 }
@@ -155,30 +233,38 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 		sort := sortSplitted[0]
 
 		if sort == annotation.ID {
-			log.Debug2("Primary sort field")
 			sField = relatedModel.PrimaryField()
-		} else {
-			log.Debug2f("One sort field: '%s'", sort)
-			var ok bool
-			sField, ok = relatedModel.Attribute(sort)
-			if !ok {
-				if disallowFK {
-					err := errors.NewDet(class.QuerySortField, "sort field not found")
-					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
-					return err
-				}
 
-				// if the foreign key sorting is allowed check if given foreign key exists
-				sField, ok = relatedModel.ForeignKey(sort)
-				if !ok {
-					err := errors.NewDet(class.QuerySortField, "sort field not found")
-					err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
-					return err
-				}
-			}
+			s.subFields = append(s.subFields, &SortField{structField: sField, order: order})
+			return nil
 		}
 
+		var ok bool
+		// check if the 'sort' is an attribute
+		sField, ok = relatedModel.Attribute(sort)
+		if ok {
+			s.subFields = append(s.subFields, &SortField{structField: sField, order: order})
+			return nil
+		}
+
+		if disallowFK {
+			// if the 'sort' is not an attribute nor primary key and the foreign keys are not allowed to sort
+			// return error.
+			err := errors.NewDet(class.QuerySortField, "sort field not found")
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+			return err
+		}
+
+		// if the foreign key sorting is allowed check if given foreign key exists
+		sField, ok = relatedModel.ForeignKey(sort)
+		if !ok {
+			// no 'sort' field found.
+			err := errors.NewDet(class.QuerySortField, "sort field not found")
+			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+			return err
+		}
 		s.subFields = append(s.subFields, &SortField{structField: sField, order: order})
+		return nil
 	default:
 		// if length is more than one -> there is a relationship
 		relatedModel := s.structField.Relationship().Struct()
@@ -201,20 +287,20 @@ func (s *SortField) setSubfield(sortSplitted []string, order Order, disallowFK b
 			}
 		}
 
-		// if none found create new
+		// if none found create new subfield.
 		if subField == nil {
 			subField = &SortField{structField: sField, order: order}
 		}
 
-		//
+		// set the subfield of the field's subfield.
 		if err := subField.setSubfield(sortSplitted[1:], order, disallowFK); err != nil {
 			return err
 		}
 
 		// if subfield found keep it in subfields.
 		s.subFields = append(s.subFields, subField)
+		return nil
 	}
-	return nil
 }
 
 func newSortField(sField *models.StructField, o Order, subs ...*SortField) *SortField {

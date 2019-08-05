@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	"github.com/neuronlabs/neuron-core/internal/models"
 	"net/url"
 
 	"github.com/neuronlabs/neuron-core/mapping"
@@ -81,4 +82,30 @@ func (o SortOrder) String() string {
 		return "ascending"
 	}
 	return "descending"
+}
+
+// NewSortFields creates new 'sortFields' for given model 'm'. If the 'disallowFK' is set to true
+// the function would not allow to create foreign key sort field.
+// The function throws errors on duplicated field values.
+func NewSortFields(m *mapping.ModelStruct, disallowFK bool, sortFields ...string) ([]*SortField, error) {
+	sortFieldStructs, err := sorts.NewUniques((*models.ModelStruct)(m), disallowFK, sortFields...)
+	if err != nil {
+		return nil, err
+	}
+
+	thisFields := make([]*SortField, len(sortFieldStructs))
+	for i, sField := range sortFieldStructs {
+		thisFields[i] = (*SortField)(sField)
+	}
+	return thisFields, nil
+}
+
+// NewSort creates new 'sort' field for given model 'm'. If the 'disallowFK' is set to true
+// the function would not allow to create Sort field of foreign key field.
+func NewSort(m *mapping.ModelStruct, sort string, disallowFK bool) (*SortField, error) {
+	sField, err := sorts.New((*models.ModelStruct)(m), sort, disallowFK)
+	if err != nil {
+		return nil, err
+	}
+	return (*SortField)(sField), nil
 }

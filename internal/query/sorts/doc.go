@@ -1,2 +1,2 @@
-// Package sorts contains query sort order structures.
+// Package sorts contains query field sorting structures.
 package sorts

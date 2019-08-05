@@ -485,19 +485,7 @@ func (s *Scope) Sort(fields ...string) error {
 		return nil
 	}
 
-	errs := s.internal().BuildSortFields(fields...)
-	switch len(errs) {
-	case 0:
-		return nil
-	case 1:
-		return errs[0]
-	default:
-		var multi errors.MultiError
-		for _, e := range errs {
-			multi = append(multi, e.(errors.ClassError))
-		}
-		return multi
-	}
+	return s.internal().BuildSortFields(fields...)
 }
 
 // SortFields returns the sorts used by the query's scope.
