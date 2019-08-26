@@ -1166,6 +1166,30 @@ func TestUnmarshalUpdateFields(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("null-data", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`{"data": null}`)
+
+		v := &Blog{}
+		err := UnmarshalC(c, buf, v)
+		require.Error(t, err)
+
+		cl, ok := err.(errors.ClassError)
+		require.True(t, ok)
+		assert.Equal(t, class.EncodingUnmarshalNoData, cl.Class())
+	})
+
+	t.Run("empty-data", func(t *testing.T) {
+		buf.Reset()
+		buf.WriteString(`{"data": []}`)
+
+		v := []*Blog{}
+		err := UnmarshalC(c, buf, &v)
+		require.NoError(t, err)
+
+		assert.Len(t, v, 0)
+	})
 }
 
 func defaultTesting(t *testing.T) *controller.Controller {

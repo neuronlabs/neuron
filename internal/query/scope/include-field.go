@@ -76,7 +76,6 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []errors.DetailedErr
 				}
 			}
 		}
-
 		errorObjects = s.buildInclude(included)
 		errs = append(errs, errorObjects...)
 	}
@@ -197,10 +196,9 @@ func (s *Scope) buildInclude(included string) []errors.DetailedError {
 		includedField = s.getOrCreateIncludeField(relationField)
 
 		errs = includedField.Scope.buildInclude(included[index+1:])
-		if errs != nil {
+		if len(errs) > 0 {
 			return errs
 		}
-
 	} else {
 		// create new includedField if the field was not already created during nested process.
 		includedField = s.getOrCreateIncludeField(relationField)

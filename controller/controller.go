@@ -71,6 +71,15 @@ func (c *Controller) GetRepository(model interface{}) (repository.Repository, er
 	return c.internal().GetRepository(model)
 }
 
+// ListModels returns a list of registered models for given controller.
+func (c *Controller) ListModels() []*mapping.ModelStruct {
+	var models []*mapping.ModelStruct
+	for _, model := range c.internal().ModelMap().Models() {
+		models = append(models, (*mapping.ModelStruct)(model))
+	}
+	return models
+}
+
 // ModelStruct gets the model struct on the base of the provided model
 func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	m, err := c.internal().GetModelStruct(model)

@@ -18,28 +18,18 @@ type FieldKind int
 const (
 	// UnknownType is the unsupported unknown type of the struct field.
 	UnknownType FieldKind = iota
-
 	// KindPrimary is a 'primary' field.
 	KindPrimary
-
 	// KindAttribute is an 'attribute' field.
 	KindAttribute
-
-	// KindClientID is id set by client.
-	KindClientID
-
 	// KindRelationshipSingle is a 'relationship' with single object.
 	KindRelationshipSingle
-
 	// KindRelationshipMultiple is a 'relationship' with multiple objects.
 	KindRelationshipMultiple
-
 	// KindForeignKey is the field type that is responsible for the relationships.
 	KindForeignKey
-
 	// KindFilterKey is the field that is used only for special case filtering.
 	KindFilterKey
-
 	// KindNested is the field that is nested within another structfield.
 	KindNested
 )
@@ -51,8 +41,6 @@ func (f FieldKind) String() string {
 		return "Primary"
 	case KindAttribute:
 		return "Attribute"
-	case KindClientID:
-		return "ClientID"
 	case KindRelationshipSingle, KindRelationshipMultiple:
 		return "Relationship"
 	case KindForeignKey:

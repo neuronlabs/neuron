@@ -41,11 +41,11 @@ func NewModuleLogger(name string, moduleLogger ...unilogger.LeveledLogger) *Modu
 			}
 		}
 	} else if sub, ok := logger.(unilogger.SubLogger); ok {
-		Debug2f("Module Logger: '%s' created as a SubLogger", name)
+		Infof("Module Logger: '%s' created as a SubLogger", name)
 		mLogger.logger = sub.SubLogger()
 		mLogger.initializeLogger()
 	} else {
-		Debug2f("Module Logger: '%s' as a wrapper over default logger", name)
+		Infof("Module Logger: '%s' as a wrapper over default logger", name)
 		mLogger.currentLevel = currentLevel
 		return mLogger
 	}

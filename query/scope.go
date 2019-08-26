@@ -2,6 +2,8 @@ package query
 
 import (
 	"context"
+	"fmt"
+	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 	"net/url"
 	"reflect"
 	"strings"
@@ -227,6 +229,25 @@ func (s *Scope) IncludeFields(fields ...string) error {
 	return nil
 }
 
+// IncludedScope gets included scope if exists for the 'model'.
+func (s *Scope) IncludedScope(model interface{}) (*Scope, error) {
+	var err error
+	mStruct, ok := model.(*mapping.ModelStruct)
+	if !ok {
+		mStruct, err = s.Controller().ModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	included, ok := s.internal().IncludedScopeByStruct((*models.ModelStruct)(mStruct))
+	if !ok {
+		log.Debugf("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
+		return nil, errors.NewDet(class.QueryNotIncluded, "provided model is not included within query's scope")
+	}
+	return (*Scope)(included), nil
+}
+
 // IncludedModelValues gets the scope's included values for the given 'model'.
 // The returning value would be pointer to slice of pointer to models.
 // i.e.: type Model struct {}, the result would be returned as a *[]*Model{}.
@@ -269,6 +290,9 @@ func (s *Scope) InFieldset(field string) (*mapping.StructField, bool) {
 
 // IsSelected checks if the provided 'field' is selected within given query's scope.
 func (s *Scope) IsSelected(field interface{}) (bool, error) {
+	if mField, ok := field.(*mapping.StructField); ok {
+		field = (*models.StructField)(mField)
+	}
 	return s.internal().IsSelected(field)
 }
 
@@ -486,6 +510,26 @@ func (s *Scope) Sort(fields ...string) error {
 	}
 
 	return s.internal().BuildSortFields(fields...)
+}
+
+// SortField adds the sort 'field' to the scope.
+func (s *Scope) SortField(field interface{}) error {
+	var sortField *sorts.SortField
+
+	switch ft := field.(type) {
+	case string:
+		sf, err := s.internal().CreateSortFields(false, ft)
+		if err != nil {
+			return err
+		}
+		sortField = sf[0]
+	case *SortField:
+		sortField = (*sorts.SortField)(ft)
+	default:
+		return errors.NewDetf(class.QuerySortField, "invalid sort field type: %T", field)
+	}
+	s.internal().AppendSortFields(true, sortField)
+	return nil
 }
 
 // SortFields returns the sorts used by the query's scope.
@@ -739,6 +783,19 @@ func (s *Scope) formatQuery() url.Values {
 
 	if s.Pagination() != nil {
 		s.Pagination().FormatQuery(q)
+	}
+
+	fields := s.Fieldset()
+	if fields != nil {
+		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, s.Struct().Collection())
+		var values string
+		for i, field := range fields {
+			values += field.NeuronName()
+			if i != len(fields)-1 {
+				values += ","
+			}
+		}
+		q.Add(fieldsKey, values)
 	}
 
 	// TODO: add included fields into query formatting

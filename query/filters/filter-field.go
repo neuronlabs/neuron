@@ -22,8 +22,10 @@ type QueryValuer interface {
 }
 
 const (
-	// QueryParamLanguage is the language query parameter used in the url.Values.
+	// QueryParamLanguage is the language query parameter used in the url values.
 	QueryParamLanguage = "lang"
+	// QueryParamFilter is the filter query parameter used as the key in the url values.
+	QueryParamFilter = "filter"
 )
 
 // FilterField is a struct that keeps information about given query filters.
@@ -31,25 +33,17 @@ const (
 type FilterField filters.FilterField
 
 // NewFilter creates new filterfield for given field, operator and values.
-func NewFilter(
-	field *mapping.StructField,
-	op *Operator,
-	values ...interface{},
-) (f *FilterField) {
+func NewFilter(field *mapping.StructField, op *Operator, values ...interface{}) *FilterField {
 	// Create operator values
 	ov := filters.NewOpValuePair((*filters.Operator)(op), values...)
 
 	// Create filter
-	f = (*FilterField)(filters.NewFilter((*models.StructField)(field), ov))
-	return
+	return (*FilterField)(filters.NewFilter((*models.StructField)(field), ov))
 }
 
 // NewRelationshipFilter creates new relationship filter for the 'relation' StructField.
 // It adds all the nested relation subfilters 'relFilters'.
-func NewRelationshipFilter(
-	relation *mapping.StructField,
-	relFilters ...*FilterField,
-) *FilterField {
+func NewRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterField) *FilterField {
 	f := filters.NewFilter((*models.StructField)(relation))
 	for _, relFilter := range relFilters {
 		f.AddNestedField((*filters.FilterField)(relFilter))
@@ -77,7 +71,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 }
 
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
-	filter = strings.TrimPrefix(filter, "filter")
+	filter = strings.TrimPrefix(filter, QueryParamFilter)
 
 	params, err := SplitBracketParameter(filter)
 	if err != nil {

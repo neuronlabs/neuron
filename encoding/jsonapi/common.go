@@ -1,6 +1,8 @@
 package jsonapi
 
 import (
+	"gopkg.in/go-playground/validator.v9"
+
 	"github.com/neuronlabs/neuron-core/query"
 )
 
@@ -14,9 +16,8 @@ const (
 )
 
 // EncodeLinks marks provided query 's' to encode the links while marshaling to jsonapi format.
-func EncodeLinks(s *query.Scope) {
-	s.StoreSet(encodeLinksCtxKey, struct{}{})
-
+func EncodeLinks(s *query.Scope, b bool) {
+	s.StoreSet(encodeLinksCtxKey, b)
 }
 
 // encodeLinks is the structure used as a key in the store that states
@@ -25,3 +26,5 @@ type encodeLinksKeyStruct struct{}
 
 // StoreKeys
 var encodeLinksCtxKey = encodeLinksKeyStruct{}
+
+var validate = validator.New()

@@ -1,44 +1,44 @@
 package jsonapi
 
-// payloader is used to encapsulate the One and Many payload types
-type payloader interface {
+// Payloader is used to encapsulate the One and Many payload types
+type Payloader interface {
 	clearIncluded()
 	setIncluded(included []*node)
 }
 
-// onePayload is used to represent a generic JSON API payload where a single
+// SinglePayload is used to represent a generic JSON API payload where a single
 // resource (node) was included as an {} in the "data" key
-type onePayload struct {
+type SinglePayload struct {
 	Data     *node   `json:"data"`
 	Included []*node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
 	Meta     *Meta   `json:"meta,omitempty"`
 }
 
-func (p *onePayload) clearIncluded() {
+func (p *SinglePayload) clearIncluded() {
 	p.Included = []*node{}
 }
 
-func (p *onePayload) setIncluded(included []*node) {
+func (p *SinglePayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
-var _ payloader = &manyPayload{}
+var _ Payloader = &ManyPayload{}
 
-// manyPayload is used to represent a generic JSON API payload where many
+// ManyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
-type manyPayload struct {
+type ManyPayload struct {
 	Data     []*node `json:"data"`
 	Included []*node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
 	Meta     *Meta   `json:"meta,omitempty"`
 }
 
-func (p *manyPayload) clearIncluded() {
+func (p *ManyPayload) clearIncluded() {
 	p.Included = []*node{}
 }
 
-func (p *manyPayload) setIncluded(included []*node) {
+func (p *ManyPayload) setIncluded(included []*node) {
 	p.Included = included
 }
 
@@ -78,31 +78,6 @@ type Link struct {
 	Meta Meta   `json:"meta,omitempty"`
 }
 
-// Linkable is used to include document links in response data
-// e.g. {"self": "http://example.com/posts/1"}
-type Linkable interface {
-	JSONAPILinks() *Links
-}
-
-// Metable is used to include document meta in response data
-// e.g. {"foo": "bar"}
-type Metable interface {
-	JSONAPIMeta() *Meta
-}
-
 // Meta is used to represent a `meta` object.
 // http://jsonapi.org/format/#document-meta
 type Meta map[string]interface{}
-
-// RelationshipLinkable is used to include relationship links  in response data
-// e.g. {"related": "http://example.com/posts/1/comments"}
-type RelationshipLinkable interface {
-	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONAPIRelationshipLinks(relation string) *Links
-}
-
-// RelationshipMetable is used to include relationship meta in response data
-type RelationshipMetable interface {
-	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONAPIRelationshipMeta(relation string) *Meta
-}

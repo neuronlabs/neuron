@@ -13,6 +13,11 @@ import (
 // It contains all the collection name, fields, config, store and a model type.
 type ModelStruct models.ModelStruct
 
+// AllowClientID checks if the model allows client settable primary key values.
+func (m *ModelStruct) AllowClientID() bool {
+	return m.internal().AllowClientID()
+}
+
 // Attr returns the attribute for the provided ModelStruct.
 // If the attribute doesn't exists returns nil field and false.
 func (m *ModelStruct) Attr(attr string) (*StructField, bool) {

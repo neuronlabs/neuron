@@ -258,15 +258,18 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 		if level == unilogger.UNKNOWN {
 			return errors.NewDetf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", cfg.LogLevel)
 		}
+
 		if log.Logger() == nil {
 			log.Default()
 		}
-		// get and set default logger
-		if err := log.SetLevel(level); err != nil {
-			return err
+
+		if log.Level() != level {
+			// get and set default logger
+			if err := log.SetLevel(level); err != nil {
+				return err
+			}
 		}
 	}
-
 	log.Debug2f("Creating new controller with config: '%#v'", cfg)
 
 	// set the naming convention
