@@ -1,8 +1,6 @@
 package jsonapi
 
 import (
-	"gopkg.in/go-playground/validator.v9"
-
 	"github.com/neuronlabs/neuron-core/query"
 )
 
@@ -26,5 +24,3 @@ type encodeLinksKeyStruct struct{}
 
 // StoreKeys
 var encodeLinksCtxKey = encodeLinksKeyStruct{}
-
-var validate = validator.New()
