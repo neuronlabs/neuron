@@ -13,6 +13,11 @@ import (
 // It contains all the collection name, fields, config, store and a model type.
 type ModelStruct models.ModelStruct
 
+// AllowClientID checks if the model allows client settable primary key values.
+func (m *ModelStruct) AllowClientID() bool {
+	return m.internal().AllowClientID()
+}
+
 // Attr returns the attribute for the provided ModelStruct.
 // If the attribute doesn't exists returns nil field and false.
 func (m *ModelStruct) Attr(attr string) (*StructField, bool) {
@@ -100,6 +105,17 @@ func (m *ModelStruct) RelationField(rel string) (*StructField, bool) {
 		return nil, ok
 	}
 	return (*StructField)(s), true
+}
+
+// RelationFields gets all model's relationship fields.
+func (m *ModelStruct) RelationFields() []*StructField {
+	modelRelations := m.internal().RelationshipFields()
+
+	output := make([]*StructField, len(modelRelations))
+	for i, rel := range modelRelations {
+		output[i] = (*StructField)(rel)
+	}
+	return output
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'.

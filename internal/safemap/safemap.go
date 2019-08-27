@@ -38,6 +38,11 @@ func (s *SafeHashMap) Get(key interface{}) (interface{}, bool) {
 	return value, ok
 }
 
+// Map returns the hash value map.
+func (s *SafeHashMap) Map() map[interface{}]interface{} {
+	return s.values
+}
+
 // UnsafeSet adds the value at given key even if the map is locked
 func (s *SafeHashMap) UnsafeSet(key, value interface{}) {
 	s.values[key] = value

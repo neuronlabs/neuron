@@ -2,6 +2,8 @@ package query
 
 import (
 	"context"
+	"fmt"
+	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 	"net/url"
 	"reflect"
 	"strings"
@@ -227,10 +229,29 @@ func (s *Scope) IncludeFields(fields ...string) error {
 	return nil
 }
 
+// IncludedScope gets included scope if exists for the 'model'.
+// NOTE: included scope contains no resultant values. This function is used only to set the included models fieldset and filters.
+func (s *Scope) IncludedScope(model interface{}) (*Scope, error) {
+	var err error
+	mStruct, ok := model.(*mapping.ModelStruct)
+	if !ok {
+		mStruct, err = s.Controller().ModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	included, ok := s.internal().IncludedScopeByStruct((*models.ModelStruct)(mStruct))
+	if !ok {
+		log.Debugf("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
+		return nil, errors.NewDet(class.QueryNotIncluded, "provided model is not included within query's scope")
+	}
+	return (*Scope)(included), nil
+}
+
 // IncludedModelValues gets the scope's included values for the given 'model'.
-// The returning value would be pointer to slice of pointer to models.
-// i.e.: type Model struct {}, the result would be returned as a *[]*Model{}.
-func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
+// Returns the map of primary keys to the model values.
+func (s *Scope) IncludedModelValues(model interface{}) (map[interface{}]interface{}, error) {
 	var (
 		mStruct *mapping.ModelStruct
 		ok      bool
@@ -249,13 +270,7 @@ func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
 		return nil, errors.NewDet(class.QueryNotIncluded, "provided model is not included within query's scope")
 	}
-
-	v := included.Struct().NewReflectValueMany()
-	val := v.Elem()
-	for _, elem := range included.IncludedValues().Values() {
-		val.Set(reflect.Append(val, reflect.ValueOf(elem)))
-	}
-	return v.Interface(), nil
+	return included.IncludedValues().Map(), nil
 }
 
 // InFieldset checks if the provided field is in the scope's fieldset.
@@ -269,6 +284,9 @@ func (s *Scope) InFieldset(field string) (*mapping.StructField, bool) {
 
 // IsSelected checks if the provided 'field' is selected within given query's scope.
 func (s *Scope) IsSelected(field interface{}) (bool, error) {
+	if mField, ok := field.(*mapping.StructField); ok {
+		field = (*models.StructField)(mField)
+	}
 	return s.internal().IsSelected(field)
 }
 
@@ -485,19 +503,27 @@ func (s *Scope) Sort(fields ...string) error {
 		return nil
 	}
 
-	errs := s.internal().BuildSortFields(fields...)
-	switch len(errs) {
-	case 0:
-		return nil
-	case 1:
-		return errs[0]
-	default:
-		var multi errors.MultiError
-		for _, e := range errs {
-			multi = append(multi, e.(errors.ClassError))
+	return s.internal().BuildSortFields(fields...)
+}
+
+// SortField adds the sort 'field' to the scope.
+func (s *Scope) SortField(field interface{}) error {
+	var sortField *sorts.SortField
+
+	switch ft := field.(type) {
+	case string:
+		sf, err := s.internal().CreateSortFields(false, ft)
+		if err != nil {
+			return err
 		}
-		return multi
+		sortField = sf[0]
+	case *SortField:
+		sortField = (*sorts.SortField)(ft)
+	default:
+		return errors.NewDetf(class.QuerySortField, "invalid sort field type: %T", field)
 	}
+	s.internal().AppendSortFields(true, sortField)
+	return nil
 }
 
 // SortFields returns the sorts used by the query's scope.
@@ -525,6 +551,77 @@ func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
 // StoreSet sets the 'key' and 'value' in the given scope's store.
 func (s *Scope) StoreSet(key, value interface{}) {
 	s.internal().StoreSet(key, value)
+}
+
+// String implements fmt.Stringer interface.
+func (s *Scope) String() string {
+	sb := &strings.Builder{}
+
+	// Scope ID
+	sb.WriteString("SCOPE[" + s.ID().String() + "][" + s.Struct().Collection() + "]")
+
+	// Fieldset
+	sb.WriteString(" Fieldset: [")
+	fieldset := s.internal().Fieldset()
+	for i, field := range fieldset {
+		sb.WriteString(field.NeuronName())
+		if i != len(fieldset)-1 {
+			sb.WriteRune(',')
+		}
+	}
+	sb.WriteRune(']')
+
+	// Primary Filters
+	if len(s.internal().PrimaryFilters()) > 0 {
+		sb.WriteString(" Primary Filters: ")
+		sb.WriteString(filters.Filters(s.PrimaryFilters()).String())
+	}
+
+	// Attribute Filters
+	if len(s.internal().AttributeFilters()) > 0 {
+		sb.WriteString(" Attribute Filters: ")
+		sb.WriteString(filters.Filters(s.AttributeFilters()).String())
+	}
+
+	// Relationship Filters
+	if len(s.internal().RelationshipFilters()) > 0 {
+		sb.WriteString(" Relationship Filters: ")
+		sb.WriteString(filters.Filters(s.RelationshipFilters()).String())
+	}
+
+	// ForeignKey Filters
+	if len(s.internal().ForeignKeyFilters()) > 0 {
+		sb.WriteString(" ForeignKey Filters: ")
+		sb.WriteString(filters.Filters(s.ForeignFilters()).String())
+	}
+
+	// FilterKey Filters
+	if len(s.internal().FilterKeyFilters()) > 0 {
+		sb.WriteString(" FilterKey Filters: ")
+		sb.WriteString(filters.Filters(s.FilterKeyFilters()).String())
+	}
+
+	if s.internal().LanguageFilter() != nil {
+		sb.WriteString(" Language Filter: ")
+		sb.WriteString(s.LanguageFilter().String())
+	}
+
+	if pagination := s.Pagination(); pagination != nil {
+		sb.WriteString(" Pagination: ")
+		sb.WriteString(s.Pagination().String())
+	}
+
+	if sortFields := s.SortFields(); len(sortFields) > 0 {
+		sb.WriteString(" SortFields: ")
+		for i, field := range sortFields {
+			sb.WriteString(field.StructField().NeuronName())
+			if i != len(sortFields)-1 {
+				sb.WriteRune(',')
+			}
+		}
+	}
+
+	return sb.String()
 }
 
 // Tx returns the transaction for the given scope if exists.
@@ -751,6 +848,19 @@ func (s *Scope) formatQuery() url.Values {
 
 	if s.Pagination() != nil {
 		s.Pagination().FormatQuery(q)
+	}
+
+	fields := s.Fieldset()
+	if fields != nil {
+		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, s.Struct().Collection())
+		var values string
+		for i, field := range fields {
+			values += field.NeuronName()
+			if i != len(fields)-1 {
+				values += ","
+			}
+		}
+		q.Add(fieldsKey, values)
 	}
 
 	// TODO: add included fields into query formatting

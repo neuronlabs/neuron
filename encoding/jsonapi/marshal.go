@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"reflect"
 	"strconv"
 	"time"
@@ -26,23 +27,13 @@ func Marshal(w io.Writer, v interface{}) error {
 }
 
 // MarshalC marshals the provided value 'v' into the writer. It uses the 'c' controller
-func MarshalC(c *ctrl.Controller, w io.Writer, v interface{}) error {
-	return marshal((*controller.Controller)(c), w, v)
-}
-
-// MarshalScopeC marshals the scope into the selceted writer for the given controller
-func MarshalScopeC(c *ctrl.Controller, w io.Writer, s *query.Scope) error {
-	pl, err := marshalScope((*controller.Controller)(c), (*scope.Scope)(s))
-	if err != nil {
-		return err
-	}
-
-	return marshalPayload(w, pl)
+func MarshalC(c *ctrl.Controller, w io.Writer, v interface{}, option ...*MarshalOptions) error {
+	return marshal((*controller.Controller)(c), w, v, option...)
 }
 
 // MarshalScope marshals the scope into the selceted writer for the given controller
-func MarshalScope(w io.Writer, s *query.Scope) error {
-	pl, err := marshalScope(controller.Default(), (*scope.Scope)(s))
+func MarshalScope(w io.Writer, s *query.Scope, option ...*MarshalOptions) error {
+	pl, err := marshalScope((*controller.Controller)(s.Controller()), (*scope.Scope)(s), option...)
 	if err != nil {
 		return err
 	}
@@ -64,14 +55,20 @@ func MarshalErrors(w io.Writer, errs ...*Error) error {
 
 // ErrorsPayload is a serializer struct for representing a valid JSON API errors payload.
 type ErrorsPayload struct {
-	Errors []*Error `json:"errors"`
+	JSONAPI map[string]interface{} `json:"jsonapi,omitempty"`
+	Errors  []*Error               `json:"errors"`
 }
 
 // Marshal marshals provided value 'v' into writer 'w'
-func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
+func marshal(c *controller.Controller, w io.Writer, v interface{}, option ...*MarshalOptions) error {
 	if v == nil {
 		// TODO: allow marshaling nil or empty values of given type.
 		return errors.NewDet(class.EncodingMarshalNilValue, "nil value provided")
+	}
+
+	var o *MarshalOptions
+	if len(option) > 0 {
+		o = option[0]
 	}
 
 	// get the value reflection
@@ -107,26 +104,26 @@ func marshal(c *controller.Controller, w io.Writer, v interface{}) error {
 		return errors.NewDetf(class.EncodingMarshalModelNotMapped, "model: '%s' is not registered.", t.Name())
 	}
 
-	var payload payloader
+	var payload Payloader
 	if isMany {
-		nodes, err := visitManyNodes(c, refVal.Elem(), mStruct)
+		nodes, err := visitManyNodes(c, refVal.Elem(), mStruct, o)
 		if err != nil {
 			log.Debug2f("visitManyNodes failed: %v", err)
 			return err
 		}
-		payload = &manyPayload{Data: nodes}
+		payload = &ManyPayload{Data: nodes}
 	} else {
-		node, err := visitNode(c, refVal, mStruct)
+		node, err := visitNode(c, refVal, mStruct, o)
 		if err != nil {
 			return err
 		}
-		payload = &onePayload{Data: node}
+		payload = &SinglePayload{Data: node}
 	}
 
 	return marshalPayload(w, payload)
 }
 
-func marshalPayload(w io.Writer, payload payloader) error {
+func marshalPayload(w io.Writer, payload Payloader) error {
 	err := json.NewEncoder(w).Encode(payload)
 	if err != nil {
 		return err
@@ -134,16 +131,17 @@ func marshalPayload(w io.Writer, payload payloader) error {
 	return nil
 }
 
-func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) {
+func marshalScope(c *controller.Controller, sc *scope.Scope, o ...*MarshalOptions) (Payloader, error) {
 	var (
-		payload payloader
+		payload Payloader
 		err     error
 	)
-	if sc.Value == nil && sc.Kind() >= scope.RelationshipKind {
+
+	if sc.Value == nil {
 		if sc.IsMany() {
-			payload = &manyPayload{Data: []*node{}}
+			payload = &ManyPayload{Data: []*node{}}
 		} else {
-			payload = &onePayload{Data: nil}
+			payload = &SinglePayload{Data: nil}
 		}
 
 		return payload, nil
@@ -156,11 +154,16 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) 
 		return nil, err
 	}
 
+	var option *MarshalOptions
+	if len(o) > 0 {
+		option = o[0]
+	}
+
 	switch t.Elem().Kind() {
 	case reflect.Slice:
-		payload, err = marshalScopeMany(c, sc)
+		payload, err = marshalScopeMany(c, sc, option)
 	case reflect.Struct:
-		payload, err = marshalScopeOne(c, sc)
+		payload, err = marshalScopeOne(c, sc, option)
 	default:
 		err = errors.NewDetf(class.EncodingMarshalInput, "invalid scope's value type: '%T'", sc.Value)
 	}
@@ -170,40 +173,35 @@ func marshalScope(c *controller.Controller, sc *scope.Scope) (payloader, error) 
 
 	// try to unmarshal the includes
 	included := []*node{}
-	if err = marshalIncludes(c, sc, &included); err != nil {
+	if err = marshalIncludes(c, sc, &included, option); err != nil {
 		return nil, err
 	}
 
 	if len(included) != 0 {
+		log.Infof("Included: %v", included)
 		payload.setIncluded(included)
 	}
 	return payload, nil
 }
 
-func marshalIncludes(
-	c *controller.Controller,
-	rootScope *scope.Scope,
-	included *[]*node,
-) (err error) {
+func marshalIncludes(c *controller.Controller, rootScope *scope.Scope, included *[]*node, o *MarshalOptions) (err error) {
+	log.Infof("Included Scopes: %v", rootScope.IncludedScopes())
 	for _, includedScope := range rootScope.IncludedScopes() {
-		if err = marshalIncludedScope(c, includedScope, included); err != nil {
+		if err = marshalIncludedScope(c, includedScope, included, o); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func marshalIncludedScope(
-	c *controller.Controller,
-	includedScope *scope.Scope,
-	included *[]*node,
-) error {
+func marshalIncludedScope(c *controller.Controller, includedScope *scope.Scope, included *[]*node, o *MarshalOptions) error {
+	log.Infof("Marshal included scope values: %v", includedScope.IncludedValues().Values())
 	for _, elem := range includedScope.IncludedValues().Values() {
 		if elem == nil {
 			continue
 		}
 
-		node, err := visitScopeNode(c, elem, includedScope)
+		node, err := visitScopeNode(c, elem, includedScope, o)
 		if err != nil {
 			return err
 		}
@@ -234,25 +232,25 @@ func marshalNestedStructValue(n *models.NestedStruct, v reflect.Value) reflect.V
 	return marshalValue
 }
 
-func marshalScopeOne(c *controller.Controller, s *scope.Scope) (*onePayload, error) {
-	n, err := visitScopeNode(c, s.Value, s)
+func marshalScopeOne(c *controller.Controller, s *scope.Scope, o *MarshalOptions) (*SinglePayload, error) {
+	n, err := visitScopeNode(c, s.Value, s, o)
 	if err != nil {
 		return nil, err
 	}
 
-	return &onePayload{Data: n}, nil
+	return &SinglePayload{Data: n}, nil
 }
 
-func marshalScopeMany(c *controller.Controller, s *scope.Scope) (*manyPayload, error) {
-	n, err := visitScopeManyNodes(c, s)
+func marshalScopeMany(c *controller.Controller, s *scope.Scope, o *MarshalOptions) (*ManyPayload, error) {
+	n, err := visitScopeManyNodes(c, s, o)
 	if err != nil {
 		return nil, err
 	}
 
-	return &manyPayload{Data: n}, nil
+	return &ManyPayload{Data: n}, nil
 }
 
-func visitScopeManyNodes(c *controller.Controller, s *scope.Scope) ([]*node, error) {
+func visitScopeManyNodes(c *controller.Controller, s *scope.Scope, o *MarshalOptions) ([]*node, error) {
 	valInterface := reflect.ValueOf(s.Value).Elem().Interface()
 
 	valSlice, err := convertToSliceInterface(&valInterface)
@@ -262,7 +260,7 @@ func visitScopeManyNodes(c *controller.Controller, s *scope.Scope) ([]*node, err
 	nodes := []*node{}
 
 	for _, value := range valSlice {
-		node, err := visitScopeNode(c, value, s)
+		node, err := visitScopeNode(c, value, s, o)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +270,7 @@ func visitScopeManyNodes(c *controller.Controller, s *scope.Scope) ([]*node, err
 	return nodes, nil
 }
 
-func visitManyNodes(c *controller.Controller, v reflect.Value, mStruct *models.ModelStruct) ([]*node, error) {
+func visitManyNodes(c *controller.Controller, v reflect.Value, mStruct *models.ModelStruct, o *MarshalOptions) ([]*node, error) {
 	nodes := []*node{}
 
 	for i := 0; i < v.Len(); i++ {
@@ -281,7 +279,7 @@ func visitManyNodes(c *controller.Controller, v reflect.Value, mStruct *models.M
 			continue
 		}
 
-		node, err := visitNode(c, elem, mStruct)
+		node, err := visitNode(c, elem, mStruct, o)
 		if err != nil {
 			return nil, err
 		}
@@ -291,17 +289,11 @@ func visitManyNodes(c *controller.Controller, v reflect.Value, mStruct *models.M
 	return nodes, nil
 }
 
-func visitNode(
-	c *controller.Controller,
-	value reflect.Value,
-	mStruct *models.ModelStruct,
-) (*node, error) {
+func visitNode(c *controller.Controller, value reflect.Value, mStruct *models.ModelStruct, o *MarshalOptions) (*node, error) {
 	// check if any of the multiple nodes is not a struct
 	if indirect := reflect.Indirect(value); indirect.Kind() != reflect.Struct {
 		return nil, errors.NewDetf(class.EncodingMarshalInput, "one of the provided values is of invalid type: '%s'", indirect.Type().Name())
 	}
-
-	valInt := value.Interface()
 
 	node := &node{Type: mStruct.Collection()}
 	modelVal := value.Elem()
@@ -398,7 +390,6 @@ func visitNode(
 				}
 			}
 		case models.KindRelationshipMultiple, models.KindRelationshipSingle:
-
 			isSlice := field.FieldKind() == models.KindRelationshipMultiple
 			if field.IsOmitEmpty() && ((isSlice && fieldValue.Len() == 0) || (!isSlice && fieldValue.IsNil())) {
 				continue
@@ -410,8 +401,12 @@ func visitNode(
 
 			var relLinks *Links
 
-			if linkableModel, ok := valInt.(RelationshipLinkable); ok {
-				relLinks = linkableModel.JSONAPIRelationshipLinks(field.NeuronName())
+			if o != nil {
+				link := make(map[string]interface{})
+				link["self"] = path.Join(o.LinkURL, mStruct.Collection(), node.ID, "relationships", field.NeuronName())
+				link["related"] = path.Join(o.LinkURL, mStruct.Collection(), node.ID, field.NeuronName())
+				links := Links(link)
+				relLinks = &links
 			} else if c.Config.EncodeLinks {
 				link := make(map[string]interface{})
 				link["self"] = fmt.Sprintf("%s/%s/relationships/%s", mStruct.Collection(), node.ID, field.NeuronName())
@@ -421,9 +416,12 @@ func visitNode(
 			}
 
 			var relMeta *Meta
-			if metableModel, ok := valInt.(Metable); ok {
-				relMeta = metableModel.JSONAPIMeta()
+			if o != nil {
+				if optionMeta, ok := o.RelationshipMeta[field.NeuronName()]; ok {
+					relMeta = (*Meta)(&optionMeta)
+				}
 			}
+
 			if isSlice {
 				// get RelationshipManyNode
 				relationship, err := visitRelationshipManyNode(c, fieldValue, primaryVal, field)
@@ -455,8 +453,23 @@ func visitNode(
 		}
 	}
 
-	if linkable, ok := valInt.(Linkable); ok {
-		node.Links = linkable.JSONAPILinks()
+	if o != nil {
+		links := make(map[string]interface{})
+		var self string
+
+		switch o.Link {
+		case DefaultLink:
+			self = path.Join(o.LinkURL, mStruct.Collection(), node.ID)
+		case RelatedLink:
+			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
+		case RelationshipLink:
+			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField)
+			links["related"] = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
+		}
+
+		links["self"] = self
+		linksObj := Links(links)
+		node.Links = &(linksObj)
 	} else if c.Config.EncodeLinks {
 		links := make(map[string]interface{})
 		links["self"] = fmt.Sprintf("%s/%s", mStruct.Collection(), node.ID)
@@ -468,7 +481,7 @@ func visitNode(
 	return node, nil
 }
 
-func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope) (*node, error) {
+func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope, o *MarshalOptions) (*node, error) {
 	if reflect.Indirect(reflect.ValueOf(value)).Kind() != reflect.Struct {
 		return nil, errors.NewDet(class.EncodingMarshalInput, "one of the provided values is of invalid type")
 	}
@@ -481,7 +494,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 	primIndex := primStruct.FieldIndex()
 	primaryVal := modelVal.FieldByIndex(primIndex)
 
-	if !primStruct.IsHidden() && primStruct.IsZeroValue(primaryVal.Interface()) {
+	if !primStruct.IsHidden() && !primStruct.IsZeroValue(primaryVal.Interface()) {
 		err := setNodePrimary(primaryVal, node)
 		if err != nil {
 			return nil, err
@@ -561,8 +574,12 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			// how to handle links?
 			var relLinks *Links
 
-			if linkableModel, ok := sc.Value.(RelationshipLinkable); ok {
-				relLinks = linkableModel.JSONAPIRelationshipLinks(field.NeuronName())
+			if o != nil {
+				link := make(map[string]interface{})
+				link["self"] = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID, "relationships", field.NeuronName())
+				link["related"] = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID, field.NeuronName())
+				links := Links(link)
+				relLinks = &links
 			} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 				if encodeLinks, ok := value.(bool); ok && encodeLinks {
 					link := make(map[string]interface{})
@@ -571,11 +588,19 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 					links := Links(link)
 					relLinks = &links
 				}
+			} else if c.Config.EncodeLinks {
+				link := make(map[string]interface{})
+				link["self"] = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
+				link["related"] = fmt.Sprintf("%s/%s/%s", sc.Struct().Collection(), node.ID, field.NeuronName())
+				links := Links(link)
+				relLinks = &links
 			}
 
 			var relMeta *Meta
-			if metableModel, ok := sc.Value.(Metable); ok {
-				relMeta = metableModel.JSONAPIMeta()
+			if o != nil {
+				if optionMeta, ok := o.RelationshipMeta[field.NeuronName()]; ok {
+					relMeta = (*Meta)(&optionMeta)
+				}
 			}
 
 			if isSlice {
@@ -610,48 +635,42 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 		}
 	}
 
-	if linkable, ok := sc.Value.(Linkable); ok {
-		node.Links = linkable.JSONAPILinks()
+	if o != nil {
+		links := make(map[string]interface{})
+		var self string
+
+		switch o.Link {
+		case DefaultLink:
+			self = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID)
+		case RelatedLink:
+			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
+		case RelationshipLink:
+			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField)
+			links["related"] = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
+		}
+
+		links["self"] = self
+		linksObj := Links(links)
+		node.Links = &(linksObj)
 	} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {
 		if encodeLinks, ok := value.(bool); ok && encodeLinks {
-
 			links := make(map[string]interface{})
 
-			var self string
-			switch sc.Kind() {
-			case scope.RootKind, scope.IncludedKind:
-				self = fmt.Sprintf("%s/%s", sc.Struct().Collection(), node.ID)
-			case scope.RelatedKind:
-				rootScope := sc.GetModelsRootScope(sc.Struct())
-				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-					err := errors.NewDetf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
-					return nil, err
-				}
-
-				relatedName := rootScope.IncludedFields()[0].NeuronName()
-				self = fmt.Sprintf("%s/%s/%s", sc.Struct().Collection(), node.ID, relatedName)
-			case scope.RelationshipKind:
-				rootScope := sc.GetModelsRootScope(sc.Struct())
-				if rootScope == nil || len(rootScope.IncludedFields()) == 0 {
-					err := errors.NewDetf(class.InternalEncodingIncludeScope, "invalid scope provided as related scope. Value type: '%s'", sc.Struct().Type())
-					return nil, err
-				}
-				relatedName := rootScope.IncludedFields()[0].NeuronName()
-				self = fmt.Sprintf("%s/%s/relationships/%s", sc.Struct().Collection(), node.ID, relatedName)
-			}
-			links["self"] = self
+			links["self"] = path.Join(sc.Struct().Collection(), node.ID)
 			linksObj := Links(links)
 			node.Links = &(linksObj)
 		}
+	} else if c.Config.EncodeLinks {
+		links := make(map[string]interface{})
+
+		links["self"] = path.Join(sc.Struct().Collection(), node.ID)
+		linksObj := Links(links)
+		node.Links = &(linksObj)
 	}
 	return node, nil
 }
 
-func visitRelationshipManyNode(
-	c *controller.Controller,
-	manyValue, rootID reflect.Value,
-	field *models.StructField,
-) (*relationshipManyNode, error) {
+func visitRelationshipManyNode(c *controller.Controller, manyValue, rootID reflect.Value, field *models.StructField) (*relationshipManyNode, error) {
 	nodes := []*node{}
 
 	for i := 0; i < manyValue.Len(); i++ {

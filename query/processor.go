@@ -167,6 +167,9 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 // Get initializes the Get Process chain for the scope.
 func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 	var processError error
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.Get: %s", (*Scope)(s).String())
+	}
 	for _, f := range p.GetChain {
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), f.Name)
 
@@ -184,6 +187,9 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 
 // List initializes the List Process Chain for the scope.
 func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.List: %s", (*Scope)(s).String())
+	}
 	var processError error
 	for _, f := range p.ListChain {
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), f.Name)

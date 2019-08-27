@@ -22,8 +22,10 @@ type QueryValuer interface {
 }
 
 const (
-	// QueryParamLanguage is the language query parameter used in the url.Values.
+	// QueryParamLanguage is the language query parameter used in the url values.
 	QueryParamLanguage = "lang"
+	// QueryParamFilter is the filter query parameter used as the key in the url values.
+	QueryParamFilter = "filter"
 )
 
 // FilterField is a struct that keeps information about given query filters.
@@ -31,25 +33,17 @@ const (
 type FilterField filters.FilterField
 
 // NewFilter creates new filterfield for given field, operator and values.
-func NewFilter(
-	field *mapping.StructField,
-	op *Operator,
-	values ...interface{},
-) (f *FilterField) {
+func NewFilter(field *mapping.StructField, op *Operator, values ...interface{}) *FilterField {
 	// Create operator values
 	ov := filters.NewOpValuePair((*filters.Operator)(op), values...)
 
 	// Create filter
-	f = (*FilterField)(filters.NewFilter((*models.StructField)(field), ov))
-	return
+	return (*FilterField)(filters.NewFilter((*models.StructField)(field), ov))
 }
 
 // NewRelationshipFilter creates new relationship filter for the 'relation' StructField.
 // It adds all the nested relation subfilters 'relFilters'.
-func NewRelationshipFilter(
-	relation *mapping.StructField,
-	relFilters ...*FilterField,
-) *FilterField {
+func NewRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterField) *FilterField {
 	f := filters.NewFilter((*models.StructField)(relation))
 	for _, relFilter := range relFilters {
 		f.AddNestedField((*filters.FilterField)(relFilter))
@@ -77,7 +71,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 }
 
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
-	filter = strings.TrimPrefix(filter, "filter")
+	filter = strings.TrimPrefix(filter, QueryParamFilter)
 
 	params, err := SplitBracketParameter(filter)
 	if err != nil {
@@ -195,7 +189,6 @@ func (f *FilterField) NestedFilters() []*FilterField {
 	}
 
 	return nesteds
-
 }
 
 // FormatQuery formats the filter field into url.Values.
@@ -225,7 +218,45 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 		query.Add(k, strings.Join(vals, annotation.Separator))
 	}
 	return query
+}
 
+func (f *FilterField) String() string {
+	sb := &strings.Builder{}
+	f.buildString(sb, 0)
+	return sb.String()
+}
+
+func (f *FilterField) buildString(sb *strings.Builder, filtersAdded int, relName ...string) {
+	for _, fv := range (*filters.FilterField)(f).Values() {
+		if filtersAdded != 0 {
+			sb.WriteRune('&')
+		}
+
+		if len(relName) > 0 {
+			sb.WriteString(fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField().NeuronName(), fv.Operator().Raw))
+		} else {
+			sb.WriteString(fmt.Sprintf("[%s][%s]", f.StructField().NeuronName(), fv.Operator().Raw))
+		}
+
+		var vals []string
+		for _, val := range fv.Values {
+			stringValue(f.StructField(), val, &vals)
+		}
+
+		for i, v := range vals {
+			sb.WriteString(v)
+			if i != len(vals)-1 {
+				sb.WriteRune(',')
+			}
+		}
+		filtersAdded++
+	}
+
+	if len((*filters.FilterField)(f).NestedFields()) > 0 {
+		for _, nested := range (*filters.FilterField)(f).NestedFields() {
+			(*FilterField)(nested).buildString(sb, filtersAdded, f.StructField().NeuronName())
+		}
+	}
 }
 
 // StructField returns the structfield related with the filter field.

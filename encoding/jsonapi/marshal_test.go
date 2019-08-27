@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -347,9 +348,10 @@ func TestMarshalScope(t *testing.T) {
 
 		payload, err := marshalScope((*controller.Controller)(c), (*scope.Scope)(s))
 		if assert.NoError(t, err) {
-			single, ok := payload.(*onePayload)
+			single, ok := payload.(*SinglePayload)
 			if assert.True(t, ok) {
 				if assert.NotNil(t, single.Data) {
+					assert.Equal(t, strconv.Itoa(pet.ID), single.Data.ID)
 					if assert.NotEmpty(t, single.Data.Relationships) {
 						if assert.NotNil(t, single.Data.Relationships["owners"]) {
 							owners, ok := single.Data.Relationships["owners"].(*relationshipManyNode)
@@ -387,9 +389,10 @@ func TestMarshalScope(t *testing.T) {
 
 		payload, err := marshalScope(c, (*scope.Scope)(s))
 		if assert.NoError(t, err) {
-			single, ok := payload.(*onePayload)
+			single, ok := payload.(*SinglePayload)
 			if assert.True(t, ok) {
 				if assert.NotNil(t, single.Data) {
+					assert.Equal(t, strconv.Itoa(pet.ID), single.Data.ID)
 					if assert.NotEmpty(t, single.Data.Relationships) {
 						if assert.NotNil(t, single.Data.Relationships["owners"]) {
 							owners, ok := single.Data.Relationships["owners"].(*relationshipManyNode)

@@ -896,12 +896,12 @@ func TestListRelationshipFilters(t *testing.T) {
 			values, err := s.IncludedModelValues(&relationModel{})
 			require.NoError(t, err)
 
-			rValues, ok := values.(*[]*relationModel)
-			require.True(t, ok, "%T", values)
+			if assert.Len(t, values, 2) {
+				_, ok = values[firstIncluded.ID]
+				assert.True(t, ok)
 
-			if assert.Len(t, *rValues, 2) {
-				assert.Contains(t, *rValues, firstIncluded)
-				assert.Contains(t, *rValues, secondIncluded)
+				_, ok = values[secondIncluded.ID]
+				assert.True(t, ok)
 			}
 		})
 	})

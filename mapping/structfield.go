@@ -117,6 +117,10 @@ func (s *StructField) ReflectField() reflect.StructField {
 	return s.internal().ReflectField()
 }
 
+func (s *StructField) String() string {
+	return s.NeuronName()
+}
+
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (s *StructField) StoreSet(key string, value interface{}) {
 	s.internal().StoreSet(key, value)

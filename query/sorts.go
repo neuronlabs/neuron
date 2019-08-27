@@ -6,6 +6,7 @@ import (
 
 	"github.com/neuronlabs/neuron-core/mapping"
 
+	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 )
 
@@ -20,6 +21,15 @@ func (s *SortField) StructField() *mapping.StructField {
 	sField := (*sorts.SortField)(s).StructField()
 
 	return (*mapping.StructField)(sField)
+}
+
+func (s *SortField) String() string {
+	var v string
+	if s.Order() == DescendingOrder {
+		v = "-"
+	}
+	v += s.StructField().NeuronName()
+	return v
 }
 
 // Order returns sortfield's order.
@@ -81,4 +91,30 @@ func (o SortOrder) String() string {
 		return "ascending"
 	}
 	return "descending"
+}
+
+// NewSortFields creates new 'sortFields' for given model 'm'. If the 'disallowFK' is set to true
+// the function would not allow to create foreign key sort field.
+// The function throws errors on duplicated field values.
+func NewSortFields(m *mapping.ModelStruct, disallowFK bool, sortFields ...string) ([]*SortField, error) {
+	sortFieldStructs, err := sorts.NewUniques((*models.ModelStruct)(m), disallowFK, sortFields...)
+	if err != nil {
+		return nil, err
+	}
+
+	thisFields := make([]*SortField, len(sortFieldStructs))
+	for i, sField := range sortFieldStructs {
+		thisFields[i] = (*SortField)(sField)
+	}
+	return thisFields, nil
+}
+
+// NewSort creates new 'sort' field for given model 'm'. If the 'disallowFK' is set to true
+// the function would not allow to create Sort field of foreign key field.
+func NewSort(m *mapping.ModelStruct, sort string, disallowFK bool) (*SortField, error) {
+	sField, err := sorts.New((*models.ModelStruct)(m), sort, disallowFK)
+	if err != nil {
+		return nil, err
+	}
+	return (*SortField)(sField), nil
 }

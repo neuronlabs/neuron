@@ -34,6 +34,18 @@ func UnmarshalC(c *ctrl.Controller, r io.Reader, v interface{}) error {
 	return err
 }
 
+// UnmarshalErrors unmarshals the jsonapi errors from the provided input 'r'.
+func UnmarshalErrors(r io.Reader) (*ErrorsPayload, error) {
+	payload := &ErrorsPayload{}
+	err := json.NewDecoder(r).Decode(payload)
+	return payload, err
+}
+
+// func UnmarshalPayload(io.Reader, payload Payloader) error {
+
+// 	return nil
+// }
+
 // UnmarshalSingleScopeC unmarshals the value from the reader and creates new scope.
 // Provided model argument may be a value of the Model i.e. &Model{} or a mapping.ModelStruct.
 func UnmarshalSingleScopeC(c *ctrl.Controller, r io.Reader, model interface{}) (*query.Scope, error) {
@@ -91,8 +103,8 @@ func UnmarshalWithSelected(r io.Reader, v interface{}) ([]*mapping.StructField, 
 }
 
 // UnmarshalWithSelectedC unmarshals the value from io.Reader and returns the selected fields if the value is a single.
-func UnmarshalWithSelectedC(c *controller.Controller, r io.Reader, v interface{}) ([]*mapping.StructField, error) {
-	fields, err := unmarshal(c, r, v, true)
+func UnmarshalWithSelectedC(c *ctrl.Controller, r io.Reader, v interface{}) ([]*mapping.StructField, error) {
+	fields, err := unmarshal((*controller.Controller)(c), r, v, true)
 	if err != nil {
 		return nil, err
 	}
@@ -110,21 +122,11 @@ func unmarshalScopeMany(c *controller.Controller, in io.Reader, model interface{
 	return unmarshalScope(c, in, model, true, false)
 }
 
-func unmarshalScopeOne(
-	c *controller.Controller,
-	in io.Reader,
-	model interface{},
-	addSelectedFields bool,
-) (*query.Scope, error) {
+func unmarshalScopeOne(c *controller.Controller, in io.Reader, model interface{}, addSelectedFields bool) (*query.Scope, error) {
 	return unmarshalScope(c, in, model, false, addSelectedFields)
 }
 
-func unmarshalScope(
-	c *controller.Controller,
-	in io.Reader,
-	model interface{},
-	useMany, usedFields bool,
-) (*query.Scope, error) {
+func unmarshalScope(c *controller.Controller, in io.Reader, model interface{}, useMany, usedFields bool) (*query.Scope, error) {
 	var (
 		mStruct  *models.ModelStruct
 		hasValue bool
@@ -194,12 +196,7 @@ func unmarshalScope(
 
 }
 
-func unmarshal(
-	c *controller.Controller,
-	in io.Reader,
-	model interface{},
-	usedFields bool,
-) ([]*models.StructField, error) {
+func unmarshal(c *controller.Controller, in io.Reader, model interface{}, usedFields bool) ([]*models.StructField, error) {
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
 		return nil, errors.NewDet(class.EncodingUnmarshalInvalidOutput, "invalid output 'model'")
@@ -240,14 +237,14 @@ func unmarshal(
 
 		// check if the collection types match
 		if one.Data.Type != mStruct.Collection() {
-			log.Debugf("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
+			log.Debug2f("Unmarshaled data of collection: '%s' for model's collection: '%s'", one.Data.Type, mStruct.Collection())
 			err := errors.NewDet(class.EncodingUnmarshalCollection, "unmarshaling collection doesn't match the output value type")
 			err.SetDetailsf("One of the input collection: '%s' doesn't match the root collection: '%s'", one.Data.Type, mStruct.Collection())
 			return nil, err
 		}
 
 		if one.Included != nil {
-			log.Debug("Payload contains Included values.")
+			log.Debug2("Payload contains Included values.")
 			includedMap := make(map[string]*node)
 			for _, included := range one.Included {
 				key := fmt.Sprintf("%s,%s", included.Type, included.ID)
@@ -309,8 +306,8 @@ func unmarshal(
 	}
 }
 
-func unmarshalPayload(c *controller.Controller, in io.Reader) (*onePayload, error) {
-	payload := new(onePayload)
+func unmarshalPayload(c *controller.Controller, in io.Reader) (*SinglePayload, error) {
+	payload := new(SinglePayload)
 
 	if err := json.NewDecoder(in).Decode(payload); err != nil {
 		return nil, unmarshalHandleDecodeError(c, err)
@@ -324,8 +321,8 @@ func unmarshalPayload(c *controller.Controller, in io.Reader) (*onePayload, erro
 	return payload, nil
 }
 
-func unmarshalManyPayload(c *controller.Controller, in io.Reader) (*manyPayload, error) {
-	payload := new(manyPayload)
+func unmarshalManyPayload(c *controller.Controller, in io.Reader) (*ManyPayload, error) {
+	payload := new(ManyPayload)
 
 	if err := json.NewDecoder(in).Decode(payload); err != nil {
 		return nil, unmarshalHandleDecodeError(c, err)
@@ -351,7 +348,7 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		err.SetDetailsf("Document syntax error: '%s'. At data offset: '%d'", e.Error(), e.Offset)
 		return err
 	case *json.UnmarshalTypeError:
-		if e.Type == reflect.TypeOf(onePayload{}) || e.Type == reflect.TypeOf(manyPayload{}) {
+		if e.Type == reflect.TypeOf(SinglePayload{}) || e.Type == reflect.TypeOf(ManyPayload{}) {
 			err := errors.NewDet(class.EncodingUnmarshalInvalidFormat, "invalid jsonapi document syntax")
 			return err
 		}
@@ -367,7 +364,7 @@ func unmarshalHandleDecodeError(c *controller.Controller, err error) error {
 		err.SetDetailsf("Invalid type for: '%s' field. Required type '%s' but is: '%v'", e.Field, fieldType, e.Value)
 		return err
 	default:
-		if e == io.EOF {
+		if e == io.EOF || e == io.ErrUnexpectedEOF {
 			err := errors.NewDet(class.EncodingUnmarshalInvalidFormat, "reader io.EOF occurred")
 			err.SetDetailsf("invalid document syntax")
 			return err

@@ -380,7 +380,7 @@ func (s *Scope) FieldsetDialectNames(dialectNamer dialect.FieldNamer) []string {
 
 // FillFieldsetIfNotSet sets the fieldset to full if the fieldset is not set
 func (s *Scope) FillFieldsetIfNotSet() {
-	if s.fieldset == nil || (s.fieldset != nil && len(s.fieldset) == 0) {
+	if s.fieldset == nil || len(s.fieldset) == 0 {
 		s.setAllFields()
 	}
 }

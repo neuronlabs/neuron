@@ -76,7 +76,6 @@ func (s *Scope) BuildIncludedFields(includedList ...string) []errors.DetailedErr
 				}
 			}
 		}
-
 		errorObjects = s.buildInclude(included)
 		errs = append(errs, errorObjects...)
 	}
@@ -126,6 +125,9 @@ func (s *Scope) IncludedScopes() []*Scope {
 // Returns scope and boolean which define if the scope exists.
 func (s *Scope) IncludedScopeByStruct(mStruct *models.ModelStruct) (*Scope, bool) {
 	scope, ok := s.includedScopes[mStruct]
+	if !ok {
+		return nil, ok
+	}
 	return scope, ok
 }
 
@@ -197,10 +199,9 @@ func (s *Scope) buildInclude(included string) []errors.DetailedError {
 		includedField = s.getOrCreateIncludeField(relationField)
 
 		errs = includedField.Scope.buildInclude(included[index+1:])
-		if errs != nil {
+		if len(errs) > 0 {
 			return errs
 		}
-
 	} else {
 		// create new includedField if the field was not already created during nested process.
 		includedField = s.getOrCreateIncludeField(relationField)
@@ -228,10 +229,10 @@ INCLUDED FIELD DEFINITION
 // related subscope, and subfields to include.
 type IncludeField struct {
 	*models.StructField
-	// Scope is the scope that contains the values and filters for given
+	// Scope is the query scope that contains the values and filters for given
 	// include field
 	Scope *Scope
-	// RelatedScope is a pointer to the scope where the IncludedField is stored.
+	// RelatedScope is a pointer to the main scope where the IncludedField is stored.
 	RelatedScope  *Scope
 	NotInFieldset bool
 }
@@ -242,6 +243,7 @@ func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
 	return i.getMissingPrimaries()
 }
 
+// newIncludedField creates a included field within 'scope' for provided 'field'.
 func newIncludeField(field *models.StructField, scope *Scope) *IncludeField {
 	includeField := new(IncludeField)
 	includeField.StructField = field
@@ -304,9 +306,6 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 				}
 			}
 		case reflect.Struct:
-			if log.Level() == log.LDEBUG3 {
-				log.Debug3f("Getting included value from single value scope")
-			}
 			if err := i.getMissingFromSingle(v, uniqueMissing); err != nil {
 				return nil, err
 			}
@@ -409,7 +408,6 @@ func (i *IncludeField) copyScopeBoundaries() {
 	copy(i.Scope.foreignFilters, i.Scope.collectionScope.foreignFilters)
 
 	// copy language filters
-
 	if i.Scope.collectionScope.languageFilters != nil {
 		i.Scope.languageFilters = i.Scope.collectionScope.languageFilters
 	}

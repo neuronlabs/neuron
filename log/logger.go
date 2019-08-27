@@ -194,7 +194,7 @@ func SetLevel(level unilogger.Level) error {
 
 	// level is already the same
 	if level == currentLevel {
-		Debug3f("Current level the same as the provided: '%s' level.", level)
+		Debug3f("Current level is the same as provided: '%s' level.", level)
 		return nil
 	}
 
@@ -216,11 +216,14 @@ func SetLevel(level unilogger.Level) error {
 func SetLogger(log unilogger.LeveledLogger) {
 	logger = log
 
-	depth, ok := log.(unilogger.OutputDepthGetter)
+	depthGetter, ok := log.(unilogger.OutputDepthGetter)
 	if ok {
-		setter, ok := log.(unilogger.OutputDepthSetter)
-		if ok {
-			setter.SetOutputDepth(depth.GetOutputDepth() + 1)
+		depth := depthGetter.GetOutputDepth()
+		if depth != 4 {
+			setter, ok := log.(unilogger.OutputDepthSetter)
+			if ok {
+				setter.SetOutputDepth(4)
+			}
 		}
 	}
 
@@ -233,6 +236,7 @@ func SetLogger(log unilogger.LeveledLogger) {
 	debugLeveled, isDebugLeveled = log.(unilogger.DebugLeveledLogger)
 	subLogger, isSubLogger := log.(unilogger.SubLogger)
 	for _, m := range modules {
+		// if the module loggers are not initialized - create them now.
 		if m.logger == nil && isSubLogger {
 			m.logger = subLogger.SubLogger()
 			m.initializeLogger()

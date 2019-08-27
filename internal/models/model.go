@@ -27,44 +27,31 @@ const (
 // distinction of the field types (primary, attributes, relationships).
 type ModelStruct struct {
 	id int
-
 	// modelType contain a reflect.Type information about given model
 	modelType reflect.Type
-
 	// collectionType is neuron 'type' for given model
 	collectionType string
-
 	// Primary is a neuron primary field
 	primary *StructField
-
 	// language is a field that contains the language information
 	language *StructField
-
 	// Attributes contain attribute fields
 	attributes map[string]*StructField
-
 	// Relationships contain neuron relationship type fields.
 	relationships map[string]*StructField
-
 	// fields is a container of all public fields in the given model.
 	fields []*StructField
-
 	// field that are ready for translations
 	i18n []*StructField
-
 	// ForeignKeys is a container for the foreign keys for the relationships
 	foreignKeys map[string]*StructField
-
 	// filterKeys is a container for the filter keys
 	filterKeys map[string]*StructField
-
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
-
-	isJoin bool
-	cfg    *config.ModelConfig
-
-	store map[interface{}]interface{}
+	isJoin         bool
+	cfg            *config.ModelConfig
+	store          map[interface{}]interface{}
 }
 
 // newModelStruct creates new model struct for given type.
