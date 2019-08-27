@@ -2,11 +2,11 @@ package query
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron-core/internal/models"
 	"net/url"
 
 	"github.com/neuronlabs/neuron-core/mapping"
 
+	"github.com/neuronlabs/neuron-core/internal/models"
 	"github.com/neuronlabs/neuron-core/internal/query/sorts"
 )
 
@@ -21,6 +21,15 @@ func (s *SortField) StructField() *mapping.StructField {
 	sField := (*sorts.SortField)(s).StructField()
 
 	return (*mapping.StructField)(sField)
+}
+
+func (s *SortField) String() string {
+	var v string
+	if s.Order() == DescendingOrder {
+		v = "-"
+	}
+	v += s.StructField().NeuronName()
+	return v
 }
 
 // Order returns sortfield's order.

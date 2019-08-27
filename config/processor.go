@@ -10,20 +10,16 @@ import (
 
 // Processor is the config used for the scope processor.
 type Processor struct {
+	// DefaultTimeout is the default timeout used for given processor.
 	DefaultTimeout time.Duration `mapstructure:"default_timeout"`
-
 	// CreateProcesses are the default processes used in the create method.
 	CreateProcesses ProcessList `mapstructure:"create_processes"`
-
 	// DeleteProcesses are the default processes used in the delete method.
 	DeleteProcesses ProcessList `mapstructure:"delete_processes"`
-
 	// GetProcesses are the default processes used in the get method.
 	GetProcesses ProcessList `mapstructure:"get_processes"`
-
 	// ListProcesses are the default processes used in the list method.
 	ListProcesses ProcessList `mapstructure:"list_processes"`
-
 	// PatchProcesses are the default processes used in the patch method.
 	PatchProcesses ProcessList `mapstructure:"patch_processes"`
 }
@@ -35,19 +31,15 @@ func (p *Processor) Validate() error {
 	if len(p.CreateProcesses) == 0 {
 		return errors.New("No create processes in configuration")
 	}
-
 	if len(p.DeleteProcesses) == 0 {
 		return errors.New("No create processes in configuration")
 	}
-
 	if len(p.GetProcesses) == 0 {
 		return errors.New("No create processes in configuration")
 	}
-
 	if len(p.ListProcesses) == 0 {
 		return errors.New("No create processes in configuration")
 	}
-
 	if len(p.PatchProcesses) == 0 {
 		return errors.New("No create processes in configuration")
 	}
@@ -85,6 +77,8 @@ func DefaultProcessorConfig() map[string]interface{} {
 			"neuron:convert_relationship_filters_safe",
 			"neuron:get",
 			"neuron:get_foreign_relationships",
+			"neuron:hook_after_get",
+			"neuron:get_included_safe",
 		},
 		"list_processes": []string{
 			"neuron:fill_empty_fieldset",

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +50,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), filters.OpEqual.Raw)))
 		})
@@ -65,7 +66,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "1", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
@@ -81,7 +82,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "some-value", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
@@ -99,7 +100,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "12", q.Get(fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), field.NeuronName(), relPrim.NeuronName(), filters.OpEqual.Raw)))
 		})
@@ -115,7 +116,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "some-key", q.Get(fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), field.NeuronName(), filters.OpEqual.Raw)))
 		})
@@ -131,7 +132,7 @@ func TestFormatQuery(t *testing.T) {
 			require.NoError(t, err)
 
 			q := s.FormatQuery()
-			require.Len(t, q, 1)
+			require.Len(t, q, 2)
 
 			assert.Equal(t, "pl", q.Get(filters.QueryParamLanguage), fmt.Sprintf("%v", q))
 		})
@@ -144,7 +145,7 @@ func TestFormatQuery(t *testing.T) {
 		err = s.SetPagination(query.LimitOffsetPagination(12, 0))
 		require.NoError(t, err)
 		q := s.FormatQuery()
-		require.Len(t, q, 1)
+		require.Len(t, q, 2)
 
 		assert.Equal(t, "12", q.Get(query.ParamPageLimit))
 	})
@@ -157,8 +158,28 @@ func TestFormatQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		q := s.FormatQuery()
-		require.Len(t, q, 1)
+		require.Len(t, q, 2)
 
 		assert.Equal(t, "-id", q.Get(query.ParamSort))
+	})
+
+	t.Run("Fieldset", func(t *testing.T) {
+		t.Run("Default", func(t *testing.T) {
+			s, err := query.NewC(c, &formatter{})
+			require.NoError(t, err)
+
+			q := s.FormatQuery()
+			require.Len(t, q, 1)
+
+			fieldsString := q.Get(fmt.Sprintf("fields[%s]", s.Struct().Collection()))
+			fields := strings.Split(fieldsString, ",")
+			assert.Len(t, fields, 5)
+			assert.Contains(t, fields, "id")
+			assert.Contains(t, fields, "attr")
+			assert.Contains(t, fields, "rel")
+			assert.Contains(t, fields, "fk")
+			assert.Contains(t, fields, "lang")
+		})
+
 	})
 }

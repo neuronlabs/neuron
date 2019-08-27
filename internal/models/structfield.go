@@ -339,6 +339,10 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 	log.Debug2f("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
 }
 
+func (s *StructField) String() string {
+	return s.NeuronName()
+}
+
 // Struct returns fields modelstruct
 func (s *StructField) Struct() *ModelStruct {
 	return s.mStruct

@@ -166,10 +166,8 @@ func (s *Scope) GetModelsRootScope(mStruct *models.ModelStruct) (collRootScope *
 		if s.mStruct == mStruct {
 			return s
 		}
-
 		return s.includedScopes[mStruct]
 	}
-
 	return s.rootScope.includedScopes[mStruct]
 }
 
@@ -301,7 +299,7 @@ func (s *Scope) SetCollectionScope(cs *Scope) {
 }
 
 // SetCollectionValues iterate over the scope's Value field and add it to the collection root
-// scope.if the collection root scope contains value with given primary field it checks if given
+// scope. If the collection root scope contains value with given primary field it checks if given
 // scope contains included fields that are not within fieldset. If so it adds the included field
 // value to the value that were inside the collection root scope.
 func (s *Scope) SetCollectionValues() error {
@@ -372,9 +370,6 @@ func (s *Scope) SetCollectionValues() error {
 			}
 		}
 	case reflect.Struct:
-		if log.Level() == log.LDEBUG3 {
-			log.Debug3f("Struct setValueToCollection")
-		}
 		setValueToCollection(v)
 	default:
 		err := errors.NewDet(class.QueryValueType, "invalid scope value type")
@@ -635,7 +630,7 @@ func newScope(modelStruct *models.ModelStruct) *Scope {
 	}
 
 	if log.Level() <= log.LDEBUG2 {
-		log.Debug2f("[SCOPE][%s] query new scope", scope.id.String())
+		log.Debug2f("[SCOPE][%s][%s] query new scope", scope.id.String(), modelStruct.Collection())
 	}
 	return scope
 }
@@ -683,21 +678,16 @@ func (s *Scope) createModelsScope(mStruct *models.ModelStruct) *Scope {
 // createOrGetIncludeField checks if given include field exists within given scope.
 // if not found create new include field.
 // returns the include field
-func (s *Scope) getOrCreateIncludeField(
-	field *models.StructField,
-) (includeField *IncludeField) {
+func (s *Scope) getOrCreateIncludeField(field *models.StructField) (includeField *IncludeField) {
 	for _, included := range s.includedFields {
 		if included.StructField == field {
 			return included
 		}
 	}
-
 	return s.createIncludedField(field)
 }
 
-func (s *Scope) createIncludedField(
-	field *models.StructField,
-) (includeField *IncludeField) {
+func (s *Scope) createIncludedField(field *models.StructField) (includeField *IncludeField) {
 	includeField = newIncludeField(field, s)
 	if s.includedFields == nil {
 		s.includedFields = make([]*IncludeField, 0)

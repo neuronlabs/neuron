@@ -230,6 +230,7 @@ func (s *Scope) IncludeFields(fields ...string) error {
 }
 
 // IncludedScope gets included scope if exists for the 'model'.
+// NOTE: included scope contains no resultant values. This function is used only to set the included models fieldset and filters.
 func (s *Scope) IncludedScope(model interface{}) (*Scope, error) {
 	var err error
 	mStruct, ok := model.(*mapping.ModelStruct)
@@ -249,9 +250,8 @@ func (s *Scope) IncludedScope(model interface{}) (*Scope, error) {
 }
 
 // IncludedModelValues gets the scope's included values for the given 'model'.
-// The returning value would be pointer to slice of pointer to models.
-// i.e.: type Model struct {}, the result would be returned as a *[]*Model{}.
-func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
+// Returns the map of primary keys to the model values.
+func (s *Scope) IncludedModelValues(model interface{}) (map[interface{}]interface{}, error) {
 	var (
 		mStruct *mapping.ModelStruct
 		ok      bool
@@ -270,13 +270,7 @@ func (s *Scope) IncludedModelValues(model interface{}) (interface{}, error) {
 		log.Info("Model: '%s' is not included into scope of: '%s'", mStruct.Collection(), s.Struct().Collection())
 		return nil, errors.NewDet(class.QueryNotIncluded, "provided model is not included within query's scope")
 	}
-
-	v := included.Struct().NewReflectValueMany()
-	val := v.Elem()
-	for _, elem := range included.IncludedValues().Values() {
-		val.Set(reflect.Append(val, reflect.ValueOf(elem)))
-	}
-	return v.Interface(), nil
+	return included.IncludedValues().Map(), nil
 }
 
 // InFieldset checks if the provided field is in the scope's fieldset.
@@ -557,6 +551,77 @@ func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
 // StoreSet sets the 'key' and 'value' in the given scope's store.
 func (s *Scope) StoreSet(key, value interface{}) {
 	s.internal().StoreSet(key, value)
+}
+
+// String implements fmt.Stringer interface.
+func (s *Scope) String() string {
+	sb := &strings.Builder{}
+
+	// Scope ID
+	sb.WriteString("SCOPE[" + s.ID().String() + "][" + s.Struct().Collection() + "]")
+
+	// Fieldset
+	sb.WriteString(" Fieldset: [")
+	fieldset := s.internal().Fieldset()
+	for i, field := range fieldset {
+		sb.WriteString(field.NeuronName())
+		if i != len(fieldset)-1 {
+			sb.WriteRune(',')
+		}
+	}
+	sb.WriteRune(']')
+
+	// Primary Filters
+	if len(s.internal().PrimaryFilters()) > 0 {
+		sb.WriteString(" Primary Filters: ")
+		sb.WriteString(filters.Filters(s.PrimaryFilters()).String())
+	}
+
+	// Attribute Filters
+	if len(s.internal().AttributeFilters()) > 0 {
+		sb.WriteString(" Attribute Filters: ")
+		sb.WriteString(filters.Filters(s.AttributeFilters()).String())
+	}
+
+	// Relationship Filters
+	if len(s.internal().RelationshipFilters()) > 0 {
+		sb.WriteString(" Relationship Filters: ")
+		sb.WriteString(filters.Filters(s.RelationshipFilters()).String())
+	}
+
+	// ForeignKey Filters
+	if len(s.internal().ForeignKeyFilters()) > 0 {
+		sb.WriteString(" ForeignKey Filters: ")
+		sb.WriteString(filters.Filters(s.ForeignFilters()).String())
+	}
+
+	// FilterKey Filters
+	if len(s.internal().FilterKeyFilters()) > 0 {
+		sb.WriteString(" FilterKey Filters: ")
+		sb.WriteString(filters.Filters(s.FilterKeyFilters()).String())
+	}
+
+	if s.internal().LanguageFilter() != nil {
+		sb.WriteString(" Language Filter: ")
+		sb.WriteString(s.LanguageFilter().String())
+	}
+
+	if pagination := s.Pagination(); pagination != nil {
+		sb.WriteString(" Pagination: ")
+		sb.WriteString(s.Pagination().String())
+	}
+
+	if sortFields := s.SortFields(); len(sortFields) > 0 {
+		sb.WriteString(" SortFields: ")
+		for i, field := range sortFields {
+			sb.WriteString(field.StructField().NeuronName())
+			if i != len(sortFields)-1 {
+				sb.WriteRune(',')
+			}
+		}
+	}
+
+	return sb.String()
 }
 
 // Tx returns the transaction for the given scope if exists.
