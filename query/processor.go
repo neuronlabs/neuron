@@ -147,6 +147,9 @@ var _ scope.Processor = &Processor{}
 
 // Create initializes the Create Process Chain for the Scope.
 func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.Create: %s. Value: %+v", (*Scope)(s).String(), s.Value)
+	}
 	var processError error
 	for _, f := range p.CreateChain {
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), f.Name)
@@ -160,7 +163,9 @@ func (p *Processor) Create(ctx context.Context, s *scope.Scope) error {
 
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
-
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] Create process finished", s.ID())
+	}
 	return processError
 }
 
@@ -181,7 +186,9 @@ func (p *Processor) Get(ctx context.Context, s *scope.Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
-
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] Get process finished", s.ID())
+	}
 	return processError
 }
 
@@ -202,11 +209,17 @@ func (p *Processor) List(ctx context.Context, s *scope.Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] List process finished", s.ID())
+	}
 	return processError
 }
 
 // Patch initializes the Patch Process Chain for the scope 's'.
 func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.Patch: %s with value: %+v", (*Scope)(s).String(), s.Value)
+	}
 	var processError error
 	for _, f := range p.PatchChain {
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), f.Name)
@@ -219,11 +232,17 @@ func (p *Processor) Patch(ctx context.Context, s *scope.Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
 	}
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] Patch process finished", s.ID())
+	}
 	return processError
 }
 
 // Delete initializes the Delete Process Chain for the scope 's'.
 func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.Delete: %s", (*Scope)(s).String())
+	}
 	var processError error
 	for _, f := range p.DeleteChain {
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), f.Name)
@@ -235,6 +254,9 @@ func (p *Processor) Delete(ctx context.Context, s *scope.Scope) error {
 			processError = err
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, f)
+	}
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] Delete process finished", s.ID())
 	}
 	return processError
 }

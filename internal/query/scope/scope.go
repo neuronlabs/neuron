@@ -117,6 +117,7 @@ type Scope struct {
 	queryLanguage language.Tag
 
 	hasFieldNotInFieldset bool
+	defaultFieldset       bool
 
 	// subscopesChain is the array of the scope's used for committing or rolling back the transaction.
 	subscopesChain []*Scope
@@ -622,6 +623,7 @@ func newScope(modelStruct *models.ModelStruct) *Scope {
 		fieldset:                  make(map[string]*models.StructField),
 		currentIncludedFieldIndex: -1,
 		store:                     map[interface{}]interface{}{},
+		defaultFieldset:           true,
 	}
 
 	// set all fields

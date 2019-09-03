@@ -294,9 +294,11 @@ FIELDSET
 
 // AddToFieldset adds the fields into the fieldset
 func (s *Scope) AddToFieldset(fields ...interface{}) error {
-	if s.fieldset == nil {
+	if s.fieldset == nil || s.defaultFieldset {
 		s.fieldset = map[string]*models.StructField{}
+		s.defaultFieldset = false
 	}
+
 	return s.addToFieldset(fields...)
 }
 
@@ -399,6 +401,11 @@ func (s *Scope) InFieldset(field string) (*models.StructField, bool) {
 	return f, ok
 }
 
+// IsFieldsetDefault gets the boolean if the fieldset is set by default.
+func (s *Scope) IsFieldsetDefault() bool {
+	return s.defaultFieldset
+}
+
 // SetAllFields sets all fields in the fieldset
 func (s *Scope) SetAllFields() {
 	s.setAllFields()
@@ -424,6 +431,9 @@ func (s *Scope) SetNilFieldset() {
 // SetFields sets the fieldset from the provided fields
 func (s *Scope) SetFields(fields ...interface{}) error {
 	s.fieldset = map[string]*models.StructField{}
+	if s.defaultFieldset {
+		s.defaultFieldset = false
+	}
 	return s.addToFieldset(fields...)
 }
 

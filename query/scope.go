@@ -430,24 +430,6 @@ func (s *Scope) RollbackContext(ctx context.Context) error {
 	return s.rollback(ctx)
 }
 
-// SetFields adds the fields to the scope's fieldset.
-// The fields may be a mapping.StructField as well as field's NeuronName (string) or
-// the StructField Name (string).
-func (s *Scope) SetFields(fields ...interface{}) error {
-	for i, field := range fields {
-		mField, ok := field.(*mapping.StructField)
-		if ok {
-			fields[i] = (*models.StructField)(mField)
-		}
-	}
-	return s.internal().AddToFieldset(fields...)
-}
-
-// SetPagination sets the Pagination for the scope.
-func (s *Scope) SetPagination(p *Pagination) error {
-	return s.internal().SetPagination((*paginations.Pagination)(p))
-}
-
 // SelectField selects the field by the name.
 // Selected fields are used in the patching process.
 // By default selected fields are all non zero valued fields in the struct.
@@ -476,6 +458,19 @@ func (s *Scope) SelectedFields() (selected []*mapping.StructField) {
 	return selected
 }
 
+// SetFields adds the fields to the scope's fieldset.
+// The fields may be a mapping.StructField as well as field's NeuronName (string) or
+// the StructField Name (string).
+func (s *Scope) SetFields(fields ...interface{}) error {
+	for i, field := range fields {
+		mField, ok := field.(*mapping.StructField)
+		if ok {
+			fields[i] = (*models.StructField)(mField)
+		}
+	}
+	return s.internal().AddToFieldset(fields...)
+}
+
 // SetFieldset sets the fieldset for the 'fields'.
 // A field may be a field's name (string), NeuronName (string) or *mapping.StructField.
 func (s *Scope) SetFieldset(fields ...interface{}) error {
@@ -486,6 +481,11 @@ func (s *Scope) SetFieldset(fields ...interface{}) error {
 		}
 	}
 	return s.internal().SetFields(fields...)
+}
+
+// SetPagination sets the Pagination for the scope.
+func (s *Scope) SetPagination(p *Pagination) error {
+	return s.internal().SetPagination((*paginations.Pagination)(p))
 }
 
 // Sort adds the sort fields into given scope.
@@ -561,7 +561,12 @@ func (s *Scope) String() string {
 	sb.WriteString("SCOPE[" + s.ID().String() + "][" + s.Struct().Collection() + "]")
 
 	// Fieldset
-	sb.WriteString(" Fieldset: [")
+	sb.WriteString(" Fieldset")
+	if s.internal().IsFieldsetDefault() {
+		sb.WriteString("(default)")
+	}
+	sb.WriteString(": [")
+
 	fieldset := s.internal().Fieldset()
 	for i, field := range fieldset {
 		sb.WriteString(field.NeuronName())
@@ -570,6 +575,18 @@ func (s *Scope) String() string {
 		}
 	}
 	sb.WriteRune(']')
+
+	selected := s.internal().SelectedFields()
+	if len(selected) > 0 {
+		sb.WriteString(" Selected Fields: [")
+		for i, field := range selected {
+			sb.WriteString(field.NeuronName())
+			if i != len(selected)-1 {
+				sb.WriteRune(',')
+			}
+		}
+		sb.WriteString("]")
+	}
 
 	// Primary Filters
 	if len(s.internal().PrimaryFilters()) > 0 {
@@ -620,7 +637,6 @@ func (s *Scope) String() string {
 			}
 		}
 	}
-
 	return sb.String()
 }
 
