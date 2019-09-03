@@ -633,7 +633,6 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 			}
 		}
 	}
-	return nil
 }
 
 func getForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
