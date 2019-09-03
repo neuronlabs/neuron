@@ -407,6 +407,7 @@ func patchHasOneRelationship(
 	relScope.internal().AddSelectedField(relScope.internal().Struct().PrimaryField())
 	relScope.internal().AddSelectedField(relField.Relationship().ForeignKey())
 
+	log.Debug2f("SCOPE[%s] Patching foreign HasOne relationship: '%s'", s.ID(), relField.NeuronName())
 	// the primary field filter would be added by the process makePrimaryFilters
 	if err = relScope.PatchContext(ctx); err != nil {
 		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
@@ -500,6 +501,7 @@ func patchHasManyRelationship(
 	if isEmpty {
 		// 2) for the empty related field
 		// clear the related scope
+		log.Debug2f("SCOPE[%s] Patch HasMany relationship: '%s' clear relationships.", s.ID(), relField.NeuronName())
 		if err = patchClearRelationshipWithForeignKey(ctx, s, relField, primaries); err != nil {
 			return err
 		}
@@ -544,6 +546,7 @@ func patchHasManyRelationship(
 		return err
 	}
 
+	log.Debug2f("SCOPE[%s] Patch relationship: '%s' - clear current relationship values", s.ID(), relField.NeuronName())
 	// clear the related scope.
 	if err = clearScope.PatchContext(ctx); err != nil {
 		if e, ok := err.(errors.DetailedError); ok {
@@ -562,14 +565,13 @@ func patchHasManyRelationship(
 
 	// create the related value for the scope
 	relatedValue := relField.Relationship().Struct().NewReflectValueSingle()
-
 	// set the foreign key field
 	relatedValue.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index).Set(reflect.ValueOf(primaries[0]))
-
 	// create the related scope that patches the relatedPrimaries
 	var relatedScope *Scope
 
 	if tx := s.Tx(); tx != nil {
+		log.Debug3f("SCOPE[%s][%s] Creating patch relationship: '%s' scope with tx:'%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), tx.ID)
 		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
 		if err != nil {
 			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
@@ -600,6 +602,8 @@ func patchHasManyRelationship(
 		return err
 	}
 
+	log.Debug2f("SCOPE[%s][%s] Patch HasMany relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
+
 	// patch the related Scope
 	if err := relatedScope.PatchContext(ctx); err != nil {
 		if e, ok := err.(errors.DetailedError); ok {
@@ -621,7 +625,6 @@ func patchHasManyRelationship(
 			return err
 		}
 	}
-
 	return nil
 }
 

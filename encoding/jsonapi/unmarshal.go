@@ -204,6 +204,7 @@ func unmarshal(c *controller.Controller, in io.Reader, model interface{}, usedFi
 
 	mStruct, err := c.ModelMap().GetModelStruct(model)
 	if err != nil {
+		log.Debug2f("unmarshal.GetModelStruct failed: %v", err)
 		return nil, err
 	}
 
@@ -600,14 +601,10 @@ func unmarshalMapValue(
 	}
 
 	for _, key := range v.MapKeys() {
-		log.Debugf("Map Key: %v", key.Interface())
 		value := v.MapIndex(key)
-
 		if value.Kind() == reflect.Interface && value.IsValid() {
 			value = value.Elem()
 		}
-
-		log.Debugf("Value: %v. Kind: %v", value, value.Kind())
 
 		var nestedValue reflect.Value
 		switch nestedType.Kind() {

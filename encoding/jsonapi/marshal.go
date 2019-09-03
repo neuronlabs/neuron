@@ -178,14 +178,12 @@ func marshalScope(c *controller.Controller, sc *scope.Scope, o ...*MarshalOption
 	}
 
 	if len(included) != 0 {
-		log.Infof("Included: %v", included)
 		payload.setIncluded(included)
 	}
 	return payload, nil
 }
 
 func marshalIncludes(c *controller.Controller, rootScope *scope.Scope, included *[]*node, o *MarshalOptions) (err error) {
-	log.Infof("Included Scopes: %v", rootScope.IncludedScopes())
 	for _, includedScope := range rootScope.IncludedScopes() {
 		if err = marshalIncludedScope(c, includedScope, included, o); err != nil {
 			return err
@@ -195,7 +193,6 @@ func marshalIncludes(c *controller.Controller, rootScope *scope.Scope, included 
 }
 
 func marshalIncludedScope(c *controller.Controller, includedScope *scope.Scope, included *[]*node, o *MarshalOptions) error {
-	log.Infof("Marshal included scope values: %v", includedScope.IncludedValues().Values())
 	for _, elem := range includedScope.IncludedValues().Values() {
 		if elem == nil {
 			continue
@@ -237,8 +234,14 @@ func marshalScopeOne(c *controller.Controller, s *scope.Scope, o *MarshalOptions
 	if err != nil {
 		return nil, err
 	}
-
-	return &SinglePayload{Data: n}, nil
+	var links *Links
+	if o != nil && o.Link == RelationshipLink {
+		links = &Links{
+			"self":    path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField),
+			"related": path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField),
+		}
+	}
+	return &SinglePayload{Data: n, Links: links}, nil
 }
 
 func marshalScopeMany(c *controller.Controller, s *scope.Scope, o *MarshalOptions) (*ManyPayload, error) {
@@ -247,7 +250,14 @@ func marshalScopeMany(c *controller.Controller, s *scope.Scope, o *MarshalOption
 		return nil, err
 	}
 
-	return &ManyPayload{Data: n}, nil
+	var links *Links
+	if o != nil && o.Link == RelationshipLink {
+		links = &Links{
+			"self":    path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField),
+			"related": path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField),
+		}
+	}
+	return &ManyPayload{Data: n, Links: links}, nil
 }
 
 func visitScopeManyNodes(c *controller.Controller, s *scope.Scope, o *MarshalOptions) ([]*node, error) {
@@ -401,7 +411,7 @@ func visitNode(c *controller.Controller, value reflect.Value, mStruct *models.Mo
 
 			var relLinks *Links
 
-			if o != nil {
+			if o != nil && o.Link == DefaultLink {
 				link := make(map[string]interface{})
 				link["self"] = path.Join(o.LinkURL, mStruct.Collection(), node.ID, "relationships", field.NeuronName())
 				link["related"] = path.Join(o.LinkURL, mStruct.Collection(), node.ID, field.NeuronName())
@@ -453,21 +463,9 @@ func visitNode(c *controller.Controller, value reflect.Value, mStruct *models.Mo
 		}
 	}
 
-	if o != nil {
+	if o != nil && o.Link == DefaultLink {
 		links := make(map[string]interface{})
-		var self string
-
-		switch o.Link {
-		case DefaultLink:
-			self = path.Join(o.LinkURL, mStruct.Collection(), node.ID)
-		case RelatedLink:
-			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
-		case RelationshipLink:
-			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField)
-			links["related"] = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
-		}
-
-		links["self"] = self
+		links["self"] = path.Join(o.LinkURL, mStruct.Collection(), node.ID)
 		linksObj := Links(links)
 		node.Links = &(linksObj)
 	} else if c.Config.EncodeLinks {
@@ -574,7 +572,7 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 			// how to handle links?
 			var relLinks *Links
 
-			if o != nil {
+			if o != nil && o.Link == DefaultLink {
 				link := make(map[string]interface{})
 				link["self"] = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID, "relationships", field.NeuronName())
 				link["related"] = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID, field.NeuronName())
@@ -635,21 +633,9 @@ func visitScopeNode(c *controller.Controller, value interface{}, sc *scope.Scope
 		}
 	}
 
-	if o != nil {
+	if o != nil && o.Link == DefaultLink {
 		links := make(map[string]interface{})
-		var self string
-
-		switch o.Link {
-		case DefaultLink:
-			self = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID)
-		case RelatedLink:
-			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
-		case RelationshipLink:
-			self = path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField)
-			links["related"] = path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField)
-		}
-
-		links["self"] = self
+		links["self"] = path.Join(o.LinkURL, sc.Struct().Collection(), node.ID)
 		linksObj := Links(links)
 		node.Links = &(linksObj)
 	} else if value, ok := sc.StoreGet(encodeLinksCtxKey); ok {

@@ -12,28 +12,18 @@ type FieldKind models.FieldKind
 const (
 	// UnknownType is the undefined field kind.
 	UnknownType FieldKind = iota
-
 	// KindPrimary is a 'primary' field.
 	KindPrimary
-
 	// KindAttribute is an 'attribute' field.
 	KindAttribute
-
-	// KindClientID is id set by client.
-	KindClientID
-
 	// KindRelationshipSingle is a 'relationship' with single object.
 	KindRelationshipSingle
-
 	// KindRelationshipMultiple is a 'relationship' with multiple objects.
 	KindRelationshipMultiple
-
 	// KindForeignKey is the field type that is responsible for the relationships.
 	KindForeignKey
-
 	// KindFilterKey is the field that is used only for special case filtering.
 	KindFilterKey
-
 	// KindNested is the field's type that is signed as Nested.
 	KindNested
 )
@@ -45,8 +35,6 @@ func (f FieldKind) String() string {
 		return "Primary"
 	case KindAttribute:
 		return "Attribute"
-	case KindClientID:
-		return "ClientID"
 	case KindRelationshipSingle, KindRelationshipMultiple:
 		return "Relationship"
 	case KindForeignKey:
@@ -134,6 +122,11 @@ func (s *StructField) StoreGet(key string) (interface{}, bool) {
 // StoreDelete deletes the store value at 'key'.
 func (s *StructField) StoreDelete(key string) {
 	s.internal().StoreDelete(key)
+}
+
+// ValueFromString gets the field value from the provided 'value' string.
+func (s *StructField) ValueFromString(value string) (result interface{}, err error) {
+	return s.internal().ValueFromString(value)
 }
 
 func (s *StructField) internal() *models.StructField {

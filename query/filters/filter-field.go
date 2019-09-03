@@ -222,13 +222,14 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 
 func (f *FilterField) String() string {
 	sb := &strings.Builder{}
-	f.buildString(sb, 0)
+	var filtersAdded int
+	f.buildString(sb, &filtersAdded)
 	return sb.String()
 }
 
-func (f *FilterField) buildString(sb *strings.Builder, filtersAdded int, relName ...string) {
+func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relName ...string) {
 	for _, fv := range (*filters.FilterField)(f).Values() {
-		if filtersAdded != 0 {
+		if *filtersAdded != 0 {
 			sb.WriteRune('&')
 		}
 
@@ -239,6 +240,9 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded int, relName
 		}
 
 		var vals []string
+		if len(fv.Values) > 0 {
+			sb.WriteRune('=')
+		}
 		for _, val := range fv.Values {
 			stringValue(f.StructField(), val, &vals)
 		}
@@ -249,7 +253,7 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded int, relName
 				sb.WriteRune(',')
 			}
 		}
-		filtersAdded++
+		*filtersAdded++
 	}
 
 	if len((*filters.FilterField)(f).NestedFields()) > 0 {

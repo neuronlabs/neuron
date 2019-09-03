@@ -61,7 +61,6 @@ func (p *Pagination) Check() error {
 
 // FormatQuery formats the pagination for the url query.
 func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
-
 	var query url.Values
 	if len(q) != 0 {
 		query = q[0]
@@ -106,8 +105,13 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 	return query
 }
 
+// GetNumberSize gets the page number and page size from the provided pagination.
+func (p *Pagination) GetNumberSize() (number, size int) {
+	return (*paginations.Pagination)(p).GetNumberSize()
+}
+
 // GetLimitOffset gets the limit and offset from the current pagination.
-func (p *Pagination) GetLimitOffset() (int, int) {
+func (p *Pagination) GetLimitOffset() (limit int, offset int) {
 	return (*paginations.Pagination)(p).GetLimitOffset()
 }
 

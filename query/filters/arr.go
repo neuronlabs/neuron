@@ -10,9 +10,9 @@ type Filters []*FilterField
 // String implements fmt.Stringer interface.
 func (f Filters) String() string {
 	sb := &strings.Builder{}
-
+	var filtersAdded int
 	for _, ff := range f {
-		ff.buildString(sb, 0)
+		ff.buildString(sb, &filtersAdded)
 	}
 	return sb.String()
 }

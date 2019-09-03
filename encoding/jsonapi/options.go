@@ -6,8 +6,8 @@ type LinkType int
 // Link type enumerators.
 const (
 	DefaultLink LinkType = iota
-	RelatedLink
 	RelationshipLink
+	NoLink
 )
 
 // MarshalOptions is the struct that contains marshaling options.

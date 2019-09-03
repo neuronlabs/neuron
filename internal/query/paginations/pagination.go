@@ -101,10 +101,16 @@ func (p *Pagination) SetLimitOffset() {
 // SetValue sets the pagination value for given parameter.
 func (p *Pagination) SetValue(val int, parameter Parameter) {
 	switch parameter {
-	case ParamLimit, ParamNumber:
+	case ParamLimit:
 		p.first = val
-	case ParamOffset, ParamSize:
+	case ParamNumber:
+		p.first = val
+		p.tp = TpPage
+	case ParamOffset:
 		p.second = val
+	case ParamSize:
+		p.second = val
+		p.tp = TpPage
 	}
 }
 
@@ -117,9 +123,9 @@ func (p *Pagination) Type() Type {
 func (p *Pagination) String() string {
 	switch p.tp {
 	case TpOffset:
-		return fmt.Sprintf("Offset Pagination. Limit: %d, Offset: %d", p.first, p.second)
+		return fmt.Sprintf("Limit: %d, Offset: %d", p.first, p.second)
 	case TpPage:
-		return fmt.Sprintf("PageType Pagination. PageSize: %d, PageNumber: %d", p.second, p.first)
+		return fmt.Sprintf("PageSize: %d, PageNumber: %d", p.second, p.first)
 	default:
 		return "Unknown Pagination"
 	}
