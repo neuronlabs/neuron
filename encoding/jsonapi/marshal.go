@@ -235,13 +235,12 @@ func marshalScopeOne(c *controller.Controller, s *scope.Scope, o *MarshalOptions
 		return nil, err
 	}
 	var links *Links
-	if o.Link == RelationshipLink {
+	if o != nil && o.Link == RelationshipLink {
 		links = &Links{
 			"self":    path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField),
 			"related": path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField),
 		}
 	}
-
 	return &SinglePayload{Data: n, Links: links}, nil
 }
 
@@ -252,7 +251,7 @@ func marshalScopeMany(c *controller.Controller, s *scope.Scope, o *MarshalOption
 	}
 
 	var links *Links
-	if o.Link == RelationshipLink {
+	if o != nil && o.Link == RelationshipLink {
 		links = &Links{
 			"self":    path.Join(o.LinkURL, o.RootCollection, o.RootID, "relationships", o.RelatedField),
 			"related": path.Join(o.LinkURL, o.RootCollection, o.RootID, o.RelatedField),
