@@ -2,65 +2,152 @@ package mapping
 
 import (
 	"reflect"
-
-	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
-// NestedStruct is the structure that represtents nested attribute structure.
-type NestedStruct models.NestedStruct
-
-// Attribute returns the attribute on the level of the 'ModelStruct' fields.
-func (s *NestedStruct) Attribute() *StructField {
-	return (*StructField)((*models.NestedStruct)(s).Attr())
+// NestedStruct is the field StructField that is composed from different abstraction
+// then the basic data types.
+// It may contain multiple fields *NestedFields.
+type NestedStruct struct {
+	// structField is the reference to it's root structfield
+	structField StructFielder
+	// modelType is the NestedStruct's model type
+	modelType reflect.Type
+	// fields - nestedStruct may have it's nested fields
+	// fields may not be a relationship field
+	fields map[string]*NestedField
+	// marshal type
+	marshalType reflect.Type
 }
 
-// StoreGet gets the value from the store at the key: 'key'.
-func (s *NestedStruct) StoreGet(key string) (interface{}, bool) {
-	return (*models.NestedStruct)(s).StructField().Self().StoreGet(key)
+// Attr returns nested struct related attribute field
+func (n *NestedStruct) Attr() *StructField {
+	return n.attr()
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'.
-func (s *NestedStruct) StoreSet(key string, value interface{}) {
-	(*models.NestedStruct)(s).StructField().Self().StoreSet(key, value)
+// Type returns nested struct's reflect.Type
+func (n *NestedStruct) Type() reflect.Type {
+	return n.modelType
 }
 
-// StructField returns the struct field related with the nested struct.
-// It differs from the Attribute method. The StructField method returns
-// StructField on any level where the nested structure is defined.
-func (s *NestedStruct) StructField() *StructField {
-	return (*StructField)((*models.NestedStruct)(s).StructField().Self())
+// Fields return nested fields for the given structure
+func (n *NestedStruct) Fields() map[string]*NestedField {
+	return n.fields
 }
 
-// Fields returns all nested fields within the nested struct.
-func (s *NestedStruct) Fields() []*NestedField {
-	var fields []*NestedField
+// StructField returns nested structs related struct field
+func (n *NestedStruct) StructField() *StructField {
+	return n.structField.Self()
+}
 
-	for _, field := range (*models.NestedStruct)(s).Fields() {
-		fields = append(fields, (*NestedField)(field))
+// newNestedStruct returns new nested structure
+func newNestedStruct(t reflect.Type, structField StructFielder) *NestedStruct {
+	return &NestedStruct{structField: structField, modelType: t, fields: map[string]*NestedField{}}
+}
+
+// NestedStructSetSubfield sets the subfield for the nestedStructr
+func NestedStructSetSubfield(s *NestedStruct, n *NestedField) {
+	s.fields[n.structField.neuronName] = n
+}
+
+func (n *NestedStruct) attr() *StructField {
+	var attr *StructField
+	sFielder := n.structField
+	for {
+		if nested, ok := sFielder.(NestedStructFielder); ok {
+			sFielder = nested.SelfNested().root.structField
+		} else {
+			attr = sFielder.Self()
+			break
+		}
 	}
-
-	return fields
+	return attr
 }
 
-// Type returns the reflect.Type of the model within the nested struct.
-func (s *NestedStruct) Type() reflect.Type {
-	return (*models.NestedStruct)(s).Type()
+// NestedStructType returns the reflect.Type of the nestedStruct
+func NestedStructType(n *NestedStruct) reflect.Type {
+	return n.modelType
 }
 
-// NestedField is the nested field within the NestedStruct.
-type NestedField models.NestedField
-
-// StructField gets the structField for provided NestedFieldvalue.
-func (s *NestedField) StructField() *StructField {
-	return (*StructField)((*models.NestedField)(s).StructField())
+// NestedStructSubField returns the NestedStruct subfield if exists.
+func NestedStructSubField(n *NestedStruct, field string) (*NestedField, bool) {
+	f, ok := n.fields[field]
+	if !ok {
+		return nil, ok
+	}
+	return f, ok
 }
 
-// StoreSet sets into the store the value 'value' for given 'key'.
-func (s *NestedField) StoreSet(key string, value interface{}) {
-	(*models.NestedField)(s).Self().StoreSet(key, value)
+// NestedStructFields gets the nested struct fields
+func NestedStructFields(n *NestedStruct) map[string]*NestedField {
+	return n.fields
 }
 
-// StoreGet gets the value from the store at the key: 'key'.
-func (s *NestedField) StoreGet(key string) (interface{}, bool) {
-	return (*models.NestedField)(s).Self().StoreGet(key)
+// NestedStructSetMarshalType sets the nested structs marshal type
+func NestedStructSetMarshalType(n *NestedStruct, mType reflect.Type) {
+	n.marshalType = mType
+}
+
+// NestedStructMarshalType returns the marshal type for the provided nested struct
+func NestedStructMarshalType(n *NestedStruct) reflect.Type {
+	return n.marshalType
+}
+
+// NestedField is the field within the NestedStruct
+type NestedField struct {
+	structField *StructField
+	// root defines the NestedField Struct Model
+	root *NestedStruct
+}
+
+// newNestedField returns New NestedField
+func newNestedField(root *NestedStruct, StructFielder StructFielder, nField reflect.StructField) *NestedField {
+	nestedField := &NestedField{
+		structField: &StructField{
+			mStruct:      StructFielder.Self().mStruct,
+			reflectField: nField,
+			fieldKind:    KindNested,
+			fieldFlags:   fDefault | fNestedField,
+		},
+		root: root,
+	}
+	return nestedField
+}
+
+// NestedAttribute returns nested Fields Attribute
+func (n *NestedField) NestedAttribute() *StructField {
+	return n.attr()
+}
+
+// NestedFieldRoot returns the root of the NestedField
+func (n *NestedField) NestedFieldRoot() *NestedStruct {
+	return n.root
+}
+
+// StructField returns the structField
+func (n *NestedField) StructField() *StructField {
+	return n.structField
+}
+
+func (n *NestedField) attr() *StructField {
+	var attr *StructField
+	sFielder := n.root.structField
+	for {
+		if nested, ok := sFielder.(NestedStructFielder); ok {
+			sFielder = nested.SelfNested().root.structField
+		} else {
+			attr = sFielder.Self()
+			break
+		}
+	}
+	return attr
+}
+
+// Self is the relation to it's struct field.
+func (n *NestedField) Self() *StructField {
+	return n.structField.Self()
+}
+
+// SelfNested returns the pointer to itself.
+func (n *NestedField) SelfNested() *NestedField {
+	return n
 }

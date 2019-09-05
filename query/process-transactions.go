@@ -2,24 +2,10 @@ package query
 
 import (
 	"context"
+
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
-)
-
-var (
-	// ProcessTransactionBegin is the process that begins the transaction.
-	ProcessTransactionBegin = &Process{
-		Name: "neuron:begin_transaction",
-		Func: beginTransactionFunc,
-	}
-
-	// ProcessTransactionCommitOrRollback is the process that commits the scope's query
-	// or rollbacks if the error occurred.
-	ProcessTransactionCommitOrRollback = &Process{
-		Name: "neuron:commit_or_rollback_transaction",
-		Func: commitOrRollbackFunc,
-	}
 )
 
 func beginTransactionFunc(ctx context.Context, s *Scope) error {

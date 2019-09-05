@@ -11,8 +11,6 @@
 // - query - used to query the model's repositories.
 // - mapping - contains the information about the mapped models their fields and settings.
 // - class - contains errors classification system for the neuron packages.
-// - encoding/jsonapi - allows to marshal and unmarshal the
-//	model's, and queries by the 'https://jsonapi.org/' specification
 // - log - is the logging interface for the neuron based applications.
 // - i18n - is the neuron based application supported internationalization.
 // - repository - is a package used to store and register the repositories.

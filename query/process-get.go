@@ -4,34 +4,9 @@ import (
 	"context"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
-)
-
-var (
-	// ProcessGet is the process that does the repository Get method.
-	ProcessGet = &Process{
-		Name: "neuron:get",
-		Func: getFunc,
-	}
-
-	// ProcessBeforeGet is the process that does the hook BeforeGet.
-	ProcessBeforeGet = &Process{
-		Name: "neuron:hook_before_get",
-		Func: beforeGetFunc,
-	}
-
-	// ProcessAfterGet is the process that does the hook AfterGet.
-	ProcessAfterGet = &Process{
-		Name: "neuron:hook_after_get",
-		Func: afterGetFunc,
-	}
-
-	// ProcessFillEmptyFieldset fills the fieldset if it is empty.
-	ProcessFillEmptyFieldset = &Process{
-		Name: "neuron:fill_empty_fieldset",
-		Func: fillEmptyFieldset,
-	}
 )
 
 // get returns the single value for the provided scope
@@ -97,6 +72,6 @@ func afterGetFunc(ctx context.Context, s *Scope) error {
 
 // fillEmptyFieldset fills the fieldset for the given query if none fields are already set.
 func fillEmptyFieldset(ctx context.Context, s *Scope) error {
-	s.internal().FillFieldsetIfNotSet()
+	s.fillFieldsetIfNotSet()
 	return nil
 }

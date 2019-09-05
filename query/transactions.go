@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
@@ -14,8 +15,6 @@ import (
 	"github.com/neuronlabs/neuron-core/repository"
 
 	"github.com/neuronlabs/neuron-core/internal"
-	internalController "github.com/neuronlabs/neuron-core/internal/controller"
-	"github.com/neuronlabs/neuron-core/internal/models"
 )
 
 // Tx is the scope's transaction model.
@@ -51,13 +50,13 @@ func (t *Tx) NewContextC(ctx context.Context, c *controller.Controller, model in
 // NewContextModelC creates new scope for given 'model' structure and 'ctx' context. It also initializes scope's value.
 // The value might be a slice of instances if 'isMany' is true or a single instance if false.
 func (t *Tx) NewContextModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(ctx, c, (*models.ModelStruct)(model), isMany)
+	return t.newModelC(ctx, c, model, isMany)
 }
 
 // NewModelC creates new scope for given model structure, and initializes it's value.
 // The value might be a slice of instances if 'isMany' is true or a single instance if false.
 func (t *Tx) NewModelC(c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(context.Background(), c, (*models.ModelStruct)(model), isMany)
+	return t.newModelC(context.Background(), c, model, isMany)
 }
 
 // Rollback rolls back the transaction.
@@ -71,7 +70,7 @@ func (t *Tx) RollbackContext(ctx context.Context) error {
 }
 
 func (t *Tx) newC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
-	s, err := newScope((*internalController.Controller)(c), model)
+	s, err := newQueryScope(c, model)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +82,8 @@ func (t *Tx) newC(ctx context.Context, c *controller.Controller, model interface
 	return s, nil
 }
 
-func (t *Tx) newModelC(ctx context.Context, c *controller.Controller, model *models.ModelStruct, isMany bool) (*Scope, error) {
-	s := (*Scope)(newScopeWithModel(c, model, isMany))
-
+func (t *Tx) newModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
+	s := newScopeWithModel(c, model, isMany)
 	if err := t.setToScope(ctx, s); err != nil {
 		return nil, err
 	}
@@ -101,7 +99,7 @@ func (t *Tx) setToScope(ctx context.Context, s *Scope) error {
 		if _, err := s.begin(ctx, &t.Options, true); err != nil {
 			return err
 		}
-		t.root.internal().AddChainSubscope(s.internal())
+		t.root.SubscopesChain = append(t.root.SubscopesChain, s)
 	} else {
 		// otherwise set the transaction to the store.
 		s.StoreSet(internal.TxStateStoreKey, t)
