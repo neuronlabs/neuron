@@ -151,7 +151,6 @@ The `neuron-core` is composed of the following packages:
 * `controller` - is the neuron's core, that registers and stores the models and contains configurations required by other packages.
 * `mapping` - contains the information about the mapped models their fields and settings
 * `config` - contains the configurations structures.
-* `encoding/jsonapi` - allows to marshal and unmarshal the model's, and queries by the https://jsonapi.org/ specification
 * `class` - contains `github.com/neuronlabs/errors` class instances used by the neuron-core package.
 * `repository` - is a package used to store, get and register the repositories nad their factories.
 * `log` - is the logging interface for the neuron based applications.
