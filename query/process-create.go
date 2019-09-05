@@ -4,38 +4,11 @@ import (
 	"context"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 
 	"github.com/neuronlabs/neuron-core/internal"
-	"github.com/neuronlabs/neuron-core/internal/query/scope"
-)
-
-var (
-	// ProcessCreate is the process that does the Repository Create method.
-	ProcessCreate = &Process{
-		Name: "neuron:create",
-		Func: createFunc,
-	}
-
-	// ProcessBeforeCreate is the process that does the hook BeforeCreate.
-	ProcessBeforeCreate = &Process{
-		Name: "neuron:hook_before_create",
-		Func: beforeCreateFunc,
-	}
-
-	// ProcessAfterCreate is the Process that does the hook AfterCreate.
-	ProcessAfterCreate = &Process{
-		Name: "neuron:hook_after_create",
-		Func: afterCreateFunc,
-	}
-
-	// ProcessStoreScopePrimaries gets the primary field values and sets into scope's store
-	// under key: internal.ReducedPrimariesKeyCtx.
-	ProcessStoreScopePrimaries = &Process{
-		Name: "neuron:store_scope_primaries",
-		Func: storeScopePrimaries,
-	}
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
@@ -50,7 +23,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 
 	creator, ok := repo.(Creator)
 	if !ok {
-		log.Errorf("The repository doesn't implement Creator interface for model: %s", (*scope.Scope)(s).Struct().Collection())
+		log.Errorf("The repository doesn't implement Creator interface for model: %s", s.Struct().Collection())
 		return errors.NewDet(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
@@ -106,7 +79,7 @@ func storeScopePrimaries(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	primaryValues, err := s.internal().GetPrimaryFieldValues()
+	primaryValues, err := s.getPrimaryFieldValues()
 	if err != nil {
 		return err
 	}

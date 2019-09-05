@@ -7,6 +7,7 @@ import (
 	"golang.org/x/text/language/display"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/config"
 )

@@ -1,37 +1,35 @@
 package query
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/internal/query/paginations"
+	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Pagination constants
 const (
 	// ParamPage is a JSON API query parameter used as for pagination.
 	ParamPage = "page"
-
 	// ParamPageNumber is a JSON API query parameter used in a page based
 	// pagination strategy in conjunction with ParamPageSize.
 	ParamPageNumber = "page[number]"
 	// ParamPageSize is a JSON API query parameter used in a page based
 	// pagination strategy in conjunction with ParamPageNumber.
 	ParamPageSize = "page[size]"
-
 	// ParamPageOffset is a JSON API query parameter used in an offset based
 	// pagination strategy in conjunction with ParamPageLimit.
 	ParamPageOffset = "page[offset]"
 	// ParamPageLimit is a JSON API query parameter used in an offset based
 	// pagination strategy in conjunction with ParamPageOffset.
 	ParamPageLimit = "page[limit]"
-
 	// ParamPageCursor is a JSON API query parameter used with a cursor-based
 	// strategy.
 	ParamPageCursor = "page[cursor]"
-
 	// ParamPageTotal is a JSON API query parameter used in pagination
 	// It tells to API to add information about total-pages or total-count
 	// (depending on the current strategy).
@@ -42,21 +40,31 @@ const (
 type PaginationType int
 
 const (
-	// TpLimitOffset is the pagination type that defines limit or (and) offset.
-	TpLimitOffset PaginationType = iota
-
-	// TpPage is the pagination type that uses page type pagination i.e. page=1 page size = 10.
-	TpPage
+	// LimitOffsetPagination is the pagination type that defines limit or (and) offset.
+	LimitOffsetPagination PaginationType = iota
+	// PageNumberPagination is the pagination type that uses page type pagination i.e. page=1 page size = 10.
+	PageNumberPagination
 )
 
 // Pagination defines the query limits and offsets.
 // It defines the maximum size (Limit) as well as an offset at which
 // the query should start.
-type Pagination paginations.Pagination
+type Pagination struct {
+	// Size is a pagination value that defines 'limit' or 'page size'
+	Size int
+	// Offset is a pagination value that defines 'offset' or 'page number'
+	Offset int
+	Type   PaginationType
+}
 
 // Check checks if the pagination is well formed.
 func (p *Pagination) Check() error {
-	return (*paginations.Pagination)(p).Check()
+	return p.checkValues()
+}
+
+// IsZero checks if the pagination is already set.
+func (p *Pagination) IsZero() bool {
+	return p.Size == 0 && p.Offset == 0
 }
 
 // FormatQuery formats the pagination for the url query.
@@ -71,10 +79,9 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 	}
 
 	var k, v string
-
-	switch p.Type() {
-	case TpLimitOffset:
-		limit, offset := p.GetLimitOffset()
+	switch p.Type {
+	case LimitOffsetPagination:
+		limit, offset := p.Size, p.Offset
 		if limit != 0 {
 			k = ParamPageLimit
 			v = strconv.Itoa(limit)
@@ -85,8 +92,8 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 			v = strconv.Itoa(offset)
 			query.Set(k, v)
 		}
-	case TpPage:
-		number, size := (*paginations.Pagination)(p).GetNumberSize()
+	case PageNumberPagination:
+		number, size := p.Offset, p.Size
 		if number != 0 {
 			k = ParamPageNumber
 			v = strconv.Itoa(number)
@@ -98,67 +105,61 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 			v = strconv.Itoa(size)
 			query.Set(k, v)
 		}
-
 	default:
-		log.Debugf("Pagination with invalid pagination type: '%s'", p.Type())
+		log.Debugf("Pagination with invalid type: '%s'", p.Type)
 	}
 	return query
 }
 
-// GetNumberSize gets the page number and page size from the provided pagination.
-func (p *Pagination) GetNumberSize() (number, size int) {
-	return (*paginations.Pagination)(p).GetNumberSize()
-}
-
-// GetLimitOffset gets the limit and offset from the current pagination.
-func (p *Pagination) GetLimitOffset() (limit int, offset int) {
-	return (*paginations.Pagination)(p).GetLimitOffset()
-}
-
-// SetLimit sets the limit for the pagination.
-func (p *Pagination) SetLimit(limit int) {
-	(*paginations.Pagination)(p).SetValue(limit, paginations.ParamLimit)
-}
-
-// SetOffset sets the offset for the pagination.
-func (p *Pagination) SetOffset(offset int) {
-	(*paginations.Pagination)(p).SetValue(offset, paginations.ParamOffset)
-}
-
-// SetPageNumber sets the page number for the pagination.
-func (p *Pagination) SetPageNumber(pageNumber int) {
-	(*paginations.Pagination)(p).SetValue(pageNumber, paginations.ParamNumber)
-}
-
-// SetPageSize sets the page number for the pagination.
-func (p *Pagination) SetPageSize(pageSize int) {
-	(*paginations.Pagination)(p).SetValue(pageSize, paginations.ParamSize)
-}
-
 // String implements fmt.Stringer interface.
 func (p *Pagination) String() string {
-	return (*paginations.Pagination)(p).String()
+	switch p.Type {
+	case LimitOffsetPagination:
+		return fmt.Sprintf("Limit: %d, Offset: %d", p.Size, p.Offset)
+	case PageNumberPagination:
+		return fmt.Sprintf("PageSize: %d, PageNumber: %d", p.Offset, p.Size)
+	default:
+		return "Unknown Pagination"
+	}
 }
 
-// Type returns pagination type.
-func (p *Pagination) Type() PaginationType {
-	return PaginationType((*paginations.Pagination)(p).Type())
+func (p *Pagination) checkValues() error {
+	switch p.Type {
+	case LimitOffsetPagination:
+		return p.checkOffsetBasedValues()
+	case PageNumberPagination:
+		return p.checkPageBasedValues()
+	default:
+		return errors.NewDetf(class.QueryPaginationType, "unsupported pagination type: '%v'", p.Type)
+	}
 }
 
-// LimitOffsetPagination createw new limit, offset type pagination.
-func LimitOffsetPagination(limit, offset int) *Pagination {
-	return newLimitOffset(limit, offset)
+func (p *Pagination) checkOffsetBasedValues() error {
+	if p.Size < 0 {
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err.SetDetails("Pagination limit lower than -1")
+		return err
+	}
+
+	if p.Offset < 0 {
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err.SetDetails("Pagination offset lower than 0")
+		return err
+	}
+	return nil
 }
 
-// PagedPagination creates new paged type Pagination.
-func PagedPagination(number, size int) *Pagination {
-	return newPaged(number, size)
-}
+func (p *Pagination) checkPageBasedValues() error {
+	if p.Size < 0 {
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
+		err.SetDetails("Pagination page-size lower than 0")
+		return err
+	}
 
-func newPaged(number, size int) *Pagination {
-	return (*Pagination)(paginations.NewPaged(number, size))
-}
-
-func newLimitOffset(limit, offset int) *Pagination {
-	return (*Pagination)(paginations.NewLimitOffset(limit, offset))
+	if p.Offset < 0 {
+		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
+		err.SetDetails("Pagination page-number lower than 0")
+		return err
+	}
+	return nil
 }

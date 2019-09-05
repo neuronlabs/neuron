@@ -5,28 +5,9 @@ import (
 	"reflect"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
-)
-
-var (
-	// ProcessList is the Process that do the Repository List method.
-	ProcessList = &Process{
-		Name: "neuron:list",
-		Func: listFunc,
-	}
-
-	// ProcessBeforeList is the Process that do the Hook Before List.
-	ProcessBeforeList = &Process{
-		Name: "neuron:hook_before_list",
-		Func: beforeListFunc,
-	}
-
-	// ProcessAfterList is the Process that do the Hook After List.
-	ProcessAfterList = &Process{
-		Name: "neuron:hook_after_list",
-		Func: afterListFunc,
-	}
 )
 
 func listFunc(ctx context.Context, s *Scope) error {
@@ -61,7 +42,7 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if !s.internal().Struct().IsAfterLister() {
+	if !s.Struct().IsAfterLister() {
 		return nil
 	}
 
@@ -83,7 +64,7 @@ func beforeListFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if !s.internal().Struct().IsBeforeLister() {
+	if !s.Struct().IsBeforeLister() {
 		return nil
 	}
 

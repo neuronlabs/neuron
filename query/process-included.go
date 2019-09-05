@@ -4,22 +4,7 @@ import (
 	"context"
 
 	"github.com/neuronlabs/neuron-core/log"
-
-	"github.com/neuronlabs/neuron-core/internal/query/scope"
-)
-
-var (
-	// ProcessGetIncluded is the process that gets the included scope values.
-	ProcessGetIncluded = &Process{
-		Name: "neuron:get_included",
-		Func: getIncludedFunc,
-	}
-
-	// ProcessGetIncludedSafe is the gouroutine safe process that gets the included scope values.
-	ProcessGetIncludedSafe = &Process{
-		Name: "neuron:get_included_safe",
-		Func: getIncludedSafeFunc,
-	}
+	"github.com/neuronlabs/neuron-core/mapping"
 )
 
 // processGetIncluded gets the included fields for the
@@ -35,17 +20,17 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
+	if s.isRoot() && len(s.includedScopes) == 0 {
 		return nil
 	}
 
-	if err := s.internal().SetCollectionValues(); err != nil {
+	if err := s.setCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range s.internal().IncludedScopes() {
+	for _, incScope := range s.includedScopes {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -62,11 +47,11 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := s.internal().IncludedFields()
+	includedFields := s.includedFields
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job
-	getInclude := func(includedField *scope.IncludeField, results chan<- interface{}) {
+	getInclude := func(includedField *IncludeField, results chan<- interface{}) {
 		// get missing primaries from the included field.
 		missing, err := includedField.GetMissingPrimaries()
 		if err != nil {
@@ -77,10 +62,10 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 
 		if len(missing) > 0 {
 			includedScope := includedField.Scope
-			includedScope.SetIDFilters(missing...)
-			includedScope.NewValueMany()
+			includedScope.setPrimaryFilterValues(missing...)
+			includedScope.Value = mapping.NewValueMany(includedScope.Struct())
 
-			if err = (*Scope)(includedScope).ListContext(ctx); err != nil {
+			if err = includedScope.ListContext(ctx); err != nil {
 				log.Debugf("Model: %v, includedField '%s' Scope.List failed. %v", s.Struct().Collection(), includedField.Name(), err)
 				results <- err
 				return
@@ -120,17 +105,17 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	if s.internal().IsRoot() && len(s.internal().IncludedScopes()) == 0 {
+	if s.isRoot() && len(s.includedScopes) == 0 {
 		return nil
 	}
 
-	if err := s.internal().SetCollectionValues(); err != nil {
+	if err := s.setCollectionValues(); err != nil {
 		log.Debugf("SetCollectionValues for model: '%v' failed. Err: %v", s.Struct().Collection(), err)
 		return err
 	}
 
 	maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-	for _, incScope := range s.internal().IncludedScopes() {
+	for _, incScope := range s.includedScopes {
 		if incScope.Struct().Config() == nil {
 			continue
 		}
@@ -147,11 +132,11 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 	ctx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
-	includedFields := s.internal().IncludedFields()
+	includedFields := s.includedFields
 	results := make(chan interface{}, len(includedFields))
 
 	// get include job
-	getInclude := func(includedField *scope.IncludeField, results chan<- interface{}) error {
+	getInclude := func(includedField *IncludeField, results chan<- interface{}) error {
 		missing, err := includedField.GetMissingPrimaries()
 		if err != nil {
 			log.Debugf("Model: %v, includedField: '%s', GetMissingPrimaries failed: %v", s.Struct().Collection(), includedField.Name(), err)
@@ -160,11 +145,12 @@ func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
 
 		if len(missing) > 0 {
 			includedScope := includedField.Scope
-			includedScope.SetIDFilters(missing...)
-			includedScope.NewValueMany()
+			includedScope.setPrimaryFilterValues(missing...)
+			includedScope.Value = mapping.NewValueMany(includedScope.Struct())
+			includedScope.isMany = true
 
 			log.Debug2f("Included scope collection: %v", includedScope.Struct().Collection())
-			if err = (*Scope)(includedScope).ListContext(ctx); err != nil {
+			if err = includedScope.ListContext(ctx); err != nil {
 				log.Debugf("Model: %v, includedField '%s' Scope.List failed. %v", s.Struct().Collection(), includedField.Name(), err)
 				return err
 			}

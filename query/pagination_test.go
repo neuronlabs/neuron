@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFormatQuery tests the FormatQuery method.
-func TestFormatQuery(t *testing.T) {
+// TestPaginationFormatQuery tests the Pagination.FormatQuery method.
+func TestPaginationFormatQuery(t *testing.T) {
 	t.Run("Paged", func(t *testing.T) {
-		p := PagedPagination(10, 2)
+		p := &Pagination{Size: 10, Offset: 2, Type: PageNumberPagination}
 		require.NoError(t, p.Check())
 
 		q := url.Values{}
@@ -19,12 +19,12 @@ func TestFormatQuery(t *testing.T) {
 		p.FormatQuery(q)
 		require.Len(t, q, 2)
 
-		assert.Equal(t, "10", q.Get(ParamPageNumber))
-		assert.Equal(t, "2", q.Get(ParamPageSize))
+		assert.Equal(t, "10", q.Get(ParamPageSize), "%+v", p)
+		assert.Equal(t, "2", q.Get(ParamPageNumber))
 	})
 
 	t.Run("Limited", func(t *testing.T) {
-		p := LimitOffsetPagination(10, 0)
+		p := &Pagination{Size: 10}
 
 		require.NoError(t, p.Check())
 
@@ -35,7 +35,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Offseted", func(t *testing.T) {
-		p := LimitOffsetPagination(0, 10)
+		p := &Pagination{Offset: 10}
 
 		require.NoError(t, p.Check())
 
@@ -46,7 +46,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("LimitOffset", func(t *testing.T) {
-		p := LimitOffsetPagination(10, 140)
+		p := &Pagination{10, 140, LimitOffsetPagination}
 
 		require.NoError(t, p.Check())
 
