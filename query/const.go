@@ -56,6 +56,7 @@ const (
 	ProcessGetForeignRelationsSafe    = internal.ProcessGetForeignRelationsSafe
 	ProcessHookAfterGet               = internal.ProcessHookAfterGet
 
+	ProcessCheckPagination = internal.ProcessCheckPagination
 	ProcessHookBeforeList  = internal.ProcessHookBeforeList
 	ProcessList            = internal.ProcessList
 	ProcessHookAfterList   = internal.ProcessHookAfterList

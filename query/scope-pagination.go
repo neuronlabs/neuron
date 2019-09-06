@@ -15,7 +15,7 @@ func (s *Scope) Limit(limit, offset int) error {
 	}
 
 	s.Pagination = &Pagination{Size: limit, Offset: offset}
-	if err := s.Pagination.Check(); err != nil {
+	if err := s.Pagination.IsValid(); err != nil {
 		return err
 	}
 	return nil
@@ -27,8 +27,8 @@ func (s *Scope) Page(number, size int) error {
 		return errors.NewDet(class.QueryPaginationAlreadySet, "pagination already set")
 	}
 
-	s.Pagination = &Pagination{Size: size, Offset: number}
-	if err := s.Pagination.Check(); err != nil {
+	s.Pagination = &Pagination{Size: size, Offset: number, Type: PageNumberPagination}
+	if err := s.Pagination.IsValid(); err != nil {
 		return err
 	}
 	return nil
