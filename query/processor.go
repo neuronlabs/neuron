@@ -47,6 +47,7 @@ func init() {
 	RegisterProcessFunc(ProcessHookAfterGet, afterGetFunc)
 
 	// List
+	RegisterProcessFunc(ProcessCheckPagination, checkPaginationFunc)
 	RegisterProcessFunc(ProcessHookBeforeList, beforeListFunc)
 	RegisterProcessFunc(ProcessList, listFunc)
 	RegisterProcessFunc(ProcessHookAfterList, afterListFunc)

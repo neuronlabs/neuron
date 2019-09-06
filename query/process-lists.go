@@ -80,3 +80,16 @@ func beforeListFunc(ctx context.Context, s *Scope) error {
 
 	return nil
 }
+
+// checkPaginationFunc is the process func that checks the validity of the pagination
+func checkPaginationFunc(ctx context.Context, s *Scope) error {
+	if _, ok := s.StoreGet(processErrorKey); ok {
+		return nil
+	}
+
+	if s.Pagination == nil {
+		return nil
+	}
+
+	return s.Pagination.IsValid()
+}

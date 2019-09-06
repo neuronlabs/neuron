@@ -49,6 +49,10 @@ const (
 // Pagination defines the query limits and offsets.
 // It defines the maximum size (Limit) as well as an offset at which
 // the query should start.
+// If the pagination type is 'LimitOffsetPagination' the value of 'Size' defines the 'limit'
+// where the value of 'Offset' defines it's 'offset'.
+// If the pagination type is 'PageNumberPagination' the value of 'Size' defines 'pageSize'
+// and the value of 'Offset' defines 'pageNumber'. The page number value starts from '1'.
 type Pagination struct {
 	// Size is a pagination value that defines 'limit' or 'page size'
 	Size int
@@ -57,9 +61,59 @@ type Pagination struct {
 	Type   PaginationType
 }
 
-// Check checks if the pagination is well formed.
-func (p *Pagination) Check() error {
+// IsValid checks if the pagination is well formed.
+func (p *Pagination) IsValid() error {
 	return p.checkValues()
+}
+
+// GetLimitOffset gets the 'limit' and 'offset' values from the given pagination.
+// If the pagination type is 'LimitOffsetPagination' then the value of 'limit' = p.Size
+// and the value of 'offset' = p.Offset.
+// In case when pagination type is 'PageNumberPagination' the 'limit' = p.Size and the
+// offset is a result of multiplication of (pageNumber - 1) * pageSize = (p.Offset - 1) * p.Size.
+// If the p.Offset is zero value then the (pageNumber - 1) value would be set previously to '0'.
+func (p *Pagination) GetLimitOffset() (limit, offset int) {
+	switch p.Type {
+	case LimitOffsetPagination:
+		limit = p.Size
+		offset = p.Offset
+	case PageNumberPagination:
+		limit = p.Size
+		// the p.Offset value is a page number that starts it's value from '1'.
+		// If it's value is zero - the offset = 0.
+		if p.Offset >= 1 {
+			offset = (p.Offset - 1) * p.Size
+		}
+	default:
+		log.Warningf("Unknown pagination type: '%v'", p.Type)
+	}
+	return limit, offset
+}
+
+// GetNumberSize gets the 'page number' and 'page size' from the pagination.
+// If the pagination type is 'PageNumberPagination' the results are just the values of pagination.
+// In case the pagination type is of 'LimitOffsetPagination' then 'limit'(Size) would be the page size
+// and the page number would be 'offset' / limit + 1. PageNumberPagination starts it's page number counting from 1.
+// If the offset % size != 0 - the offset is not dividable by the size without the rest - then the division
+// rounds down it's value.
+func (p *Pagination) GetNumberSize() (pageNumber, pageSize int) {
+	switch p.Type {
+	case LimitOffsetPagination:
+		pageSize = p.Size
+		// the default pageNumber value is '1'.
+		pageNumber = 1
+		// if the 'limit' and 'offset' values are greater than zero - compute the value of pageNumber.
+		if p.Size > 0 && p.Offset > 0 {
+			// page numbering starts from '1' thus the result would be
+			pageNumber = p.Offset/p.Size + 1
+		}
+	case PageNumberPagination:
+		pageSize = p.Size
+		pageNumber = p.Offset
+	default:
+		log.Warningf("Unknown pagination type: '%v'", p.Type)
+	}
+	return pageNumber, pageSize
 }
 
 // IsZero checks if the pagination is already set.
@@ -94,7 +148,7 @@ func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 		}
 	case PageNumberPagination:
 		number, size := p.Offset, p.Size
-		if number != 0 {
+		if number >= 1 {
 			k = ParamPageNumber
 			v = strconv.Itoa(number)
 			query.Set(k, v)
@@ -156,9 +210,9 @@ func (p *Pagination) checkPageBasedValues() error {
 		return err
 	}
 
-	if p.Offset < 0 {
+	if p.Offset <= 0 {
 		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
-		err.SetDetails("Pagination page-number lower than 0")
+		err.SetDetails("Pagination page-number lower equalt to 0")
 		return err
 	}
 	return nil
