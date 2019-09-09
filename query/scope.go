@@ -90,6 +90,8 @@ type Scope struct {
 
 	// used within the root scope as a language tag for whole query.
 	filterLock sync.Mutex
+
+	processMethod processMethod
 }
 
 // MustNewC creates new scope with given 'model' for the given controller 'c'.
@@ -166,7 +168,16 @@ func (s *Scope) CommitContext(ctx context.Context) error {
 func (s *Scope) Controller() *controller.Controller {
 	cval, _ := s.StoreGet(internal.ControllerStoreKey)
 	return cval.(*controller.Controller)
+}
 
+// Count returns the number of the values for the provided query scope.
+func (s *Scope) Count() (int64, error) {
+	return s.count(context.Background())
+}
+
+// CountContext returns the number of the values for the provided query scope, with the provided 'ctx' context.
+func (s *Scope) CountContext(ctx context.Context) (int64, error) {
+	return s.count(ctx)
 }
 
 // Create stores the values within the given scope's value repository, by starting
@@ -580,8 +591,18 @@ func (s *Scope) commit(ctx context.Context) error {
 			return err
 		}
 	}
-
 	return nil
+}
+
+func (s *Scope) count(ctx context.Context) (int64, error) {
+	if err := s.defaultProcessor().Count(ctx, s); err != nil {
+		return 0, err
+	}
+	i, ok := s.Value.(int64)
+	if !ok {
+		return 0, errors.NewDetf(class.InternalQueryInvalidValue, "scope count value is not 'int64' type, but: '%T'", s.Value)
+	}
+	return i, nil
 }
 
 func (s *Scope) createContext(ctx context.Context) error {

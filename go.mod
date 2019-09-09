@@ -17,9 +17,10 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.3.0
-	golang.org/x/sys v0.0.0-20190620070143-6f217b454f45 // indirect
+	github.com/stretchr/testify v1.4.0
+	golang.org/x/sys v0.0.0-20190909082730-f460065e899a // indirect
 	golang.org/x/text v0.3.2
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
-	gopkg.in/go-playground/validator.v9 v9.29.0
+	gopkg.in/go-playground/validator.v9 v9.29.1
 )

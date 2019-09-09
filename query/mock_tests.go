@@ -91,6 +91,27 @@ func (_m *Repository) Commit(ctx context.Context, s *Scope) error {
 	return r0
 }
 
+// Count provides a mock function with given fields: ctx, s
+func (_m *Repository) Count(ctx context.Context, s *Scope) (int64, error) {
+	ret := _m.Called(ctx, s)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, *Scope) int64); ok {
+		r0 = rf(ctx, s)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *Scope) error); ok {
+		r1 = rf(ctx, s)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Create provides a mock function with given fields: ctx, s
 func (_m *Repository) Create(ctx context.Context, s *Scope) error {
 	ret := _m.Called(ctx, s)

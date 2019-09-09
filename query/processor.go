@@ -71,6 +71,11 @@ func init() {
 	// Transactions
 	RegisterProcessFunc(ProcessTxBegin, beginTransactionFunc)
 	RegisterProcessFunc(ProcessTxCommitOrRollback, commitOrRollbackFunc)
+
+	// Count
+	RegisterProcessFunc(ProcessHookBeforeCount, beforeCountProcessFunc)
+	RegisterProcessFunc(ProcessCount, countProcessFunc)
+	RegisterProcessFunc(ProcessHookAfterCount, afterCountProcessFunc)
 }
 
 // ProcessFunc is the function that modifies or changes the scope value
@@ -79,12 +84,43 @@ type ProcessFunc func(ctx context.Context, s *Scope) error
 // Processor is the wrapper over config processor that allows to start the queries.
 type Processor config.Processor
 
+// Count initializes the Count Process Chain for the Scope.
+func (p *Processor) Count(ctx context.Context, s *Scope) error {
+	if log.Level() == log.LDEBUG3 {
+		log.Debug3f("Processor.Count: %s.", s.String(), s.Value)
+	}
+	var processError error
+	s.processMethod = pmCount
+
+	for _, processName := range p.CountProcesses {
+		processFunc := processes[processName]
+		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), processName)
+
+		if err := processFunc(ctx, s); err != nil {
+			log.Debug2f("Scope[%s][%s] Count failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
+			s.StoreSet(processErrorKey, err)
+			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
+		}
+		s.StoreSet(internal.PreviousProcessStoreKey, processName)
+	}
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s] Count process finished", s.ID())
+	}
+	return processError
+}
+
 // Create initializes the Create Process Chain for the Scope.
 func (p *Processor) Create(ctx context.Context, s *Scope) error {
 	if log.Level() == log.LDEBUG3 {
 		log.Debug3f("Processor.Create: %s. Value: %+v", s.String(), s.Value)
 	}
 	var processError error
+	s.processMethod = pmCreate
 
 	for _, processName := range p.CreateProcesses {
 		processFunc := processes[processName]
@@ -94,6 +130,11 @@ func (p *Processor) Create(ctx context.Context, s *Scope) error {
 			log.Debug2f("Scope[%s][%s] Creating failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
 			s.StoreSet(processErrorKey, err)
 			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
@@ -106,6 +147,8 @@ func (p *Processor) Create(ctx context.Context, s *Scope) error {
 // Get initializes the Get Process chain for the scope.
 func (p *Processor) Get(ctx context.Context, s *Scope) error {
 	var processError error
+	s.processMethod = pmGet
+
 	if log.Level() == log.LDEBUG3 {
 		log.Debug3f("Processor.Get: %s", s.String())
 	}
@@ -117,6 +160,11 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 			log.Debug2f("Scope[%s][%s] Getting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
 			s.StoreSet(processErrorKey, err)
 			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
@@ -132,6 +180,8 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 		log.Debug3f("Processor.List: %s", s.String())
 	}
 	var processError error
+	s.processMethod = pmList
+
 	for _, processName := range p.ListProcesses {
 		processFunc := processes[processName]
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), processName)
@@ -140,6 +190,11 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 			log.Debug2f("Scope[%s][%s] Listing failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
 			s.StoreSet(processErrorKey, err)
 			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
@@ -155,6 +210,8 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 		log.Debug3f("Processor.Patch: %s with value: %+v", s.String(), s.Value)
 	}
 	var processError error
+	s.processMethod = pmPatch
+
 	for _, processName := range p.PatchProcesses {
 		processFunc := processes[processName]
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), processName)
@@ -163,6 +220,11 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 			log.Debug2f("Scope[%s][%s] Patching failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
 			s.StoreSet(processErrorKey, err)
 			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
@@ -178,6 +240,8 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 		log.Debug3f("Processor.Delete: %s", s.String())
 	}
 	var processError error
+	s.processMethod = pmDelete
+
 	for _, processName := range p.DeleteProcesses {
 		processFunc := processes[processName]
 		log.Debug3f("Scope[%s][%s] %s", s.ID(), s.Struct().Collection(), processName)
@@ -186,6 +250,11 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 			log.Debug2f("Scope[%s][%s] Deleting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
 			s.StoreSet(processErrorKey, err)
 			processError = err
+		}
+		select {
+		case <-ctx.Done():
+			processError = ctx.Err()
+		default:
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
@@ -199,3 +268,15 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 var processErrorKey = processError{}
 
 type processError struct{}
+
+type processMethod int8
+
+const (
+	_ processMethod = iota
+	pmCreate
+	pmCount
+	pmDelete
+	pmGet
+	pmList
+	pmPatch
+)
