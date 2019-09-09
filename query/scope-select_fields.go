@@ -10,6 +10,11 @@ import (
 	"github.com/neuronlabs/neuron-core/mapping"
 )
 
+// IsAutoSelected returns boolean if the scope has auto selected fields.
+func (s *Scope) IsAutoSelected() bool {
+	return s.autoSelectedFields
+}
+
 // IsPrimarySelected checks if the primary field is selected.
 func (s *Scope) IsPrimarySelected() bool {
 	return s.isPrimarySelected()
@@ -72,6 +77,7 @@ func (s *Scope) autoSelectFields() error {
 		}()
 	}
 
+	s.autoSelectedFields = true
 	v := reflect.ValueOf(s.Value).Elem()
 
 	// check if the value is a struct

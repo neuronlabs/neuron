@@ -2,6 +2,8 @@ package query
 
 import (
 	"context"
+	"reflect"
+	"time"
 
 	"github.com/neuronlabs/errors"
 
@@ -27,12 +29,51 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDet(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
+	// Set created at field if possible
+	createdAtField, ok := s.Struct().CreatedAt()
+	if ok {
+		// by default scope has auto selected fields setCreatedAt should be true
+		setCreatedAt := s.autoSelectedFields
+		if !setCreatedAt {
+			var found bool
+			// if the fields were not auto selected check if the field is selected by user
+			for _, field := range s.SelectedFields {
+				if createdAtField == field {
+					found = true
+					break
+				}
+			}
+			setCreatedAt = !found
+		}
+
+		if setCreatedAt {
+			// Check if the value of the created at field is not already set by the user.
+			v := reflect.ValueOf(s.Value).Elem().FieldByIndex(createdAtField.ReflectField().Index)
+
+			if s.autoSelectedFields {
+				setCreatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(createdAtField.ReflectField().Type).Interface())
+			}
+
+			if setCreatedAt {
+				switch {
+				case createdAtField.IsTimePointer():
+					tv := time.Now()
+					v.Set(reflect.ValueOf(&tv))
+				case createdAtField.IsTime():
+					v.Set(reflect.ValueOf(time.Now()))
+				}
+
+				s.SelectedFields = append(s.SelectedFields, createdAtField)
+
+			}
+		}
+	}
+
 	if err := creator.Create(ctx, s); err != nil {
 		return err
 	}
 
 	s.StoreSet(internal.JustCreated, struct{}{})
-
 	return nil
 }
 

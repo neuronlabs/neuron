@@ -16,4 +16,10 @@ const (
 	NoFilter = "nofilter"
 	// NotSortable is the neuron model field's flag that disallows to query sort on given field.
 	NotSortable = "nosort"
+	// CreatedAt is the neuron model field's flag that defines CreatedAt field.
+	CreatedAt = "created_at"
+	// DeletedAt is the neuron model field's flag that defines DeletedAt field.
+	DeletedAt = "deleted_at"
+	// UpdatedAt is the neuron model field's flag that defines UpdatedAt field.
+	UpdatedAt = "updated_at"
 )

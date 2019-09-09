@@ -68,6 +68,16 @@ func (s *StructField) IsBasePtr() bool {
 	return s.isBasePtr()
 }
 
+// IsCreatedAt returns the boolean if the field is a 'CreatedAt' field.
+func (s *StructField) IsCreatedAt() bool {
+	return s.isCreatedAt()
+}
+
+// IsDeletedAt returns the boolean if the field is a 'DeletedAt' field.
+func (s *StructField) IsDeletedAt() bool {
+	return s.isDeletedAt()
+}
+
 // IsHidden checks if the field is hidden for marshaling processes.
 func (s *StructField) IsHidden() bool {
 	return s.isHidden()
@@ -146,6 +156,11 @@ func (s *StructField) IsTime() bool {
 // IsTimePointer checks if the field's type is a *time.time.
 func (s *StructField) IsTimePointer() bool {
 	return s.isPtrTime()
+}
+
+// IsUpdatedAt returns the boolean if the field is a 'UpdatedAt' field.
+func (s *StructField) IsUpdatedAt() bool {
+	return s.isUpdatedAt()
 }
 
 // IsZeroValue checks if the provided field has Zero value.
@@ -430,6 +445,14 @@ func (s *StructField) isBasePtr() bool {
 	return s.fieldFlags&fBasePtr != 0
 }
 
+func (s *StructField) isCreatedAt() bool {
+	return s.fieldFlags&fCreatedAt != 0
+}
+
+func (s *StructField) isDeletedAt() bool {
+	return s.fieldFlags&fDeletedAt != 0
+}
+
 func (s *StructField) isHidden() bool {
 	return s.fieldFlags&fHidden != 0
 }
@@ -487,7 +510,11 @@ func (s *StructField) isTime() bool {
 	return s.fieldFlags&fTime != 0
 }
 
-// self returns itself. Used in the nested fields.
+func (s *StructField) isUpdatedAt() bool {
+	return s.fieldFlags&fUpdatedAt != 0
+}
+
+// Self returns itself. Used in the nested fields.
 // Implements structfielder interface.
 func (s *StructField) Self() *StructField {
 	return s
@@ -508,7 +535,9 @@ func (s *StructField) setTagValues() error {
 		case annotation.FieldType, annotation.Name, annotation.ForeignKey, annotation.Relation:
 			continue
 		case annotation.Flags:
-			s.setFlags(values...)
+			if err := s.setFlags(values...); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -578,7 +607,8 @@ func (s *StructField) setTagValues() error {
 	return nil
 }
 
-func (s *StructField) setFlags(flags ...string) {
+func (s *StructField) setFlags(flags ...string) error {
+	var err error
 	for _, single := range flags {
 		switch single {
 		case annotation.ClientID:
@@ -598,10 +628,20 @@ func (s *StructField) setFlags(flags ...string) {
 			s.mStruct.i18n = append(s.mStruct.i18n, s)
 		case annotation.Language:
 			s.mStruct.setLanguage(s)
+		case annotation.DeletedAt:
+			err = s.mStruct.setTimeRelatedField(s, fDeletedAt)
+		case annotation.CreatedAt:
+			err = s.mStruct.setTimeRelatedField(s, fCreatedAt)
+		case annotation.UpdatedAt:
+			err = s.mStruct.setTimeRelatedField(s, fUpdatedAt)
 		default:
 			log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), single)
 		}
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (s *StructField) setFlag(flag fieldFlag) {
