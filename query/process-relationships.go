@@ -361,7 +361,7 @@ func convertHasOneRelationshipFilter(ctx context.Context, s *Scope, index int, f
 		return 0, err
 	}
 
-	if len(foreignValues) > 1 && !s.isMany {
+	if len(foreignValues) > 1 && !s.isMany && s.processMethod != pmCount {
 		log.Warningf("Multiple foreign key values found for a single valued - has one scope.")
 	}
 

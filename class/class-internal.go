@@ -47,6 +47,10 @@ var (
 	// when the internal query operations contains nil value.
 	InternalQueryNilValue errors.Class
 
+	// InternalQueryInvalidValue is the 'MjrInternal', 'MnrInternalQuery' error classification
+	// when the internal query operations contains invalid query value.
+	InternalQueryInvalidValue errors.Class
+
 	// InternalQuerySort is the 'MjrInternal', 'MnrInternalQuery' error classification
 	// for invalid query sort fields.
 	InternalQuerySort errors.Class
@@ -84,6 +88,7 @@ func registerInternalQuery() {
 	InternalQueryInvalidField = newClass()
 	InternalQueryNoSuchModel = newClass()
 	InternalQueryNilValue = newClass()
+	InternalQueryInvalidValue = newClass()
 	InternalQueryIncluded = newClass()
 	InternalQuerySort = newClass()
 	InternalQueryFilter = newClass()

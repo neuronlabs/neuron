@@ -13,11 +13,18 @@ type FullRepository interface {
 
 // RepositoryMethoder is an interface that implements all possible repository methods interfaces.
 type RepositoryMethoder interface {
+	Counter
 	Creator
 	Getter
 	Lister
 	Patcher
 	Deleter
+}
+
+// Counter is the interface used for query repositories that allows to count the result number
+// for the provided query.
+type Counter interface {
+	Count(ctx context.Context, s *Scope) (int64, error)
 }
 
 // Creator is the repository interface that creates the value within the query.Scope.

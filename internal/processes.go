@@ -49,4 +49,9 @@ const (
 	// Transaction processes
 	ProcessTxBegin            = "tx_begin"
 	ProcessTxCommitOrRollback = "tx_commit_or_rollback"
+
+	// Count Processess
+	ProcessHookBeforeCount = "hook_before_ount"
+	ProcessCount           = "count"
+	ProcessHookAfterCount  = "hook_after_count"
 )

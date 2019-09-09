@@ -172,6 +172,18 @@ func (m *ModelStruct) IsBeforeLister() bool {
 	return ok
 }
 
+// IsAfterCounter checks if the model implements query.AfterCounter interface.
+func (m *ModelStruct) IsAfterCounter() bool {
+	_, ok := m.StoreGet(afterCounterKey)
+	return ok
+}
+
+// IsBeforeCounter checks if the model implements query.AfterCounter interface.
+func (m *ModelStruct) IsBeforeCounter() bool {
+	_, ok := m.StoreGet(beforeCounterKey)
+	return ok
+}
+
 // IsJoin defines if the model is a join table for the Many2Many relationship.
 func (m *ModelStruct) IsJoin() bool {
 	return m.isJoin
@@ -876,6 +888,8 @@ var (
 	namerFuncKey            = namerStore{}
 	beforeListerKey         = beforeListerStore{}
 	afterListerKey          = afterListerStore{}
+	beforeCounterKey        = beforeCounterStore{}
+	afterCounterKey         = afterCounterStore{}
 	hasForeignRelationships = hasForeignRelationshipsStore{}
 	thisIncludedCountKey    = thisIncludedCountKeyStore{}
 	nestedIncludedCountKey  = nestedIncludedCountKeyStore{}
@@ -886,6 +900,8 @@ type assignedFieldsStore struct{}
 type namerStore struct{}
 type beforeListerStore struct{}
 type afterListerStore struct{}
+type afterCounterStore struct{}
+type beforeCounterStore struct{}
 type hasForeignRelationshipsStore struct{}
 type thisIncludedCountKeyStore struct{}
 type nestedIncludedCountKeyStore struct{}

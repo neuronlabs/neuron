@@ -22,6 +22,8 @@ type Processor struct {
 	ListProcesses ProcessList `mapstructure:"list_processes"`
 	// PatchProcesses are the default processes used in the patch method.
 	PatchProcesses ProcessList `mapstructure:"patch_processes"`
+	// CountProcesses are the processes used for count method.=
+	CountProcesses ProcessList `mapstructure:"count_processes"`
 }
 
 // Validate validates the processor values.
@@ -29,19 +31,22 @@ func (p *Processor) Validate() error {
 	err := &multiProcessError{}
 
 	if len(p.CreateProcesses) == 0 {
-		return errors.New("No create processes in configuration")
+		return errors.New("no create processes in configuration")
 	}
 	if len(p.DeleteProcesses) == 0 {
-		return errors.New("No create processes in configuration")
+		return errors.New("no delete processes in configuration")
 	}
 	if len(p.GetProcesses) == 0 {
-		return errors.New("No create processes in configuration")
+		return errors.New("no get processes in configuration")
 	}
 	if len(p.ListProcesses) == 0 {
-		return errors.New("No create processes in configuration")
+		return errors.New("no list processes in configuration")
 	}
 	if len(p.PatchProcesses) == 0 {
-		return errors.New("No create processes in configuration")
+		return errors.New("no patch processes in configuration")
+	}
+	if len(p.CountProcesses) == 0 {
+		return errors.New("no count processes in configuration")
 	}
 
 	p.CreateProcesses.validate(err)
@@ -49,6 +54,7 @@ func (p *Processor) Validate() error {
 	p.GetProcesses.validate(err)
 	p.ListProcesses.validate(err)
 	p.PatchProcesses.validate(err)
+	p.CountProcesses.validate(err)
 
 	if len(err.processes) == 0 {
 		return nil
@@ -115,6 +121,12 @@ func DefaultProcessorConfig() map[string]interface{} {
 			internal.ProcessHookAfterDelete,
 			internal.ProcessTxCommitOrRollback,
 		},
+		"count_processes": []string{
+			internal.ProcessConvertRelationFiltersSafe,
+			internal.ProcessHookBeforeCount,
+			internal.ProcessCount,
+			internal.ProcessHookAfterCount,
+		},
 	}
 }
 
@@ -174,6 +186,12 @@ func ThreadSafeProcessor() *Processor {
 			internal.ProcessDeleteForeignRelationsSafe,
 			internal.ProcessHookAfterDelete,
 			internal.ProcessTxCommitOrRollback,
+		},
+		CountProcesses: ProcessList{
+			internal.ProcessConvertRelationFiltersSafe,
+			internal.ProcessHookBeforeCount,
+			internal.ProcessCount,
+			internal.ProcessHookAfterCount,
 		},
 	}
 }
@@ -236,6 +254,12 @@ func ConcurrentProcessor() *Processor {
 			internal.ProcessHookAfterDelete,
 			internal.ProcessTxCommitOrRollback,
 		},
+		CountProcesses: ProcessList{
+			internal.ProcessConvertRelationFilters,
+			internal.ProcessHookBeforeCount,
+			internal.ProcessCount,
+			internal.ProcessHookAfterCount,
+		},
 	}
 }
 
@@ -295,6 +319,12 @@ func DefaultConcurrentProcessorConfig() map[string]interface{} {
 			internal.ProcessDeleteForeignRelations,
 			internal.ProcessHookAfterDelete,
 			internal.ProcessTxCommitOrRollback,
+		},
+		"count_processes": []string{
+			internal.ProcessConvertRelationFilters,
+			internal.ProcessHookBeforeCount,
+			internal.ProcessCount,
+			internal.ProcessHookAfterCount,
 		},
 	}
 }

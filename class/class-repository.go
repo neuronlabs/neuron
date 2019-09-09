@@ -136,28 +136,32 @@ var (
 	MnrRepositoryNotImplements errors.Minor
 
 	// RepositoryNotImplementsTransactioner is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement transactioner interfaces.
+	// for errors when the repository doesn't implement query.Transactioner interface.
 	RepositoryNotImplementsTransactioner errors.Class
 
 	// RepositoryNotImplementsCreator is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement query.Creator interfaces.
+	// for errors when the repository doesn't implement query.Creator interface.
 	RepositoryNotImplementsCreator errors.Class
 
 	// RepositoryNotImplementsDeleter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement query.Deleter interfaces.
+	// for errors when the repository doesn't implement query.Deleter interface.
 	RepositoryNotImplementsDeleter errors.Class
 
 	// RepositoryNotImplementsPatcher is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement query.Patcher interfaces.
+	// for errors when the repository doesn't implement query.Patcher interface.
 	RepositoryNotImplementsPatcher errors.Class
 
 	// RepositoryNotImplementsLister is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement query.Lister interfaces.
+	// for errors when the repository doesn't implement query.Lister interface.
 	RepositoryNotImplementsLister errors.Class
 
 	// RepositoryNotImplementsGetter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
-	// for errors when the repository doesn't implement getter interfaces.
+	// for errors when the repository doesn't implement query.Getter interface.
 	RepositoryNotImplementsGetter errors.Class
+
+	// RepositoryNotImplementsCounter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
+	// for errors when the repository doesn't implement query.Counter interface.
+	RepositoryNotImplementsCounter errors.Class
 )
 
 func registerRepositoryInterface() {
@@ -169,6 +173,7 @@ func registerRepositoryInterface() {
 	}
 
 	RepositoryNotImplementsCreator = newClass()
+	RepositoryNotImplementsCounter = newClass()
 	RepositoryNotImplementsDeleter = newClass()
 	RepositoryNotImplementsGetter = newClass()
 	RepositoryNotImplementsLister = newClass()

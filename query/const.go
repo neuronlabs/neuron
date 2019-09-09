@@ -77,4 +77,8 @@ const (
 
 	ProcessTxBegin            = internal.ProcessTxBegin
 	ProcessTxCommitOrRollback = internal.ProcessTxCommitOrRollback
+
+	ProcessCount           = internal.ProcessCount
+	ProcessHookBeforeCount = internal.ProcessHookBeforeCount
+	ProcessHookAfterCount  = internal.ProcessHookAfterCount
 )

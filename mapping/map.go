@@ -563,9 +563,14 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 	if ptrValue.MethodByName("BeforeList").IsValid() {
 		modelStruct.StoreSet(beforeListerKey, struct{}{})
 	}
-
 	if ptrValue.MethodByName("AfterList").IsValid() {
 		modelStruct.StoreSet(afterListerKey, struct{}{})
+	}
+	if ptrValue.MethodByName("BeforeCount").IsValid() {
+		modelStruct.StoreSet(beforeCounterKey, struct{}{})
+	}
+	if ptrValue.MethodByName("AfterCount").IsValid() {
+		modelStruct.StoreSet(afterCounterKey, struct{}{})
 	}
 
 	return modelStruct, nil
