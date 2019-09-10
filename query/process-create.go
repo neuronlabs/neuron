@@ -14,7 +14,7 @@ import (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -33,16 +33,10 @@ func createFunc(ctx context.Context, s *Scope) error {
 	createdAtField, ok := s.Struct().CreatedAt()
 	if ok {
 		// by default scope has auto selected fields setCreatedAt should be true
-		setCreatedAt := s.autoSelectedFields
+		setCreatedAt := s.autosetFields
 		if !setCreatedAt {
-			var found bool
+			_, found := s.Fieldset[createdAtField.NeuronName()]
 			// if the fields were not auto selected check if the field is selected by user
-			for _, field := range s.SelectedFields {
-				if createdAtField == field {
-					found = true
-					break
-				}
-			}
 			setCreatedAt = !found
 		}
 
@@ -50,7 +44,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 			// Check if the value of the created at field is not already set by the user.
 			v := reflect.ValueOf(s.Value).Elem().FieldByIndex(createdAtField.ReflectField().Index)
 
-			if s.autoSelectedFields {
+			if s.autosetFields {
 				setCreatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(createdAtField.ReflectField().Type).Interface())
 			}
 
@@ -63,7 +57,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 					v.Set(reflect.ValueOf(time.Now()))
 				}
 
-				s.SelectedFields = append(s.SelectedFields, createdAtField)
+				s.Fieldset[createdAtField.NeuronName()] = createdAtField
 
 			}
 		}
@@ -79,7 +73,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 
 // beforeCreate is the function that is used before the create process
 func beforeCreateFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -99,7 +93,7 @@ func beforeCreateFunc(ctx context.Context, s *Scope) error {
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
 func afterCreateFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -116,7 +110,7 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 }
 
 func storeScopePrimaries(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 

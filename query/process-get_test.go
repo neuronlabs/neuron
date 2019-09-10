@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -162,5 +163,87 @@ func TestGet(t *testing.T) {
 		assert.True(t, ok)
 
 		assert.Len(t, foreignIncludes, 2)
+	})
+
+	t.Run("TimeRelated", func(t *testing.T) {
+		type timer struct {
+			ID        int
+			DeletedAt *time.Time
+		}
+
+		c := newController(t)
+		err := c.RegisterModels(&timer{})
+		require.NoError(t, err)
+
+		repo, err := c.GetRepository(timer{})
+		require.NoError(t, err)
+
+		timerRepo, ok := repo.(*Repository)
+		require.True(t, ok)
+
+		mStruct, err := c.ModelStruct(timer{})
+		require.NoError(t, err)
+
+		deletedAt, hasDeletedAt := mStruct.DeletedAt()
+		require.True(t, hasDeletedAt)
+
+		t.Run("WithFilter", func(t *testing.T) {
+			defer clearRepository(timerRepo)
+			s, err := NewC(c, &timer{ID: 2})
+			require.NoError(t, err)
+
+			err = s.FilterField(NewFilter(deletedAt, OpNotNull))
+			require.NoError(t, err)
+
+			timerRepo.On("Get", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				if assert.Len(t, s.AttributeFilters, 1) {
+					af := s.AttributeFilters[0]
+					if assert.Equal(t, deletedAt, af.StructField) {
+						if assert.Len(t, af.Values, 1) {
+							v := af.Values[0]
+							assert.Equal(t, OpNotNull, v.Operator)
+						}
+					}
+				}
+
+				v := s.Value.(*timer)
+				v.ID = 2
+				tm := time.Now()
+				v.DeletedAt = &tm
+			}).Return(nil)
+
+			err = s.Get()
+			require.NoError(t, err)
+		})
+
+		t.Run("WithoutFilter", func(t *testing.T) {
+			defer clearRepository(timerRepo)
+			s, err := NewC(c, &timer{ID: 3})
+			require.NoError(t, err)
+
+			timerRepo.On("Get", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				if assert.Len(t, s.AttributeFilters, 1) {
+					af := s.AttributeFilters[0]
+					if assert.Equal(t, deletedAt, af.StructField) {
+						if assert.Len(t, af.Values, 1) {
+							v := af.Values[0]
+							assert.Equal(t, OpIsNull, v.Operator)
+						}
+					}
+				}
+
+				v := s.Value.(*timer)
+				v.ID = 3
+			}).Return(nil)
+
+			err = s.Get()
+			require.NoError(t, err)
+		})
 	})
 }

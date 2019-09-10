@@ -159,6 +159,8 @@ func TestFormatQuery(t *testing.T) {
 			s, err := NewC(c, &formatter{})
 			require.NoError(t, err)
 
+			s.setAllFields()
+
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 

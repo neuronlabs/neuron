@@ -9,11 +9,9 @@ import (
 )
 
 func beginTransactionFunc(ctx context.Context, s *Scope) error {
-	_, ok := s.StoreGet(processErrorKey)
-	if ok {
+	if s.Error != nil {
 		return nil
 	}
-
 	if tx := s.tx(); tx != nil {
 		return nil
 	}
@@ -24,7 +22,6 @@ func beginTransactionFunc(ctx context.Context, s *Scope) error {
 	}
 
 	s.StoreSet(internal.AutoBeginStoreKey, struct{}{})
-
 	return nil
 }
 
@@ -45,8 +42,7 @@ func commitOrRollbackFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	_, ok = s.StoreGet(processErrorKey)
-	if !ok {
+	if s.Error == nil {
 		if log.Level().IsAllowed(log.LDEBUG3) {
 			log.Debug3f("SCOPE[%s][%s] Commit transaction[%s]", s.ID(), s.Struct().Collection(), tx.ID)
 		}

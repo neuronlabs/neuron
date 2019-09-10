@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -146,6 +147,12 @@ func TestCreateTransactions(t *testing.T) {
 	type hasManyModel struct {
 		ID      int                `neuron:"type=primary"`
 		HasMany []*foreignKeyModel `neuron:"type=relation;foreign=FK"`
+	}
+
+	type hasBoth struct {
+		ID      int
+		HasOne  *foreignKeyModel   `neuron:"foreign=FK"`
+		HasMany []*foreignKeyModel `neuron:"foreign=FK"`
 	}
 
 	t.Run("Valid", func(t *testing.T) {
@@ -310,55 +317,29 @@ func TestCreateTransactions(t *testing.T) {
 				// foreign key repo should at first clear the old fk's, get the begin, patch, commit processes
 				// while it would get the filters on the FK then it should list the patched id first
 				foreignKeyRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-
-				// then it should reduce the filters into primaries
-				foreignKeyRepo.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-					s := a[1].(*Scope)
-					models := (s.Value.(*[]*foreignKeyModel))
-					(*models) = append((*models), &foreignKeyModel{ID: 3}, &foreignKeyModel{ID: 5}, &foreignKeyModel{ID: 6})
-				}).Return(nil)
-
-				foreignKeyRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 				// first patch would clear the foreign keys
 				foreignKeyRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 					s := a[1].(*Scope)
 					model := s.Value.(*foreignKeyModel)
-					assert.Equal(t, 0, model.FK)
+					assert.Equal(t, 1, model.FK)
+
 					primaryFilters := s.PrimaryFilters
 
 					if assert.Len(t, primaryFilters, 1) {
 						if assert.Len(t, primaryFilters[0].Values, 1) {
 							v := primaryFilters[0].Values[0]
 							assert.Equal(t, OpIn, v.Operator)
-							assert.Contains(t, v.Values, 3)
-							assert.Contains(t, v.Values, 5)
-							assert.Contains(t, v.Values, 6)
-
-						}
-					}
-				}).Return(nil)
-				foreignKeyRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-					s := a[1].(*Scope)
-					model := s.Value.(*foreignKeyModel)
-					assert.Equal(t, m1.ID, model.FK)
-					primaryFilters := s.PrimaryFilters
-					if assert.Len(t, primaryFilters, 1) {
-						if assert.Len(t, primaryFilters[0].Values, 1) {
-							v := primaryFilters[0].Values[0]
-							assert.Equal(t, OpIn, v.Operator)
-
 							assert.Contains(t, v.Values, 2)
 							assert.Contains(t, v.Values, 4)
+
 						}
 					}
 				}).Return(nil)
 				// double commits - first clears the second adds the foreign keys
 				foreignKeyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-				foreignKeyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
 				err = s.Create()
 				require.NoError(t, err)
-
 			})
 
 			t.Run("Many2Many", func(t *testing.T) {
@@ -472,6 +453,81 @@ func TestCreateTransactions(t *testing.T) {
 
 				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
 				many2many.AssertNumberOfCalls(t, "Commit", 1)
+			})
+
+			t.Run("Both", func(t *testing.T) {
+				c := newController(t)
+				err := c.RegisterModels(foreignKeyModel{}, hasBoth{})
+				require.NoError(t, err)
+
+				s, err := NewC(c, &hasBoth{HasOne: &foreignKeyModel{ID: 1}, HasMany: []*foreignKeyModel{{ID: 3}, {ID: 4}}})
+				require.NoError(t, err)
+
+				repo, err := c.GetRepository(hasBoth{})
+				require.NoError(t, err)
+
+				hbRepo, ok := repo.(*Repository)
+				require.True(t, ok)
+
+				hbRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				hbRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					v, ok := s.Value.(*hasBoth)
+					require.True(t, ok)
+
+					v.ID = 4
+				}).Return(nil)
+				hbRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				repo, err = c.GetRepository(foreignKeyModel{})
+				require.NoError(t, err)
+
+				fkRepo, ok := repo.(*Repository)
+				require.True(t, ok)
+
+				var tx1ID, tx2ID uuid.UUID
+				fkRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				fkRepo.On("List", mock.Anything, mock.Anything).Twice().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					var primaries []interface{}
+					if assert.Len(t, s.ForeignFilters, 1, "%s", s) {
+						fv := s.ForeignFilters[0]
+						for _, v := range fv.Values {
+							primaries = append(primaries, v.Values...)
+						}
+					}
+
+					v, ok := s.Value.(*[]*foreignKeyModel)
+					require.True(t, ok)
+
+					for _, primary := range primaries {
+						(*v) = append((*v), &foreignKeyModel{ID: primary.(int)})
+					}
+				}).Return(nil)
+				fkRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					tx := s.Tx()
+					tx1ID = tx.ID
+				}).Return(nil)
+				fkRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					tx := s.Tx()
+					tx2ID = tx.ID
+				}).Return(nil)
+				fkRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+
+				err = s.Create()
+				require.NoError(t, err)
+
+				assert.Equal(t, tx1ID, tx2ID)
 			})
 		})
 	})
@@ -596,11 +652,8 @@ func TestCreateTransactions(t *testing.T) {
 					createdAt, ok := s.Struct().CreatedAt()
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(createdAt)
-					require.NoError(t, err)
-
-					// if the value is auto selected  with zero value it should be created
-					assert.True(t, ok, "%v", s.SelectedFields)
+					_, ok = s.InFieldset(createdAt)
+					assert.True(t, ok, "%v", s.Fieldset)
 
 					tm := s.Value.(*ptrTimer)
 					tm.ID = 3
@@ -627,9 +680,7 @@ func TestCreateTransactions(t *testing.T) {
 					createdAt, ok := s.Struct().CreatedAt()
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(createdAt)
-					require.NoError(t, err)
-
+					_, ok = s.InFieldset(createdAt)
 					assert.True(t, ok)
 
 					tm := s.Value.(*timer)
@@ -646,7 +697,7 @@ func TestCreateTransactions(t *testing.T) {
 			s, err := NewC(c, &timer{ID: 3})
 			require.NoError(t, err)
 
-			err = s.SelectField("ID")
+			err = s.SetFields("ID")
 			require.NoError(t, err)
 
 			// timerRepo
@@ -660,11 +711,9 @@ func TestCreateTransactions(t *testing.T) {
 				createdAt, ok := s.Struct().CreatedAt()
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(createdAt)
-				require.NoError(t, err)
-
+				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autoSelectedFields)
+				assert.False(t, s.autosetFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)
@@ -681,7 +730,7 @@ func TestCreateTransactions(t *testing.T) {
 			s, err := NewC(c, &timer{ID: 3, CreatedAt: time.Now().Add(-time.Hour)})
 			require.NoError(t, err)
 
-			err = s.SelectFields("ID", "CreatedAt")
+			err = s.SetFields("ID", "CreatedAt")
 			require.NoError(t, err)
 
 			// timerRepo
@@ -695,11 +744,9 @@ func TestCreateTransactions(t *testing.T) {
 				createdAt, ok := s.Struct().CreatedAt()
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(createdAt)
-				require.NoError(t, err)
-
+				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autoSelectedFields)
+				assert.False(t, s.autosetFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)

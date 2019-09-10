@@ -18,6 +18,7 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 
 	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/safemap"
@@ -33,11 +34,8 @@ type Scope struct {
 	// Value is the values or / value of the queried object / objects
 	Value interface{}
 
-	// SelectedFields are the fields that were updated
-	SelectedFields []*mapping.StructField
-	// Fieldset represents fields used for this query scope - jsonapi 'fields[collection]'
+	// Fieldset represents fields used specified to get / update for this query scope
 	Fieldset map[string]*mapping.StructField
-
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
 	// if filters, fieldsets are set for non-included scope error should occur
@@ -73,12 +71,16 @@ type Scope struct {
 	// SubscopesChain is the array of the scope's used for committing or rolling back the transaction.
 	SubscopesChain []*Scope
 
+	// Error defines the process error.
+	Error error
+
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
 
 	isMany bool
 	kind   Kind
 
+	autosetFields bool
 	// CollectionScope is a pointer to the scope containing the collection root
 	collectionScope *Scope
 	// rootScope is the root of all scopes where the query begins
@@ -86,11 +88,11 @@ type Scope struct {
 
 	totalIncludeCount     int
 	hasFieldNotInFieldset bool
-	defaultFieldset       bool
-	autoSelectedFields    bool
 
 	// used within the root scope as a language tag for whole query.
 	filterLock sync.Mutex
+
+	transactions map[repository.Repository]*Tx
 
 	processMethod processMethod
 }
@@ -129,20 +131,6 @@ func NewModelC(c *controller.Controller, mStruct *mapping.ModelStruct, isMany bo
 // New creates the scope on the base of the given 'model' it uses default internalController.
 func New(model interface{}) (*Scope, error) {
 	return newQueryScope(controller.Default(), model)
-}
-
-// AddTxChain adds a transaction subscope to the given query's scope transaction chain.
-// By default scopes created by the 'New' method are added to the transaction chain and
-// should not be added again.
-func (s *Scope) AddTxChain(sub *Scope) {
-	s.SubscopesChain = append(s.SubscopesChain, sub)
-}
-
-// AppendSelectedFields adds provided fields into the scope's selected fields.
-// This would affect the Create or Patch processes where the SelectedFields are taken
-// as the unmarshaled fields. Returns error if the field is already selected.
-func (s *Scope) AppendSelectedFields(fields ...interface{}) error {
-	return s.selectFields(false, fields...)
 }
 
 // Begin begins the transaction for the provided scope with the default Options.
@@ -359,7 +347,7 @@ func (s *Scope) String() string {
 
 	// Fieldset
 	sb.WriteString(" Fieldset")
-	if s.defaultFieldset {
+	if s.isDefaultFieldset() {
 		sb.WriteString("(default)")
 	}
 	sb.WriteString(": [")
@@ -372,17 +360,6 @@ func (s *Scope) String() string {
 		i++
 	}
 	sb.WriteRune(']')
-
-	if len(s.SelectedFields) > 0 {
-		sb.WriteString(" Selected Fields: [")
-		for i, field := range s.SelectedFields {
-			sb.WriteString(field.NeuronName())
-			if i != len(s.SelectedFields)-1 {
-				sb.WriteRune(',')
-			}
-		}
-		sb.WriteString("]")
-	}
 
 	// Primary Filters
 	if len(s.PrimaryFilters) > 0 {
@@ -469,6 +446,9 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 				return nil, errors.NewDet(class.QueryTxAlreadyBegin, "transaction had already began")
 			}
 		}
+	}
+	if s.transactions == nil {
+		s.transactions = make(map[repository.Repository]*Tx)
 	}
 
 	// for nil options set it to default value
@@ -608,7 +588,6 @@ func (s *Scope) count(ctx context.Context) (int64, error) {
 
 func (s *Scope) createContext(ctx context.Context) error {
 	if s.isMany {
-		// TODO: add create many
 		return errors.NewDet(class.QueryValueType, "creating with multiple values in are not supported yet")
 	}
 
@@ -698,10 +677,20 @@ func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, err
 	if err != nil {
 		return nil, err
 	}
-
 	sub.kind = SubscopeKind
 
 	if txn := s.tx(); txn != nil {
+		repo, err := s.Controller().GetRepository(sub.Struct())
+		if err != nil {
+			return nil, err
+		}
+
+		tx, ok := s.transactions[repo]
+		if ok {
+			sub.StoreSet(internal.TxStateStoreKey, tx)
+			return sub, nil
+		}
+
 		if _, err := sub.begin(ctx, &txn.Options, false); err != nil {
 			log.Debug("Begin subscope failed: %v", err)
 			return nil, err
@@ -958,16 +947,10 @@ func newRootScope(modelStruct *mapping.ModelStruct) *Scope {
 func newScope(modelStruct *mapping.ModelStruct) *Scope {
 	s := &Scope{
 		// TODO: set the scope's id based on the domain
-		id:              uuid.New(),
-		mStruct:         modelStruct,
-		Fieldset:        make(map[string]*mapping.StructField),
-		store:           map[interface{}]interface{}{},
-		defaultFieldset: true,
-	}
-
-	// set all fields
-	for _, field := range modelStruct.Fields() {
-		s.Fieldset[field.NeuronName()] = field
+		id:       uuid.New(),
+		mStruct:  modelStruct,
+		Fieldset: make(map[string]*mapping.StructField),
+		store:    map[interface{}]interface{}{},
 	}
 
 	if log.Level() <= log.LDEBUG2 {

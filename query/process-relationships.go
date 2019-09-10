@@ -12,7 +12,7 @@ import (
 )
 
 func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 	if len(s.RelationFilters) == 0 {
@@ -93,7 +93,7 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 }
 
 func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -503,7 +503,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 }
 
 func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 	relations := map[string]*mapping.StructField{}
@@ -596,7 +596,7 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func getForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 	relations := map[string]*mapping.StructField{}
@@ -1217,7 +1217,7 @@ func getForeignRelationshipBelongsTo(ctx context.Context, s *Scope, v reflect.Va
 
 // setBelongsToRelationshipsFunc sets the value from the belongs to relationship ID's to the foreign keys
 func setBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 	return s.setBelongsToForeignKeyFields()

@@ -96,9 +96,21 @@ func (t *Tx) setToScope(ctx context.Context, s *Scope) error {
 		// for models of different structure then the root one,
 		// create new transactions with begin method and add it to the
 		// subscope chain.
+		repo, err := s.Controller().GetRepository(s.Struct())
+		if err != nil {
+			return err
+		}
+
+		tx, ok := t.root.transactions[repo]
+		if ok {
+			s.StoreSet(internal.TxStateStoreKey, tx)
+			return nil
+		}
+
 		if _, err := s.begin(ctx, &t.Options, true); err != nil {
 			return err
 		}
+		t.root.transactions[repo] = s.Tx()
 		t.root.SubscopesChain = append(t.root.SubscopesChain, s)
 	} else {
 		// otherwise set the transaction to the store.

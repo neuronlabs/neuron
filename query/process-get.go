@@ -11,7 +11,7 @@ import (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -37,7 +37,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook.
 func beforeGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -54,7 +54,7 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterGetFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -74,4 +74,20 @@ func afterGetFunc(ctx context.Context, s *Scope) error {
 func fillEmptyFieldset(ctx context.Context, s *Scope) error {
 	s.fillFieldsetIfNotSet()
 	return nil
+}
+
+func getNotDeletedFilter(ctx context.Context, s *Scope) error {
+	deletedAt, hasDeletedAt := s.Struct().DeletedAt()
+	if !hasDeletedAt {
+		return nil
+	}
+
+	for _, attr := range s.AttributeFilters {
+		// if there is already a filter on the deleted at field then
+		// don't add new one.
+		if attr.StructField == deletedAt {
+			return nil
+		}
+	}
+	return s.FilterField(NewFilter(deletedAt, OpIsNull))
 }

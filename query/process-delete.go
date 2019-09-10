@@ -15,7 +15,7 @@ import (
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -27,7 +27,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 
 	deletedAt, hasDeletedAt := s.Struct().DeletedAt()
 	if hasDeletedAt {
-		s.SelectedFields = append(s.SelectedFields, deletedAt)
+		s.Fieldset[deletedAt.NeuronName()] = deletedAt
 
 		v := reflect.ValueOf(s.Value).Elem().FieldByIndex(deletedAt.ReflectField().Index)
 		t := time.Now()
@@ -65,7 +65,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeDeleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -81,7 +81,7 @@ func beforeDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterDeleteFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -97,7 +97,7 @@ func afterDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -169,7 +169,7 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -254,8 +254,7 @@ func deleteHasOneRelationships(ctx context.Context, s *Scope, field *mapping.Str
 	}
 
 	// the selected field would be only the foreign key -> zero valued
-	clearScope.SelectedFields = append(clearScope.SelectedFields, rel.ForeignKey())
-
+	clearScope.Fieldset[rel.ForeignKey().NeuronName()] = rel.ForeignKey()
 	for _, prim := range s.PrimaryFilters {
 		clearScope.ForeignFilters = append(clearScope.ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
 	}
@@ -299,7 +298,7 @@ func deleteHasManyRelationships(ctx context.Context, s *Scope, field *mapping.St
 	}
 
 	// the selected field would be only the foreign key -> zero valued
-	clearScope.SelectedFields = append(clearScope.SelectedFields, rel.ForeignKey())
+	clearScope.Fieldset[rel.ForeignKey().NeuronName()] = rel.ForeignKey()
 
 	for _, prim := range s.PrimaryFilters {
 		clearScope.ForeignFilters = append(clearScope.ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
@@ -368,25 +367,22 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *mapping.
 // reducePrimaryFilters is the process func that changes the delete scope filters so that
 // if the root model contains any nonBelongsTo relationship then the filters must be converted into primary field filter
 func reducePrimaryFilters(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
 	reducedPrimariesInterface, alreadyReduced := s.StoreGet(internal.ReducedPrimariesStoreKey)
 	if alreadyReduced {
-		previousProcess, ok := s.StoreGet(internal.PreviousProcessStoreKey)
-		if ok {
-			switch previousProcess.(string) {
-			case ProcessHookBeforeDelete:
-				_, isBeforeDeleter := s.Value.(BeforeDeleter)
-				if !isBeforeDeleter {
-					return nil
-				}
-			case ProcessHookBeforePatch:
-				_, isBeforePatcher := s.Value.(BeforePatcher)
-				if !isBeforePatcher {
-					return nil
-				}
+		switch s.processMethod {
+		case pmDelete:
+			_, isBeforeDeleter := s.Value.(BeforeDeleter)
+			if !isBeforeDeleter {
+				return nil
+			}
+		case pmPatch:
+			_, isBeforePatcher := s.Value.(BeforePatcher)
+			if !isBeforePatcher {
+				return nil
 			}
 		}
 	}
@@ -402,10 +398,10 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 			// if there are any primary values in the scope values
 			// create a filter field with these values
 			primaryFilter := s.getOrCreatePrimaryFilter()
-			if s.isPrimarySelected() {
-				if err = s.unselectFields(s.Struct().Primary()); err != nil {
-					return err
-				}
+			_, ok := s.Fieldset[s.Struct().Primary().NeuronName()]
+			if ok {
+				// remove primary key from fieldset
+				delete(s.Fieldset, s.Struct().Primary().NeuronName())
 			}
 			primaryFilter.Values = append(primaryFilter.Values, &OperatorValues{Operator: OpIn, Values: primaryValues})
 		}
@@ -501,7 +497,10 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// clear all filters in the root scope
 	s.clearFilters()
-	s.unselectFieldIfSelected(s.Struct().Primary())
+	if _, ok := s.Fieldset[s.Struct().Primary().NeuronName()]; ok {
+		// remove primary key from fieldset
+		delete(s.Fieldset, s.Struct().Primary().NeuronName())
+	}
 
 	// reduce the filters as the primary filters in the root scope
 	primaryFilter := s.getOrCreatePrimaryFilter()

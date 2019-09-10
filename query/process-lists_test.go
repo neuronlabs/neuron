@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/controller"
 )
