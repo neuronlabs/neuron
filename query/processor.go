@@ -265,8 +265,6 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 	return processError
 }
 
-type processError struct{}
-
 type processMethod int8
 
 const (

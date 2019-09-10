@@ -18,6 +18,7 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 
 	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/safemap"
@@ -91,6 +92,8 @@ type Scope struct {
 	// used within the root scope as a language tag for whole query.
 	filterLock sync.Mutex
 
+	transactions map[repository.Repository]*Tx
+
 	processMethod processMethod
 }
 
@@ -128,13 +131,6 @@ func NewModelC(c *controller.Controller, mStruct *mapping.ModelStruct, isMany bo
 // New creates the scope on the base of the given 'model' it uses default internalController.
 func New(model interface{}) (*Scope, error) {
 	return newQueryScope(controller.Default(), model)
-}
-
-// AddTxChain adds a transaction subscope to the given query's scope transaction chain.
-// By default scopes created by the 'New' method are added to the transaction chain and
-// should not be added again.
-func (s *Scope) AddTxChain(sub *Scope) {
-	s.SubscopesChain = append(s.SubscopesChain, sub)
 }
 
 // Begin begins the transaction for the provided scope with the default Options.
@@ -451,6 +447,9 @@ func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*T
 			}
 		}
 	}
+	if s.transactions == nil {
+		s.transactions = make(map[repository.Repository]*Tx)
+	}
 
 	// for nil options set it to default value
 	if opts == nil {
@@ -589,7 +588,6 @@ func (s *Scope) count(ctx context.Context) (int64, error) {
 
 func (s *Scope) createContext(ctx context.Context) error {
 	if s.isMany {
-		// TODO: add create many
 		return errors.NewDet(class.QueryValueType, "creating with multiple values in are not supported yet")
 	}
 
@@ -679,10 +677,20 @@ func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, err
 	if err != nil {
 		return nil, err
 	}
-
 	sub.kind = SubscopeKind
 
 	if txn := s.tx(); txn != nil {
+		repo, err := s.Controller().GetRepository(sub.Struct())
+		if err != nil {
+			return nil, err
+		}
+
+		tx, ok := s.transactions[repo]
+		if ok {
+			sub.StoreSet(internal.TxStateStoreKey, tx)
+			return sub, nil
+		}
+
 		if _, err := sub.begin(ctx, &txn.Options, false); err != nil {
 			log.Debug("Begin subscope failed: %v", err)
 			return nil, err

@@ -423,17 +423,14 @@ func patchHasManyRelationshipChan(
 
 }
 
-func patchHasManyRelationship(
-	ctx context.Context, s *Scope, relField *mapping.StructField,
-	primaries []interface{},
-) error {
+func patchHasManyRelationship(ctx context.Context, s *Scope, relField *mapping.StructField, primaries []interface{}) error {
 	var err error
 	// 1) for related field with values
 	// i.e. model with field hasMany = []*relatedModel{{ID: 4},{ID: 5}}
 	//
 	// for a single primary key:
 	// - clear all the relatedModels with the foreign keys equal to the primary (set them to null if possible)
-	// - set the realtedModels foreignkeys to primary key where ID in (4, 5)
+	// - set the relatedModels foreignkeys to primary key where ID in (4, 5)
 	//
 	//
 	// for multiple primaries the relatedModels would not have specified foreign key
@@ -498,42 +495,42 @@ func patchHasManyRelationship(
 		return err
 	}
 
-	var clearScope *Scope
-	// clear the related scope - patch all related models with the foreign key filter equal to the given primaries
-	// create clearScope for the relation field's model
-	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), false)
-		if _, err = clearScope.BeginTx(ctx, nil); err != nil {
-			return err
-		}
-	}
+	// var clearScope *Scope
+	// // clear the related scope - patch all related models with the foreign key filter equal to the given primaries
+	// // create clearScope for the relation field's model
+	// if tx := s.Tx(); tx != nil {
+	// 	clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), false)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	// 	clearScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), false)
+	// 	if _, err = clearScope.BeginTx(ctx, nil); err != nil {
+	// 		return err
+	// 	}
+	// }
 
-	// add selected field into the clear scope
-	clearScope.setFieldsetNoCheck(relField.Relationship().ForeignKey())
-	// add the foreign key filter
-	clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
+	// // add selected field into the clear scope
+	// clearScope.setFieldsetNoCheck(relField.Relationship().ForeignKey())
+	// // add the foreign key filter
+	// clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
 
-	log.Debug2f("SCOPE[%s] Patch relationship: '%s' - clear current relationship values", s.ID(), relField.NeuronName())
-	// clear the related scope.
-	if err = clearScope.PatchContext(ctx); err != nil {
-		if e, ok := err.(errors.ClassError); ok {
-			// if the error is no value result clear the error
-			if e.Class() == class.QueryValueNoResult {
-				err = nil
-			}
-		}
-		if err != nil {
-			if tx := s.Tx(); tx == nil {
-				err = clearScope.RollbackContext(ctx)
-			}
-			return err
-		}
-	}
+	// log.Debug2f("SCOPE[%s] Patch relationship: '%s' - clear current relationship values", s.ID(), relField.NeuronName())
+	// // clear the related scope.
+	// if err = clearScope.PatchContext(ctx); err != nil {
+	// 	if e, ok := err.(errors.ClassError); ok {
+	// 		// if the error is no value result clear the error
+	// 		if e.Class() == class.QueryValueNoResult {
+	// 			err = nil
+	// 		}
+	// 	}
+	// 	if err != nil {
+	// 		if tx := s.Tx(); tx == nil {
+	// 			err = clearScope.RollbackContext(ctx)
+	// 		}
+	// 		return err
+	// 	}
+	// }
 
 	// create the related value for the scope
 	relatedValue := mapping.NewReflectValueSingle(relField.Relationship().Struct())
@@ -549,17 +546,18 @@ func patchHasManyRelationship(
 			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
 			return err
 		}
-	} else {
-		tx := clearScope.Tx()
-		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
-		if err != nil {
-			if err := clearScope.RollbackContext(ctx); err != nil {
-				return err
-			}
-			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
-			return err
-		}
 	}
+	// } else {
+	// 	tx := clearScope.Tx()
+	// 	relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
+	// 	if err != nil {
+	// 		if err := clearScope.RollbackContext(ctx); err != nil {
+	// 			return err
+	// 		}
+	// 		err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
+	// 		return err
+	// 	}
+	// }
 	relatedScope.PrimaryFilters = append(relatedScope.PrimaryFilters, NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...))
 
 	log.Debug2f("SCOPE[%s][%s] Patch HasMany relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
@@ -574,16 +572,17 @@ func patchHasManyRelationship(
 				return e
 			}
 		}
-		if tx := s.Tx(); tx == nil {
-			if err := clearScope.RollbackContext(ctx); err != nil {
-				log.Errorf("Rollback failed: %v", err.Error())
-			}
-		}
-		return err
 	}
+	// 	if tx := s.Tx(); tx == nil {
+	// 		if err := clearScope.RollbackContext(ctx); err != nil {
+	// 			log.Errorf("Rollback failed: %v", err.Error())
+	// 		}
+	// 	}
+	// 	return err
+	// }
 
 	if tx := s.Tx(); tx == nil {
-		if err = clearScope.CommitContext(ctx); err != nil {
+		if err = relatedScope.CommitContext(ctx); err != nil {
 			return err
 		}
 	}

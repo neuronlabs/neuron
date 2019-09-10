@@ -441,61 +441,6 @@ func TestPatch(t *testing.T) {
 				defer clearRepository(foreignModel)
 
 				foreignModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-
-				// get the foreign relationships with the foreign key equal to the primaries of the root
-				foreignModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s := args[1].(*Scope)
-
-					foreignKeys := s.ForeignFilters
-					if assert.Len(t, foreignKeys, 1) {
-						single := foreignKeys[0]
-
-						if assert.Len(t, single.Values, 1) {
-							fv := single.Values[0]
-
-							assert.Equal(t, OpIn, fv.Operator)
-							if assert.Len(t, fv.Values, 1) {
-								assert.Contains(t, fv.Values, 3)
-							}
-						}
-					}
-
-					if fieldSet := s.Fieldset; assert.Len(t, fieldSet, 1) {
-						_, ok := s.Fieldset["id"]
-						assert.True(t, ok)
-					}
-
-					sv := s.Value.(*[]*ForeignModel)
-					(*sv) = append((*sv), &ForeignModel{ID: 4}, &ForeignModel{ID: 7})
-				}).Return(nil)
-
-				foreignModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-				// clear the relationship foreign keys
-				foreignModel.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s := args[1].(*Scope)
-
-					primaries := s.PrimaryFilters
-					if assert.Len(t, primaries, 1) {
-						single := primaries[0]
-
-						if assert.Len(t, single.Values, 1) {
-							fv := single.Values[0]
-
-							assert.Equal(t, OpIn, fv.Operator)
-							if assert.Len(t, fv.Values, 2) {
-								assert.Contains(t, fv.Values, 4)
-								assert.Contains(t, fv.Values, 7)
-							}
-						}
-					}
-
-					_, isFKSelected := s.InFieldset("ForeignKey")
-					assert.True(t, isFKSelected)
-
-					sv := s.Value.(*ForeignModel)
-					assert.Equal(t, 0, sv.ForeignKey)
-				}).Return(nil)
-
 				// patch model's with provided id's and set their's foreign keys into 'root' primary
 				foreignModel.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s := args[1].(*Scope)
@@ -514,7 +459,6 @@ func TestPatch(t *testing.T) {
 							}
 						}
 					}
-
 					_, isFKSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isFKSelected)
 
@@ -525,8 +469,6 @@ func TestPatch(t *testing.T) {
 				}).Return(nil)
 
 				foreignModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-				foreignModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-
 				hasMany.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
 				err = s.Patch()
@@ -538,12 +480,10 @@ func TestPatch(t *testing.T) {
 				hasMany.AssertNumberOfCalls(t, "Commit", 1)
 
 				// one call to foreign List - get the primary id's - a part of clear scope
-				foreignModel.AssertNumberOfCalls(t, "Begin", 2)
-				foreignModel.AssertNumberOfCalls(t, "List", 1)
-
-				// 1. clear scope, 2. patch scope
-				foreignModel.AssertNumberOfCalls(t, "Patch", 2)
-				foreignModel.AssertNumberOfCalls(t, "Commit", 2)
+				foreignModel.AssertNumberOfCalls(t, "Begin", 1)
+				// 1. patch scope
+				foreignModel.AssertNumberOfCalls(t, "Patch", 1)
+				foreignModel.AssertNumberOfCalls(t, "Commit", 1)
 			})
 
 			t.Run("Clear", func(t *testing.T) {
@@ -786,62 +726,6 @@ func TestPatch(t *testing.T) {
 					defer clearRepository(foreignModel)
 
 					foreignModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-
-					// get the foreign relationships with the foreign key equal to the primaries of the root
-					foreignModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-						s := args[1].(*Scope)
-
-						foreignKeys := s.ForeignFilters
-						if assert.Len(t, foreignKeys, 1) {
-							single := foreignKeys[0]
-
-							if assert.Len(t, single.Values, 1) {
-								fv := single.Values[0]
-
-								assert.Equal(t, OpIn, fv.Operator)
-								if assert.Len(t, fv.Values, 1) {
-									assert.Contains(t, fv.Values, model.ID)
-								}
-							}
-						}
-
-						if fieldSet := s.Fieldset; assert.Len(t, fieldSet, 1) {
-							_, ok := s.Fieldset["id"]
-							assert.True(t, ok)
-						}
-
-						sv, ok := s.Value.(*[]*ForeignModel)
-						assert.True(t, ok)
-
-						(*sv) = append((*sv), &ForeignModel{ID: 11})
-					}).Return(nil)
-
-					foreignModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-					// clear the relationship foreign keys
-					foreignModel.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-						s := args[1].(*Scope)
-
-						primaries := s.PrimaryFilters
-						if assert.Len(t, primaries, 1) {
-							single := primaries[0]
-
-							if assert.Len(t, single.Values, 1) {
-								fv := single.Values[0]
-
-								assert.Equal(t, OpIn, fv.Operator)
-								if assert.Len(t, fv.Values, 1) {
-									assert.Contains(t, fv.Values, 11)
-								}
-							}
-						}
-
-						_, isFKSelected := s.InFieldset("ForeignKey")
-						assert.True(t, isFKSelected)
-
-						sv := s.Value.(*ForeignModel)
-						assert.Equal(t, 0, sv.ForeignKey)
-					}).Return(nil)
-
 					// patch model's with provided id's and set their's foreign keys into 'root' primary
 					foreignModel.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 						s := args[1].(*Scope)
@@ -869,9 +753,8 @@ func TestPatch(t *testing.T) {
 
 						assert.Equal(t, model.ID, sv.ForeignKey)
 					}).Return(errors.NewDet(class.QueryValueNoResult, "no results"))
+					foreignModel.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 
-					foreignModel.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
-					foreignModel.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 					hasMany.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 					err = s.Patch()
 					assert.Error(t, err)
@@ -1056,9 +939,9 @@ func TestPatch(t *testing.T) {
 				relatedModel.AssertNumberOfCalls(t, "Begin", 1)
 				relatedModel.AssertNumberOfCalls(t, "List", 1)
 
-				joinModel.AssertNumberOfCalls(t, "Begin", 2)
+				joinModel.AssertNumberOfCalls(t, "Begin", 1)
 				joinModel.AssertNumberOfCalls(t, "Create", 1)
-				joinModel.AssertNumberOfCalls(t, "Commit", 2)
+				joinModel.AssertNumberOfCalls(t, "Commit", 1)
 
 				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
 				many2many.AssertNumberOfCalls(t, "Commit", 1)

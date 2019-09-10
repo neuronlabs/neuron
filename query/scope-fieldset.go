@@ -128,20 +128,15 @@ func (s *Scope) autoSelectFields() error {
 	return nil
 }
 
-func (s *Scope) isDefaultFieldset() bool {
-	return len(s.Fieldset) == len(s.Struct().Fields())
-}
-
-func (s *Scope) isPrimarySelected() bool {
-	_, ok := s.Fieldset["id"]
-	return ok
-}
-
 // fillFieldsetIfNotSet sets the fieldset to full if the fieldset is not set
 func (s *Scope) fillFieldsetIfNotSet() {
 	if s.Fieldset == nil || len(s.Fieldset) == 0 {
 		s.setAllFields()
 	}
+}
+
+func (s *Scope) isDefaultFieldset() bool {
+	return len(s.Fieldset) == len(s.Struct().Fields())
 }
 
 func (s *Scope) setAllFields() {
