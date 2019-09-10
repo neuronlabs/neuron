@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/neuronlabs/errors"
 
@@ -24,12 +25,38 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 
+	deletedAt, hasDeletedAt := s.Struct().DeletedAt()
+	if hasDeletedAt {
+		s.SelectedFields = append(s.SelectedFields, deletedAt)
+
+		v := reflect.ValueOf(s.Value).Elem().FieldByIndex(deletedAt.ReflectField().Index)
+		t := time.Now()
+		v.Set(reflect.ValueOf(&t))
+
+		patcher, ok := repo.(Patcher)
+		if !ok {
+			log.Warningf("Repository for model: '%s' doesn't implement Patcher interface", s.Struct().Type())
+			return errors.NewDetf(class.RepositoryNotImplementsPatcher, "repository: '%T' doesn't implement Patcher interface", repo)
+		}
+
+		if log.Level().IsAllowed(log.LDEBUG3) {
+			log.Debug3f("SCOPE[%s][%s] Deleting by patching the 'DeletedAt' field: %s", s.ID().String(), s.Struct().Collection(), s.String())
+		}
+		if err = patcher.Patch(ctx, s); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	dRepo, ok := repo.(Deleter)
 	if !ok {
 		log.Warningf("Repository for model: '%v' doesn't implement Deleter interface", s.Struct().Type().Name())
 		return errors.NewDetf(class.RepositoryNotImplementsDeleter, "repository: %T doesn't implement Deleter interface", repo)
 	}
 
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s][%s] deleting: %s", s.ID().String(), s.Struct().Collection(), s.String())
+	}
 	// do the delete operation
 	if err := dRepo.Delete(ctx, s); err != nil {
 		return err

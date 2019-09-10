@@ -85,9 +85,27 @@ func (m *ModelStruct) Collection() string {
 	return m.collectionType
 }
 
+// CreatedAt gets the 'CreatedAt' field for the model struct.
+func (m *ModelStruct) CreatedAt() (*StructField, bool) {
+	field, ok := m.StoreGet(createdAt)
+	if ok {
+		return field.(*StructField), ok
+	}
+	return nil, ok
+}
+
 // Config gets the model's defined confgi.ModelConfig.
 func (m *ModelStruct) Config() *config.ModelConfig {
 	return m.cfg
+}
+
+// DeletedAt gets the 'DeletedAt' field for the model struct.
+func (m *ModelStruct) DeletedAt() (*StructField, bool) {
+	field, ok := m.StoreGet(deletedAt)
+	if ok {
+		return field.(*StructField), ok
+	}
+	return nil, ok
 }
 
 // FieldByName returns field for provided name.
@@ -323,6 +341,15 @@ func (m *ModelStruct) Type() reflect.Type {
 	return m.modelType
 }
 
+// UpdatedAt gets the 'UpdatedAt' field for the model struct.
+func (m *ModelStruct) UpdatedAt() (*StructField, bool) {
+	field, ok := m.StoreGet(updatedAt)
+	if ok {
+		return field.(*StructField), ok
+	}
+	return nil, ok
+}
+
 // UseI18n returns the bool if the model struct uses i18n.
 func (m ModelStruct) UseI18n() bool {
 	return m.language != nil
@@ -347,16 +374,6 @@ func (m *ModelStruct) assignedFields() int {
 		assignedFields = v.(int)
 	}
 	return assignedFields
-}
-
-func (m *ModelStruct) increaseAssignedFields() {
-	var assignedFields int
-	v, ok := m.store[assignedFieldsKey]
-	if ok {
-		assignedFields = v.(int)
-	}
-	assignedFields++
-	m.store[assignedFieldsKey] = assignedFields
 }
 
 func (m *ModelStruct) checkField(field string) (*StructField, errors.DetailedError) {
@@ -385,6 +402,109 @@ func (m *ModelStruct) computeNestedIncludedCount(limit int) {
 	nestedIncludeCount := m.initComputeNestedIncludedCount(0, limit)
 
 	m.StoreSet(nestedIncludedCountKey, nestedIncludeCount)
+}
+
+func (m *ModelStruct) setTimeRelatedField(field *StructField, flag fieldFlag) error {
+	switch flag {
+	case fCreatedAt:
+		if !(field.isTime() || field.isPtrTime()) {
+			return errors.NewDetf(class.ModelFieldTag, "created at field: '%s' is not a time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated created at field for model: '%s'", m.Type().Name())
+		}
+		m.StoreSet(createdAt, field)
+	case fUpdatedAt:
+		if !(field.isTime() || field.isPtrTime()) {
+			return errors.NewDetf(class.ModelFieldTag, "updated at field: '%s' is not a time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated updated at field for model: '%s'", m.Type().Name())
+		}
+		m.StoreSet(updatedAt, field)
+	case fDeletedAt:
+		if !field.isPtrTime() {
+			return errors.NewDetf(class.ModelFieldTag, "deleted at field: '%s' is not a pointer to time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated deleted at field for model: '%s'", m.Type().Name())
+		}
+		m.StoreSet(deletedAt, field)
+	default:
+		return errors.NewDetf(class.InternalModelFlag, "invalid related field flag: '%s'", field)
+	}
+	field.setFlag(flag)
+	return nil
+}
+
+func (m *ModelStruct) findTimeRelatedFields() error {
+	namer := m.NamerFunc()
+	var err error
+	_, ok := m.CreatedAt()
+	if !ok {
+		// try to find attribute with default created at name.
+		defaultCreatedAt := namer("CreatedAt")
+		if createdAtField, ok := m.Attribute(defaultCreatedAt); ok {
+			if err = m.setTimeRelatedField(createdAtField, fCreatedAt); err != nil {
+				return err
+			}
+		}
+	}
+
+	_, ok = m.DeletedAt()
+	if !ok {
+		// try to find attribute with default created at name.
+		defaultDeletedAt := namer("DeletedAt")
+		if deletedAtField, ok := m.Attribute(defaultDeletedAt); ok {
+			if err = m.setTimeRelatedField(deletedAtField, fDeletedAt); err != nil {
+				return err
+			}
+		}
+	}
+
+	_, ok = m.UpdatedAt()
+	if !ok {
+		// try to find attribute with default created at name.
+		defaultUpdatedAt := namer("UpdatedAt")
+		if updatedAtField, ok := m.Attribute(defaultUpdatedAt); ok {
+			if err = m.setTimeRelatedField(updatedAtField, fUpdatedAt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (m *ModelStruct) findUntypedInvalidAttribute(fieldName string) (*StructField, bool) {
+	for _, attr := range m.attributes {
+		tv := attr.TagValues(annotation.Neuron)
+		_, ok := tv[annotation.FieldType]
+		if ok {
+			continue
+		}
+
+		// if the field has no field type check if it's value is not a foreign key
+		if attr.neuronName != fieldName {
+			continue
+		}
+
+		// the field is not an attribute but a foreign key.
+		delete(m.attributes, fieldName)
+		m.foreignKeys[fieldName] = attr
+		attr.fieldKind = KindForeignKey
+		return attr, true
+	}
+	return nil, false
+}
+
+func (m *ModelStruct) increaseAssignedFields() {
+	var assignedFields int
+	v, ok := m.store[assignedFieldsKey]
+	if ok {
+		assignedFields = v.(int)
+	}
+	assignedFields++
+	m.store[assignedFieldsKey] = assignedFields
 }
 
 func (m *ModelStruct) initComputeSortedFields() {
@@ -485,10 +605,15 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 		// Set field type
 		values := tagValues[annotation.FieldType]
-		if len(values) == 0 {
-			// return errors.NewDetf(class.ModelFieldTag, "StructField.annotation.FieldType struct field tag cannot be empty. Model: %s, field: %s", modelType.Name(), tField.Name)
+
+		switch len(values) {
+		case 0:
 			m.addUntaggedField(structField)
 			continue
+		case 1:
+		default:
+			err = errors.NewDetf(class.ModelFieldTag, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
+			return err
 		}
 
 		// Set field type
@@ -728,7 +853,9 @@ func (m *ModelStruct) setFieldsConfigs() error {
 			if field != sField.NeuronName() && field != sField.Name() {
 				continue
 			}
-			sField.setFlags(cfg.Flags...)
+			if err := sField.setFlags(cfg.Flags...); err != nil {
+				return err
+			}
 
 			// check if the field is a relationship
 			if !sField.isRelationship() {
@@ -893,6 +1020,9 @@ var (
 	hasForeignRelationships = hasForeignRelationshipsStore{}
 	thisIncludedCountKey    = thisIncludedCountKeyStore{}
 	nestedIncludedCountKey  = nestedIncludedCountKeyStore{}
+	createdAt               = createdAtStruct{}
+	updatedAt               = updatedAtStruct{}
+	deletedAt               = deletedAtStruct{}
 )
 
 type untaggedFieldsStore struct{}
@@ -905,3 +1035,7 @@ type beforeCounterStore struct{}
 type hasForeignRelationshipsStore struct{}
 type thisIncludedCountKeyStore struct{}
 type nestedIncludedCountKeyStore struct{}
+
+type createdAtStruct struct{}
+type updatedAtStruct struct{}
+type deletedAtStruct struct{}

@@ -87,6 +87,7 @@ type Scope struct {
 	totalIncludeCount     int
 	hasFieldNotInFieldset bool
 	defaultFieldset       bool
+	autoSelectedFields    bool
 
 	// used within the root scope as a language tag for whole query.
 	filterLock sync.Mutex

@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/neuronlabs/errors"
 
@@ -30,35 +31,63 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDetf(class.RepositoryNotImplementsPatcher, "repository: '%T' doesn't implement Patcher interface", repo)
 	}
 
-	var onlyForeignRelationships = true
-
+	updatedAt, hasUpdatedAt := s.Struct().UpdatedAt()
 	// if there are any selected fields that are not a foreign relationships
 	// (attributes, foreign keys etc, relationship-belongs-to...) do the patch process
-	if len(s.SelectedFields) == 0 || s.SelectedFields == nil {
+	if !hasUpdatedAt && (len(s.SelectedFields) == 0 || s.SelectedFields == nil) {
 		return errors.NewDet(class.QuerySelectedFieldsNotSelected, "no fields selected for patch process")
 	}
 
+	onlyForeignRelationships := true
+	var updatedAtSelected bool
 	for _, selected := range s.SelectedFields {
 		if selected.IsPrimary() {
 			if len(s.SelectedFields) == 1 {
-				return nil
+				if !hasUpdatedAt {
+					return nil
+				}
+				onlyForeignRelationships = false
 			}
 			continue
 		}
 
 		if !selected.IsRelationship() {
 			onlyForeignRelationships = false
-			break
+		} else if selected.Relationship().Kind() == mapping.RelBelongsTo {
+			onlyForeignRelationships = false
 		}
 
-		if selected.Relationship().Kind() == mapping.RelBelongsTo {
-			onlyForeignRelationships = false
-			break
+		if hasUpdatedAt && selected == updatedAt {
+			updatedAtSelected = true
 		}
 	}
 
-	if !onlyForeignRelationships {
-		log.Debug3f("SCOPE[%s][%s] patch executes", s.ID().String(), s.Struct().Collection())
+	if !onlyForeignRelationships || hasUpdatedAt {
+		if hasUpdatedAt {
+			v := reflect.ValueOf(s.Value).Elem().FieldByIndex(updatedAt.ReflectField().Index)
+
+			var setUpdatedAt bool
+			if s.autoSelectedFields {
+				setUpdatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(updatedAt.ReflectField().Type).Interface())
+			} else {
+				setUpdatedAt = !updatedAtSelected
+			}
+			if setUpdatedAt {
+				t := time.Now()
+				switch {
+				case updatedAt.IsTimePointer():
+					v.Set(reflect.ValueOf(&t))
+				case updatedAt.IsTime():
+					v.Set(reflect.ValueOf(t))
+				}
+				if !updatedAtSelected {
+					s.SelectedFields = append(s.SelectedFields, updatedAt)
+				}
+			}
+		}
+		if log.Level().IsAllowed(log.LDEBUG3) {
+			log.Debug3f("SCOPE[%s][%s] patching: %s", s.ID().String(), s.Struct().Collection(), s.String())
+		}
 		if err := patchRepo.Patch(ctx, s); err != nil {
 			return err
 		}
@@ -71,7 +100,6 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	log.Debug3f("SCOPE[%s][%s] check patch instances", s.ID().String(), s.Struct().Collection())
 	var listScope *Scope
 	if tx := s.Tx(); tx != nil {
 		listScope, err = tx.NewModelC(s.Controller(), s.Struct(), true)
@@ -87,6 +115,9 @@ func patchFunc(ctx context.Context, s *Scope) error {
 	}
 	listScope.Fieldset = map[string]*mapping.StructField{"id": listScope.Struct().Primary()}
 
+	if log.Level().IsAllowed(log.LDEBUG3) {
+		log.Debug3f("SCOPE[%s][%s] check patch with the list scope: '%s'", s.ID().String(), s.Struct().Collection(), listScope.String())
+	}
 	if err = listScope.ListContext(ctx); err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	stdErrors "errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -1206,6 +1207,168 @@ func TestPatch(t *testing.T) {
 
 				many2many.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 			})
+		})
+	})
+
+	t.Run("UpdatedAt", func(t *testing.T) {
+		type timer struct {
+			ID        int
+			UpdatedAt time.Time
+		}
+
+		c := newController(t)
+		err = c.RegisterModels(timer{})
+		require.NoError(t, err)
+
+		repo, err := c.GetRepository(timer{})
+		require.NoError(t, err)
+
+		timerRepo, ok := repo.(*Repository)
+		require.True(t, ok)
+
+		t.Run("AutoSelected", func(t *testing.T) {
+			t.Run("Zero", func(t *testing.T) {
+				s, err := NewC(c, &timer{ID: 3})
+				require.NoError(t, err)
+
+				updatedAt, ok := s.Struct().UpdatedAt()
+				require.True(t, ok)
+
+				timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				timerRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					v, ok := s.Value.(*timer)
+					require.True(t, ok)
+
+					ok, err := s.IsSelected(updatedAt)
+					require.NoError(t, err)
+					assert.True(t, ok)
+
+					assert.NotZero(t, v.UpdatedAt)
+				}).Return(nil)
+				defer clearRepository(timerRepo)
+
+				err = s.Patch()
+				require.NoError(t, err)
+
+				timerRepo.AssertNumberOfCalls(t, "Patch", 1)
+
+			})
+
+			t.Run("NonZero", func(t *testing.T) {
+				s, err := NewC(c, &timer{ID: 3, UpdatedAt: time.Now().Add(-time.Hour)})
+				require.NoError(t, err)
+
+				updatedAt, ok := s.Struct().UpdatedAt()
+				require.True(t, ok)
+
+				timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				timerRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					v, ok := s.Value.(*timer)
+					require.True(t, ok)
+
+					ok, err := s.IsSelected(updatedAt)
+					require.NoError(t, err)
+					assert.True(t, ok)
+
+					assert.True(t, time.Since(v.UpdatedAt) > time.Hour)
+				}).Return(nil)
+
+				defer clearRepository(timerRepo)
+
+				err = s.Patch()
+				require.NoError(t, err)
+
+				timerRepo.AssertNumberOfCalls(t, "Patch", 1)
+			})
+		})
+
+		t.Run("Selected", func(t *testing.T) {
+			s, err := NewC(c, &timer{ID: 3, UpdatedAt: time.Now().Add(-time.Hour)})
+			require.NoError(t, err)
+
+			updatedAt, ok := s.Struct().UpdatedAt()
+			require.True(t, ok)
+
+			err = s.SelectField("UpdatedAt")
+			require.NoError(t, err)
+
+			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				v, ok := s.Value.(*timer)
+				require.True(t, ok)
+
+				ok, err := s.IsSelected(updatedAt)
+				require.NoError(t, err)
+				assert.True(t, ok)
+
+				assert.True(t, time.Since(v.UpdatedAt) > time.Hour)
+			}).Return(nil)
+
+			defer clearRepository(timerRepo)
+
+			err = s.Patch()
+			require.NoError(t, err)
+
+			timerRepo.AssertNumberOfCalls(t, "Patch", 1)
+		})
+
+		t.Run("NotSelected", func(t *testing.T) {
+			type timer struct {
+				ID        int
+				UpdatedAt *time.Time
+			}
+
+			c := newController(t)
+			err = c.RegisterModels(timer{})
+			require.NoError(t, err)
+
+			repo, err := c.GetRepository(timer{})
+			require.NoError(t, err)
+
+			timerRepo, ok := repo.(*Repository)
+			require.True(t, ok)
+
+			s, err := NewC(c, &timer{ID: 3})
+			require.NoError(t, err)
+
+			updatedAt, ok := s.Struct().UpdatedAt()
+			require.True(t, ok)
+
+			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				v, ok := s.Value.(*timer)
+				require.True(t, ok)
+
+				ok, err := s.IsSelected(updatedAt)
+				require.NoError(t, err)
+				assert.True(t, ok)
+				if assert.NotNil(t, v.UpdatedAt) {
+					assert.True(t, time.Since(*v.UpdatedAt) < time.Second)
+				}
+			}).Return(nil)
+
+			defer clearRepository(timerRepo)
+
+			err = s.Patch()
+			require.NoError(t, err)
+
+			timerRepo.AssertNumberOfCalls(t, "Patch", 1)
 		})
 	})
 }

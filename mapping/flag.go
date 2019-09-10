@@ -2,6 +2,10 @@ package mapping
 
 type fieldFlag int
 
+func (f fieldFlag) containsFlag(other fieldFlag) bool {
+	return f&other != 0
+}
+
 // field flags
 const (
 	// fDefault is a default flag value
@@ -38,4 +42,10 @@ const (
 	fNestedStruct
 	// fNested is a flag used to mark field as nested.
 	fNestedField
+	// fCreatedAt defines the created at field
+	fCreatedAt
+	// fUpdatedAt defines the updated at field
+	fUpdatedAt
+	// fDeletedAt defines the deleted at field
+	fDeletedAt
 )

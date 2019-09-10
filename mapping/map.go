@@ -95,6 +95,7 @@ func (m *ModelMap) ModelByName(name string) *ModelStruct {
 // RegisterModels registers the model within the model map container.
 func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	// iterate over models and register one by one
+	var err error
 	for _, model := range models {
 		// build the model's structure and set into model map.
 		mStruct, err := buildModelStruct(model, m.NamerFunc)
@@ -102,7 +103,7 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			return err
 		}
 
-		if err := m.Set(mStruct); err != nil {
+		if err = m.Set(mStruct); err != nil {
 			continue
 		}
 
@@ -128,43 +129,45 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			}
 		}
 		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
-		if err := mStruct.setFieldsConfigs(); err != nil {
-			return err
-		}
 	}
 
 	for _, modelStruct := range m.models {
-		if err := m.setUntaggedFields(modelStruct); err != nil {
+		if err = m.setUntaggedFields(modelStruct); err != nil {
 			return err
 		}
 
 		if modelStruct.assignedFields() == 0 {
-			err := errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
+			err = errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
 			return err
 		}
 
 		if modelStruct.primary == nil {
-			err := errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
+			err = errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
+			return err
+		}
+		if err = modelStruct.setFieldsConfigs(); err != nil {
 			return err
 		}
 	}
 
 	for _, model := range m.models {
-		if err := m.setModelRelationships(model); err != nil {
+		if err = m.setModelRelationships(model); err != nil {
 			return err
 		}
 
-		if err := model.initCheckFieldTypes(); err != nil {
+		if err = model.initCheckFieldTypes(); err != nil {
 			return err
 		}
 		model.initComputeSortedFields()
+		m.setByCollection(model)
 
-		m.SetByCollection(model)
+		if err = model.findTimeRelatedFields(); err != nil {
+			return err
+		}
 	}
 
 	m.computeNestedIncludedCount()
-	err := m.setRelationships()
-	if err != nil {
+	if err = m.setRelationships(); err != nil {
 		return err
 	}
 	return nil
@@ -189,8 +192,8 @@ func (m *ModelMap) Set(value *ModelStruct) error {
 	return nil
 }
 
-// SetByCollection sets the model by it's collection.
-func (m *ModelMap) SetByCollection(ms *ModelStruct) {
+// setByCollection sets the model by it's collection.
+func (m *ModelMap) setByCollection(ms *ModelStruct) {
 	m.collections[ms.Collection()] = ms.Type()
 }
 
@@ -400,38 +403,74 @@ func (m *ModelMap) setRelationships() error {
 
 				// search for the foreign key within the given model
 				fk, ok := model.ForeignKey(fkeyName)
-				if !ok {
-					if !taggedForeign {
-						// check if the model might have a name of belong's to
-						modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
-						// check if the foreign key would be the name of the related structure
-						otherFK, ok := model.ForeignKey(m.NamerFunc(modelsForeign))
-						if ok {
-							relationship.kind = RelBelongsTo
-							relationship.foreignKey = otherFK
-							continue
-						}
-					}
-
-					// if none of the foreign were found within the 'model', try to find it within
-					// related model. It would be then a 'HasOne' relationship
-					fk, ok = relationship.mStruct.ForeignKey(fkeyName)
-					if !ok {
-						modelsForeign := relField.mStruct.Type().Name() + "ID"
-						fk, ok = relationship.mStruct.ForeignKey(m.NamerFunc(modelsForeign))
-						if !ok {
-							// provided invalid foreign field name
-							return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
-						}
-					}
-					// if the foreign key is not found it must be a has one model or an invalid field name was provided
-					relationship.setKind(RelHasOne)
+				if ok {
+					relationship.setKind(RelBelongsTo)
 					relationship.foreignKey = fk
 					continue
 				}
-				relationship.kind = RelBelongsTo
-				// set the foreign key for the given relationship
-				relationship.foreignKey = fk
+
+				// if the foreign key is not found it must be a has one model or an invalid field name was provided
+				if !taggedForeign {
+					// check if the model might have a name of belong's to
+					modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
+					// check if the foreign key would be the name of the related structure
+					relatedTypeName := m.NamerFunc(modelsForeign)
+					fk, ok = model.ForeignKey(relatedTypeName)
+					if !ok {
+						fk, ok = model.findUntypedInvalidAttribute(relatedTypeName)
+					}
+					if ok {
+						relationship.kind = RelBelongsTo
+						relationship.foreignKey = fk
+						continue
+					}
+				}
+
+				fk, ok = model.findUntypedInvalidAttribute(fkeyName)
+				if ok {
+					relationship.setKind(RelBelongsTo)
+					relationship.foreignKey = fk
+					continue
+				}
+
+				// if none of the foreign were found within the 'model', try to find it within
+				// related model. It would be then a 'HasOne' relationship
+				fk, ok = relationship.mStruct.ForeignKey(fkeyName)
+				if ok {
+					relationship.kind = RelHasOne
+					// set the foreign key for the given relationship
+					relationship.foreignKey = fk
+					continue
+				}
+
+				fk, ok = relationship.mStruct.findUntypedInvalidAttribute(fkeyName)
+				if ok {
+					relationship.kind = RelHasOne
+					relationship.foreignKey = fk
+					continue
+				}
+
+				modelsForeign := m.NamerFunc(relField.mStruct.Type().Name() + "ID")
+
+				fk, ok = relationship.mStruct.ForeignKey(modelsForeign)
+				if ok {
+					relationship.kind = RelHasOne
+					// set the foreign key for the given relationship
+					relationship.foreignKey = fk
+					continue
+				}
+
+				fk, ok = relationship.mStruct.findUntypedInvalidAttribute(modelsForeign)
+				if ok {
+					relationship.kind = RelHasOne
+					// set the foreign key for the given relationship
+					relationship.foreignKey = fk
+					continue
+				}
+
+				// provided invalid foreign field name
+				return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
+
 			}
 		}
 
@@ -521,6 +560,12 @@ func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
 		}
 
 		if err = model.setAttribute(field); err != nil {
+			return err
+		}
+	}
+
+	for _, field := range untaggedFields {
+		if err = field.setTagValues(); err != nil {
 			return err
 		}
 	}
@@ -618,7 +663,9 @@ func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc namer.Nam
 						return nil, errors.NewDetf(class.ModelFieldType, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.reflectField.Type, nestedField.structField.Name())
 					}
 				case annotation.Flags:
-					nestedField.structField.setFlags(tValue...)
+					if err := nestedField.structField.setFlags(tValue...); err != nil {
+						return nil, err
+					}
 				}
 			}
 		}

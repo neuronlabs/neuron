@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -621,5 +622,45 @@ func TestDelete(t *testing.T) {
 
 			many2many.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 		})
+	})
+
+	t.Run("TimeRelated", func(t *testing.T) {
+		// test models 'DeletedAt' field.
+		type timer struct {
+			ID        int
+			DeletedAt *time.Time
+		}
+
+		c := newController(t)
+		err := c.RegisterModels(timer{})
+		require.NoError(t, err)
+
+		s, err := NewC(c, &timer{ID: 3})
+		require.NoError(t, err)
+
+		repo, err := c.GetRepository(timer{})
+		require.NoError(t, err)
+
+		timerRepo, ok := repo.(*Repository)
+		require.True(t, ok)
+
+		timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+		timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+		timerRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+			s, ok := args[1].(*Scope)
+			require.True(t, ok)
+
+			tm, ok := s.Value.(*timer)
+			require.True(t, ok)
+
+			if assert.NotNil(t, tm.DeletedAt) {
+				assert.True(t, time.Since(*tm.DeletedAt) < time.Second)
+			}
+		}).Return(nil)
+
+		err = s.Delete()
+		require.NoError(t, err)
+
+		timerRepo.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
 	})
 }

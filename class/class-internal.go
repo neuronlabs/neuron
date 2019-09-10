@@ -162,6 +162,10 @@ var (
 	// InternalModelNotCast is the 'MjrInternal', 'MnrInternalModel' error classification
 	// for the internal model's that should cast to some interface.
 	InternalModelNotCast errors.Class
+
+	// InternalModelFlag is the 'MjrInternal', 'MnrInternalModel' error classification
+	// for the internal model flag errors.
+	InternalModelFlag errors.Class
 )
 
 func registerInternalModel() {
@@ -174,6 +178,7 @@ func registerInternalModel() {
 
 	InternalModelRelationNotMapped = newClass()
 	InternalModelNotCast = newClass()
+	InternalModelFlag = newClass()
 }
 
 /**
