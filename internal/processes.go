@@ -16,6 +16,7 @@ const (
 
 	// Get processes
 	ProcessFillEmptyFieldset          = "fill_empty_fieldset"
+	ProcessDeletedAtFilter            = "deleted_at_filter"
 	ProcessConvertRelationFilters     = "convert_relation_filters"
 	ProcessConvertRelationFiltersSafe = "convert_relation_filters_safe"
 	ProcessHookBeforeGet              = "hook_before_get"

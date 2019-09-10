@@ -38,10 +38,11 @@ type ModelStruct struct {
 	// filterKeys is a container for the filter keys
 	filterKeys map[string]*StructField
 	// sortScopeCount is the number of sortable fields in the model
-	sortScopeCount int
-	isJoin         bool
-	cfg            *config.ModelConfig
-	store          map[interface{}]interface{}
+	sortScopeCount   int
+	isJoin           bool
+	cfg              *config.ModelConfig
+	store            map[interface{}]interface{}
+	structFieldCount int
 }
 
 // newModelStruct creates new model struct for given type.
@@ -103,9 +104,9 @@ func (m *ModelStruct) Config() *config.ModelConfig {
 func (m *ModelStruct) DeletedAt() (*StructField, bool) {
 	field, ok := m.StoreGet(deletedAt)
 	if ok {
-		return field.(*StructField), ok
+		return field.(*StructField), true
 	}
-	return nil, ok
+	return nil, false
 }
 
 // FieldByName returns field for provided name.
@@ -334,6 +335,11 @@ func (m *ModelStruct) StructFields() (fields []*StructField) {
 		fields = append(fields, f)
 	}
 	return fields
+}
+
+// StructFieldCount returns the number of struct fields.
+func (m *ModelStruct) StructFieldCount() int {
+	return m.structFieldCount
 }
 
 // Type returns model's reflect.Type.

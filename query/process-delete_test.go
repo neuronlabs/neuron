@@ -361,8 +361,7 @@ func TestDelete(t *testing.T) {
 						}
 					}
 
-					isSelected, err := s.IsSelected("ForeignKey")
-					require.NoError(t, err)
+					_, isSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isSelected)
 				}).Return(nil)
 
@@ -470,9 +469,7 @@ func TestDelete(t *testing.T) {
 					}
 				}
 
-				isFKSelected, err := s.IsSelected("ForeignKey")
-				require.NoError(t, err)
-
+				_, isFKSelected := s.InFieldset("ForeignKey")
 				assert.True(t, isFKSelected)
 
 				sv := s.Value.(*ForeignModel)

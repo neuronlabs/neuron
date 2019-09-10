@@ -361,8 +361,7 @@ func TestPatch(t *testing.T) {
 						}
 					}
 
-					isSelected, err := s.IsSelected("ForeignKey")
-					require.NoError(t, err)
+					_, isSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isSelected)
 				}).Return(nil)
 
@@ -490,9 +489,7 @@ func TestPatch(t *testing.T) {
 						}
 					}
 
-					isFKSelected, err := s.IsSelected("ForeignKey")
-					require.NoError(t, err)
-
+					_, isFKSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isFKSelected)
 
 					sv := s.Value.(*ForeignModel)
@@ -518,9 +515,7 @@ func TestPatch(t *testing.T) {
 						}
 					}
 
-					isFKSelected, err := s.IsSelected("ForeignKey")
-					require.NoError(t, err)
-
+					_, isFKSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isFKSelected)
 
 					sv, ok := s.Value.(*ForeignModel)
@@ -653,9 +648,7 @@ func TestPatch(t *testing.T) {
 						}
 					}
 
-					isFKSelected, err := s.IsSelected("ForeignKey")
-					require.NoError(t, err)
-
+					_, isFKSelected := s.InFieldset("ForeignKey")
 					assert.True(t, isFKSelected)
 
 					sv := s.Value.(*ForeignModel)
@@ -842,9 +835,7 @@ func TestPatch(t *testing.T) {
 							}
 						}
 
-						isFKSelected, err := s.IsSelected("ForeignKey")
-						require.NoError(t, err)
-
+						_, isFKSelected := s.InFieldset("ForeignKey")
 						assert.True(t, isFKSelected)
 
 						sv := s.Value.(*ForeignModel)
@@ -870,9 +861,7 @@ func TestPatch(t *testing.T) {
 							}
 						}
 
-						isFKSelected, err := s.IsSelected("ForeignKey")
-						require.NoError(t, err)
-
+						_, isFKSelected := s.InFieldset("ForeignKey")
 						assert.True(t, isFKSelected)
 
 						sv, ok := s.Value.(*ForeignModel)
@@ -1243,8 +1232,7 @@ func TestPatch(t *testing.T) {
 					v, ok := s.Value.(*timer)
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(updatedAt)
-					require.NoError(t, err)
+					_, ok = s.InFieldset(updatedAt)
 					assert.True(t, ok)
 
 					assert.NotZero(t, v.UpdatedAt)
@@ -1274,8 +1262,7 @@ func TestPatch(t *testing.T) {
 					v, ok := s.Value.(*timer)
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(updatedAt)
-					require.NoError(t, err)
+					_, ok = s.InFieldset(updatedAt)
 					assert.True(t, ok)
 
 					assert.True(t, time.Since(v.UpdatedAt) > time.Hour)
@@ -1297,7 +1284,7 @@ func TestPatch(t *testing.T) {
 			updatedAt, ok := s.Struct().UpdatedAt()
 			require.True(t, ok)
 
-			err = s.SelectField("UpdatedAt")
+			err = s.SetFields("UpdatedAt")
 			require.NoError(t, err)
 
 			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
@@ -1309,8 +1296,7 @@ func TestPatch(t *testing.T) {
 				v, ok := s.Value.(*timer)
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(updatedAt)
-				require.NoError(t, err)
+				_, ok = s.InFieldset(updatedAt)
 				assert.True(t, ok)
 
 				assert.True(t, time.Since(v.UpdatedAt) > time.Hour)
@@ -1355,8 +1341,7 @@ func TestPatch(t *testing.T) {
 				v, ok := s.Value.(*timer)
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(updatedAt)
-				require.NoError(t, err)
+				_, ok = s.InFieldset(updatedAt)
 				assert.True(t, ok)
 				if assert.NotNil(t, v.UpdatedAt) {
 					assert.True(t, time.Since(*v.UpdatedAt) < time.Second)

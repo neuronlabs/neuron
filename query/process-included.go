@@ -16,7 +16,7 @@ import (
 //
 // 	NOTE: this should take related values with respect to the collection fieldset.
 func getIncludedFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 
@@ -101,7 +101,7 @@ func getIncludedFunc(ctx context.Context, s *Scope) error {
 }
 
 func getIncludedSafeFunc(ctx context.Context, s *Scope) error {
-	if _, ok := s.StoreGet(processErrorKey); ok {
+	if s.Error != nil {
 		return nil
 	}
 

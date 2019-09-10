@@ -596,11 +596,8 @@ func TestCreateTransactions(t *testing.T) {
 					createdAt, ok := s.Struct().CreatedAt()
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(createdAt)
-					require.NoError(t, err)
-
-					// if the value is auto selected  with zero value it should be created
-					assert.True(t, ok, "%v", s.SelectedFields)
+					_, ok = s.InFieldset(createdAt)
+					assert.True(t, ok, "%v", s.Fieldset)
 
 					tm := s.Value.(*ptrTimer)
 					tm.ID = 3
@@ -627,9 +624,7 @@ func TestCreateTransactions(t *testing.T) {
 					createdAt, ok := s.Struct().CreatedAt()
 					require.True(t, ok)
 
-					ok, err := s.IsSelected(createdAt)
-					require.NoError(t, err)
-
+					_, ok = s.InFieldset(createdAt)
 					assert.True(t, ok)
 
 					tm := s.Value.(*timer)
@@ -646,7 +641,7 @@ func TestCreateTransactions(t *testing.T) {
 			s, err := NewC(c, &timer{ID: 3})
 			require.NoError(t, err)
 
-			err = s.SelectField("ID")
+			err = s.SetFields("ID")
 			require.NoError(t, err)
 
 			// timerRepo
@@ -660,11 +655,9 @@ func TestCreateTransactions(t *testing.T) {
 				createdAt, ok := s.Struct().CreatedAt()
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(createdAt)
-				require.NoError(t, err)
-
+				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autoSelectedFields)
+				assert.False(t, s.autosetFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)
@@ -681,7 +674,7 @@ func TestCreateTransactions(t *testing.T) {
 			s, err := NewC(c, &timer{ID: 3, CreatedAt: time.Now().Add(-time.Hour)})
 			require.NoError(t, err)
 
-			err = s.SelectFields("ID", "CreatedAt")
+			err = s.SetFields("ID", "CreatedAt")
 			require.NoError(t, err)
 
 			// timerRepo
@@ -695,11 +688,9 @@ func TestCreateTransactions(t *testing.T) {
 				createdAt, ok := s.Struct().CreatedAt()
 				require.True(t, ok)
 
-				ok, err := s.IsSelected(createdAt)
-				require.NoError(t, err)
-
+				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autoSelectedFields)
+				assert.False(t, s.autosetFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)

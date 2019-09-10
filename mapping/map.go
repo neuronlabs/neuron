@@ -170,6 +170,10 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	if err = m.setRelationships(); err != nil {
 		return err
 	}
+
+	for _, model := range m.models {
+		model.structFieldCount = len(model.StructFields())
+	}
 	return nil
 }
 

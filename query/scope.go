@@ -33,11 +33,8 @@ type Scope struct {
 	// Value is the values or / value of the queried object / objects
 	Value interface{}
 
-	// SelectedFields are the fields that were updated
-	SelectedFields []*mapping.StructField
-	// Fieldset represents fields used for this query scope - jsonapi 'fields[collection]'
+	// Fieldset represents fields used specified to get / update for this query scope
 	Fieldset map[string]*mapping.StructField
-
 	// CollectionScopes contains filters, fieldsets and values for included collections
 	// every collection that is inclued would contain it's subscope
 	// if filters, fieldsets are set for non-included scope error should occur
@@ -73,12 +70,16 @@ type Scope struct {
 	// SubscopesChain is the array of the scope's used for committing or rolling back the transaction.
 	SubscopesChain []*Scope
 
+	// Error defines the process error.
+	Error error
+
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
 
 	isMany bool
 	kind   Kind
 
+	autosetFields bool
 	// CollectionScope is a pointer to the scope containing the collection root
 	collectionScope *Scope
 	// rootScope is the root of all scopes where the query begins
@@ -86,8 +87,6 @@ type Scope struct {
 
 	totalIncludeCount     int
 	hasFieldNotInFieldset bool
-	defaultFieldset       bool
-	autoSelectedFields    bool
 
 	// used within the root scope as a language tag for whole query.
 	filterLock sync.Mutex
@@ -136,13 +135,6 @@ func New(model interface{}) (*Scope, error) {
 // should not be added again.
 func (s *Scope) AddTxChain(sub *Scope) {
 	s.SubscopesChain = append(s.SubscopesChain, sub)
-}
-
-// AppendSelectedFields adds provided fields into the scope's selected fields.
-// This would affect the Create or Patch processes where the SelectedFields are taken
-// as the unmarshaled fields. Returns error if the field is already selected.
-func (s *Scope) AppendSelectedFields(fields ...interface{}) error {
-	return s.selectFields(false, fields...)
 }
 
 // Begin begins the transaction for the provided scope with the default Options.
@@ -359,7 +351,7 @@ func (s *Scope) String() string {
 
 	// Fieldset
 	sb.WriteString(" Fieldset")
-	if s.defaultFieldset {
+	if s.isDefaultFieldset() {
 		sb.WriteString("(default)")
 	}
 	sb.WriteString(": [")
@@ -372,17 +364,6 @@ func (s *Scope) String() string {
 		i++
 	}
 	sb.WriteRune(']')
-
-	if len(s.SelectedFields) > 0 {
-		sb.WriteString(" Selected Fields: [")
-		for i, field := range s.SelectedFields {
-			sb.WriteString(field.NeuronName())
-			if i != len(s.SelectedFields)-1 {
-				sb.WriteRune(',')
-			}
-		}
-		sb.WriteString("]")
-	}
 
 	// Primary Filters
 	if len(s.PrimaryFilters) > 0 {
@@ -958,16 +939,10 @@ func newRootScope(modelStruct *mapping.ModelStruct) *Scope {
 func newScope(modelStruct *mapping.ModelStruct) *Scope {
 	s := &Scope{
 		// TODO: set the scope's id based on the domain
-		id:              uuid.New(),
-		mStruct:         modelStruct,
-		Fieldset:        make(map[string]*mapping.StructField),
-		store:           map[interface{}]interface{}{},
-		defaultFieldset: true,
-	}
-
-	// set all fields
-	for _, field := range modelStruct.Fields() {
-		s.Fieldset[field.NeuronName()] = field
+		id:       uuid.New(),
+		mStruct:  modelStruct,
+		Fieldset: make(map[string]*mapping.StructField),
+		store:    map[interface{}]interface{}{},
 	}
 
 	if log.Level() <= log.LDEBUG2 {

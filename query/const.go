@@ -23,18 +23,18 @@ const (
 	operatorEqualRaw        = "$eq"
 	operatorInRaw           = "$in"
 	operatorNotEqualRaw     = "$ne"
-	operatorNotInRaw        = "$notin"
+	operatorNotInRaw        = "$not_in"
 	operatorGreaterThanRaw  = "$gt"
 	operatorGreaterEqualRaw = "$ge"
 	operatorLessThanRaw     = "$lt"
 	operatorLessEqualRaw    = "$le"
-	operatorIsNullRaw       = "$isnull"
-	operatorNotNullRaw      = "$notnull"
+	operatorIsNullRaw       = "$is_null"
+	operatorNotNullRaw      = "$not_null"
 	operatorExistsRaw       = "$exists"
-	operatorNotExistsRaw    = "$notexists"
+	operatorNotExistsRaw    = "$not_exists"
 	operatorContainsRaw     = "$contains"
-	operatorStartsWithRaw   = "$startswith"
-	operatorEndsWithRaw     = "$endswith"
+	operatorStartsWithRaw   = "$starts_with"
+	operatorEndsWithRaw     = "$ends_with"
 )
 
 // Processes constant names.
@@ -47,6 +47,7 @@ const (
 	ProcessPatchForeignRelationsSafe = internal.ProcessPatchForeignRelationsSafe
 	ProcessHookAfterCreate           = internal.ProcessHookAfterCreate
 
+	ProcessDeletedAtFilter            = internal.ProcessDeletedAtFilter
 	ProcessFillEmptyFieldset          = internal.ProcessFillEmptyFieldset
 	ProcessConvertRelationFilters     = internal.ProcessConvertRelationFilters
 	ProcessConvertRelationFiltersSafe = internal.ProcessConvertRelationFiltersSafe

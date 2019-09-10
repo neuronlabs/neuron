@@ -2,13 +2,15 @@ package query
 
 import (
 	"context"
-	"github.com/neuronlabs/errors"
-	"github.com/neuronlabs/neuron-core/class"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/neuronlabs/errors"
+
+	"github.com/neuronlabs/neuron-core/class"
 )
 
 type countModel1 struct {

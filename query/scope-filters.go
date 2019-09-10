@@ -209,7 +209,7 @@ func (s *Scope) setBelongsToForeignKeyFields() error {
 		}
 
 		var fks []*mapping.StructField
-		for _, field := range s.SelectedFields {
+		for _, field := range s.Fieldset {
 			relField, ok := s.mStruct.RelationField(field.NeuronName())
 			if ok {
 				rel := relField.Relationship()
@@ -253,15 +253,8 @@ func (s *Scope) setBelongsToForeignKeyFields() error {
 			return err
 		}
 		for _, fk := range fks {
-			var found bool
-			for _, selected := range s.SelectedFields {
-				if fk == selected {
-					found = true
-					break
-				}
-			}
-			if !found {
-				s.SelectedFields = append(s.SelectedFields, fk)
+			if _, found := s.Fieldset[fk.NeuronName()]; !found {
+				s.setFieldsetNoCheck(fk)
 			}
 		}
 	case reflect.Slice:
@@ -275,15 +268,8 @@ func (s *Scope) setBelongsToForeignKeyFields() error {
 				return err
 			}
 			for _, fk := range fks {
-				var found bool
-				for _, selected := range s.SelectedFields {
-					if fk == selected {
-						found = true
-						break
-					}
-				}
-				if !found {
-					s.SelectedFields = append(s.SelectedFields, fk)
+				if _, found := s.Fieldset[fk.NeuronName()]; !found {
+					s.setFieldsetNoCheck(fk)
 				}
 			}
 		}

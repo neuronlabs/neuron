@@ -38,6 +38,7 @@ func init() {
 
 	// get processes
 	RegisterProcessFunc(ProcessFillEmptyFieldset, fillEmptyFieldset)
+	RegisterProcessFunc(ProcessDeletedAtFilter, getNotDeletedFilter)
 	RegisterProcessFunc(ProcessConvertRelationFilters, convertRelationshipFiltersFunc)
 	RegisterProcessFunc(ProcessConvertRelationFiltersSafe, convertRelationshipFiltersSafeFunc)
 	RegisterProcessFunc(ProcessHookBeforeGet, beforeGetFunc)
@@ -98,7 +99,7 @@ func (p *Processor) Count(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Count failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -128,7 +129,7 @@ func (p *Processor) Create(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Creating failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -158,7 +159,7 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Getting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -188,7 +189,7 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Listing failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -218,7 +219,7 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Patching failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -248,7 +249,7 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Deleting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.StoreSet(processErrorKey, err)
+			s.Error = err
 			processError = err
 		}
 		select {
@@ -263,9 +264,6 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 	}
 	return processError
 }
-
-// process error key instance
-var processErrorKey = processError{}
 
 type processError struct{}
 
