@@ -3,6 +3,7 @@ package mapping
 import (
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/neuronlabs/errors"
@@ -700,4 +701,47 @@ func (f FieldKind) String() string {
 		return "Nested"
 	}
 	return "Unknown"
+}
+
+var _ sort.Interface = OrderedFields{}
+
+// OrderedFields is the wrapper over the slice of struct fields that allows to keep the fields
+// in an ordered sorting. The sorts is based on the fields index.
+type OrderedFields []*StructField
+
+// Insert inserts the field into an ordered fields slice. In order to insert the field
+// a pointer to ordered fields must be used.
+func (o *OrderedFields) Insert(field *StructField) {
+	for i, in := range *o {
+		if !o.less(in, field) {
+			(*o) = append((*o)[:i], append([]*StructField{field}, (*o)[i:]...)...)
+			break
+		}
+	}
+}
+
+// Len implements sort.Interface interface.
+func (o OrderedFields) Len() int {
+	return len(o)
+}
+
+// Less implements sort.Interface interface.
+func (o OrderedFields) Less(i, j int) bool {
+	return o.less(o[i], o[j])
+}
+
+// Swap implements sort.Interface interface.
+func (o OrderedFields) Swap(i, j int) {
+	o[i], o[j] = o[j], o[i]
+}
+
+func (o OrderedFields) less(first, second *StructField) bool {
+	var result bool
+	for k := 0; k < len(first.fieldIndex); k++ {
+		if first.fieldIndex[k] != second.fieldIndex[k] {
+			result = first.fieldIndex[k] < second.fieldIndex[k]
+			break
+		}
+	}
+	return result
 }

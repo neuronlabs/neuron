@@ -2,6 +2,7 @@ package query
 
 import (
 	"reflect"
+	"sort"
 
 	"github.com/neuronlabs/errors"
 
@@ -9,6 +10,18 @@ import (
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
 )
+
+// OrderedFieldset gets the fieldset fields sorted by the struct field's index.
+func (s *Scope) OrderedFieldset() (ordered mapping.OrderedFields) {
+	var i int
+	ordered = mapping.OrderedFields(make([]*mapping.StructField, len(s.Fieldset)))
+	for _, field := range s.Fieldset {
+		ordered[i] = field
+		i++
+	}
+	sort.Sort(ordered)
+	return ordered
+}
 
 // InFieldset checks if the provided field is in the scope's fieldset.
 func (s *Scope) InFieldset(field interface{}) (*mapping.StructField, bool) {
