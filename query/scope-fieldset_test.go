@@ -45,7 +45,8 @@ func TestOrderedFielset(t *testing.T) {
 		s, err := NewC(c, &Ordered{})
 		require.NoError(t, err)
 
-		s.SetFields("first", "id", "third")
+		err = s.SetFields("first", "id", "third")
+		require.NoError(t, err)
 
 		ordered := s.OrderedFieldset()
 		for i, field := range ordered {
