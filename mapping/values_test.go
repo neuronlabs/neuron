@@ -86,15 +86,15 @@ func TestValues(t *testing.T) {
 
 		assert.Equal(t, uint(65), v)
 
-		v, err = attr.ValueFromString("-12")
-		require.Error(t, err)
+		_, err = attr.ValueFromString("-12")
+		assert.Error(t, err)
 
 		attr, ok = mStruct.Field("Time")
 		require.True(t, ok)
 
 		tm := time.Now()
 
-		v, err = attr.ValueFromString(strconv.FormatInt(tm.UnixNano(), 10))
+		_, err = attr.ValueFromString(strconv.FormatInt(tm.UnixNano(), 10))
 		assert.Error(t, err)
 
 		attr, ok = mStruct.Field("Flt")
@@ -105,7 +105,7 @@ func TestValues(t *testing.T) {
 			assert.InDelta(t, -12.321, v, 0.001)
 		}
 
-		v, err = attr.ValueFromString("invalid")
+		_, err = attr.ValueFromString("invalid")
 		assert.Error(t, err)
 
 		attr, ok = mStruct.Field("Bl")
