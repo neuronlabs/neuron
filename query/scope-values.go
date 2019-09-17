@@ -64,8 +64,8 @@ func (s *Scope) getForeignKeyValues(foreign *mapping.StructField) ([]interface{}
 	if s.mStruct != foreign.Struct() {
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
-	} else if foreign.FieldKind() != mapping.KindForeignKey {
-		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.FieldKind())
+	} else if foreign.Kind() != mapping.KindForeignKey {
+		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.Kind())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
 	} else if s.Value == nil {
 		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")
@@ -121,8 +121,8 @@ func (s *Scope) getUniqueForeignKeyValues(foreign *mapping.StructField) ([]inter
 	if s.mStruct != foreign.Struct() {
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
-	} else if foreign.FieldKind() != mapping.KindForeignKey {
-		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.FieldKind())
+	} else if foreign.Kind() != mapping.KindForeignKey {
+		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.Kind())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
 	} else if s.Value == nil {
 		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")

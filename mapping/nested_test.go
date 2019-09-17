@@ -64,28 +64,28 @@ func TestNestedFields(t *testing.T) {
 		// float field
 		nestedField, ok := nested.fields["float"]
 		if assert.True(t, ok) {
-			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, nestedField.structField.Kind(), KindNested)
 			assert.Equal(t, reflect.Float64, nestedField.structField.reflectField.Type.Kind())
 		}
 
 		// nested int field
 		nestedField, ok = nested.fields["int"]
 		if assert.True(t, ok) {
-			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, nestedField.structField.Kind(), KindNested)
 			assert.Equal(t, reflect.Int, nestedField.structField.reflectField.Type.Kind())
 		}
 
 		// int
 		nestedField, ok = nested.fields["string"]
 		if assert.True(t, ok) {
-			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, nestedField.structField.Kind(), KindNested)
 			assert.Equal(t, reflect.String, nestedField.structField.reflectField.Type.Kind())
 		}
 
 		// slice
 		nestedField, ok = nested.fields["slice"]
 		if assert.True(t, ok) {
-			assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+			assert.Equal(t, nestedField.structField.Kind(), KindNested)
 			assert.Equal(t, reflect.Slice, nestedField.structField.reflectField.Type.Kind())
 			assert.True(t, nestedField.structField.isSlice())
 		}
@@ -113,13 +113,13 @@ func TestNestedFields(t *testing.T) {
 				if assert.True(t, ok) {
 					assert.Equal(t, reflect.Int, subNestedField.structField.reflectField.Type.Kind())
 					assert.Equal(t, nestedInNested, subNestedField.root)
-					assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+					assert.Equal(t, nestedField.structField.Kind(), KindNested)
 				}
 
 				subNestedField, ok = nestedInNested.fields["second"]
 				if assert.True(t, ok) {
 					assert.Equal(t, reflect.Float64, subNestedField.structField.reflectField.Type.Kind())
-					assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+					assert.Equal(t, nestedField.structField.Kind(), KindNested)
 					assert.True(t, subNestedField.structField.isOmitEmpty())
 				}
 			}
@@ -128,13 +128,13 @@ func TestNestedFields(t *testing.T) {
 		t.Run("Tagged", func(t *testing.T) {
 			nestedField, ok = nested.fields["float-tag"]
 			if assert.True(t, ok) {
-				assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+				assert.Equal(t, nestedField.structField.Kind(), KindNested)
 				assert.Equal(t, reflect.Float64, nestedField.structField.reflectField.Type.Kind())
 			}
 
 			nestedField, ok = nested.fields["int-tag"]
 			if assert.True(t, ok) {
-				assert.Equal(t, nestedField.structField.FieldKind(), KindNested)
+				assert.Equal(t, nestedField.structField.Kind(), KindNested)
 				assert.Equal(t, reflect.Int, nestedField.structField.reflectField.Type.Kind())
 			}
 		})

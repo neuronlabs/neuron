@@ -95,6 +95,7 @@ func TestMappedRelationships(t *testing.T) {
 
 			second, err := m.GetModelStruct(Model2WithMany2Many{})
 			require.NoError(t, err)
+
 			t.Run("First", func(t *testing.T) {
 				relField, ok := first.relationships["synced"]
 				require.True(t, ok)

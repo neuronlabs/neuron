@@ -128,7 +128,7 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 				modelConfig.RepositoryName = repositoryNamer.RepositoryName()
 			}
 		}
-		mStruct.StoreSet(namerFuncKey, m.NamerFunc)
+		mStruct.namerFunc = m.NamerFunc
 	}
 
 	for _, modelStruct := range m.models {
@@ -510,7 +510,7 @@ func (m *ModelMap) setRelationships() error {
 	for _, model := range m.models {
 		for _, relField := range model.relationships {
 			if relField.Relationship().kind != RelBelongsTo {
-				model.StoreSet(hasForeignRelationships, struct{}{})
+				model.hasForeignRelationships = true
 				return nil
 			}
 		}
@@ -601,7 +601,7 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 	}
 
 	modelStruct = newModelStruct(modelType, collection)
-	modelStruct.StoreSet(namerFuncKey, namerFunc)
+	modelStruct.namerFunc = namerFunc
 	// Define the function definition
 
 	// map fields
@@ -610,16 +610,16 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 	}
 
 	if ptrValue.MethodByName("BeforeList").IsValid() {
-		modelStruct.StoreSet(beforeListerKey, struct{}{})
+		modelStruct.isBeforeLister = true
 	}
 	if ptrValue.MethodByName("AfterList").IsValid() {
-		modelStruct.StoreSet(afterListerKey, struct{}{})
+		modelStruct.isAfterLister = true
 	}
 	if ptrValue.MethodByName("BeforeCount").IsValid() {
-		modelStruct.StoreSet(beforeCounterKey, struct{}{})
+		modelStruct.isBeforeCounter = true
 	}
 	if ptrValue.MethodByName("AfterCount").IsValid() {
-		modelStruct.StoreSet(afterCounterKey, struct{}{})
+		modelStruct.isAfterCounter = true
 	}
 
 	return modelStruct, nil

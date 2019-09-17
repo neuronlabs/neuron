@@ -54,25 +54,21 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 		var found bool
 		switch f := field.(type) {
 		case string:
-			if "*" == f {
+			if "*" == f && len(fields) == 1 {
 				for _, sField := range s.mStruct.Fields() {
 					s.Fieldset[sField.NeuronName()] = sField
 				}
-			} else {
-				for _, sField := range s.mStruct.Fields() {
-					if sField.NeuronName() == f || sField.Name() == f {
-						s.Fieldset[sField.NeuronName()] = sField
-						found = true
-						break
-					}
-				}
-				if !found {
-					log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-					err := errors.NewDet(class.QueryFieldsetUnknownField, "field not found in the model")
-					err.SetDetailsf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
-					return err
-				}
+				return nil
 			}
+
+			sField, ok := s.mStruct.Field(f)
+			if !ok {
+				log.Debugf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+				err := errors.NewDet(class.QueryFieldsetUnknownField, "field not found in the model")
+				err.SetDetailsf("Field: '%s' not found for model:'%s'", f, s.mStruct.Type().Name())
+				return err
+			}
+			s.Fieldset[sField.NeuronName()] = sField
 		case *mapping.StructField:
 			for _, sField := range s.mStruct.Fields() {
 				if sField == f {

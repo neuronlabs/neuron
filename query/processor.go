@@ -13,70 +13,74 @@ import (
 // processes contains registered processes mapped by their names.
 var processes = make(map[string]ProcessFunc)
 
-// RegisterProcessFunc registers the process with it's unique name.
+// RegisterProcess registers the process with it's unique name.
 // If the process is already registered the function panics.
-func RegisterProcessFunc(name string, p ProcessFunc) {
+func RegisterProcess(name string, p ProcessFunc) {
+	registerQueryProcess(name, p)
+	// store the process name internally, so that config might check the process names.
+	internal.Processes[name] = struct{}{}
+}
+
+func registerQueryProcess(name string, p ProcessFunc) {
 	_, ok := processes[name]
 	if ok {
 		panic(fmt.Errorf("Process: '%s' already registered", name))
 	}
 	log.Debugf("Registered process: '%s'.", name)
 	processes[name] = p
-	// store the process name internally, so that config might check the process names.
-	internal.Processes[name] = struct{}{}
 }
 
 func init() {
 	// create processes
-	RegisterProcessFunc(ProcessHookBeforeCreate, beforeCreateFunc)
-	RegisterProcessFunc(ProcessSetBelongsToRelations, setBelongsToRelationshipsFunc)
-	RegisterProcessFunc(ProcessCreate, createFunc)
-	RegisterProcessFunc(ProcessStoreScopePrimaries, storeScopePrimaries)
-	RegisterProcessFunc(ProcessPatchForeignRelations, patchForeignRelationshipsFunc)
-	RegisterProcessFunc(ProcessPatchForeignRelationsSafe, patchForeignRelationshipsSafeFunc)
-	RegisterProcessFunc(ProcessHookAfterCreate, afterCreateFunc)
+	registerQueryProcess(ProcessHookBeforeCreate, beforeCreateFunc)
+	registerQueryProcess(ProcessSetBelongsToRelations, setBelongsToRelationshipsFunc)
+	registerQueryProcess(ProcessCreate, createFunc)
+	registerQueryProcess(ProcessStoreScopePrimaries, storeScopePrimaries)
+	registerQueryProcess(ProcessPatchForeignRelations, patchForeignRelationshipsFunc)
+	registerQueryProcess(ProcessPatchForeignRelationsSafe, patchForeignRelationshipsSafeFunc)
+	registerQueryProcess(ProcessHookAfterCreate, afterCreateFunc)
 
 	// get processes
-	RegisterProcessFunc(ProcessFillEmptyFieldset, fillEmptyFieldset)
-	RegisterProcessFunc(ProcessDeletedAtFilter, getNotDeletedFilter)
-	RegisterProcessFunc(ProcessConvertRelationFilters, convertRelationshipFiltersFunc)
-	RegisterProcessFunc(ProcessConvertRelationFiltersSafe, convertRelationshipFiltersSafeFunc)
-	RegisterProcessFunc(ProcessHookBeforeGet, beforeGetFunc)
-	RegisterProcessFunc(ProcessGet, getFunc)
-	RegisterProcessFunc(ProcessGetForeignRelations, getForeignRelationshipsFunc)
-	RegisterProcessFunc(ProcessGetForeignRelationsSafe, getForeignRelationshipsSafeFunc)
-	RegisterProcessFunc(ProcessHookAfterGet, afterGetFunc)
+	registerQueryProcess(ProcessFillEmptyFieldset, fillEmptyFieldset)
+	registerQueryProcess(ProcessDeletedAtFilter, getNotDeletedFilter)
+	registerQueryProcess(ProcessConvertRelationFilters, convertRelationshipFiltersFunc)
+	registerQueryProcess(ProcessConvertRelationFiltersSafe, convertRelationshipFiltersSafeFunc)
+	registerQueryProcess(ProcessHookBeforeGet, beforeGetFunc)
+	registerQueryProcess(ProcessGet, getFunc)
+	registerQueryProcess(ProcessGetForeignRelations, getForeignRelationshipsFunc)
+	registerQueryProcess(ProcessGetForeignRelationsSafe, getForeignRelationshipsSafeFunc)
+	registerQueryProcess(ProcessHookAfterGet, afterGetFunc)
 
 	// List
-	RegisterProcessFunc(ProcessCheckPagination, checkPaginationFunc)
-	RegisterProcessFunc(ProcessHookBeforeList, beforeListFunc)
-	RegisterProcessFunc(ProcessList, listFunc)
-	RegisterProcessFunc(ProcessHookAfterList, afterListFunc)
-	RegisterProcessFunc(ProcessGetIncluded, getIncludedFunc)
-	RegisterProcessFunc(ProcessGetIncludedSafe, getIncludedSafeFunc)
+	registerQueryProcess(ProcessCheckPagination, checkPaginationFunc)
+	registerQueryProcess(ProcessHookBeforeList, beforeListFunc)
+	registerQueryProcess(ProcessList, listFunc)
+	registerQueryProcess(ProcessHookAfterList, afterListFunc)
+	registerQueryProcess(ProcessGetIncluded, getIncludedFunc)
+	registerQueryProcess(ProcessGetIncludedSafe, getIncludedSafeFunc)
 
 	// Patch
-	RegisterProcessFunc(ProcessHookBeforePatch, beforePatchFunc)
-	RegisterProcessFunc(ProcessPatch, patchFunc)
-	RegisterProcessFunc(ProcessHookAfterPatch, afterPatchFunc)
-	RegisterProcessFunc(ProcessPatchBelongsToRelations, patchBelongsToRelationshipsFunc)
+	registerQueryProcess(ProcessHookBeforePatch, beforePatchFunc)
+	registerQueryProcess(ProcessPatch, patchFunc)
+	registerQueryProcess(ProcessHookAfterPatch, afterPatchFunc)
+	registerQueryProcess(ProcessPatchBelongsToRelations, patchBelongsToRelationshipsFunc)
 
 	// Delete
-	RegisterProcessFunc(ProcessReducePrimaryFilters, reducePrimaryFilters)
-	RegisterProcessFunc(ProcessHookBeforeDelete, beforeDeleteFunc)
-	RegisterProcessFunc(ProcessDelete, deleteFunc)
-	RegisterProcessFunc(ProcessHookAfterDelete, afterDeleteFunc)
-	RegisterProcessFunc(ProcessDeleteForeignRelations, deleteForeignRelationshipsFunc)
-	RegisterProcessFunc(ProcessDeleteForeignRelationsSafe, deleteForeignRelationshipsSafeFunc)
+	registerQueryProcess(ProcessReducePrimaryFilters, reducePrimaryFilters)
+	registerQueryProcess(ProcessHookBeforeDelete, beforeDeleteFunc)
+	registerQueryProcess(ProcessDelete, deleteFunc)
+	registerQueryProcess(ProcessHookAfterDelete, afterDeleteFunc)
+	registerQueryProcess(ProcessDeleteForeignRelations, deleteForeignRelationshipsFunc)
+	registerQueryProcess(ProcessDeleteForeignRelationsSafe, deleteForeignRelationshipsSafeFunc)
 
 	// Transactions
-	RegisterProcessFunc(ProcessTxBegin, beginTransactionFunc)
-	RegisterProcessFunc(ProcessTxCommitOrRollback, commitOrRollbackFunc)
+	registerQueryProcess(ProcessTxBegin, beginTransactionFunc)
+	registerQueryProcess(ProcessTxCommitOrRollback, commitOrRollbackFunc)
 
 	// Count
-	RegisterProcessFunc(ProcessHookBeforeCount, beforeCountProcessFunc)
-	RegisterProcessFunc(ProcessCount, countProcessFunc)
-	RegisterProcessFunc(ProcessHookAfterCount, afterCountProcessFunc)
+	registerQueryProcess(ProcessHookBeforeCount, beforeCountProcessFunc)
+	registerQueryProcess(ProcessCount, countProcessFunc)
+	registerQueryProcess(ProcessHookAfterCount, afterCountProcessFunc)
 }
 
 // ProcessFunc is the function that modifies or changes the scope value

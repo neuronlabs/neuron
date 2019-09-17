@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"github.com/spf13/viper"
 	"strings"
 	"time"
 
@@ -62,8 +63,12 @@ func (p *Processor) Validate() error {
 	return err
 }
 
-// DefaultProcessorConfig creates default config for the Processor.
-func DefaultProcessorConfig() map[string]interface{} {
+// DefaultThreadsafeProcessorConfig creates default config for the Processor.
+func DefaultThreadsafeProcessorConfig() map[string]interface{} {
+	return defaultThreadsafeProcessorConfig()
+}
+
+func defaultThreadsafeProcessorConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"default_timeout": time.Second * 30,
 		"create_processes": []string{
@@ -136,147 +141,38 @@ func DefaultProcessorConfig() map[string]interface{} {
 
 // ThreadSafeProcessor creates the goroutine safe query processor configuration.
 func ThreadSafeProcessor() *Processor {
-	return &Processor{
-		DefaultTimeout: time.Second * 30,
-		CreateProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessHookBeforeCreate,
-			internal.ProcessSetBelongsToRelations,
-			internal.ProcessCreate,
-			internal.ProcessStoreScopePrimaries,
-			internal.ProcessPatchForeignRelationsSafe,
-			internal.ProcessHookAfterCreate,
-			internal.ProcessTxCommitOrRollback,
-		},
-		GetProcesses: ProcessList{
-			internal.ProcessFillEmptyFieldset,
-			internal.ProcessConvertRelationFiltersSafe,
-			internal.ProcessHookBeforeGet,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessConvertRelationFiltersSafe,
-			internal.ProcessGet,
-			internal.ProcessGetForeignRelations,
-			internal.ProcessHookAfterGet,
-			internal.ProcessGetIncludedSafe,
-		},
-		ListProcesses: ProcessList{
-			internal.ProcessCheckPagination,
-			internal.ProcessFillEmptyFieldset,
-			internal.ProcessConvertRelationFiltersSafe,
-			internal.ProcessHookBeforeList,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessCheckPagination,
-			internal.ProcessConvertRelationFiltersSafe,
-			internal.ProcessList,
-			internal.ProcessGetForeignRelationsSafe,
-			internal.ProcessHookAfterList,
-			internal.ProcessGetIncludedSafe,
-		},
-		PatchProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessHookBeforePatch,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessPatchBelongsToRelations,
-			internal.ProcessPatch,
-			internal.ProcessPatchForeignRelationsSafe,
-			internal.ProcessHookAfterPatch,
-			internal.ProcessTxCommitOrRollback,
-		},
-		DeleteProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessHookBeforeDelete,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessDelete,
-			internal.ProcessDeleteForeignRelationsSafe,
-			internal.ProcessHookAfterDelete,
-			internal.ProcessTxCommitOrRollback,
-		},
-		CountProcesses: ProcessList{
-			internal.ProcessConvertRelationFiltersSafe,
-			internal.ProcessHookBeforeCount,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessCount,
-			internal.ProcessHookAfterCount,
-		},
+	p := &Processor{}
+	v := viper.New()
+
+	k := "ts_processor"
+	v.Set(k, defaultThreadsafeProcessorConfig())
+	err := v.UnmarshalKey(k, p)
+	if err != nil {
+		panic(err)
 	}
+	return p
 }
 
 // ConcurrentProcessor creates the concurrent processor confuration.
 func ConcurrentProcessor() *Processor {
-	return &Processor{
-		DefaultTimeout: time.Second * 30,
-		CreateProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessHookBeforeCreate,
-			internal.ProcessSetBelongsToRelations,
-			internal.ProcessCreate,
-			internal.ProcessStoreScopePrimaries,
-			internal.ProcessPatchForeignRelations,
-			internal.ProcessHookAfterCreate,
-			internal.ProcessTxCommitOrRollback,
-		},
-		GetProcesses: ProcessList{
-			internal.ProcessCheckPagination,
-			internal.ProcessFillEmptyFieldset,
-			internal.ProcessConvertRelationFilters,
-			internal.ProcessHookBeforeGet,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessCheckPagination,
-			internal.ProcessConvertRelationFilters,
-			internal.ProcessGet,
-			internal.ProcessGetForeignRelations,
-			internal.ProcessHookAfterGet,
-		},
-		ListProcesses: ProcessList{
-			internal.ProcessCheckPagination,
-			internal.ProcessFillEmptyFieldset,
-			internal.ProcessConvertRelationFilters,
-			internal.ProcessHookBeforeList,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessCheckPagination,
-			internal.ProcessConvertRelationFilters,
-			internal.ProcessList,
-			internal.ProcessGetForeignRelations,
-			internal.ProcessHookAfterList,
-			internal.ProcessGetIncluded,
-		},
-		PatchProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessHookBeforePatch,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessPatchBelongsToRelations,
-			internal.ProcessPatch,
-			internal.ProcessPatchForeignRelations,
-			internal.ProcessHookAfterPatch,
-			internal.ProcessTxCommitOrRollback,
-		},
-		DeleteProcesses: ProcessList{
-			internal.ProcessTxBegin,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessHookBeforeDelete,
-			internal.ProcessReducePrimaryFilters,
-			internal.ProcessDelete,
-			internal.ProcessDeleteForeignRelations,
-			internal.ProcessHookAfterDelete,
-			internal.ProcessTxCommitOrRollback,
-		},
-		CountProcesses: ProcessList{
-			internal.ProcessConvertRelationFilters,
-			internal.ProcessHookBeforeCount,
-			internal.ProcessDeletedAtFilter,
-			internal.ProcessCount,
-			internal.ProcessHookAfterCount,
-		},
+	p := &Processor{}
+	v := viper.New()
+
+	k := "ts_processor"
+	v.Set(k, defaultConcurrentProcessorConfig())
+	err := v.UnmarshalKey(k, p)
+	if err != nil {
+		panic(err)
 	}
+	return p
 }
 
 // DefaultConcurrentProcessorConfig creates default concurrent config for the Processor.
 func DefaultConcurrentProcessorConfig() map[string]interface{} {
+	return defaultConcurrentProcessorConfig()
+}
+
+func defaultConcurrentProcessorConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"default_timeout": time.Second * 30,
 		"create_processes": []string{

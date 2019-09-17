@@ -100,7 +100,7 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relNam
 			sb.WriteRune('=')
 		}
 		for _, val := range fv.Values {
-			f.StructField.StringValues(val, &vals)
+			mapping.StringValues(val, &vals)
 		}
 
 		for i, v := range vals {
@@ -132,7 +132,7 @@ func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 		// [fieldname][operator]
 		var vals []string
 		for _, val := range fv.Values {
-			f.StructField.StringValues(val, &vals)
+			mapping.StringValues(val, &vals)
 		}
 
 		for _, v := range vals {

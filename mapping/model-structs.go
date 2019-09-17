@@ -21,25 +21,40 @@ type ModelStruct struct {
 	modelType reflect.Type
 	// collectionType is neuron 'type' for given model
 	collectionType string
+	// struct fields is a container of all fields in the given model.
+	structFields []*StructField
+
 	// Primary is a neuron primary field
 	primary *StructField
 	// language is a field that contains the language information
 	language *StructField
+
 	// Attributes contain attribute fields
 	attributes map[string]*StructField
 	// Relationships contain neuron relationship type fields.
 	relationships map[string]*StructField
-	// fields is a container of all public fields in the given model.
-	fields []*StructField
-	// field that are ready for translations
-	i18n []*StructField
 	// ForeignKeys is a container for the foreign keys for the relationships
 	foreignKeys map[string]*StructField
 	// filterKeys is a container for the filter keys
 	filterKeys map[string]*StructField
+
 	// sortScopeCount is the number of sortable fields in the model
-	sortScopeCount   int
-	isJoin           bool
+	sortScopeCount int
+
+	// flags
+	hasForeignRelationships bool
+	isJoin                  bool
+	isAfterCounter          bool
+	isAfterLister           bool
+	isBeforeCounter         bool
+	isBeforeLister          bool
+
+	createdAt *StructField
+	updatedAt *StructField
+	deletedAt *StructField
+
+	namerFunc namer.Namer
+
 	cfg              *config.ModelConfig
 	store            map[interface{}]interface{}
 	structFieldCount int
@@ -52,6 +67,7 @@ func newModelStruct(tp reflect.Type, collection string) *ModelStruct {
 	m.relationships = make(map[string]*StructField)
 	m.foreignKeys = make(map[string]*StructField)
 	m.filterKeys = make(map[string]*StructField)
+	m.store = map[interface{}]interface{}{}
 	return m
 }
 
@@ -64,21 +80,20 @@ func (m *ModelStruct) AllowClientID() bool {
 // If the attribute doesn't exists returns nil field and false.
 func (m *ModelStruct) Attribute(field string) (*StructField, bool) {
 	s, ok := m.attributes[field]
-	if !ok {
-		for _, attrField := range m.attributes {
-			if field == attrField.Name() {
-				return attrField, true
-			}
-		}
-		return nil, false
-	}
 	return s, ok
 }
 
-// CheckField checks if the field exists within given modelstruct.
-func (m *ModelStruct) CheckField(field string) (sField *StructField, err errors.DetailedError) {
-	// TODO: Change the name of the function.
-	return m.checkField(field)
+// Attributes returns all field's with kind - 'KindAttribute' for given model.
+func (m *ModelStruct) Attributes() (attributes []*StructField) {
+	if len(m.attributes) == 0 {
+		return []*StructField{}
+	}
+	for _, field := range m.structFields {
+		if field.kind == KindAttribute {
+			attributes = append(attributes, field)
+		}
+	}
+	return attributes
 }
 
 // Collection returns model's collection.
@@ -86,72 +101,45 @@ func (m *ModelStruct) Collection() string {
 	return m.collectionType
 }
 
-// CreatedAt gets the 'CreatedAt' field for the model struct.
-func (m *ModelStruct) CreatedAt() (*StructField, bool) {
-	field, ok := m.StoreGet(createdAt)
-	if ok {
-		return field.(*StructField), ok
-	}
-	return nil, ok
-}
-
 // Config gets the model's defined confgi.ModelConfig.
 func (m *ModelStruct) Config() *config.ModelConfig {
 	return m.cfg
 }
 
-// DeletedAt gets the 'DeletedAt' field for the model struct.
-func (m *ModelStruct) DeletedAt() (*StructField, bool) {
-	field, ok := m.StoreGet(deletedAt)
-	if ok {
-		return field.(*StructField), true
-	}
-	return nil, false
+// CreatedAt gets the 'CreatedAt' field for the model struct.
+func (m *ModelStruct) CreatedAt() (*StructField, bool) {
+	return m.createdAt, m.createdAt != nil
 }
 
-// FieldByName returns field for provided name.
-// It matches both name and neuronName.
+// DeletedAt gets the 'DeletedAt' field for the model struct.
+func (m *ModelStruct) DeletedAt() (*StructField, bool) {
+	return m.deletedAt, m.deletedAt != nil
+}
+
+// Field checks if the 'field' is an 'attribute', 'primary', 'foreign' or 'relationship' field.
+func (m *ModelStruct) Field(field string) (*StructField, bool) {
+	return m.checkField(field)
+}
+
+// FieldByName returns structField by it's 'name'. It matches both reflect.StructField.Name and NeuronName.
 func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
-	for _, field := range m.fields {
+	for _, field := range m.structFields {
 		if field.neuronName == name || field.Name() == name {
 			return field, true
 		}
 	}
-	for _, fk := range m.filterKeys {
-		if fk.neuronName == name || fk.Name() == name {
-			return fk, true
-		}
-	}
 	return nil, false
 }
 
-// ForeignKey checks and returns model's foreign key field.
-// The 'fk' foreign key field name may be a Neuron name or Golang StructField name.
-func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
-	s, ok := m.foreignKeys[fk]
-	if !ok {
-		// If no NeuronName provided, check if this isn't the struct field name
-		for _, field := range m.foreignKeys {
-			if field.Name() == fk {
-				return field, true
-			}
+// Fields gets the model's primary, attribute, relationship and foreign key fields.
+func (m *ModelStruct) Fields() (fields []*StructField) {
+	for _, field := range m.structFields {
+		switch field.kind {
+		case KindPrimary, KindAttribute, KindForeignKey, KindRelationshipMultiple, KindRelationshipSingle:
+			fields = append(fields, field)
 		}
-		return nil, false
 	}
-	return s, true
-}
-
-// ForeignKeys return ForeignKey Structfields for the given model.
-func (m *ModelStruct) ForeignKeys() (foreigns []*StructField) {
-	for _, f := range m.foreignKeys {
-		foreigns = append(foreigns, f)
-	}
-	return foreigns
-}
-
-// Fields gets the model's fields.
-func (m *ModelStruct) Fields() []*StructField {
-	return m.fields
+	return fields
 }
 
 // FieldCount gets the field number for given model.
@@ -162,45 +150,65 @@ func (m *ModelStruct) FieldCount() int {
 // FilterKey return model's fitler key.
 func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
 	s, ok := m.filterKeys[fk]
-	if !ok {
-		for _, field := range m.filterKeys {
-			if field.Name() == fk {
-				return field, true
-			}
-		}
-		return nil, false
-	}
 	return s, ok
+}
+
+// FilterKeys returns the slice of filter key fields.
+func (m *ModelStruct) FilterKeys() (filterKeys []*StructField) {
+	if len(m.filterKeys) == 0 {
+		return []*StructField{}
+	}
+	for _, field := range m.structFields {
+		if field.kind == KindFilterKey {
+			filterKeys = append(filterKeys, field)
+		}
+	}
+	return filterKeys
+}
+
+// ForeignKey checks and returns model's foreign key field.
+// The 'fk' foreign key field name may be a Neuron name or Golang StructField name.
+func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
+	s, ok := m.foreignKeys[fk]
+	return s, ok
+}
+
+// ForeignKeys return ForeignKey Structfields for the given model.
+func (m *ModelStruct) ForeignKeys() (foreigns []*StructField) {
+	if len(m.foreignKeys) == 0 {
+		return []*StructField{}
+	}
+	for _, f := range m.structFields {
+		if f.kind == KindForeignKey {
+			foreigns = append(foreigns, f)
+		}
+	}
+	return foreigns
 }
 
 // HasForeignRelationships defines if the model has any foreign relationships (not a BelongsTo relationship).
 func (m *ModelStruct) HasForeignRelationships() bool {
-	_, ok := m.store[hasForeignRelationships]
-	return ok
+	return m.hasForeignRelationships
 }
 
 // IsAfterLister defines if the model implements query.AfterLister interface.
 func (m *ModelStruct) IsAfterLister() bool {
-	_, ok := m.StoreGet(afterListerKey)
-	return ok
+	return m.isAfterLister
 }
 
 // IsBeforeLister defines if the model implements query.BeforeLister interface.
 func (m *ModelStruct) IsBeforeLister() bool {
-	_, ok := m.StoreGet(beforeListerKey)
-	return ok
+	return m.isBeforeLister
 }
 
 // IsAfterCounter checks if the model implements query.AfterCounter interface.
 func (m *ModelStruct) IsAfterCounter() bool {
-	_, ok := m.StoreGet(afterCounterKey)
-	return ok
+	return m.isAfterCounter
 }
 
 // IsBeforeCounter checks if the model implements query.AfterCounter interface.
 func (m *ModelStruct) IsBeforeCounter() bool {
-	_, ok := m.StoreGet(beforeCounterKey)
-	return ok
+	return m.isBeforeCounter
 }
 
 // IsJoin defines if the model is a join table for the Many2Many relationship.
@@ -239,8 +247,7 @@ func (m *ModelStruct) MaxIncludedDepth() int {
 
 // NamerFunc returns namer func for the given Model.
 func (m *ModelStruct) NamerFunc() namer.Namer {
-	v, _ := m.StoreGet(namerFuncKey)
-	return v.(namer.Namer)
+	return m.namerFunc
 }
 
 // Primary returns model's primary field StructField.
@@ -257,8 +264,14 @@ func (m *ModelStruct) RelationField(field string) (*StructField, bool) {
 
 // RelationFields gets all model's relationship fields.
 func (m *ModelStruct) RelationFields() (relations []*StructField) {
-	for _, rel := range m.relationships {
-		relations = append(relations, rel)
+	if len(m.relationships) == 0 {
+		return []*StructField{}
+	}
+	for _, rel := range m.structFields {
+		switch rel.kind {
+		case KindRelationshipSingle, KindRelationshipMultiple:
+			relations = append(relations, rel)
+		}
 	}
 	return relations
 }
@@ -270,18 +283,12 @@ func (m *ModelStruct) SortScopeCount() int {
 
 // StoreDelete deletes the store's value at 'key'.
 func (m *ModelStruct) StoreDelete(key interface{}) {
-	if m.store == nil {
-		return
-	}
-	log.Debug2f("[STORE][%s] Delete Key: '%s'")
+	log.Debug3f("[STORE][%s] Delete Key: '%s'")
 	delete(m.store, key)
 }
 
 // StoreGet gets the value from the store at the key: 'key'.
 func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
-	if m.store == nil {
-		m.store = make(map[interface{}]interface{})
-	}
 	v, ok := m.store[key]
 	log.Debug3f("[STORE][%s] Get Key: '%v' - Value: '%v', ok: %v", m.collectionType, key, v, ok)
 	return v, ok
@@ -289,11 +296,7 @@ func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
 
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
-	if m.store == nil {
-		m.store = make(map[interface{}]interface{})
-	}
-
-	log.Debug2f("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
+	log.Debug3f("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
 	m.store[key] = value
 }
 
@@ -304,37 +307,7 @@ func (m *ModelStruct) String() string {
 
 // StructFields return all the StructFields used in the ModelStruct
 func (m *ModelStruct) StructFields() (fields []*StructField) {
-	// add primary
-	fields = append(fields, m.primary)
-
-	// add attributes
-	for _, f := range m.attributes {
-		fields = append(fields, f)
-	}
-
-	// add relationships
-	for _, f := range m.relationships {
-		fields = append(fields, f)
-	}
-
-	// add foreignkeys
-	for _, f := range m.foreignKeys {
-		fields = append(fields, f)
-	}
-
-	// add i18n fields
-	fields = append(fields, m.i18n...)
-
-	if m.language != nil {
-		// add language field
-		fields = append(fields, m.language)
-	}
-
-	// add filterKey fields
-	for _, f := range m.filterKeys {
-		fields = append(fields, f)
-	}
-	return fields
+	return m.structFields
 }
 
 // StructFieldCount returns the number of struct fields.
@@ -349,11 +322,7 @@ func (m *ModelStruct) Type() reflect.Type {
 
 // UpdatedAt gets the 'UpdatedAt' field for the model struct.
 func (m *ModelStruct) UpdatedAt() (*StructField, bool) {
-	field, ok := m.StoreGet(updatedAt)
-	if ok {
-		return field.(*StructField), ok
-	}
-	return nil, ok
+	return m.updatedAt, m.updatedAt != nil
 }
 
 // UseI18n returns the bool if the model struct uses i18n.
@@ -382,25 +351,35 @@ func (m *ModelStruct) assignedFields() int {
 	return assignedFields
 }
 
-func (m *ModelStruct) checkField(field string) (*StructField, errors.DetailedError) {
-	var (
-		hasAttribute, hasRelationship bool
-		sField                        *StructField
-	)
-
-	sField, hasAttribute = m.attributes[field]
-	if hasAttribute {
-		return sField, nil
+func (m *ModelStruct) checkField(field string) (*StructField, bool) {
+	if field == "id" || m.primary.fieldName() == field {
+		return m.primary, true
 	}
 
-	sField, hasRelationship = m.relationships[field]
-	if !hasRelationship {
-		err := errors.NewDetf(class.ModelFieldNotFound, "field: '%s' not found", field)
-		err.SetDetailsf("Collection: '%v', does not have field: '%v'.", m.collectionType, field)
-		return nil, err
+	// check neuron name at attributes
+	sField, ok := m.attributes[field]
+	if ok {
+		return sField, ok
 	}
 
-	return sField, nil
+	// check relationship name
+	sField, ok = m.relationships[field]
+	if ok {
+		return sField, ok
+	}
+
+	// check foreign key name.
+	sField, ok = m.foreignKeys[field]
+	if ok {
+		return sField, ok
+	}
+	return nil, false
+}
+
+func (m *ModelStruct) clearInitializeStoreKeys() {
+	// clear untagged fields
+	delete(m.store, untaggedFieldKey)
+	delete(m.store, assignedFieldsKey)
 }
 
 // computeNestedIncludedCount computes the included count for given limit
@@ -408,39 +387,6 @@ func (m *ModelStruct) computeNestedIncludedCount(limit int) {
 	nestedIncludeCount := m.initComputeNestedIncludedCount(0, limit)
 
 	m.StoreSet(nestedIncludedCountKey, nestedIncludeCount)
-}
-
-func (m *ModelStruct) setTimeRelatedField(field *StructField, flag fieldFlag) error {
-	switch flag {
-	case fCreatedAt:
-		if !(field.isTime() || field.isPtrTime()) {
-			return errors.NewDetf(class.ModelFieldTag, "created at field: '%s' is not a time.Time field", field.Name())
-		}
-		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(class.ModelFieldType, "duplicated created at field for model: '%s'", m.Type().Name())
-		}
-		m.StoreSet(createdAt, field)
-	case fUpdatedAt:
-		if !(field.isTime() || field.isPtrTime()) {
-			return errors.NewDetf(class.ModelFieldTag, "updated at field: '%s' is not a time.Time field", field.Name())
-		}
-		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(class.ModelFieldType, "duplicated updated at field for model: '%s'", m.Type().Name())
-		}
-		m.StoreSet(updatedAt, field)
-	case fDeletedAt:
-		if !field.isPtrTime() {
-			return errors.NewDetf(class.ModelFieldTag, "deleted at field: '%s' is not a pointer to time.Time field", field.Name())
-		}
-		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(class.ModelFieldType, "duplicated deleted at field for model: '%s'", m.Type().Name())
-		}
-		m.StoreSet(deletedAt, field)
-	default:
-		return errors.NewDetf(class.InternalModelFlag, "invalid related field flag: '%s'", field)
-	}
-	field.setFlag(flag)
-	return nil
 }
 
 func (m *ModelStruct) findTimeRelatedFields() error {
@@ -496,8 +442,11 @@ func (m *ModelStruct) findUntypedInvalidAttribute(fieldName string) (*StructFiel
 
 		// the field is not an attribute but a foreign key.
 		delete(m.attributes, fieldName)
+		delete(m.attributes, attr.fieldName())
+
 		m.foreignKeys[fieldName] = attr
-		attr.fieldKind = KindForeignKey
+		m.foreignKeys[attr.fieldName()] = attr
+		attr.kind = KindForeignKey
 		return attr, true
 	}
 	return nil, false
@@ -513,8 +462,23 @@ func (m *ModelStruct) increaseAssignedFields() {
 	m.store[assignedFieldsKey] = assignedFields
 }
 
+func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel int) int {
+	var nestedCount int
+	if level != 0 {
+		thisIncludedCount, _ := m.StoreGet(thisIncludedCountKey)
+		nestedCount += thisIncludedCount.(int)
+	}
+
+	for _, relationship := range m.relationships {
+		if level < maxNestedRelLevel {
+			nestedCount += relationship.relationship.mStruct.initComputeNestedIncludedCount(level+1, maxNestedRelLevel)
+		}
+	}
+	return nestedCount
+}
+
 func (m *ModelStruct) initComputeSortedFields() {
-	for _, sField := range m.fields {
+	for _, sField := range m.structFields {
 		if sField != nil && sField.canBeSorted() {
 			m.sortScopeCount++
 		}
@@ -525,18 +489,10 @@ func (m *ModelStruct) initComputeThisIncludedCount() {
 	m.StoreSet(thisIncludedCountKey, len(m.relationships))
 }
 
-func (m *ModelStruct) initCheckFieldTypes() error {
-	err := m.primary.initCheckFieldType()
-	if err != nil {
-		return err
-	}
-
-	for _, field := range m.fields {
-		if field != nil {
-			err = field.initCheckFieldType()
-			if err != nil {
-				return err
-			}
+func (m *ModelStruct) initCheckFieldTypes() (err error) {
+	for _, field := range m.structFields {
+		if err = field.initCheckFieldType(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -586,6 +542,8 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 		var tagValues url.Values
 		structField := newStructField(tField, m)
+		m.structFields = append(m.structFields, structField)
+
 		structField.fieldIndex = make([]int, len(fieldIndex))
 		tagValues = structField.TagValues(tag)
 
@@ -625,9 +583,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		// Set field type
 		value := values[0]
 		switch value {
-		case annotation.Primary, annotation.ID,
-			annotation.PrimaryFull, annotation.PrimaryFullS,
-			annotation.PrimaryShort:
+		case annotation.Primary, annotation.ID, annotation.PrimaryFull, annotation.PrimaryFullS, annotation.PrimaryShort:
 			err = m.setPrimaryField(structField)
 			if err != nil {
 				return err
@@ -642,19 +598,14 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			if err != nil {
 				return err
 			}
-		case annotation.ForeignKey, annotation.ForeignKeyFull,
-			annotation.ForeignKeyFullS, annotation.ForeignKeyShort:
+		case annotation.ForeignKey, annotation.ForeignKeyFull, annotation.ForeignKeyFullS, annotation.ForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
 				return err
 			}
 		case annotation.FilterKey:
-			structField.fieldKind = KindFilterKey
-			_, ok := m.FilterKey(structField.NeuronName())
-			if ok {
-				return errors.NewDetf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+			if err = m.setFilterKeyField(structField); err != nil {
+				return err
 			}
-
-			m.filterKeys[structField.neuronName] = structField
 		default:
 			return errors.NewDetf(class.ModelFieldTag, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
 		}
@@ -671,15 +622,13 @@ func (m *ModelStruct) newReflectValueSingle() reflect.Value {
 }
 
 func (m *ModelStruct) setAttribute(structField *StructField) error {
-	structField.fieldKind = KindAttribute
+	structField.kind = KindAttribute
 	// check if no duplicates
 	_, ok := m.attributes[structField.neuronName]
 	if ok {
 		return errors.NewDetf(class.ModelFieldName, "duplicated neuron attribute name: '%s' for model: '%v'.",
 			structField.neuronName, m.modelType.Name())
 	}
-
-	m.fields = append(m.fields, structField)
 
 	t := structField.ReflectField().Type
 	if t.Kind() == reflect.Ptr {
@@ -829,6 +778,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 		}
 	}
 	m.attributes[structField.neuronName] = structField
+	m.attributes[structField.fieldName()] = structField
 	return nil
 }
 
@@ -927,18 +877,30 @@ func (m *ModelStruct) setFieldsConfigs() error {
 	return nil
 }
 
+func (m *ModelStruct) setFilterKeyField(structField *StructField) error {
+	// check for duplicates
+	_, ok := m.FilterKey(structField.NeuronName())
+	if ok {
+		return errors.NewDetf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+	}
+
+	structField.kind = KindFilterKey
+	m.filterKeys[structField.neuronName] = structField
+	m.filterKeys[structField.fieldName()] = structField
+	return nil
+}
+
 func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
-	structField.fieldKind = KindForeignKey
+	structField.kind = KindForeignKey
 
 	// Check if already exists
-	_, ok := m.ForeignKey(structField.NeuronName())
+	_, ok := m.foreignKeys[structField.NeuronName()]
 	if ok {
 		return errors.NewDetf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
 	}
 
-	m.fields = append(m.fields, structField)
 	m.foreignKeys[structField.neuronName] = structField
-
+	m.foreignKeys[structField.fieldName()] = structField
 	return nil
 }
 
@@ -948,22 +910,17 @@ func (m *ModelStruct) setLanguage(f *StructField) {
 }
 
 func (m *ModelStruct) setPrimaryField(structField *StructField) error {
-	structField.fieldKind = KindPrimary
+	structField.kind = KindPrimary
 	if m.primary != nil {
 		return errors.NewDetf(class.ModelFieldName, "primary field is already defined for the model: '%s'", m.Type().Name())
 	}
 	m.primary = structField
-	m.fields = append(m.fields, structField)
 	return nil
 }
 
 func (m *ModelStruct) setRelationshipField(structField *StructField) error {
-	// add relationField to fields
-	m.fields = append(m.fields, structField)
-
 	// set related type
-	err := structField.fieldSetRelatedType()
-	if err != nil {
+	if err := structField.fieldSetRelatedType(); err != nil {
 		return err
 	}
 
@@ -975,21 +932,46 @@ func (m *ModelStruct) setRelationshipField(structField *StructField) error {
 
 	// set relationship field
 	m.relationships[structField.neuronName] = structField
+	m.relationships[structField.fieldName()] = structField
+	return nil
+}
 
+func (m *ModelStruct) setTimeRelatedField(field *StructField, flag fieldFlag) error {
+	switch flag {
+	case fCreatedAt:
+		if !(field.isTime() || field.isPtrTime()) {
+			return errors.NewDetf(class.ModelFieldTag, "created at field: '%s' is not a time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated created at field for model: '%s'", m.Type().Name())
+		}
+		m.createdAt = field
+	case fUpdatedAt:
+		if !(field.isTime() || field.isPtrTime()) {
+			return errors.NewDetf(class.ModelFieldTag, "updated at field: '%s' is not a time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated updated at field for model: '%s'", m.Type().Name())
+		}
+		m.updatedAt = field
+	case fDeletedAt:
+		if !field.isPtrTime() {
+			return errors.NewDetf(class.ModelFieldTag, "deleted at field: '%s' is not a pointer to time.Time field", field.Name())
+		}
+		if field.fieldFlags.containsFlag(flag) {
+			return errors.NewDetf(class.ModelFieldType, "duplicated deleted at field for model: '%s'", m.Type().Name())
+		}
+		m.deletedAt = field
+	default:
+		return errors.NewDetf(class.InternalModelFlag, "invalid related field flag: '%s'", field)
+	}
+	field.setFlag(flag)
 	return nil
 }
 
 func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
 	f, ok := m.relationships[field]
-	if !ok {
-		for _, f = range m.relationships {
-			if f.Name() == field {
-				return f, true
-			}
-		}
-		return nil, false
-	}
-	return f, true
+	return f, ok
 }
 
 func (m *ModelStruct) untaggedFields() []*StructField {
@@ -1000,48 +982,15 @@ func (m *ModelStruct) untaggedFields() []*StructField {
 	return v.([]*StructField)
 }
 
-func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel int) int {
-	var nestedCount int
-	if level != 0 {
-		thisIncludedCount, _ := m.StoreGet(thisIncludedCountKey)
-		nestedCount += thisIncludedCount.(int)
-	}
-
-	for _, relationship := range m.relationships {
-		if level < maxNestedRelLevel {
-			nestedCount += relationship.relationship.mStruct.initComputeNestedIncludedCount(level+1, maxNestedRelLevel)
-		}
-	}
-	return nestedCount
-}
-
 var (
-	untaggedFieldKey        = untaggedFieldsStore{}
-	assignedFieldsKey       = assignedFieldsStore{}
-	namerFuncKey            = namerStore{}
-	beforeListerKey         = beforeListerStore{}
-	afterListerKey          = afterListerStore{}
-	beforeCounterKey        = beforeCounterStore{}
-	afterCounterKey         = afterCounterStore{}
-	hasForeignRelationships = hasForeignRelationshipsStore{}
-	thisIncludedCountKey    = thisIncludedCountKeyStore{}
-	nestedIncludedCountKey  = nestedIncludedCountKeyStore{}
-	createdAt               = createdAtStruct{}
-	updatedAt               = updatedAtStruct{}
-	deletedAt               = deletedAtStruct{}
+	untaggedFieldKey       = untaggedFieldsStore{}
+	assignedFieldsKey      = assignedFieldsStore{}
+	thisIncludedCountKey   = thisIncludedCountKeyStore{}
+	nestedIncludedCountKey = nestedIncludedCountKeyStore{}
 )
 
 type untaggedFieldsStore struct{}
 type assignedFieldsStore struct{}
-type namerStore struct{}
-type beforeListerStore struct{}
-type afterListerStore struct{}
-type afterCounterStore struct{}
-type beforeCounterStore struct{}
-type hasForeignRelationshipsStore struct{}
+
 type thisIncludedCountKeyStore struct{}
 type nestedIncludedCountKeyStore struct{}
-
-type createdAtStruct struct{}
-type updatedAtStruct struct{}
-type deletedAtStruct struct{}

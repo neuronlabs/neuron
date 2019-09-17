@@ -14,68 +14,9 @@ func ViperSetDefaults(v *viper.Viper) {
 	setDefaults(v)
 }
 
-// ReadNamedConfig reads the config with the provided name.
-func ReadNamedConfig(name string) (*Controller, error) {
-	return readNamedConfig(name)
-}
-
-// ReadConfig reads the config for given path.
-func ReadConfig() (*Controller, error) {
-	return readNamedConfig("config")
-}
-
 // ReadDefaultConfig reads the default configuration.
 func ReadDefaultConfig() *Controller {
 	return readDefaultConfig()
-}
-
-func readNamedConfig(name string) (*Controller, error) {
-	v := viper.New()
-	v.SetConfigName(name)
-
-	v.AddConfigPath(".")
-	v.AddConfigPath("configs")
-
-	setDefaults(v)
-
-	err := v.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Controller{}
-	if err = v.Unmarshal(c); err != nil {
-		log.Debugf("Unmarshaling Controller Config failed. %v", err)
-		return nil, err
-	}
-
-	return c, nil
-}
-
-// ReadDefaultControllerConfig returns the default controller config.
-func ReadDefaultControllerConfig() *Controller {
-	return readDefaultConfig()
-}
-
-// ReadControllerConfig reads the config for the controller.
-func ReadControllerConfig(name, path string) (*Controller, error) {
-	v := viper.New()
-	v.AddConfigPath(path)
-	v.SetConfigName(name)
-	setDefaultControllerConfigs(v)
-
-	err := v.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Controller{}
-	if err = v.Unmarshal(c); err != nil {
-		log.Debugf("Unmarshaling Controller Config failed. %v", err)
-		return nil, err
-	}
-
-	return c, nil
 }
 
 func readDefaultConfig() *Controller {
@@ -83,12 +24,10 @@ func readDefaultConfig() *Controller {
 	setDefaults(v)
 
 	c := &Controller{}
-
 	if err := v.Unmarshal(c); err != nil {
 		log.Debugf("Unmarshaling Config failed: %v", err)
 		panic(err)
 	}
-
 	return c
 }
 
@@ -104,7 +43,7 @@ func setDefaultControllerConfigs(v *viper.Viper) {
 		"create_validator_alias": "create",
 		"patch_validator_alias":  "patch",
 		"log_level":              "info",
-		"processor":              DefaultProcessorConfig(),
+		"processor":              defaultThreadsafeProcessorConfig(),
 		"repositories":           map[string]*Repository{},
 		"included_depth_limit":   2,
 	}

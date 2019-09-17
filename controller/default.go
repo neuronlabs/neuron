@@ -10,7 +10,7 @@ var DefaultController *Controller
 // Default returns current default controller.
 func Default() *Controller {
 	if DefaultController == nil {
-		c, err := newController(config.ReadDefaultControllerConfig())
+		c, err := newController(config.ReadDefaultConfig())
 		if err != nil {
 			panic(err)
 		}
@@ -21,7 +21,7 @@ func Default() *Controller {
 
 // NewDefault creates new default controller based on the default config.
 func NewDefault() *Controller {
-	c, err := newController(config.ReadDefaultControllerConfig())
+	c, err := newController(config.ReadDefaultConfig())
 	if err != nil {
 		panic(err)
 	}
