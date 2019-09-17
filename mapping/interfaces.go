@@ -16,6 +16,7 @@ type StructFielder interface {
 	Self() *StructField
 }
 
+// NestedStructFielder is the interface used for nested struct fields.
 type NestedStructFielder interface {
 	StructFielder
 	SelfNested() *NestedField

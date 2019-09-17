@@ -167,7 +167,7 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 	var onlyPrimes = true
 
 	for _, nested := range filter.Nested {
-		if nested.StructField.FieldKind() != mapping.KindPrimary {
+		if nested.StructField.Kind() != mapping.KindPrimary {
 			onlyPrimes = false
 			break
 		}
@@ -437,7 +437,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 	// add then nested fields from the filter field into the
 	for _, nested := range filter.Nested {
 		var nestedFilter *FilterField
-		switch nested.StructField.FieldKind() {
+		switch nested.StructField.Kind() {
 		case mapping.KindPrimary:
 			nestedFilter = relScope.getOrCreatePrimaryFilter()
 		case mapping.KindAttribute:

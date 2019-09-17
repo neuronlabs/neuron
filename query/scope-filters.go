@@ -42,7 +42,7 @@ func (s *Scope) addFilterField(filter *FilterField) error {
 		err := errors.NewDet(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
 		return err
 	}
-	switch filter.StructField.FieldKind() {
+	switch filter.StructField.Kind() {
 	case mapping.KindPrimary:
 		s.PrimaryFilters = append(s.PrimaryFilters, filter)
 	case mapping.KindAttribute:
@@ -62,7 +62,7 @@ func (s *Scope) addFilterField(filter *FilterField) error {
 	case mapping.KindFilterKey:
 		s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
 	default:
-		err := errors.NewDetf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField.FieldKind())
+		err := errors.NewDetf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField.Kind())
 		return err
 	}
 	return nil

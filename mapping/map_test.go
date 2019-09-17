@@ -13,10 +13,10 @@ import (
 
 const defaultRepo = "repo"
 
-func testingModelMap(t *testing.T) *ModelMap {
+func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	cfg := config.ReadDefaultControllerConfig()
+	cfg := config.ReadDefaultConfig()
 	m := NewModelMap(namer.NamingSnake, cfg)
 	return m
 }
@@ -94,7 +94,7 @@ func TestRegisterModel(t *testing.T) {
 
 			assert.Equal(t, "not_tagged_models", model.Collection())
 
-			assert.Len(t, model.fields, 7)
+			assert.Len(t, model.structFields, 7)
 
 			assert.NotNil(t, model.Primary())
 			assert.Equal(t, "id", model.primary.neuronName)

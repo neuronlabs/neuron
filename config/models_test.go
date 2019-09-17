@@ -8,23 +8,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func readConfigFile(t *testing.T, fileName string) {
-	t.Helper()
-
-	viper.AddConfigPath("testdata")
-	viper.SetConfigName(fileName)
-
-	err := viper.ReadInConfig()
-	require.NoErrorf(t, err, "Read config fileName: %s", fileName)
-}
-
 // TestModelConfig tests the model config.
 func TestModelConfig(t *testing.T) {
-	readConfigFile(t, "model")
-
+	mc := map[string]interface{}{"collection": "some_model", "repository_name": "default"}
 	cfg := &ModelConfig{}
+	v := viper.New()
 
-	require.NoError(t, viper.Unmarshal(cfg))
+	v.Set("t", mc)
+	err := v.UnmarshalKey("t", cfg)
+	require.NoError(t, err)
 
 	assert.Equal(t, "some_model", cfg.Collection)
 	assert.Equal(t, "default", cfg.RepositoryName)

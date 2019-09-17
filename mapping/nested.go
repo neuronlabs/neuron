@@ -105,7 +105,7 @@ func newNestedField(root *NestedStruct, StructFielder StructFielder, nField refl
 		structField: &StructField{
 			mStruct:      StructFielder.Self().mStruct,
 			reflectField: nField,
-			fieldKind:    KindNested,
+			kind:         KindNested,
 			fieldFlags:   fDefault | fNestedField,
 		},
 		root: root,

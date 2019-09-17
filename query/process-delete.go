@@ -103,11 +103,9 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 
 	// get only relationship fields
 	var relationships []*mapping.StructField
-	for _, field := range s.Struct().Fields() {
-		if field.IsRelationship() {
-			if field.Relationship().Kind() != mapping.RelBelongsTo {
-				relationships = append(relationships, field)
-			}
+	for _, field := range s.Struct().RelationFields() {
+		if field.Relationship().Kind() != mapping.RelBelongsTo {
+			relationships = append(relationships, field)
 		}
 	}
 
@@ -175,11 +173,9 @@ func deleteForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
 
 	// get only relationship fields
 	var relationships []*mapping.StructField
-	for _, field := range s.Struct().Fields() {
-		if field.IsRelationship() {
-			if field.Relationship().Kind() != mapping.RelBelongsTo {
-				relationships = append(relationships, field)
-			}
+	for _, field := range s.Struct().RelationFields() {
+		if field.Relationship().Kind() != mapping.RelBelongsTo {
+			relationships = append(relationships, field)
 		}
 	}
 

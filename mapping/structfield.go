@@ -19,8 +19,8 @@ type StructField struct {
 	mStruct *ModelStruct
 	// NeuronName is neuron field name.
 	neuronName string
-	// fieldKind
-	fieldKind FieldKind
+	// kind
+	kind FieldKind
 
 	reflectField reflect.StructField
 	relationship *Relationship
@@ -49,9 +49,9 @@ func (s *StructField) FieldIndex() []int {
 	return s.fieldIndex
 }
 
-// FieldKind returns struct fields kind.
-func (s *StructField) FieldKind() FieldKind {
-	return s.fieldKind
+// Kind returns struct fields kind.
+func (s *StructField) Kind() FieldKind {
+	return s.kind
 }
 
 // GetDereferencedType returns structField dereferenced type.
@@ -126,7 +126,7 @@ func (s *StructField) IsOmitEmpty() bool {
 
 // IsPrimary checks if the field is the primary field type.
 func (s *StructField) IsPrimary() bool {
-	return s.fieldKind == KindPrimary
+	return s.kind == KindPrimary
 }
 
 // IsPtr checks if the field is a pointer.
@@ -233,20 +233,6 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 	log.Debug2f("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
 }
 
-// StringValues gets the string values from the provided struct field, 'value'.
-// The argument
-func (s *StructField) StringValues(value interface{}, svalues *[]string) []string {
-	if svalues == nil {
-		values := []string{}
-		svalues = &values
-	}
-	if value == nil {
-		*svalues = append(*svalues, "null")
-	}
-	stringValue(s, value, svalues)
-	return *svalues
-}
-
 // Struct returns fields modelstruct
 func (s *StructField) Struct() *ModelStruct {
 	return s.mStruct
@@ -255,7 +241,7 @@ func (s *StructField) Struct() *ModelStruct {
 // ValueFromString gets the field value from the provided 'value' string.
 func (s *StructField) ValueFromString(value string) (result interface{}, err error) {
 	fieldValue := reflect.New(s.reflectField.Type).Elem()
-	switch s.FieldKind() {
+	switch s.kind {
 	case KindPrimary:
 		err = setPrimaryField(value, fieldValue)
 	case KindAttribute:
@@ -265,7 +251,7 @@ func (s *StructField) ValueFromString(value string) (result interface{}, err err
 	case KindFilterKey:
 		err = setAttributeField(value, fieldValue)
 	default:
-		err = errors.NewDetf(class.ModelFieldType, "invalid field kind: '%s' for getting value", s.FieldKind().String())
+		err = errors.NewDetf(class.ModelFieldType, "invalid field kind: '%s' for getting value", s.Kind().String())
 	}
 	if err != nil {
 		return nil, err
@@ -300,7 +286,7 @@ func (s *StructField) baseFieldType() reflect.Type {
 }
 
 func (s *StructField) canBeSorted() bool {
-	switch s.fieldKind {
+	switch s.kind {
 	case KindRelationshipSingle, KindRelationshipMultiple, KindAttribute:
 		return true
 	}
@@ -326,7 +312,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	}
 	for modelType.Kind() == reflect.Ptr || modelType.Kind() == reflect.Slice {
 		if modelType.Kind() == reflect.Slice {
-			s.fieldKind = KindRelationshipMultiple
+			s.kind = KindRelationshipMultiple
 		}
 		modelType = modelType.Elem()
 	}
@@ -336,8 +322,8 @@ func (s *StructField) fieldSetRelatedType() error {
 		return err
 	}
 
-	if s.fieldKind == UnknownType {
-		s.fieldKind = KindRelationshipSingle
+	if s.kind == UnknownType {
+		s.kind = KindRelationshipSingle
 	}
 	if s.relationship == nil {
 		s.relationship = &Relationship{}
@@ -393,7 +379,7 @@ func (s *StructField) getTagValues(tag string) url.Values {
 
 func (s *StructField) initCheckFieldType() error {
 	fieldType := s.reflectField.Type
-	switch s.fieldKind {
+	switch s.kind {
 	case KindPrimary:
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
@@ -496,7 +482,7 @@ func (s *StructField) isPtrTime() bool {
 }
 
 func (s *StructField) isRelationship() bool {
-	return s.fieldKind == KindRelationshipMultiple || s.fieldKind == KindRelationshipSingle
+	return s.kind == KindRelationshipMultiple || s.kind == KindRelationshipSingle
 }
 
 func (s *StructField) isSlice() bool {
@@ -626,7 +612,6 @@ func (s *StructField) setFlags(flags ...string) error {
 			s.setFlag(fOmitempty)
 		case annotation.I18n:
 			s.setFlag(fI18n)
-			s.mStruct.i18n = append(s.mStruct.i18n, s)
 		case annotation.Language:
 			s.mStruct.setLanguage(s)
 		case annotation.DeletedAt:

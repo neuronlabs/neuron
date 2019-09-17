@@ -2,23 +2,28 @@ package mapping
 
 import (
 	"fmt"
-	"github.com/neuronlabs/neuron-core/log"
 	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
-// PrimaryValues gets the primary values for the provided value.
+// PrimaryValues gets the primary values from the provided 'value' reflection.
+// The reflection might be a slice or a single value.
+// Returns the slice of interfaces containing primary field values.
 func PrimaryValues(m *ModelStruct, value reflect.Value) (primaries []interface{}, err error) {
 	if value.IsNil() {
 		err = errors.NewDet(class.QueryNoValue, "nil value provided")
 		return nil, err
 	}
 
-	value = value.Elem()
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
 	zero := reflect.Zero(m.primary.ReflectField().Type).Interface()
 
 	appendPrimary := func(primary reflect.Value) bool {
@@ -61,6 +66,19 @@ func PrimaryValues(m *ModelStruct, value reflect.Value) (primaries []interface{}
 		return nil, err
 	}
 	return primaries, nil
+}
+
+// StringValues gets the string values from the provided struct field, 'value'.
+func StringValues(value interface{}, svalues *[]string) []string {
+	if svalues == nil {
+		values := []string{}
+		svalues = &values
+	}
+	if value == nil {
+		*svalues = append(*svalues, "null")
+	}
+	stringValue(value, svalues)
+	return *svalues
 }
 
 // NewValueSingle creates and returns new value for the given model type.
@@ -226,7 +244,7 @@ func setBoolField(value string, fieldValue reflect.Value) errors.DetailedError {
 	return nil
 }
 
-func stringValue(sField *StructField, val interface{}, values *[]string) {
+func stringValue(val interface{}, values *[]string) {
 	switch v := val.(type) {
 	case string:
 		*values = append(*values, v)
@@ -264,59 +282,59 @@ func stringValue(sField *StructField, val interface{}, values *[]string) {
 		*values = append(*values, v.String())
 	case []string:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []interface{}:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []time.Time:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []*time.Time:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []int64:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []int32:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []int16:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []int8:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []uint8:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []uint16:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []uint32:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []uint64:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []uint:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	case []fmt.Stringer:
 		for _, s := range v {
-			stringValue(sField, s, values)
+			stringValue(s, values)
 		}
 	default:
 		log.Debugf("Filter parse query. Invalid or unsupported value type: %t", v)
