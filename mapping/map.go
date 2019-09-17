@@ -173,7 +173,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 
 	for _, model := range m.models {
 		model.structFieldCount = len(model.StructFields())
+		model.clearInitializeStoreKeys()
 	}
+
 	return nil
 }
 
