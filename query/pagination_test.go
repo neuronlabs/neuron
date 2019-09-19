@@ -63,8 +63,8 @@ func TestGetLimitOffset(t *testing.T) {
 	// At first check the default 'LimitOffsetPagination'.
 	p := &Pagination{Size: 1, Offset: 10}
 	limit, offset := p.GetLimitOffset()
-	assert.Equal(t, 1, limit)
-	assert.Equal(t, 10, offset)
+	assert.Equal(t, int64(1), limit)
+	assert.Equal(t, int64(10), offset)
 
 	// Check the pagination with PageNumberPagination type.
 	t.Run("PageNumber", func(t *testing.T) {
@@ -72,15 +72,15 @@ func TestGetLimitOffset(t *testing.T) {
 		limit, offset = p.GetLimitOffset()
 
 		// the offset would be (pageNumber - 1) * pageSize = 8 * 3 = 24
-		assert.Equal(t, 24, offset)
-		assert.Equal(t, 3, limit)
+		assert.Equal(t, int64(24), offset)
+		assert.Equal(t, int64(3), limit)
 
 		// Check the pagination without page number defined.
 		p = &Pagination{Type: PageNumberPagination, Size: 10}
 		limit, offset = p.GetLimitOffset()
 
-		assert.Equal(t, 0, offset)
-		assert.Equal(t, 10, limit)
+		assert.Equal(t, int64(0), offset)
+		assert.Equal(t, int64(10), limit)
 	})
 }
 
@@ -90,20 +90,20 @@ func TestGetNumberSize(t *testing.T) {
 	p := &Pagination{Type: PageNumberPagination, Size: 3, Offset: 9}
 	number, size := p.GetNumberSize()
 
-	assert.Equal(t, 9, number)
-	assert.Equal(t, 3, size)
+	assert.Equal(t, int64(9), number)
+	assert.Equal(t, int64(3), size)
 
 	t.Run("LimitOffsetTyped", func(t *testing.T) {
 		// Check the 'LimitOffsetPagination' with defined fields.
 		p = &Pagination{Size: 3, Offset: 10}
 		number, size = p.GetNumberSize()
-		assert.Equal(t, 3, size)
-		assert.Equal(t, 4, number)
+		assert.Equal(t, int64(3), size)
+		assert.Equal(t, int64(4), number)
 
 		// Check the values with zero values.
 		p = &Pagination{Size: 10}
 		number, size = p.GetNumberSize()
-		assert.Equal(t, 10, size)
-		assert.Equal(t, 1, number)
+		assert.Equal(t, int64(10), size)
+		assert.Equal(t, int64(1), number)
 	})
 }

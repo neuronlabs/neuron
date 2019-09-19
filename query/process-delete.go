@@ -493,10 +493,9 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// clear all filters in the root scope
 	s.clearFilters()
-	if _, ok := s.Fieldset[s.Struct().Primary().NeuronName()]; ok {
-		// remove primary key from fieldset
-		delete(s.Fieldset, s.Struct().Primary().NeuronName())
-	}
+
+	// remove primary key from fieldset if exists
+	delete(s.Fieldset, s.Struct().Primary().NeuronName())
 
 	// reduce the filters as the primary filters in the root scope
 	primaryFilter := s.getOrCreatePrimaryFilter()

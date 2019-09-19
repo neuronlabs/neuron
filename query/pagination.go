@@ -27,13 +27,6 @@ const (
 	// ParamPageLimit is a JSON API query parameter used in an offset based
 	// pagination strategy in conjunction with ParamPageOffset.
 	ParamPageLimit = "page[limit]"
-	// ParamPageCursor is a JSON API query parameter used with a cursor-based
-	// strategy.
-	ParamPageCursor = "page[cursor]"
-	// ParamPageTotal is a JSON API query parameter used in pagination
-	// It tells to API to add information about total-pages or total-count
-	// (depending on the current strategy).
-	ParamPageTotal = "page[total]"
 )
 
 // PaginationType defines the pagination type.
@@ -55,15 +48,79 @@ const (
 // and the value of 'Offset' defines 'pageNumber'. The page number value starts from '1'.
 type Pagination struct {
 	// Size is a pagination value that defines 'limit' or 'page size'
-	Size int
+	Size int64
 	// Offset is a pagination value that defines 'offset' or 'page number'
-	Offset int
+	Offset int64
 	Type   PaginationType
 }
 
-// IsValid checks if the pagination is well formed.
-func (p *Pagination) IsValid() error {
-	return p.checkValues()
+// First gets the first pagination for provided 'p' pagination values.
+// If the 'p' pagination is already the 'first' pagination the function
+// returns it as the result directly.
+func (p *Pagination) First() (*Pagination, error) {
+	if err := p.IsValid(); err != nil {
+		return nil, err
+	}
+	var first *Pagination
+	switch p.Type {
+	case LimitOffsetPagination:
+		if p.Offset == 0 {
+			return p, nil
+		}
+		first = &Pagination{Size: p.Size, Offset: 0, Type: LimitOffsetPagination}
+	case PageNumberPagination:
+		if p.Offset == 1 {
+			return p, nil
+		}
+		first = &Pagination{Size: p.Size, Offset: 1, Type: PageNumberPagination}
+	default:
+		return nil, errors.NewDet(class.QueryPaginationType, "invalid pagination type")
+	}
+	return first, nil
+}
+
+// FormatQuery formats the pagination for the url query.
+func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
+	var query url.Values
+	if len(q) != 0 {
+		query = q[0]
+	}
+
+	if query == nil {
+		query = url.Values{}
+	}
+
+	var k, v string
+	switch p.Type {
+	case LimitOffsetPagination:
+		limit, offset := p.Size, p.Offset
+		if limit != 0 {
+			k = ParamPageLimit
+			v = strconv.FormatInt(limit, 10)
+			query.Set(k, v)
+		}
+		if offset != 0 {
+			k = ParamPageOffset
+			v = strconv.FormatInt(offset, 10)
+			query.Set(k, v)
+		}
+	case PageNumberPagination:
+		number, size := p.Offset, p.Size
+		if number >= 1 {
+			k = ParamPageNumber
+			v = strconv.FormatInt(number, 10)
+			query.Set(k, v)
+		}
+
+		if size != 0 {
+			k = ParamPageSize
+			v = strconv.FormatInt(size, 10)
+			query.Set(k, v)
+		}
+	default:
+		log.Debugf("Pagination with invalid type: '%s'", p.Type)
+	}
+	return query
 }
 
 // GetLimitOffset gets the 'limit' and 'offset' values from the given pagination.
@@ -72,7 +129,7 @@ func (p *Pagination) IsValid() error {
 // In case when pagination type is 'PageNumberPagination' the 'limit' = p.Size and the
 // offset is a result of multiplication of (pageNumber - 1) * pageSize = (p.Offset - 1) * p.Size.
 // If the p.Offset is zero value then the (pageNumber - 1) value would be set previously to '0'.
-func (p *Pagination) GetLimitOffset() (limit, offset int) {
+func (p *Pagination) GetLimitOffset() (limit, offset int64) {
 	switch p.Type {
 	case LimitOffsetPagination:
 		limit = p.Size
@@ -96,7 +153,7 @@ func (p *Pagination) GetLimitOffset() (limit, offset int) {
 // and the page number would be 'offset' / limit + 1. PageNumberPagination starts it's page number counting from 1.
 // If the offset % size != 0 - the offset is not dividable by the size without the rest - then the division
 // rounds down it's value.
-func (p *Pagination) GetNumberSize() (pageNumber, pageSize int) {
+func (p *Pagination) GetNumberSize() (pageNumber, pageSize int64) {
 	switch p.Type {
 	case LimitOffsetPagination:
 		pageSize = p.Size
@@ -116,53 +173,128 @@ func (p *Pagination) GetNumberSize() (pageNumber, pageSize int) {
 	return pageNumber, pageSize
 }
 
+// IsValid checks if the pagination is well formed.
+func (p *Pagination) IsValid() error {
+	return p.checkValues()
+}
+
 // IsZero checks if the pagination is already set.
 func (p *Pagination) IsZero() bool {
 	return p.Size == 0 && p.Offset == 0
 }
 
-// FormatQuery formats the pagination for the url query.
-func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
-	var query url.Values
-	if len(q) != 0 {
-		query = q[0]
+// Last gets the last pagination for the provided 'total' count.
+// Returns error if current pagination is not valid, or 'total'.
+// If current pagination 'p' is the last pagination it would be return
+// directly as the result. In order to check if the 'p' is last pagination
+// compare it's pointer with the 'p'.
+func (p *Pagination) Last(total int64) (*Pagination, error) {
+	if err := p.IsValid(); err != nil {
+		return nil, err
+	}
+	if total < 0 {
+		return nil, errors.NewDetf(class.QueryPaginationValue, "Total instance value lower than 0: %v", total)
 	}
 
-	if query == nil {
-		query = url.Values{}
-	}
-
-	var k, v string
+	var last *Pagination
 	switch p.Type {
 	case LimitOffsetPagination:
-		limit, offset := p.Size, p.Offset
-		if limit != 0 {
-			k = ParamPageLimit
-			v = strconv.Itoa(limit)
-			query.Set(k, v)
+		offset := total - p.Size
+		// in case when total size is lower then the pagination size set the offset to 0
+		if offset < 0 {
+			offset = 0
 		}
-		if offset != 0 {
-			k = ParamPageOffset
-			v = strconv.Itoa(offset)
-			query.Set(k, v)
+		if offset == p.Offset {
+			return p, nil
 		}
+		last = &Pagination{Size: p.Size, Offset: offset, Type: LimitOffsetPagination}
 	case PageNumberPagination:
-		number, size := p.Offset, p.Size
-		if number >= 1 {
-			k = ParamPageNumber
-			v = strconv.Itoa(number)
-			query.Set(k, v)
+		// divide total number of instances by the page size.
+		// example:
+		// 	total - 52
+		//	pageSize - 10
+		// 	computedPageNumber = 52/10 = 5
+		pageNumber := total / p.Size
+		if pageNumber == 0 {
+			// in case when 'total' < pageSize the pageNumber = 1
+			pageNumber = 1
 		}
-
-		if size != 0 {
-			k = ParamPageSize
-			v = strconv.Itoa(size)
-			query.Set(k, v)
-		}
+		last = &Pagination{Size: p.Size, Offset: pageNumber, Type: PageNumberPagination}
 	default:
-		log.Debugf("Pagination with invalid type: '%s'", p.Type)
+		return nil, errors.NewDet(class.QueryPaginationType, "invalid pagination type")
 	}
-	return query
+	return last, nil
+}
+
+// Next gets the next pagination for the provided 'total' count.
+// If current pagination 'p' is the last one, then the function returns 'p' pagination directly.
+// In order to check if there is a next pagination compare the result pointer with the 'p' pagination.
+func (p *Pagination) Next(total int64) (*Pagination, error) {
+	if err := p.IsValid(); err != nil {
+		return nil, err
+	}
+	if total < 0 {
+		return nil, errors.NewDetf(class.QueryPaginationValue, "Total instance value lower than 0: %v", total)
+	}
+
+	var next *Pagination
+	switch p.Type {
+	case LimitOffsetPagination:
+		// keep the same size but change the offset
+		offset := p.Offset + p.Size
+		// check if the next offset doesn't overflow 'total'
+		// in example:
+		// 	total 52; p.Offset = 50; p.Size = 10
+		//	the next offset would be 60 which overflows possible total values.
+		if offset > total {
+			return p, nil
+		}
+		next = &Pagination{Offset: offset, Size: p.Size, Type: LimitOffsetPagination}
+	case PageNumberPagination:
+		// check if the multiplication of pageSize and pageNumber for the current page
+		// overflows the 'total'.
+		// in example:
+		//	total: 52; pageNumber: 6; pageSize: 10;
+		//  nextTotal = pageNumber * pageSize = 60
+		if p.Size*(p.Offset) > total {
+			return p, nil
+		}
+		next = &Pagination{Offset: p.Offset + 1, Size: p.Size, Type: PageNumberPagination}
+	default:
+		return nil, errors.NewDet(class.QueryPaginationType, "invalid pagination type")
+	}
+	return next, nil
+}
+
+// Previous gets the pagination for the previous possible size and offset.
+// If current pagination 'p' is the first page then the function returns 'p' pagination.
+// If the previouse size would overflow the 0th offset then the previous starts from 0th offset.
+func (p *Pagination) Previous() (*Pagination, error) {
+	if err := p.IsValid(); err != nil {
+		return nil, err
+	}
+
+	var prev *Pagination
+	switch p.Type {
+	case LimitOffsetPagination:
+		if p.Offset == 0 {
+			return p, nil
+		}
+		offset := p.Offset - p.Size
+		if offset < 0 {
+			return p, nil
+		}
+		// keep the same size but change the offset
+		prev = &Pagination{Offset: offset, Size: p.Size, Type: LimitOffsetPagination}
+	case PageNumberPagination:
+		if p.Offset <= 1 {
+			return p, nil
+		}
+		prev = &Pagination{Offset: p.Offset - 1, Size: p.Size, Type: PageNumberPagination}
+	default:
+		return nil, errors.NewDet(class.QueryPaginationType, "invalid pagination type")
+	}
+	return prev, nil
 }
 
 // String implements fmt.Stringer interface.
@@ -204,7 +336,7 @@ func (p *Pagination) checkOffsetBasedValues() error {
 }
 
 func (p *Pagination) checkPageBasedValues() error {
-	if p.Size < 0 {
+	if p.Size <= 0 {
 		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination value")
 		err.SetDetails("Pagination page-size lower than 0")
 		return err

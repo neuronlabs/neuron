@@ -40,6 +40,11 @@ type FilterField struct {
 	Nested []*FilterField
 }
 
+// Copy returns the copy of the filter field.
+func (f *FilterField) Copy() *FilterField {
+	return f.copy()
+}
+
 // NestedFilters returns the nested filters for given filter fields.
 // Nested filters are the filters used for relationship or composite attribute filters.
 func (f *FilterField) NestedFilters() []*FilterField {
@@ -114,6 +119,21 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relNam
 	for _, nested := range f.Nested {
 		nested.buildString(sb, filtersAdded, f.StructField.NeuronName())
 	}
+}
+
+func (f *FilterField) copy() *FilterField {
+	cp := &FilterField{
+		StructField: f.StructField,
+		Key:         f.Key,
+	}
+
+	for _, ov := range f.Values {
+		cp.Values = append(cp.Values, ov.copy())
+	}
+	for _, nested := range f.Nested {
+		cp.Nested = append(cp.Nested, nested.copy())
+	}
+	return cp
 }
 
 // formatQuery parses the into url.Values.

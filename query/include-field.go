@@ -29,6 +29,13 @@ func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
 	return i.getMissingPrimaries()
 }
 
+func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
+	included := &IncludeField{StructField: i.StructField, NotInFieldset: i.NotInFieldset}
+	included.Scope = i.Scope.copy(false, root)
+	included.RelatedScope = relatedScope
+	return included
+}
+
 // newIncludedField creates a included field within 'scope' for provided 'field'.
 func newIncludeField(field *mapping.StructField, scope *Scope) *IncludeField {
 	includeField := new(IncludeField)

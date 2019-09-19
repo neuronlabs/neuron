@@ -159,6 +159,11 @@ func (s *Scope) Controller() *controller.Controller {
 	return cval.(*controller.Controller)
 }
 
+// Copy creates a copy of the given scope.
+func (s *Scope) Copy() *Scope {
+	return s.copy(true, nil)
+}
+
 // Count returns the number of the values for the provided query scope.
 func (s *Scope) Count() (int64, error) {
 	return s.count(context.Background())
@@ -573,6 +578,95 @@ func (s *Scope) commit(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
+	scope := &Scope{
+		id:      uuid.New(),
+		mStruct: s.mStruct,
+		store:   make(map[interface{}]interface{}),
+		isMany:  s.isMany,
+		kind:    s.kind,
+
+		totalIncludeCount:     s.totalIncludeCount,
+		hasFieldNotInFieldset: s.hasFieldNotInFieldset,
+
+		filterLock: sync.Mutex{},
+	}
+
+	if s.isMany {
+		scope.Value = mapping.NewValueMany(s.mStruct)
+	} else {
+		scope.Value = mapping.NewValueSingle(s.mStruct)
+	}
+
+	if isRoot {
+		scope.rootScope = nil
+		scope.collectionScope = scope
+		root = scope
+	} else {
+		if s.rootScope == nil {
+			scope.rootScope = nil
+		}
+		scope.collectionScope = root.getOrCreateModelsRootScope(s.mStruct)
+	}
+
+	if s.Fieldset != nil {
+		scope.Fieldset = make(map[string]*mapping.StructField)
+		for k, v := range s.Fieldset {
+			scope.Fieldset[k] = v
+		}
+	}
+
+	if s.PrimaryFilters != nil {
+		scope.PrimaryFilters = make([]*FilterField, len(s.PrimaryFilters))
+		for i, v := range s.PrimaryFilters {
+			scope.PrimaryFilters[i] = v.Copy()
+		}
+	}
+
+	if s.AttributeFilters != nil {
+		scope.AttributeFilters = make([]*FilterField, len(s.AttributeFilters))
+		for i, v := range s.AttributeFilters {
+			scope.AttributeFilters[i] = v.Copy()
+		}
+	}
+
+	if s.RelationFilters != nil {
+		for i, v := range s.RelationFilters {
+			scope.RelationFilters[i] = v.Copy()
+		}
+	}
+
+	if s.SortFields != nil {
+		scope.SortFields = make([]*SortField, len(s.SortFields))
+		for i, v := range s.SortFields {
+			scope.SortFields[i] = v.Copy()
+		}
+
+	}
+
+	if s.includedScopes != nil {
+		scope.includedScopes = make(map[*mapping.ModelStruct]*Scope)
+		for k, v := range s.includedScopes {
+			scope.includedScopes[k] = v.copy(false, root)
+		}
+	}
+
+	if s.includedFields != nil {
+		scope.includedFields = make([]*IncludeField, len(s.includedFields))
+		for i, v := range s.includedFields {
+			scope.includedFields[i] = v.copy(scope, root)
+		}
+	}
+
+	if s.includedValues != nil {
+		scope.includedValues = safemap.New()
+		for k, v := range s.includedValues.Values() {
+			scope.includedValues.UnsafeSet(k, v)
+		}
+	}
+	return scope
 }
 
 func (s *Scope) count(ctx context.Context) (int64, error) {
