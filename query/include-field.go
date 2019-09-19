@@ -8,6 +8,8 @@ import (
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
+
+	"github.com/neuronlabs/neuron-core/internal"
 )
 
 // IncludeField is the includes information scope
@@ -27,6 +29,13 @@ type IncludeField struct {
 // already stored within the collection root scope and return new ones.
 func (i *IncludeField) GetMissingPrimaries() ([]interface{}, error) {
 	return i.getMissingPrimaries()
+}
+
+func (i *IncludeField) copy(relatedScope *Scope, root *Scope) *IncludeField {
+	included := &IncludeField{StructField: i.StructField, NotInFieldset: i.NotInFieldset}
+	included.Scope = i.Scope.copy(false, root)
+	included.RelatedScope = relatedScope
+	return included
 }
 
 // newIncludedField creates a included field within 'scope' for provided 'field'.
@@ -49,6 +58,59 @@ func newIncludeField(field *mapping.StructField, scope *Scope) *IncludeField {
 	includeField.Scope.rootScope.totalIncludeCount++
 
 	return includeField
+}
+
+func (i *IncludeField) copyScopeBoundaries() {
+	// copy primaries
+	i.Scope.PrimaryFilters = make([]*FilterField, len(i.Scope.collectionScope.PrimaryFilters))
+	copy(i.Scope.PrimaryFilters, i.Scope.collectionScope.PrimaryFilters)
+
+	// copy attribute filters
+	i.Scope.AttributeFilters = make([]*FilterField, len(i.Scope.collectionScope.AttributeFilters))
+	copy(i.Scope.AttributeFilters, i.Scope.collectionScope.AttributeFilters)
+
+	// copy filterKeyFilters
+	i.Scope.FilterKeyFilters = make([]*FilterField, len(i.Scope.collectionScope.FilterKeyFilters))
+	copy(i.Scope.FilterKeyFilters, i.Scope.collectionScope.FilterKeyFilters)
+
+	// relationships
+	i.Scope.RelationFilters = make([]*FilterField, len(i.Scope.collectionScope.RelationFilters))
+	copy(i.Scope.RelationFilters, i.Scope.collectionScope.RelationFilters)
+
+	//copy foreignKeyFilters
+	i.Scope.ForeignFilters = make([]*FilterField, len(i.Scope.collectionScope.ForeignFilters))
+	copy(i.Scope.ForeignFilters, i.Scope.collectionScope.ForeignFilters)
+
+	// copy language filters
+	if i.Scope.collectionScope.LanguageFilters != nil {
+		i.Scope.LanguageFilters = i.Scope.collectionScope.LanguageFilters
+	}
+
+	// fieldset is taken by reference - copied if there is nested
+	i.Scope.Fieldset = i.Scope.collectionScope.Fieldset
+
+	i.Scope.store[internal.ControllerStoreKey] = i.Scope.collectionScope.store[internal.ControllerStoreKey]
+
+	for _, nested := range i.Scope.includedFields {
+		// if the nested include is not found within the collection fieldset
+		// the 'i'.Scope should have a new (not reference) Fieldset
+		// with the nested field added to it
+		if nested.NotInFieldset {
+			// make a new fieldset if it is the same reference
+			if len(i.Scope.Fieldset) == len(i.Scope.collectionScope.Fieldset) {
+				// if there is more than one nested this would not happen
+				i.Scope.Fieldset = make(map[string]*mapping.StructField)
+				// copy fieldset
+				for key, field := range i.Scope.collectionScope.Fieldset {
+					i.Scope.Fieldset[key] = field
+				}
+			}
+
+			//add nested
+			i.Scope.Fieldset[nested.NeuronName()] = nested.StructField
+		}
+		nested.copyScopeBoundaries()
+	}
 }
 
 func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {

@@ -115,6 +115,15 @@ type OperatorValues struct {
 	Operator *Operator
 }
 
+func (o *OperatorValues) copy() *OperatorValues {
+	ov := &OperatorValues{
+		Operator: o.Operator,
+		Values:   make([]interface{}, len(o.Values)),
+	}
+	copy(ov.Values, o.Values)
+	return ov
+}
+
 // RegisterOperator registers the operator in the provided container
 func RegisterOperator(o *Operator) error {
 	err := FilterOperators.registerOperator(o)
