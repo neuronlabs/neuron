@@ -8,7 +8,8 @@ import (
 )
 
 // Sort adds the sort fields into given scope.
-// If the scope already have sorted fields or the fields are duplicated returns error.
+// If the scope already have sorted fields the function appends newly created sort fields.
+// If the fields are duplicated returns error.
 func (s *Scope) Sort(fields ...string) (err error) {
 	if log.Level().IsAllowed(log.LDEBUG3) {
 		log.Debug3f("[SCOPE][%s] Sorting by fields: %v ", s.ID(), fields)
