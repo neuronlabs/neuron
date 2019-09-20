@@ -11,7 +11,7 @@ import (
 	"github.com/neuronlabs/neuron-core/log"
 )
 
-// Pagination constants
+// Pagination defined constants used for formatting the query.
 const (
 	// ParamPage is a JSON API query parameter used as for pagination.
 	ParamPage = "page"
@@ -39,7 +39,7 @@ const (
 	PageNumberPagination
 )
 
-// NewPaginationLimitOffset creates new Limit Offset pagination
+// NewPaginationLimitOffset creates new Limit Offset pagination for given 'limit' and 'offset'.
 func NewPaginationLimitOffset(limit, offset int64) (*Pagination, error) {
 	pagination := &Pagination{Type: LimitOffsetPagination, Size: limit, Offset: offset}
 	if err := pagination.IsValid(); err != nil {
@@ -48,7 +48,7 @@ func NewPaginationLimitOffset(limit, offset int64) (*Pagination, error) {
 	return pagination, nil
 }
 
-// NewPaginationNumberSize sets the pagination of the type TpPage with the page 'number' and page 'size'.
+// NewPaginationNumberSize sets the pagination of the type PageNumberSize with the page 'number' and page 'size'.
 func NewPaginationNumberSize(number, size int64) (*Pagination, error) {
 	pagination := &Pagination{Size: size, Offset: number, Type: PageNumberPagination}
 	if err := pagination.IsValid(); err != nil {
@@ -97,7 +97,7 @@ func (p *Pagination) First() (*Pagination, error) {
 	return first, nil
 }
 
-// FormatQuery formats the pagination for the url query.
+// FormatQuery formats the pagination for the url query with respect to JSONAPI specification.
 func (p *Pagination) FormatQuery(q ...url.Values) url.Values {
 	var query url.Values
 	if len(q) != 0 {
@@ -196,7 +196,7 @@ func (p *Pagination) IsValid() error {
 	return p.checkValues()
 }
 
-// IsZero checks if the pagination is already set.
+// IsZero checks if the pagination is zero valued.
 func (p *Pagination) IsZero() bool {
 	return p.Size == 0 && p.Offset == 0
 }
@@ -245,6 +245,7 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 		// 	computedPageNumber = 52/10 = 5
 		pageNumber := total / p.Size
 		if total%p.Size != 0 || pageNumber == 0 {
+			// total % p.Size = 52 % 10 = 2
 			pageNumber++
 		}
 		last = &Pagination{Size: p.Size, Offset: pageNumber, Type: PageNumberPagination}

@@ -1,9 +1,10 @@
 package query
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // TestScopeSorts tests the scope sort functions.

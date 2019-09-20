@@ -24,8 +24,10 @@ import (
 	"github.com/neuronlabs/neuron-core/internal/safemap"
 )
 
-// Scope is the query's structure that contains all information required to
-// get, create, patch or delete the data in the repository.
+// Scope is the query's structure that contains information required
+// for the processor to operate.
+// The scope has its unique 'ID', contains predefined model, operational value, fieldset, filters, sorts and pagination.
+// It also contains the mapping of the included scopes.
 type Scope struct {
 	id uuid.UUID
 	// Struct is a modelStruct this scope is based on
