@@ -39,6 +39,24 @@ const (
 	PageNumberPagination
 )
 
+// NewPaginationLimitOffset creates new Limit Offset pagination
+func NewPaginationLimitOffset(limit, offset int64) (*Pagination, error) {
+	pagination := &Pagination{Type: LimitOffsetPagination, Size: limit, Offset: offset}
+	if err := pagination.IsValid(); err != nil {
+		return nil, err
+	}
+	return pagination, nil
+}
+
+// NewPaginationNumberSize sets the pagination of the type TpPage with the page 'number' and page 'size'.
+func NewPaginationNumberSize(number, size int64) (*Pagination, error) {
+	pagination := &Pagination{Size: size, Offset: number, Type: PageNumberPagination}
+	if err := pagination.IsValid(); err != nil {
+		return nil, err
+	}
+	return pagination, nil
+}
+
 // Pagination defines the query limits and offsets.
 // It defines the maximum size (Limit) as well as an offset at which
 // the query should start.
@@ -199,14 +217,25 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 	var last *Pagination
 	switch p.Type {
 	case LimitOffsetPagination:
-		offset := total - p.Size
-		// in case when total size is lower then the pagination size set the offset to 0
-		if offset < 0 {
-			offset = 0
+		var offset int64
+
+		// check if the last page is not partial
+		if partialSize := p.Offset % p.Size; partialSize != 0 {
+			lastFull := (total - partialSize) / p.Size
+			offset = lastFull*p.Size + partialSize
+		} else {
+			// the last should be total/p.Size - (10-3)/2 = 3
+			// 3 * size = 3 * 2 = 6
+			offset = total - p.Size
+			// in case when total size is lower then the pagination size set the offset to 0
+			if offset < 0 {
+				offset = 0
+			}
 		}
 		if offset == p.Offset {
 			return p, nil
 		}
+		// the offset should be total / p.Size
 		last = &Pagination{Size: p.Size, Offset: offset, Type: LimitOffsetPagination}
 	case PageNumberPagination:
 		// divide total number of instances by the page size.
@@ -215,9 +244,8 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 		//	pageSize - 10
 		// 	computedPageNumber = 52/10 = 5
 		pageNumber := total / p.Size
-		if pageNumber == 0 {
-			// in case when 'total' < pageSize the pageNumber = 1
-			pageNumber = 1
+		if total%p.Size != 0 || pageNumber == 0 {
+			pageNumber++
 		}
 		last = &Pagination{Size: p.Size, Offset: pageNumber, Type: PageNumberPagination}
 	default:
@@ -246,7 +274,7 @@ func (p *Pagination) Next(total int64) (*Pagination, error) {
 		// in example:
 		// 	total 52; p.Offset = 50; p.Size = 10
 		//	the next offset would be 60 which overflows possible total values.
-		if offset > total {
+		if offset >= total {
 			return p, nil
 		}
 		next = &Pagination{Offset: offset, Size: p.Size, Type: LimitOffsetPagination}
@@ -256,10 +284,13 @@ func (p *Pagination) Next(total int64) (*Pagination, error) {
 		// in example:
 		//	total: 52; pageNumber: 6; pageSize: 10;
 		//  nextTotal = pageNumber * pageSize = 60
-		if p.Size*(p.Offset) > total {
+		// 	50 - (10 * 4+1) <= 0 ?
+		//
+		nextPageNumber := p.Offset + 1
+		if total-(p.Size*(nextPageNumber)) <= 0 {
 			return p, nil
 		}
-		next = &Pagination{Offset: p.Offset + 1, Size: p.Size, Type: PageNumberPagination}
+		next = &Pagination{Offset: nextPageNumber, Size: p.Size, Type: PageNumberPagination}
 	default:
 		return nil, errors.NewDet(class.QueryPaginationType, "invalid pagination type")
 	}
@@ -280,12 +311,12 @@ func (p *Pagination) Previous() (*Pagination, error) {
 		if p.Offset == 0 {
 			return p, nil
 		}
-		offset := p.Offset - p.Size
-		if offset < 0 {
-			return p, nil
+		if p.Offset < p.Size {
+			prev = &Pagination{Offset: 0, Size: p.Offset, Type: LimitOffsetPagination}
+			return prev, nil
 		}
 		// keep the same size but change the offset
-		prev = &Pagination{Offset: offset, Size: p.Size, Type: LimitOffsetPagination}
+		prev = &Pagination{Offset: p.Offset - p.Size, Size: p.Size, Type: LimitOffsetPagination}
 	case PageNumberPagination:
 		if p.Offset <= 1 {
 			return p, nil

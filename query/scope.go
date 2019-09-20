@@ -584,7 +584,7 @@ func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 	scope := &Scope{
 		id:      uuid.New(),
 		mStruct: s.mStruct,
-		store:   make(map[interface{}]interface{}),
+		store:   map[interface{}]interface{}{internal.ControllerStoreKey: s.Controller()},
 		isMany:  s.isMany,
 		kind:    s.kind,
 
