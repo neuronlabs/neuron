@@ -2,9 +2,10 @@ package config
 
 import (
 	"errors"
-	"github.com/spf13/viper"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/neuronlabs/neuron-core/internal"
 )
@@ -75,6 +76,7 @@ func defaultThreadsafeProcessorConfig() map[string]interface{} {
 			internal.ProcessTxBegin,
 			internal.ProcessHookBeforeCreate,
 			internal.ProcessSetBelongsToRelations,
+			internal.ProcessSetCreatedAt,
 			internal.ProcessCreate,
 			internal.ProcessStoreScopePrimaries,
 			internal.ProcessPatchForeignRelationsSafe,
@@ -114,6 +116,7 @@ func defaultThreadsafeProcessorConfig() map[string]interface{} {
 			internal.ProcessDeletedAtFilter,
 			internal.ProcessReducePrimaryFilters,
 			internal.ProcessPatchBelongsToRelations,
+			internal.ProcessSetUpdatedAt,
 			internal.ProcessPatch,
 			internal.ProcessPatchForeignRelationsSafe,
 			internal.ProcessHookAfterPatch,
@@ -124,6 +127,7 @@ func defaultThreadsafeProcessorConfig() map[string]interface{} {
 			internal.ProcessReducePrimaryFilters,
 			internal.ProcessHookBeforeDelete,
 			internal.ProcessReducePrimaryFilters,
+			internal.ProcessSetDeletedAt,
 			internal.ProcessDelete,
 			internal.ProcessDeleteForeignRelationsSafe,
 			internal.ProcessHookAfterDelete,
@@ -179,6 +183,7 @@ func defaultConcurrentProcessorConfig() map[string]interface{} {
 			internal.ProcessTxBegin,
 			internal.ProcessHookBeforeCreate,
 			internal.ProcessSetBelongsToRelations,
+			internal.ProcessSetCreatedAt,
 			internal.ProcessCreate,
 			internal.ProcessStoreScopePrimaries,
 			internal.ProcessPatchForeignRelations,
@@ -216,6 +221,7 @@ func defaultConcurrentProcessorConfig() map[string]interface{} {
 			internal.ProcessDeletedAtFilter,
 			internal.ProcessReducePrimaryFilters,
 			internal.ProcessPatchBelongsToRelations,
+			internal.ProcessSetUpdatedAt,
 			internal.ProcessPatch,
 			internal.ProcessPatchForeignRelations,
 			internal.ProcessHookAfterPatch,
@@ -226,6 +232,7 @@ func defaultConcurrentProcessorConfig() map[string]interface{} {
 			internal.ProcessReducePrimaryFilters,
 			internal.ProcessHookBeforeDelete,
 			internal.ProcessReducePrimaryFilters,
+			internal.ProcessSetDeletedAt,
 			internal.ProcessDelete,
 			internal.ProcessDeleteForeignRelations,
 			internal.ProcessHookAfterDelete,

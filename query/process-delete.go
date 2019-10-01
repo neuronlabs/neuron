@@ -25,14 +25,8 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 
-	deletedAt, hasDeletedAt := s.Struct().DeletedAt()
+	_, hasDeletedAt := s.Struct().DeletedAt()
 	if hasDeletedAt {
-		s.Fieldset[deletedAt.NeuronName()] = deletedAt
-
-		v := reflect.ValueOf(s.Value).Elem().FieldByIndex(deletedAt.ReflectField().Index)
-		t := time.Now()
-		v.Set(reflect.ValueOf(&t))
-
 		patcher, ok := repo.(Patcher)
 		if !ok {
 			log.Warningf("Repository for model: '%s' doesn't implement Patcher interface", s.Struct().Type())
@@ -504,5 +498,22 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	s.StoreSet(internal.ReducedPrimariesStoreKey, primaries)
 	s.StoreSet(internal.PrimariesAlreadyChecked, struct{}{})
 
+	return nil
+}
+
+func setDeletedAtField(ctx context.Context, s *Scope) error {
+	if s.Error != nil {
+		return nil
+	}
+	deletedAt, hasDeletedAt := s.Struct().DeletedAt()
+	if !hasDeletedAt {
+		return nil
+	}
+
+	v := reflect.ValueOf(s.Value).Elem().FieldByIndex(deletedAt.ReflectField().Index)
+	t := time.Now()
+	v.Set(reflect.ValueOf(&t))
+
+	s.Fieldset[deletedAt.NeuronName()] = deletedAt
 	return nil
 }

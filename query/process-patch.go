@@ -31,15 +31,8 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDetf(class.RepositoryNotImplementsPatcher, "repository: '%T' doesn't implement Patcher interface", repo)
 	}
 
-	updatedAt, hasUpdatedAt := s.Struct().UpdatedAt()
-	// if there are any selected fields that are not a foreign relationships
-	// (attributes, foreign keys etc, relationship-belongs-to...) do the patch process
-	if !hasUpdatedAt && len(s.Fieldset) == 0 {
-		return errors.NewDet(class.QuerySelectedFieldsNotSelected, "no fields selected for patch process")
-	}
-
+	_, hasUpdatedAt := s.Struct().UpdatedAt()
 	onlyForeignRelationships := true
-	var updatedAtSelected bool
 	for _, selected := range s.Fieldset {
 		if selected.IsPrimary() {
 			if len(s.Fieldset) == 1 {
@@ -56,35 +49,9 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		} else if selected.Relationship().Kind() == mapping.RelBelongsTo {
 			onlyForeignRelationships = false
 		}
-
-		if hasUpdatedAt && selected == updatedAt {
-			updatedAtSelected = true
-		}
 	}
 
 	if !onlyForeignRelationships || hasUpdatedAt {
-		if hasUpdatedAt {
-			v := reflect.ValueOf(s.Value).Elem().FieldByIndex(updatedAt.ReflectField().Index)
-
-			var setUpdatedAt bool
-			if s.autosetFields {
-				setUpdatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(updatedAt.ReflectField().Type).Interface())
-			} else {
-				setUpdatedAt = !updatedAtSelected
-			}
-			if setUpdatedAt {
-				t := time.Now()
-				switch {
-				case updatedAt.IsTimePointer():
-					v.Set(reflect.ValueOf(&t))
-				case updatedAt.IsTime():
-					v.Set(reflect.ValueOf(t))
-				}
-				if !updatedAtSelected {
-					s.Fieldset[updatedAt.NeuronName()] = updatedAt
-				}
-			}
-		}
 		if log.Level().IsAllowed(log.LDEBUG3) {
 			log.Debug3f("SCOPE[%s][%s] patching: %s", s.ID().String(), s.Struct().Collection(), s.String())
 		}
@@ -923,5 +890,36 @@ func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relFiel
 			return err
 		}
 	}
+	return nil
+}
+
+func setUpdatedAtField(ctx context.Context, s *Scope) error {
+	if s.Error != nil {
+		return nil
+	}
+
+	updatedAt, hasUpdatedAt := s.Struct().UpdatedAt()
+	// if there are any selected fields that are not a foreign relationships
+	// (attributes, foreign keys etc, relationship-belongs-to...) do the patch process
+	if !hasUpdatedAt && len(s.Fieldset) == 0 {
+		return errors.NewDet(class.QuerySelectedFieldsNotSelected, "no fields selected for patch process")
+	}
+	if !hasUpdatedAt {
+		return nil
+	}
+	v := reflect.ValueOf(s.Value).Elem().FieldByIndex(updatedAt.ReflectField().Index)
+
+	if !reflect.DeepEqual(v.Interface(), reflect.Zero(updatedAt.ReflectField().Type).Interface()) {
+		return nil
+	}
+
+	t := time.Now()
+	switch {
+	case updatedAt.IsTimePointer():
+		v.Set(reflect.ValueOf(&t))
+	case updatedAt.IsTime():
+		v.Set(reflect.ValueOf(t))
+	}
+	s.Fieldset[updatedAt.NeuronName()] = updatedAt
 	return nil
 }

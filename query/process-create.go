@@ -29,40 +29,6 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDet(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
-	// Set created at field if possible
-	createdAtField, ok := s.Struct().CreatedAt()
-	if ok {
-		// by default scope has auto selected fields setCreatedAt should be true
-		setCreatedAt := s.autosetFields
-		if !setCreatedAt {
-			_, found := s.Fieldset[createdAtField.NeuronName()]
-			// if the fields were not auto selected check if the field is selected by user
-			setCreatedAt = !found
-		}
-
-		if setCreatedAt {
-			// Check if the value of the created at field is not already set by the user.
-			v := reflect.ValueOf(s.Value).Elem().FieldByIndex(createdAtField.ReflectField().Index)
-
-			if s.autosetFields {
-				setCreatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(createdAtField.ReflectField().Type).Interface())
-			}
-
-			if setCreatedAt {
-				switch {
-				case createdAtField.IsTimePointer():
-					tv := time.Now()
-					v.Set(reflect.ValueOf(&tv))
-				case createdAtField.IsTime():
-					v.Set(reflect.ValueOf(time.Now()))
-				}
-
-				s.Fieldset[createdAtField.NeuronName()] = createdAtField
-
-			}
-		}
-	}
-
 	if err := creator.Create(ctx, s); err != nil {
 		return err
 	}
@@ -121,5 +87,47 @@ func storeScopePrimaries(ctx context.Context, s *Scope) error {
 
 	s.StoreSet(internal.ReducedPrimariesStoreKey, primaryValues)
 
+	return nil
+}
+
+func setCreatedAtField(ctx context.Context, s *Scope) error {
+	if s.Error != nil {
+		return nil
+	}
+
+	// Set created at field if possible
+	createdAtField, ok := s.Struct().CreatedAt()
+	if !ok {
+		return nil
+	}
+	// by default scope has auto selected fields setCreatedAt should be true
+	setCreatedAt := s.autosetFields
+	if !setCreatedAt {
+		_, found := s.Fieldset[createdAtField.NeuronName()]
+		// if the fields were not auto selected check if the field is selected by user
+		setCreatedAt = !found
+	}
+
+	if !setCreatedAt {
+		return nil
+	}
+	// Check if the value of the created at field is not already set by the user.
+	v := reflect.ValueOf(s.Value).Elem().FieldByIndex(createdAtField.ReflectField().Index)
+
+	if s.autosetFields {
+		setCreatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(createdAtField.ReflectField().Type).Interface())
+	}
+
+	if setCreatedAt {
+		switch {
+		case createdAtField.IsTimePointer():
+			tv := time.Now()
+			v.Set(reflect.ValueOf(&tv))
+		case createdAtField.IsTime():
+			v.Set(reflect.ValueOf(time.Now()))
+		}
+
+		s.Fieldset[createdAtField.NeuronName()] = createdAtField
+	}
 	return nil
 }

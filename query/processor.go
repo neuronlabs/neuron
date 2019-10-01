@@ -34,6 +34,7 @@ func init() {
 	// create processes
 	registerQueryProcess(ProcessHookBeforeCreate, beforeCreateFunc)
 	registerQueryProcess(ProcessSetBelongsToRelations, setBelongsToRelationshipsFunc)
+	registerQueryProcess(ProcessSetCreatedAt, setCreatedAtField)
 	registerQueryProcess(ProcessCreate, createFunc)
 	registerQueryProcess(ProcessStoreScopePrimaries, storeScopePrimaries)
 	registerQueryProcess(ProcessPatchForeignRelations, patchForeignRelationshipsFunc)
@@ -61,6 +62,7 @@ func init() {
 
 	// Patch
 	registerQueryProcess(ProcessHookBeforePatch, beforePatchFunc)
+	registerQueryProcess(ProcessSetUpdatedAt, setUpdatedAtField)
 	registerQueryProcess(ProcessPatch, patchFunc)
 	registerQueryProcess(ProcessHookAfterPatch, afterPatchFunc)
 	registerQueryProcess(ProcessPatchBelongsToRelations, patchBelongsToRelationshipsFunc)
@@ -68,6 +70,7 @@ func init() {
 	// Delete
 	registerQueryProcess(ProcessReducePrimaryFilters, reducePrimaryFilters)
 	registerQueryProcess(ProcessHookBeforeDelete, beforeDeleteFunc)
+	registerQueryProcess(ProcessSetDeletedAt, setDeletedAtField)
 	registerQueryProcess(ProcessDelete, deleteFunc)
 	registerQueryProcess(ProcessHookAfterDelete, afterDeleteFunc)
 	registerQueryProcess(ProcessDeleteForeignRelations, deleteForeignRelationshipsFunc)
