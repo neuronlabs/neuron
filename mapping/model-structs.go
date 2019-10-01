@@ -380,6 +380,7 @@ func (m *ModelStruct) clearInitializeStoreKeys() {
 	// clear untagged fields
 	delete(m.store, untaggedFieldKey)
 	delete(m.store, assignedFieldsKey)
+	log.Debug3f("Cleared model: '%s' internal store key", m.Collection())
 }
 
 // computeNestedIncludedCount computes the included count for given limit
@@ -459,6 +460,7 @@ func (m *ModelStruct) increaseAssignedFields() {
 		assignedFields = v.(int)
 	}
 	assignedFields++
+	log.Debug3f("Model: '%s' assignedFields: %d", m.Collection(), assignedFields)
 	m.store[assignedFieldsKey] = assignedFields
 }
 

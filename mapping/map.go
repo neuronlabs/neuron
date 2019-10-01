@@ -95,19 +95,24 @@ func (m *ModelMap) ModelByName(name string) *ModelStruct {
 // RegisterModels registers the model within the model map container.
 func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	// iterate over models and register one by one
-	var err error
+	var thisModels []*ModelStruct
 	for _, model := range models {
+		log.Debug3f("Registering Model: '%T'", model)
 		// build the model's structure and set into model map.
 		mStruct, err := buildModelStruct(model, m.NamerFunc)
 		if err != nil {
 			return err
 		}
 
-		if err = m.Set(mStruct); err != nil {
-			continue
+		// check if the model wasn't already registered within the ModelMap 'm'.
+		if m.models[mStruct.Type()] != nil {
+			return errors.Newf(class.ModelInSchemaAlreadyRegistered, "model: '%s' was already registered.", mStruct.Collection())
 		}
 
-		var modelConfig *config.ModelConfig
+		if err = m.Set(mStruct); err != nil {
+			return err
+		}
+		thisModels = append(thisModels, mStruct)
 
 		modelConfig, ok := m.Configs[mStruct.collectionType]
 		if !ok {
@@ -131,12 +136,14 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 		mStruct.namerFunc = m.NamerFunc
 	}
 
-	for _, modelStruct := range m.models {
+	var err error
+	for _, modelStruct := range thisModels {
 		if err = m.setUntaggedFields(modelStruct); err != nil {
 			return err
 		}
 
 		if modelStruct.assignedFields() == 0 {
+			log.Debug3f("Assigned fields: %v - number: %v", modelStruct.assignedFields(), modelStruct.store[assignedFieldsKey])
 			err = errors.NewDetf(class.ModelMappingNoFields, "model: '%s' have no fields defined", modelStruct.Type().Name())
 			return err
 		}
@@ -171,11 +178,10 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 		return err
 	}
 
-	for _, model := range m.models {
+	for _, model := range thisModels {
 		model.structFieldCount = len(model.StructFields())
 		model.clearInitializeStoreKeys()
 	}
-
 	return nil
 }
 
