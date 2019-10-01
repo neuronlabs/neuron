@@ -41,6 +41,7 @@ const (
 const (
 	ProcessHookBeforeCreate          = internal.ProcessHookBeforeCreate
 	ProcessSetBelongsToRelations     = internal.ProcessSetBelongsToRelations
+	ProcessSetCreatedAt              = internal.ProcessSetCreatedAt
 	ProcessCreate                    = internal.ProcessCreate
 	ProcessStoreScopePrimaries       = internal.ProcessStoreScopePrimaries
 	ProcessPatchForeignRelations     = internal.ProcessPatchForeignRelations
@@ -65,12 +66,14 @@ const (
 	ProcessGetIncludedSafe = internal.ProcessGetIncludedSafe
 
 	ProcessHookBeforePatch         = internal.ProcessHookBeforePatch
+	ProcessSetUpdatedAt            = internal.ProcessSetUpdatedAt
 	ProcessPatch                   = internal.ProcessPatch
 	ProcessHookAfterPatch          = internal.ProcessHookAfterPatch
 	ProcessPatchBelongsToRelations = internal.ProcessPatchBelongsToRelations
 
 	ProcessReducePrimaryFilters       = internal.ProcessReducePrimaryFilters
 	ProcessHookBeforeDelete           = internal.ProcessHookBeforeDelete
+	ProcessSetDeletedAt               = internal.ProcessSetDeletedAt
 	ProcessDelete                     = internal.ProcessDelete
 	ProcessHookAfterDelete            = internal.ProcessHookAfterDelete
 	ProcessDeleteForeignRelations     = internal.ProcessDeleteForeignRelations

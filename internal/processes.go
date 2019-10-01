@@ -4,6 +4,7 @@ package internal
 var Processes = map[string]struct{}{
 	ProcessHookBeforeCreate:           struct{}{},
 	ProcessSetBelongsToRelations:      struct{}{},
+	ProcessSetCreatedAt:               struct{}{},
 	ProcessCreate:                     struct{}{},
 	ProcessStoreScopePrimaries:        struct{}{},
 	ProcessPatchForeignRelations:      struct{}{},
@@ -24,12 +25,14 @@ var Processes = map[string]struct{}{
 	ProcessHookAfterList:              struct{}{},
 	ProcessGetIncluded:                struct{}{},
 	ProcessGetIncludedSafe:            struct{}{},
+	ProcessSetUpdatedAt:               struct{}{},
 	ProcessHookBeforePatch:            struct{}{},
 	ProcessPatch:                      struct{}{},
 	ProcessHookAfterPatch:             struct{}{},
 	ProcessPatchBelongsToRelations:    struct{}{},
 	ProcessReducePrimaryFilters:       struct{}{},
 	ProcessHookBeforeDelete:           struct{}{},
+	ProcessSetDeletedAt:               struct{}{},
 	ProcessDelete:                     struct{}{},
 	ProcessHookAfterDelete:            struct{}{},
 	ProcessDeleteForeignRelations:     struct{}{},
@@ -46,6 +49,7 @@ const (
 	// Create processes
 	ProcessHookBeforeCreate          = "hook_before_create"
 	ProcessSetBelongsToRelations     = "set_belongs_to_relations"
+	ProcessSetCreatedAt              = "set_created_at"
 	ProcessCreate                    = "create"
 	ProcessStoreScopePrimaries       = "store_scope_primaries"
 	ProcessPatchForeignRelations     = "patch_foreign_relations"
@@ -73,6 +77,7 @@ const (
 
 	// Patch processes
 	ProcessHookBeforePatch         = "hook_before_patch"
+	ProcessSetUpdatedAt            = "set_updated_at"
 	ProcessPatch                   = "patch"
 	ProcessHookAfterPatch          = "hook_after_patch"
 	ProcessPatchBelongsToRelations = "patch_belongs_to_relations"
@@ -80,6 +85,7 @@ const (
 	// Delete processes
 	ProcessReducePrimaryFilters       = "reduce_primary_filters"
 	ProcessHookBeforeDelete           = "hook_before_delete"
+	ProcessSetDeletedAt               = "set_deleted_at"
 	ProcessDelete                     = "delete"
 	ProcessHookAfterDelete            = "hook_after_delete"
 	ProcessDeleteForeignRelations     = "delete_foreign_relations"
