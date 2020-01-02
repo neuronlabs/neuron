@@ -6,9 +6,20 @@ import (
 	"github.com/neuronlabs/neuron-core/query"
 )
 
-// Controller creates new controller for provided 'cfg' config.
-func Controller(cfg *config.Controller) (*controller.Controller, error) {
+// Controller gets default controllre
+func Controller() *controller.Controller {
+	return controller.Default()
+}
+
+// InitController creates and initializes new controller for provided 'cfg' config.
+func InitController(cfg *config.Controller) (*controller.Controller, error) {
 	return controller.New(cfg)
+}
+
+// InitDefaultController initializes default controller for given configuration.
+func InitDefaultController(cfg *config.Controller) (err error) {
+	controller.DefaultController, err = controller.New(cfg)
+	return err
 }
 
 // MustQuery creates the new query scope for the provided 'model' for the default controller.

@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/neuronlabs/neuron-core/internal"
 )
 
@@ -143,31 +141,49 @@ func defaultThreadsafeProcessorConfig() map[string]interface{} {
 	}
 }
 
+func (p *Processor) unmarshal(cfg map[string]interface{}) {
+	var pl *ProcessList
+	for k, v := range cfg {
+		switch k {
+		case "count_processes":
+			pl = &p.CountProcesses
+		case "create_processes":
+			pl = &p.CreateProcesses
+		case "patch_processes":
+			pl = &p.PatchProcesses
+		case "delete_processes":
+			pl = &p.DeleteProcesses
+		case "get_processes":
+			pl = &p.GetProcesses
+		case "list_processes":
+			pl = &p.ListProcesses
+		case "default_timeout":
+			d, ok := v.(time.Duration)
+			if !ok {
+				panic("invalid duration")
+			}
+			p.DefaultTimeout = d
+			continue
+		}
+		processes, ok := v.([]string)
+		if !ok {
+			panic("invalid processes")
+		}
+		*pl = append(*pl, processes...)
+	}
+}
+
 // ThreadSafeProcessor creates the goroutine safe query processor configuration.
 func ThreadSafeProcessor() *Processor {
 	p := &Processor{}
-	v := viper.New()
-
-	k := "ts_processor"
-	v.Set(k, defaultThreadsafeProcessorConfig())
-	err := v.UnmarshalKey(k, p)
-	if err != nil {
-		panic(err)
-	}
+	p.unmarshal(defaultThreadsafeProcessorConfig())
 	return p
 }
 
 // ConcurrentProcessor creates the concurrent processor confuration.
 func ConcurrentProcessor() *Processor {
 	p := &Processor{}
-	v := viper.New()
-
-	k := "ts_processor"
-	v.Set(k, defaultConcurrentProcessorConfig())
-	err := v.UnmarshalKey(k, p)
-	if err != nil {
-		panic(err)
-	}
+	p.unmarshal(defaultConcurrentProcessorConfig())
 	return p
 }
 

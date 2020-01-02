@@ -53,7 +53,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.ReadDefaultConfig()
+			cfg := config.Default()
 			m := NewModelMap(namer.NamingSnake, cfg)
 			b.StartTimer()
 
@@ -65,7 +65,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Relationship", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.ReadDefaultConfig()
+			cfg := config.Default()
 			m := NewModelMap(namer.NamingSnake, cfg)
 			b.StartTimer()
 
