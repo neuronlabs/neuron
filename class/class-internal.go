@@ -15,6 +15,7 @@ func registerInternalClasses() {
 	registerInternalModel()
 	registerInternalRepository()
 	registerInternalCommon()
+	registerInternalInit()
 }
 
 /**
@@ -252,4 +253,19 @@ func registerInternalCommon() {
 	MnrInternalCommon = errors.MustNewMinor(MjrInternal)
 
 	InternalCommon = errors.MustNewMinorClass(MjrInternal, MnrInternalCommon)
+}
+
+var (
+	// MnrInternalInit is the common 'MnrInternalInit' error classification for
+	// initialization errors.
+	MnrInternalInit errors.Minor
+
+	// InternalInitController error class for controller initialization errors.
+	InternalInitController errors.Class
+)
+
+func registerInternalInit() {
+	MnrInternalInit = errors.MustNewMinor(MjrInternal)
+
+	InternalInitController = errors.MustNewClass(MjrInternal, MnrInternalInit, errors.MustNewIndex(MjrInternal, MnrInternalInit))
 }

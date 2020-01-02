@@ -8,7 +8,6 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/neuronlabs/errors"
-	"github.com/neuronlabs/uni-logger"
 
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/config"
@@ -113,23 +112,22 @@ func (c *Controller) MustGetModelStruct(model interface{}) *mapping.ModelStruct 
 	return mStruct
 }
 
-// RegisterModels registers provided models within the context of the provided Controller
+// RegisterModels registers provided models within the context of the provided Controller.
+// All repositories must be registered up to this moment.
 func (c *Controller) RegisterModels(models ...interface{}) error {
-	if err := c.checkDefaultRepositories(); err != nil {
-		log.Errorf("Registering models failed - no default repository set yet. %v", err)
-		return err
-	}
-
 	log.Debug2f("Registering '%d' models", len(models))
+	start := time.Now()
 	if err := c.ModelMap.RegisterModels(models...); err != nil {
 		return err
 	}
 
-	if err := c.Config.MapRepositories(); err != nil {
-		log.Debugf("Mapping models to repositories failed. %v", err)
+	// map repositories to the models
+	if err := c.Config.MapModelsRepositories(); err != nil {
 		return err
 	}
 
+	// ensure all models have their repositories defined.
+	// and the repository exists in the factory.
 	for _, mStruct := range c.ModelMap.Models() {
 		log.Debug3f("Checking repository for model: %s", mStruct.Collection())
 		if _, err := c.GetRepository(mStruct); err != nil {
@@ -137,6 +135,7 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 			return err
 		}
 	}
+	log.Debug2f("Models registered in: %s", time.Since(start))
 	return nil
 }
 
@@ -145,20 +144,19 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	// check if the repository is not already registered
+	// check if the repository is already registered
 	_, ok := c.Config.Repositories[name]
 	if ok {
 		return errors.NewDetf(class.RepositoryConfigAlreadyRegistered, "repository: '%s' already exists", name)
 	}
 	c.Config.Repositories[name] = cfg
 
-	// if there is not default repository check if the repository could be default.
-	if c.Config.DefaultRepository == nil {
-		if c.Config.DefaultRepositoryName == name || c.Config.DefaultRepositoryName == "" {
-			log.Infof("Setting default repository to: '%s'", name)
-			c.Config.DefaultRepository = cfg
-			c.Config.DefaultRepositoryName = name
-		}
+	// if there is not default repository and the default repository name matches or is not defined
+	// set this repository as default
+	if c.Config.DefaultRepository == nil && (c.Config.DefaultRepositoryName == name || c.Config.DefaultRepositoryName == "") {
+		log.Infof("Setting default repository to: '%s'", name)
+		c.Config.DefaultRepository = cfg
+		c.Config.DefaultRepositoryName = name
 	}
 	return nil
 }
@@ -221,7 +219,7 @@ func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, er
 }
 
 // setConfig sets and validates provided config
-func (c *Controller) setConfig(cfg *config.Controller) error {
+func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	// if there is no controller config provided throw an error.
 	if cfg == nil {
 		return errors.NewDet(class.ConfigValueNil, "provided nil config value")
@@ -229,63 +227,26 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 
 	// set the log level from the provided config.
 	if cfg.LogLevel != "" {
-		level := unilogger.ParseLevel(cfg.LogLevel)
-		if level == unilogger.UNKNOWN {
-			return errors.NewDetf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", cfg.LogLevel)
-		}
-
-		if log.Logger() == nil {
-			log.Default()
-		}
-
-		if log.Level() != level {
-			// get and set default logger
-			if err := log.SetLevel(level); err != nil {
-				return err
-			}
+		if err = cfg.SetLogger(); err != nil {
+			return err
 		}
 	}
 	log.Debug2f("Creating new controller with config: '%#v'", cfg)
-
 	// set the naming convention
 	cfg.NamingConvention = strings.ToLower(cfg.NamingConvention)
 
-	if err := validate.Struct(cfg); err != nil {
-		return errors.NewDet(class.ConfigValueInvalid, "validating config failed")
-	}
-
-	if err := cfg.Processor.Validate(); err != nil {
+	// map the processor to it's name
+	if err = cfg.MapProcessor(); err != nil {
 		return err
 	}
-
-	// if there is no repositories create a map container
-	if cfg.Repositories == nil {
-		cfg.Repositories = make(map[string]*config.Repository)
+	// validate config
+	if err = validate.Struct(cfg); err != nil {
+		return errors.NewDet(class.ConfigValueInvalid, "validating config failed")
 	}
-
-	// iterate over all repositories and find the default one
-	if cfg.DefaultRepository == nil {
-		for name, repoConfig := range cfg.Repositories {
-			if cfg.DefaultRepositoryName == name || cfg.DefaultRepositoryName == "" {
-				log.Debugf("Setting default repository to: '%s'", name)
-				cfg.DefaultRepository = repoConfig
-				cfg.DefaultRepositoryName = name
-				break
-			}
-		}
+	// validate processor functions
+	if err = cfg.Processor.Validate(); err != nil {
+		return err
 	}
-
-	// if the default is found check if it is stored within the Repositories
-	if cfg.DefaultRepository != nil && cfg.DefaultRepositoryName != "" {
-		_, ok := cfg.Repositories[cfg.DefaultRepositoryName]
-		if !ok {
-			cfg.Repositories[cfg.DefaultRepositoryName] = cfg.DefaultRepository
-		}
-	} else if cfg.DefaultRepository != nil && cfg.DefaultRepositoryName == "" {
-		return errors.NewDet(class.ConfigValueInvalid, "default repository have no name defined in the Controller Config")
-	}
-
-	c.Config = cfg
 
 	// set naming convention
 	switch cfg.NamingConvention {
@@ -300,44 +261,47 @@ func (c *Controller) setConfig(cfg *config.Controller) error {
 	default:
 		return errors.NewDetf(class.ConfigValueInvalid, "unknown naming convention name: %s", cfg.NamingConvention)
 	}
-
 	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
+
+	// set create validation struct tag
 	if cfg.CreateValidatorAlias == "" {
 		cfg.CreateValidatorAlias = "create"
 	}
-
 	c.CreateValidator.SetTagName(cfg.CreateValidatorAlias)
+	log.Debug2f("Using: '%s' create validator struct tag", cfg.CreateValidatorAlias)
 
+	// set patch validation struct tag
 	if cfg.PatchValidatorAlias == "" {
 		cfg.PatchValidatorAlias = "patch"
 	}
-
 	c.PatchValidator.SetTagName(cfg.PatchValidatorAlias)
+	log.Debug2f("Using: '%s' patch validator struct tag", cfg.PatchValidatorAlias)
 
+	c.Config = cfg
 	return nil
 }
 
 func (c *Controller) mapModel(model *mapping.ModelStruct) error {
-	repoName := model.Config().Repository.DriverName
-	if repoName == "" {
+	driverName := model.Config().Repository.DriverName
+	if driverName == "" {
 		return errors.NewDet(class.ModelSchemaNotFound, "no default repository factory found")
 	}
 
-	factory := repository.GetFactory(repoName)
+	// get the factory for given repository driver.
+	factory := repository.GetFactory(driverName)
 	if factory == nil {
-		err := errors.NewDetf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", repoName)
+		err := errors.NewDetf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", driverName)
 		log.Debug(err)
 		return err
 	}
 
-	repo, err := factory.New(c, (*mapping.ModelStruct)(model))
+	// create new repository based on it's name
+	repo, err := factory.New(c, model)
 	if err != nil {
 		return err
 	}
-
+	// store it's information
 	c.modelRepositories[model] = repo
-
-	log.Debugf("Model %s mapped, to repository: %s", model.Collection(), repoName)
 	return nil
 }
 

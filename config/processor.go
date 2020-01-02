@@ -1,12 +1,51 @@
 package config
 
 import (
-	"errors"
 	"strings"
 	"time"
 
+	"github.com/neuronlabs/errors"
+	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/internal"
 )
+
+var processors = map[string]*Processor{
+	"concurrent": ConcurrentProcessor(),
+	"threadsafe": ThreadSafeProcessor(),
+}
+
+// ConcurrentProcessor creates the concurrent processor confuration.
+func ConcurrentProcessor() *Processor {
+	p := &Processor{}
+	p.unmarshal(defaultConcurrentProcessorConfig())
+	return p
+}
+
+// DefaultConcurrentProcessorConfig creates default concurrent config for the Processor.
+func DefaultConcurrentProcessorConfig() map[string]interface{} {
+	return defaultConcurrentProcessorConfig()
+}
+
+// DefaultThreadsafeProcessorConfig creates default config for the Processor.
+func DefaultThreadsafeProcessorConfig() map[string]interface{} {
+	return defaultThreadsafeProcessorConfig()
+}
+
+// GetProcessor gets the processor with the 'name'.
+func GetProcessor(name string) (*Processor, bool) {
+	p, ok := processors[name]
+	return p, ok
+}
+
+// RegisterProcessor registers processor 'p' under provided 'name'
+func RegisterProcessor(name string, p *Processor) error {
+	_, ok := processors[name]
+	if ok {
+		return errors.NewDetf(class.ConfigValueProcessor, "processor: '%s' already registered", name)
+	}
+	processors[name] = p
+	return nil
+}
 
 // Processor is the config used for the scope processor.
 type Processor struct {
@@ -31,22 +70,22 @@ func (p *Processor) Validate() error {
 	err := &multiProcessError{}
 
 	if len(p.CreateProcesses) == 0 {
-		return errors.New("no create processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no create processes in configuration")
 	}
 	if len(p.DeleteProcesses) == 0 {
-		return errors.New("no delete processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no delete processes in configuration")
 	}
 	if len(p.GetProcesses) == 0 {
-		return errors.New("no get processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no get processes in configuration")
 	}
 	if len(p.ListProcesses) == 0 {
-		return errors.New("no list processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no list processes in configuration")
 	}
 	if len(p.PatchProcesses) == 0 {
-		return errors.New("no patch processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no patch processes in configuration")
 	}
 	if len(p.CountProcesses) == 0 {
-		return errors.New("no count processes in configuration")
+		return errors.NewDetf(class.ConfigValueProcessor, "no count processes in configuration")
 	}
 
 	p.CreateProcesses.validate(err)
@@ -60,11 +99,6 @@ func (p *Processor) Validate() error {
 		return nil
 	}
 	return err
-}
-
-// DefaultThreadsafeProcessorConfig creates default config for the Processor.
-func DefaultThreadsafeProcessorConfig() map[string]interface{} {
-	return defaultThreadsafeProcessorConfig()
 }
 
 func defaultThreadsafeProcessorConfig() map[string]interface{} {
@@ -178,18 +212,6 @@ func ThreadSafeProcessor() *Processor {
 	p := &Processor{}
 	p.unmarshal(defaultThreadsafeProcessorConfig())
 	return p
-}
-
-// ConcurrentProcessor creates the concurrent processor confuration.
-func ConcurrentProcessor() *Processor {
-	p := &Processor{}
-	p.unmarshal(defaultConcurrentProcessorConfig())
-	return p
-}
-
-// DefaultConcurrentProcessorConfig creates default concurrent config for the Processor.
-func DefaultConcurrentProcessorConfig() map[string]interface{} {
-	return defaultConcurrentProcessorConfig()
 }
 
 func defaultConcurrentProcessorConfig() map[string]interface{} {

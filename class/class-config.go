@@ -34,23 +34,18 @@ var (
 	// MnrConfigValue is the 'MjrConfig' minor error classification
 	// for the config value issues.
 	MnrConfigValue errors.Minor
-
 	// ConfigValueGateway is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of gateway.
 	ConfigValueGateway errors.Class
-
 	// ConfigValueProcessor is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of processor.
 	ConfigValueProcessor errors.Class
-
 	// ConfigValueFlag is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues with the value of flag.
 	ConfigValueFlag errors.Class
-
 	// ConfigValueNil is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for the issues related to the nil config value.
 	ConfigValueNil errors.Class
-
 	// ConfigValueInvalid is the 'MjrConfig', 'MnrConfigValue' error classification
 	// for config validation failures.
 	ConfigValueInvalid errors.Class

@@ -19,18 +19,18 @@ var (
 	}
 )
 
-// DefaultValues returns default config values in a viper compatible way.
+// Default returns default controller configuration.
+func Default() *Controller {
+	return defaultConfig()
+}
+
+// DefaultValues returns default config values in a spf13/viper compatible way.
 func DefaultValues() map[string]interface{} {
 	valuesCP := make(map[string]interface{}, len(defaultValues))
 	for k, v := range defaultValues {
 		valuesCP[k] = v
 	}
 	return valuesCP
-}
-
-// Default returns default controller configuration.
-func Default() *Controller {
-	return defaultConfig()
 }
 
 func defaultConfig() *Controller {
