@@ -5,6 +5,7 @@ GIT_DIRTY  	= $(shell test -n "`git status --porcelain`" && echo "dirty" || echo
 
 GOPATH		= $(shell go env GOPATH)
 GOLINTCI	= $(GOPATH)/bin/golangci-lint 
+MISSPELL	= $(GOPATH)/bin/misspell
 
 ifndef VERSION
 	VERSION = $(GIT_TAG)
@@ -15,10 +16,9 @@ dirty = "dirty"
 lint:
 	@echo "running golangci-lint..."
 	@$(GOLINTCI) run ./...
+	@$(MISSPELL) -error **/*
 
-
-
-release: check lint
+release: check test lint
 	@echo "pushing to origin/develop"
 	$(shell git push origin develop)
 	@echo "pushing to origin/${GIT_TAG}'"
@@ -30,6 +30,9 @@ ifeq ($(GIT_DIRTY), dirty)
 	$(error git state is not clean)
 endif
 
+test:
+	@echo "running go tests..."
+	$(shell go test ./...)
 
 head:
 	@echo "Git short head:	   $(GIT_SHA)"
@@ -39,3 +42,12 @@ info:
 	@echo "Git Tag:           ${GIT_TAG}"
 	@echo "Git Commit:        ${GIT_COMMIT}"
 	@echo "Git Tree State:    ${GIT_DIRTY}"
+
+todo:
+	@grep \
+		--exclude-dir=vendor \
+		--exclude=Makefile \
+		--text \
+		--color \
+		-nRo -E ' TODO:.*|SkipNow' .
+.PHONY: todo

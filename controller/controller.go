@@ -255,7 +255,7 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 func (c *Controller) mapModel(model *mapping.ModelStruct) error {
 	driverName := model.Config().Repository.DriverName
 	if driverName == "" {
-		return errors.NewDet(class.ModelSchemaNotFound, "no default repository factory found")
+		return errors.NewDetf(class.ModelSchemaNotFound, "no repository driver name found for model: '%s'", model.Collection())
 	}
 
 	// get the factory for given repository driver.

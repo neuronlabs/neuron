@@ -30,7 +30,7 @@ var (
 	OpStartsWith = &Operator{Raw: operatorStartsWithRaw, Name: "StartsWith"}
 	OpEndsWith   = &Operator{Raw: operatorEndsWithRaw, Name: "EndsWith"}
 
-	// Null and Existance operators.
+	// Null and Existence operators.
 	OpIsNull    = &Operator{Raw: operatorIsNullRaw, Name: "IsNull"}
 	OpNotNull   = &Operator{Raw: operatorNotNullRaw, Name: "NotNull"}
 	OpExists    = &Operator{Raw: operatorExistsRaw, Name: "Exists"}

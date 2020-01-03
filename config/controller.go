@@ -108,7 +108,7 @@ func (c *Controller) SetDefaultRepository() error {
 			c.DefaultRepositoryName = c.DefaultRepository.DriverName
 		}
 		if c.DefaultRepositoryName == "" {
-			return errors.NewDetf(class.RepositoryConfigInvalid, "the default repostiory name and the driver name are not provided: '%T'", c.DefaultRepository)
+			return errors.NewDetf(class.RepositoryConfigInvalid, "the default repository name and the driver name are not provided: '%T'", c.DefaultRepository)
 		}
 		// check if the repository is already initied
 		if c.Repositories == nil {
@@ -137,8 +137,9 @@ func (c *Controller) SetDefaultRepository() error {
 	}
 
 	defaultRepo, ok := c.Repositories[c.DefaultRepositoryName]
-	if !ok {
+	if ok {
 		c.DefaultRepository = defaultRepo
+		return nil
 	}
 	return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.DefaultRepositoryName)
 }
