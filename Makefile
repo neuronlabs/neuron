@@ -66,11 +66,11 @@ $(RELEASE_TARGETS): release
 ## release a version
 release: test-race lint commit
 	$(info $(M) creating tag: '${CURRENT_TAG}'…)
-	$(shell git tag -a ${CURRENT_TAG} -m ${TAG_MESSAGE})
+	git tag -a ${CURRENT_TAG} -m ${TAG_MESSAGE}
 	$(info $(M) pushing to origin/develop…)
-	$(shell git push origin develop)
+	git push origin develop
 	$(info $(M) pushing to origin/${CURRENT_TAG}…)
-	$(shell git push origin ${CURRENT_TAG})
+	git push origin ${CURRENT_TAG}
 
 
 ## check git status
@@ -84,9 +84,9 @@ endif
 .PHONY: commit
 commit:
 ifeq ($(GIT_DIRTY), dirty)
-	## $(info $(M) preparing commit…)
-	$(shell git add --all)
-	$(shell git commit -am "$(COMMIT_MESSAGE)")
+	$(info $(M) preparing commit…)
+	git add .
+	git commit -am "$(COMMIT_MESSAGE)"
 endif
 
 .PHONY: info
