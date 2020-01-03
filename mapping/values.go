@@ -166,7 +166,6 @@ func setAttributeField(value string, fieldValue reflect.Value) errors.DetailedEr
 	case reflect.Struct:
 		// check if it is time
 		if _, ok := fieldValue.Elem().Interface().(time.Time); ok {
-			// TODO: set the time field
 			err = setTimeField(value, fieldValue)
 		} else {
 			// TODO: set the nested attribute struct
