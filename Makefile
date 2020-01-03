@@ -85,8 +85,8 @@ endif
 commit:
 ifeq ($(GIT_DIRTY), dirty)
 	$(info $(M) preparing commit…)
-	$(shell git add --all)
-	$(info $(M) added all files...)
+	##$(shell git add --all)
+	##$(info $(M) added all files...)
 	$(shell git commit -am "$(COMMIT_MESSAGE)")
 endif
 
