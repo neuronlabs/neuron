@@ -65,18 +65,18 @@ $(RELEASE_TARGETS): release
 
 ## release a version
 release: test-race lint commit
-	$(info $(M) "creating tag: '${CURRENT_TAG}'")
+	$(info $(M) creating tag: '${CURRENT_TAG}')
 	$(shell git tag -a ${CURRENT_TAG} -m ${TAG_MESSAGE})
-	$(info $(M) "pushing to origin/develop")
+	$(info $(M) pushing to origin/develop)
 	$(shell git push origin develop)
-	$(info $(M) "pushing to origin/${CURRENT_TAG}")
+	$(info $(M) pushing to origin/${CURRENT_TAG})
 	$(shell git push origin ${CURRENT_TAG})
 
 
 ## check git status
 .PHONY: check
 check:
-	$(info $(M) "checking git status...")
+	$(info $(M) checking git status...)
 ifeq ($(GIT_DIRTY), dirty)
 	$(error git state is not clean)
 endif
@@ -84,9 +84,9 @@ endif
 .PHONY: commit
 commit:
 ifeq ($(GIT_DIRTY), dirty)
-	$(info $(M) "preparing commit with message: ${COMMIT_MESSAGE}...")
+	$(info $(M) preparing commit with message: ${COMMIT_MESSAGE}...)
 	$(shell git add --all)
-	$(info $(M) "added all files...")
+	$(info $(M) added all files...)
 	$(shell git commit -am "${COMMIT_MESSAGE}")
 endif
 
@@ -127,6 +127,6 @@ fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
 ## Linters
 .PHONY: lint
 lint:
-	$(info $(M) "running linters...")
+	$(info $(M) running linters...)
 	@$(GOLINTCI) run ./...
 	@$(MISSPELL) -error **/*
