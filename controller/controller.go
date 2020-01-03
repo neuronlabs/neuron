@@ -161,40 +161,6 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) err
 	return nil
 }
 
-func (c *Controller) checkDefaultRepositories() error {
-	if c.Config.Repositories == nil {
-		return errors.NewDet(class.ConfigValueNil, "no Repositories map found for the controller config")
-	}
-
-	if c.Config.DefaultRepository != nil {
-		if c.Config.DefaultRepositoryName == "" {
-			return errors.NewDetf(class.RepositoryConfigInvalid, "no default repository name provided")
-		}
-		// check if it is stored in repositories
-		_, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
-		if !ok {
-			c.Config.Repositories[c.Config.DefaultRepositoryName] = c.Config.DefaultRepository
-		}
-		return nil
-	}
-
-	// find if the repository is in the Repositories
-	if c.Config.DefaultRepositoryName == "" && len(c.Config.Repositories) == 0 {
-		return errors.NewDet(class.RepositoryNotFound, "no repositories found for the controller")
-	}
-
-	if c.Config.DefaultRepositoryName != "" {
-		defaultRepo, ok := c.Config.Repositories[c.Config.DefaultRepositoryName]
-		if ok {
-			c.Config.DefaultRepository = defaultRepo
-			return nil
-		}
-		return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.Config.DefaultRepositoryName)
-	}
-
-	return errors.NewDet(class.ConfigValueNil, "no default repository set for the controller")
-}
-
 func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	if model == nil {
 		return nil, errors.NewDet(class.ModelValueNil, "provided nil model value")
