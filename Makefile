@@ -84,7 +84,7 @@ endif
 .PHONY: commit
 commit:
 ifeq ($(GIT_DIRTY), dirty)
-	$(info $(M) preparing commit with message: ${COMMIT_MESSAGE}...)
+	$(info $(M) preparing commit with message: $(COMMIT_MESSAGE)...)
 	$(shell git add --all)
 	$(info $(M) added all files...)
 	$(shell git commit -am "${COMMIT_MESSAGE}")
