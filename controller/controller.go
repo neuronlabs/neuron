@@ -114,15 +114,20 @@ func (c *Controller) MustGetModelStruct(model interface{}) *mapping.ModelStruct 
 
 // RegisterModels registers provided models within the context of the provided Controller.
 // All repositories must be registered up to this moment.
-func (c *Controller) RegisterModels(models ...interface{}) error {
+func (c *Controller) RegisterModels(models ...interface{}) (err error) {
 	log.Debug2f("Registering '%d' models", len(models))
 	start := time.Now()
-	if err := c.ModelMap.RegisterModels(models...); err != nil {
+	// check if the the default repository is set if allowed
+	if err = c.Config.SetDefaultRepository(); err != nil {
+		return err
+	}
+
+	if err = c.ModelMap.RegisterModels(models...); err != nil {
 		return err
 	}
 
 	// map repositories to the models
-	if err := c.Config.MapModelsRepositories(); err != nil {
+	if err = c.Config.MapModelsRepositories(); err != nil {
 		return err
 	}
 
@@ -130,7 +135,7 @@ func (c *Controller) RegisterModels(models ...interface{}) error {
 	// and the repository exists in the factory.
 	for _, mStruct := range c.ModelMap.Models() {
 		log.Debug3f("Checking repository for model: %s", mStruct.Collection())
-		if _, err := c.GetRepository(mStruct); err != nil {
+		if _, err = c.GetRepository(mStruct); err != nil {
 			log.Errorf("Mapping model: '%v' to repository failed.", mStruct.Type().Name())
 			return err
 		}
