@@ -15,7 +15,7 @@ Q = $(if $(filter 1,$V),,@)
 M = $(shell printf "\033[34;1m▶\033[0m")
 
 DESCRIBE           := $(shell git describe --match "v*" --always --tags)
-DESCRIBE_PARTS     := $(subst -, ,$(DESCRIBE))
+DESCRIBE_PARTS     := $(subst, +, ,$(subst -, ,$(DESCRIBE)))
 
 VERSION_TAG        := $(word 1,$(DESCRIBE_PARTS))
 COMMITS_SINCE_TAG  := $(word 2,$(DESCRIBE_PARTS))
