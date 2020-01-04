@@ -27,19 +27,12 @@ MAJOR              := $(word 1,$(VERSION_PARTS))
 MINOR              := $(word 2,$(VERSION_PARTS))
 MICRO              := $(word 3,$(VERSION_PARTS))
 
+CURRENT_VERSION    := $(MAJOR).$(MINOR).$(MICRO)
+CURRENT_TAG        := v$(CURRENT_VERSION)
+
 NEXT_MAJOR         := $(shell echo $$(($(MAJOR)+1)))
 NEXT_MINOR         := $(shell echo $$(($(MINOR)+1)))
-NEXT_MICRO          = $(shell echo $$(($(MICRO)+$(COMMITS_SINCE_TAG))))
-
-ifeq ($(strip $(COMMITS_SINCE_TAG)),)
-CURRENT_VERSION_MICRO := $(MAJOR).$(MINOR).$(MICRO)
-CURRENT_VERSION_MINOR := $(CURRENT_VERSION_MICRO)
-CURRENT_VERSION_MAJOR := $(CURRENT_VERSION_MICRO)
-else
-CURRENT_VERSION_MICRO := $(MAJOR).$(MINOR).$(NEXT_MICRO)
-CURRENT_VERSION_MINOR := $(MAJOR).$(NEXT_MINOR).0
-CURRENT_VERSION_MAJOR := $(NEXT_MAJOR).0.0
-endif
+NEXT_MICRO         	= $(shell echo $$(($(MICRO)+$(COMMITS_SINCE_TAG))))
 
 DATE                = $(shell date +'%d.%m.%Y')
 TIME                = $(shell date +'%H:%M:%S')
@@ -50,27 +43,35 @@ BRANCH_NAME        := $(shell git rev-parse --abbrev-ref HEAD)
 TAG_MESSAGE         = "$(TIME) $(DATE) $(AUTHOR) $(BRANCH_NAME)"
 COMMIT_MESSAGE     := $(shell git log --format=%B -n 1 $(COMMIT))
 
-CURRENT_TAG_MICRO  := "v$(CURRENT_VERSION_MICRO)"
-CURRENT_TAG_MINOR  := "v$(CURRENT_VERSION_MINOR)"
-CURRENT_TAG_MAJOR  := "v$(CURRENT_VERSION_MAJOR)"
-
 dirty = "dirty"
 
 RELEASE_TARGETS = release-patch release-minor release-major
 .PHONY: $(RELEASE_TARGETS) release
-release-patch: CURRENT_TAG=$(CURRENT_TAG_MICRO)
-release-minor: CURRENT_TAG=$(CURRENT_TAG_MINOR)
-release-major: CURRENT_TAG=$(CURRENT_TAG_MAJOR)
-$(RELEASE_TARGETS): release
+$(RELEASE_TARGETS): test-race lint commit
+release-patch: version-patch
+release-minor: version-minor
+release-major: version-major
+$(RELEASE_TARGETS): create-tag push-tag push-develop
 
-## release a version
-release: test-race lint commit
-	$(info $(M) creating tag: '${CURRENT_TAG}'…)
-	git tag -a ${CURRENT_TAG} -m ${TAG_MESSAGE}
+.PHONY: create-tag
+create-tag: current-tag
+	$(info $(M) creating tag: '${NEXT_TAG}'…)
+	git tag -a ${NEXT_TAG} -m ${TAG_MESSAGE}
+
+.PHONY: push-develop
+push-develop:
 	$(info $(M) pushing to origin/develop…)
-	git push origin develop
-	$(info $(M) pushing to origin/${CURRENT_TAG}…)
-	git push origin ${CURRENT_TAG}
+	@git push origin develop
+
+.PHONY: push-master
+push-master:
+	$(info $(M) pushing to origin/master…)
+	@git push origin master
+
+.PHONY: push-tag
+push-tag:
+	$(info $(M) pushing to origin/${NEXT_TAG}…)
+	@git push origin ${NEXT_TAG}
 
 
 ## check git status
@@ -85,8 +86,12 @@ endif
 commit:
 ifeq ($(GIT_DIRTY), dirty)
 	$(info $(M) preparing commit…)
-	git add .
-	git commit -am "$(COMMIT_MESSAGE)"
+	@git add .
+	@git commit -am "$(COMMIT_MESSAGE)"
+else ifeq ($(strip $(COMMITS_SINCE_TAG)),)
+	$(info no changes from the previous tag)
+else
+	$(info $(M) nothing to commit)
 endif
 
 .PHONY: info
@@ -129,3 +134,20 @@ lint:
 	$(info $(M) running linters…)
 	@$(GOLINTCI) run ./...
 	@$(MISSPELL) -error **/*
+
+
+VERSIONS := version-patch version-minor version-major
+.PHONY: $(VERSIONS)
+version-patch:
+	$(eval NEXT_VERSION := $(MAJOR).$(MINOR).$(NEXT_MICRO))
+
+version-minor:
+	$(eval NEXT_VERSION := $(MAJOR).$(NEXT_MINOR).0)
+
+version-major:
+	$(eval NEXT_VERSION := $(NEXT_MAJOR).0.0)
+
+.PHONY: current-tag
+current-tag:
+	$(eval NEXT_TAG := v$(NEXT_VERSION))
+
