@@ -582,7 +582,7 @@ func TestCreateTransactions(t *testing.T) {
 			}).Return(nil)
 
 			foreignKey.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
-			}).Return(errors.New("Some error"))
+			}).Return(errors.New("some error"))
 
 			// Rollback the result
 			foreignKey.On("Rollback", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
@@ -631,66 +631,30 @@ func TestCreateTransactions(t *testing.T) {
 		require.True(t, ok)
 
 		t.Run("AutoSelected", func(t *testing.T) {
-			t.Run("Zero", func(t *testing.T) {
-				s, err := NewC(c, &ptrTimer{ID: 1})
-				require.NoError(t, err)
+			s, err := NewC(c, &timer{ID: 1, CreatedAt: time.Now().Add(-time.Hour)})
+			require.NoError(t, err)
 
-				repo, err := c.GetRepository(ptrTimer{})
-				require.NoError(t, err)
+			// timerRepo
+			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
-				timerRepo, ok := repo.(*Repository)
+			timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
 				require.True(t, ok)
 
-				// timerRepo
-				timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-				timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				createdAt, ok := s.Struct().CreatedAt()
+				require.True(t, ok)
 
-				timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s, ok := args[1].(*Scope)
-					require.True(t, ok)
+				_, ok = s.InFieldset(createdAt)
+				assert.True(t, ok)
 
-					createdAt, ok := s.Struct().CreatedAt()
-					require.True(t, ok)
+				tm := s.Value.(*timer)
+				tm.ID = 3
 
-					_, ok = s.InFieldset(createdAt)
-					assert.True(t, ok, "%v", s.Fieldset)
-
-					tm := s.Value.(*ptrTimer)
-					tm.ID = 3
-					if assert.NotNil(t, tm.CreatedAt) {
-						assert.True(t, time.Since(*tm.CreatedAt) < time.Second)
-					}
-				}).Return(nil)
-				err = s.Create()
-				require.NoError(t, err)
-			})
-
-			t.Run("NonZero", func(t *testing.T) {
-				s, err := NewC(c, &timer{ID: 1, CreatedAt: time.Now().Add(-time.Hour)})
-				require.NoError(t, err)
-
-				// timerRepo
-				timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-				timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-
-				timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s, ok := args[1].(*Scope)
-					require.True(t, ok)
-
-					createdAt, ok := s.Struct().CreatedAt()
-					require.True(t, ok)
-
-					_, ok = s.InFieldset(createdAt)
-					assert.True(t, ok)
-
-					tm := s.Value.(*timer)
-					tm.ID = 3
-
-					assert.True(t, time.Since(tm.CreatedAt) > time.Hour)
-				}).Return(nil)
-				err = s.Create()
-				require.NoError(t, err)
-			})
+				assert.True(t, time.Since(tm.CreatedAt) > time.Hour)
+			}).Return(nil)
+			err = s.Create()
+			require.NoError(t, err)
 		})
 
 		t.Run("NotSelected", func(t *testing.T) {

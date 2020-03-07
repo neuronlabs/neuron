@@ -9,7 +9,7 @@ import (
 	"github.com/neuronlabs/neuron-core/query"
 )
 
-// Controller gets default controllre
+// Controller gets default controller.
 func Controller() *controller.Controller {
 	return controller.Default()
 }

@@ -251,8 +251,7 @@ func deleteHasOneRelationships(ctx context.Context, s *Scope, field *mapping.Str
 
 	// patch the clearScope
 	if err = clearScope.PatchContext(ctx); err != nil {
-		switch e := err.(type) {
-		case errors.ClassError:
+		if e, ok := err.(errors.ClassError); ok {
 			if e.Class() == class.QueryValueNoResult {
 				err = nil
 			}
@@ -297,11 +296,9 @@ func deleteHasManyRelationships(ctx context.Context, s *Scope, field *mapping.St
 	// patch the clearScope
 	err = clearScope.PatchContext(ctx)
 	if err != nil {
-		switch e := err.(type) {
-		case errors.ClassError:
-			if e.Class() == class.QueryValueNoResult {
-				err = nil
-			}
+		e, ok := err.(errors.ClassError)
+		if ok && e.Class() == class.QueryValueNoResult {
+			err = nil
 		}
 	}
 	return err
@@ -344,11 +341,9 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *mapping.
 	// delete the entries in the join model
 	err = clearScope.DeleteContext(ctx)
 	if err != nil {
-		switch e := err.(type) {
-		case errors.ClassError:
-			if e.Class() == class.QueryValueNoResult {
-				err = nil
-			}
+		e, ok := err.(errors.ClassError)
+		if ok && e.Class() == class.QueryValueNoResult {
+			err = nil
 		}
 	}
 	return err

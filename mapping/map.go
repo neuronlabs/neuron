@@ -536,7 +536,7 @@ func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
 	for _, field := range untaggedFields {
 		// if there is no struct field tag and the field's ToLower name  is 'id'
 		// set it as the model's primary key.
-		if strings.ToLower(field.Name()) == "id" {
+		if strings.EqualFold(field.Name(), "id") {
 			err = model.setPrimaryField(field)
 			if err != nil {
 				return err

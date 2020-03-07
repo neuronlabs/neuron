@@ -109,13 +109,12 @@ func NewSortFields(m *mapping.ModelStruct, disallowFK bool, sortFields ...string
 func NewSort(m *mapping.ModelStruct, sort string, disallowFK bool, order ...SortOrder) (*SortField, error) {
 	// Get the order of sort
 	var o SortOrder
+
 	if len(order) > 0 {
 		o = order[0]
-	} else {
-		if sort[0] == '-' {
-			o = DescendingOrder
-			sort = sort[1:]
-		}
+	} else if sort[0] == '-' {
+		o = DescendingOrder
+		sort = sort[1:]
 	}
 	return newStringSortField(m, sort, o, disallowFK)
 }

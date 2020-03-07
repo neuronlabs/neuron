@@ -141,15 +141,16 @@ func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 	// parse the internal value
 	for _, fv := range f.Values {
 		var fk string
-		if len(relName) > 0 {
+		switch {
+		case len(relName) > 0:
 			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.Raw)
-		} else if f.StructField.IsLanguage() {
+		case f.StructField.IsLanguage():
 			fk = ParamLanguage
-		} else {
+		default:
 			fk = fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.Raw)
 		}
 
-		// [fieldname][operator]
+		// [fieldName][operator]
 		var vals []string
 		for _, val := range fv.Values {
 			mapping.StringValues(val, &vals)

@@ -270,9 +270,11 @@ func (m *ModelStruct) RelationFields() (relations []*StructField) {
 	for _, rel := range m.structFields {
 		switch rel.kind {
 		case KindRelationshipSingle, KindRelationshipMultiple:
+			log.Debug("Adding relation: '%s'", rel.NeuronName())
 			relations = append(relations, rel)
 		}
 	}
+
 	return relations
 }
 
@@ -326,7 +328,7 @@ func (m *ModelStruct) UpdatedAt() (*StructField, bool) {
 }
 
 // UseI18n returns the bool if the model struct uses i18n.
-func (m ModelStruct) UseI18n() bool {
+func (m *ModelStruct) UseI18n() bool {
 	return m.language != nil
 }
 
@@ -502,16 +504,11 @@ func (m *ModelStruct) initCheckFieldTypes() (err error) {
 
 func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value, index []int) (err error) {
 	for i := 0; i < modelType.NumField(); i++ {
-		var fieldIndex []int
+		fieldIndex := index
 
 		// check if field is embedded
 		tField := modelType.Field(i)
-
-		if index == nil {
-			fieldIndex = []int{i}
-		} else {
-			fieldIndex = append(index, i)
-		}
+		fieldIndex = append(fieldIndex, i)
 
 		if tField.Anonymous {
 			// the field is embedded struct or ptr to struct
@@ -907,7 +904,7 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 }
 
 func (m *ModelStruct) setLanguage(f *StructField) {
-	f.fieldFlags = f.fieldFlags | fLanguage
+	f.fieldFlags |= fLanguage
 	m.language = f
 }
 

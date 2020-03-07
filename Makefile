@@ -1,7 +1,7 @@
 GIT_DIRTY  	= $(shell test -n "`git status --porcelain`" && echo "dirty" || echo "clean")
 
 GOPATH		= $(shell go env GOPATH)
-GOLINTCI	= $(GOPATH)/bin/golangci-lint 
+GOLINTCI	= $(GOPATH)/bin/golangci-lint
 MISSPELL	= $(GOPATH)/bin/misspell
 
 GO 		 = go

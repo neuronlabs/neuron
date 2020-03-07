@@ -842,9 +842,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				values, ok := s.Value.(*[]*relatedModel)
 				require.True(t, ok)
 
-				(*values) = append((*values), &relatedModel{ID: 3})
-				(*values) = append((*values), &relatedModel{ID: 4})
-
+				*values = append(*values, &relatedModel{ID: 3}, &relatedModel{ID: 4})
 			}).Return(nil)
 
 			relField, ok := s.Struct().RelationField("Relation")
@@ -866,9 +864,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				require.True(t, ok)
 
 				// check primary filter values
-
-				(*values) = append((*values), &relationModel{ID: 45, FK: 3})
-				(*values) = append((*values), &relationModel{ID: 56, FK: 4})
+				*values = append(*values, &relationModel{ID: 45, FK: 3}, &relationModel{ID: 56, FK: 4})
 			}).Return(nil)
 
 			firstIncluded := &relationModel{ID: 45, FK: 3}
@@ -883,9 +879,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				require.True(t, ok)
 
 				// check primary filter values
-
-				(*values) = append((*values), firstIncluded)
-				(*values) = append((*values), secondIncluded)
+				*values = append(*values, firstIncluded, secondIncluded)
 			}).Return(nil)
 
 			err = s.List()

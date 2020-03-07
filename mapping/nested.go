@@ -100,10 +100,11 @@ type NestedField struct {
 }
 
 // newNestedField returns New NestedField
-func newNestedField(root *NestedStruct, StructFielder StructFielder, nField reflect.StructField) *NestedField {
+// nolint:gocritic
+func newNestedField(root *NestedStruct, structFielder StructFielder, nField reflect.StructField) *NestedField {
 	nestedField := &NestedField{
 		structField: &StructField{
-			mStruct:      StructFielder.Self().mStruct,
+			mStruct:      structFielder.Self().mStruct,
 			reflectField: nField,
 			kind:         KindNested,
 			fieldFlags:   fDefault | fNestedField,

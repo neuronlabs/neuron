@@ -687,8 +687,8 @@ func (s *Scope) createContext(ctx context.Context) error {
 		return errors.NewDet(class.QueryValueType, "creating with multiple values in are not supported yet")
 	}
 
-	// if no fields were selected set automatically non zero
-	if err := s.autoSelectFields(); err != nil {
+	// if no fields were selected set automatically all fields for the model.
+	if err := s.autoSelectAllFields(); err != nil {
 		return err
 	}
 
@@ -930,31 +930,18 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.D
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
-				if verr.Field() == "" {
-					if verr.Field() == "" {
-						log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
-						errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
-						return append(errs, errObj)
-					}
-
+				switch {
+				case verr.Field() == "":
 					errObj = errors.NewDet(class.QueryValueValidation, "non default field value")
 					errObj.SetDetailsf("The field: '%s' must be of zero value.", verr.Field())
 					errs = append(errs, errObj)
 					continue
-				} else if strings.HasPrefix(tag, "len") {
-					// length
-					if verr.Field() == "" {
-						log.Errorf("[%s] Model: '%v'. %s failed. Field must have specific length and the field tag is empty.", s.ID().String(),
-							validatorName, s.Struct().Type().String())
-						errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
-						return append(errs, errObj)
-					}
-
+				case strings.HasPrefix(tag, "len"):
 					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - field of invalid length")
 					errObj.SetDetailsf("The value of the field: %s is of invalid length.", verr.Field())
 					errs = append(errs, errObj)
 					continue
-				} else {
+				default:
 					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - invalid field value")
 					if verr.Field() != "" {
 						errObj.SetDetailsf("Invalid value for the field: '%s'.", verr.Field())
