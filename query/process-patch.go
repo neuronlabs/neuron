@@ -643,11 +643,9 @@ func patchMany2ManyRelationship(
 
 		// delete the rows in the many2many relationship containing provided values
 		if err = clearScope.DeleteContext(ctx); err != nil {
-			switch t := err.(type) {
-			case errors.ClassError:
-				if t.Class() == class.QueryValueNoResult {
-					err = nil
-				}
+			e, ok := err.(errors.ClassError)
+			if ok && e.Class() == class.QueryValueNoResult {
+				err = nil
 			}
 
 			if err != nil {
@@ -713,17 +711,15 @@ func patchMany2ManyRelationship(
 	// get the primary field values from the relationship field
 	var checkScope *Scope
 
-	if tx := s.Tx(); tx != nil {
+	tx := s.Tx()
+	if tx == nil && !justCreated {
+		tx = clearScope.Tx()
+	}
+	// if tx is not nill use transaction
+	if tx != nil {
 		checkScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), true)
 		if err != nil {
 			return err
-		}
-	} else if !justCreated {
-		if tx := clearScope.Tx(); tx != nil {
-			checkScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), true)
-			if err != nil {
-				return err
-			}
 		}
 	} else {
 		checkScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), true)
@@ -817,11 +813,13 @@ func patchMany2ManyRelationship(
 		}
 
 		var insertScope *Scope
-		if tx := s.Tx(); tx != nil {
-			insertScope, err = tx.NewC(s.Controller(), single.Interface())
+		tx := s.Tx()
+		if tx == nil && !justCreated {
+			tx = clearScope.Tx()
+		}
 
-		} else if !justCreated {
-			insertScope, err = clearScope.Tx().NewC(s.Controller(), single.Interface())
+		if tx != nil {
+			insertScope, err = tx.NewC(s.Controller(), single.Interface())
 		} else {
 			insertScope, err = NewC(s.Controller(), single.Interface())
 		}

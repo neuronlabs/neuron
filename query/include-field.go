@@ -12,7 +12,7 @@ import (
 
 // IncludeField is the includes information scope
 // it contains the field to include from the root scope
-// related subscope, and subfields to include.
+// related subScope, and subfields to include.
 type IncludeField struct {
 	*mapping.StructField
 	// Scope is the query scope that contains the values and filters for given
@@ -136,10 +136,8 @@ func (i *IncludeField) getMissingFromSingle(value reflect.Value, uniqueMissing m
 			i.Scope.collectionScope.includedValues.UnsafeSet(primary, nil)
 			if _, ok = uniqueMissing[primary]; !ok {
 				uniqueMissing[primary] = struct{}{}
-			} else {
-				if log.Level() == log.LDEBUG3 {
-					log.Debug3f("Primary: '%v' already exists - duplicated value", primary)
-				}
+			} else if log.Level() == log.LDEBUG3 {
+				log.Debug3f("Primary: '%v' already exists - duplicated value", primary)
 			}
 		}
 	}

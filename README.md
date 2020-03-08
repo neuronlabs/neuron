@@ -19,7 +19,7 @@ query multiple related models located on different datastores/repositories.
 
 ## Design
 
-The neuron-core is golang ORM implementation designed to process microservice repositories. This concept enhanced the requirements for the models mapping and query processor.
+Package `neuron` provides golang ORM implementation designed to process microservice repositories. This concept enhanced the requirements for the models mapping and query processor.
 
 The mapped models must have all the field's with [defined type](https://docs.neuronlabs.io/neuron-core/models/structure.html#model-structure). The initial model mapping was based on the [JSONAPI v1.0](https://jsonapi.org/format/#document-resource-objects) model definition. The distributed environment required each [relationship](https://docs.neuronlabs.io/neuron-core/models/relationship.html) to be specified of it's kind and type, just as their foreign keys.
 
@@ -85,7 +85,7 @@ func main() {
 * Create the `*controller.Controller` and register repositories.
 ```go
     // Provided create config 'cfg' to the Controller method.
-    c := ncore.Controller(cfg)
+    c := neuron.Controller(cfg)
 
     // As the 'neuron-core' allows to use multiple repository for the models
     // we can declare the DefaultRepository within the config. The first 
@@ -130,7 +130,7 @@ func main() {
 ```go
     users := []*User{}
     
-    s := ncore.MustQueryC(c, &users)
+    s := neuron.MustQueryC(c, &users)
     // the query scope may be filtered
     s.Filter("filter[users][name][$in]","John", "Sam")
     // it might also be sorted

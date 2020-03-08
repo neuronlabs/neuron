@@ -15,7 +15,7 @@ import (
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.ReadDefaultConfig())
+	ms := mapping.NewModelMap(namer.NamingSnake, config.Default())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.ReadDefaultConfig())
+	ms := mapping.NewModelMap(namer.NamingSnake, config.Default())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sortfield copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.ReadDefaultConfig())
+	ms := mapping.NewModelMap(namer.NamingKebab, config.Default())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestSortField(t *testing.T) {
 
 // TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.ReadDefaultConfig())
+	ms := mapping.NewModelMap(namer.NamingKebab, config.Default())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)

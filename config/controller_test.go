@@ -21,7 +21,7 @@ func TestControllerMapRepositories(t *testing.T) {
 			},
 		}
 
-		err := c.MapRepositories()
+		err := c.MapModelsRepositories()
 		require.NoError(t, err)
 
 		model := c.Models["model1"]
@@ -41,7 +41,7 @@ func TestControllerMapRepositories(t *testing.T) {
 			},
 		}
 
-		err := c.MapRepositories()
+		err := c.MapModelsRepositories()
 		require.NoError(t, err)
 
 		model := c.Models["model1"]
@@ -62,7 +62,7 @@ func TestControllerMapRepositories(t *testing.T) {
 			},
 		}
 
-		err := c.MapRepositories()
+		err := c.MapModelsRepositories()
 		require.Error(t, err)
 	})
 }

@@ -16,7 +16,7 @@ const defaultRepo = "repo"
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	cfg := config.ReadDefaultConfig()
+	cfg := config.Default()
 	m := NewModelMap(namer.NamingSnake, cfg)
 	return m
 }

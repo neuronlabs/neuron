@@ -1,2 +1,2 @@
-// Package annotation contains constans used as mapping annotations.
+// Package annotation contains constants used as mapping annotations.
 package annotation

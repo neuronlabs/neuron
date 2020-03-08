@@ -631,7 +631,7 @@ func (s *StructField) setFlags(flags ...string) error {
 }
 
 func (s *StructField) setFlag(flag fieldFlag) {
-	s.fieldFlags = s.fieldFlags | flag
+	s.fieldFlags |= flag
 }
 
 // setRelatedModel sets the related model for the given struct field.
@@ -643,6 +643,7 @@ func (s *StructField) setRelatedModel(relModel *ModelStruct) {
 }
 
 // newStructField is the creator function for the struct field
+// nolint:gocritic
 func newStructField(refField reflect.StructField, mStruct *ModelStruct) *StructField {
 	return &StructField{reflectField: refField, mStruct: mStruct}
 }
@@ -699,7 +700,7 @@ type OrderedFields []*StructField
 func (o *OrderedFields) Insert(field *StructField) {
 	for i, in := range *o {
 		if !o.less(in, field) {
-			(*o) = append((*o)[:i], append([]*StructField{field}, (*o)[i:]...)...)
+			*o = append((*o)[:i], append([]*StructField{field}, (*o)[i:]...)...) // nolint
 			break
 		}
 	}

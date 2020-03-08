@@ -2,12 +2,15 @@ package mapping
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Model1WithMany2Many is the model with the many2many relationship.
@@ -74,6 +77,62 @@ type modelWithHasOne struct {
 	ID int `neuron:"type=primary"`
 	// in has one relatinship - foreign key must be the field that is the same
 	HasOne *modelWithBelongsTo `neuron:"type=relation;foreign=ForeignKey"`
+}
+
+// Comment defines the model for job comment.
+type Comment struct {
+	ID string
+	// Timestamps
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+
+	// User relation
+	UserID string
+	User   *User
+
+	// Job relation
+	JobID string
+	Job   *Job
+}
+
+// Job is the model for a single timesheet job instance
+type Job struct {
+	ID string
+	// Timestamps
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+
+	// StartAt defines the start timestamp of the given job
+	StartAt *time.Time
+	// EndAt defines the end timestamp for given job
+	EndAt *time.Time
+
+	// Title defines shortly the job
+	Title string
+
+	// Relation with the creator
+	CreatorID string `neuron:"type=foreign"`
+	Creator   *User
+
+	// HaveMany jobs relationship
+	Comments []*Comment
+}
+
+// User is the model that represents user's contanct in the timesheet
+type User struct {
+	ID string
+	// Timestamps
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+
+	FirstName string
+	LastName  string
+	Email     string
+
+	Jobs []*Job `neuron:"foreign=CreatorID"`
 }
 
 // TestMappedRelationships tests the mapped relationships.
@@ -235,38 +294,60 @@ func TestMappedRelationships(t *testing.T) {
 		})
 	})
 
-	m := testingModelMap(t)
+	t.Run("SingleRelations", func(t *testing.T) {
+		m := testingModelMap(t)
 
-	require.NoError(t, m.RegisterModels(modelWithBelongsTo{}, modelWithHasOne{}))
+		require.NoError(t, m.RegisterModels(modelWithBelongsTo{}, modelWithHasOne{}))
 
-	t.Run("belongsTo", func(t *testing.T) {
-		model, err := m.GetModelStruct(modelWithBelongsTo{})
-		require.NoError(t, err)
+		t.Run("belongsTo", func(t *testing.T) {
+			model, err := m.GetModelStruct(modelWithBelongsTo{})
+			require.NoError(t, err)
 
-		belongsToField, ok := model.relationships["belongs_to"]
-		require.True(t, ok)
+			belongsToField, ok := model.relationships["belongs_to"]
+			require.True(t, ok)
 
-		if assert.NotNil(t, belongsToField.relationship) {
-			assert.Equal(t, RelBelongsTo, belongsToField.relationship.kind)
-		}
+			if assert.NotNil(t, belongsToField.relationship) {
+				assert.Equal(t, RelBelongsTo, belongsToField.relationship.kind)
+			}
+			relFields := model.RelationFields()
+			assert.Len(t, relFields, 1)
+		})
+
+		t.Run("hasOne", func(t *testing.T) {
+			model, err := m.GetModelStruct(modelWithHasOne{})
+			require.NoError(t, err)
+
+			hasOneField, ok := model.relationships["has_one"]
+			require.True(t, ok)
+
+			belongsToModel, err := m.GetModelStruct(modelWithBelongsTo{})
+			require.NoError(t, err)
+
+			fk, ok := belongsToModel.foreignKeys["foreign_key"]
+			require.True(t, ok)
+
+			if assert.NotNil(t, hasOneField.relationship) {
+				assert.Equal(t, RelHasOne, hasOneField.relationship.kind)
+				assert.Equal(t, fk, hasOneField.relationship.foreignKey)
+			}
+			relFields := model.RelationFields()
+			assert.Len(t, relFields, 1)
+		})
 	})
 
-	t.Run("hasOne", func(t *testing.T) {
-		model, err := m.GetModelStruct(modelWithHasOne{})
+	t.Run("MultipleRelations", func(t *testing.T) {
+		m := testingModelMap(t)
+		log.Default()
+		err := log.SetLevel(log.LDEBUG3)
 		require.NoError(t, err)
 
-		hasOneField, ok := model.relationships["has_one"]
-		require.True(t, ok)
-
-		belongsToModel, err := m.GetModelStruct(modelWithBelongsTo{})
+		err = m.RegisterModels(Comment{}, User{}, Job{})
 		require.NoError(t, err)
 
-		fk, ok := belongsToModel.foreignKeys["foreign_key"]
-		require.True(t, ok)
+		model, err := m.GetModelStruct(Comment{})
+		require.NoError(t, err)
 
-		if assert.NotNil(t, hasOneField.relationship) {
-			assert.Equal(t, RelHasOne, hasOneField.relationship.kind)
-			assert.Equal(t, fk, hasOneField.relationship.foreignKey)
-		}
+		relFields := model.RelationFields()
+		assert.Len(t, relFields, 2)
 	})
 }

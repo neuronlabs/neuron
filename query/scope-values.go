@@ -61,13 +61,14 @@ func (s *Scope) getPrimaryFieldValues() ([]interface{}, error) {
 
 // GetForeignKeyValues gets the values of the foreign key struct field
 func (s *Scope) getForeignKeyValues(foreign *mapping.StructField) ([]interface{}, error) {
-	if s.mStruct != foreign.Struct() {
+	switch {
+	case s.mStruct != foreign.Struct():
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
-	} else if foreign.Kind() != mapping.KindForeignKey {
+	case foreign.Kind() != mapping.KindForeignKey:
 		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.Kind())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
-	} else if s.Value == nil {
+	case s.Value == nil:
 		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")
 	}
 
@@ -118,24 +119,24 @@ func (s *Scope) getForeignKeyValues(foreign *mapping.StructField) ([]interface{}
 
 // GetUniqueForeignKeyValues gets the unique values of the foreign key struct field
 func (s *Scope) getUniqueForeignKeyValues(foreign *mapping.StructField) ([]interface{}, error) {
-	if s.mStruct != foreign.Struct() {
+	switch {
+	case s.mStruct != foreign.Struct():
 		log.Debugf("Scope's ModelStruct: %s, doesn't match foreign key ModelStruct: '%s' ", s.mStruct.Collection(), foreign.Struct().Collection())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key mismatched ModelStruct")
-	} else if foreign.Kind() != mapping.KindForeignKey {
+	case foreign.Kind() != mapping.KindForeignKey:
 		log.Debugf("'foreign' field is not a ForeignKey: %s", foreign.Kind())
 		return nil, errors.NewDet(class.InternalQueryInvalidField, "foreign key is not a valid ForeignKey")
-	} else if s.Value == nil {
+	case s.Value == nil:
 		return nil, errors.NewDet(class.QueryNoValue, "provided nil scope value")
 	}
-
 	// initialize the array
-	foreigns := make(map[interface{}]struct{})
+	foreignKeys := make(map[interface{}]struct{})
 	values := []interface{}{}
 
 	// set the adding functino
 	addForeignKey := func(single reflect.Value) {
 		primaryValue := single.FieldByIndex(foreign.FieldIndex())
-		foreigns[primaryValue.Interface()] = struct{}{}
+		foreignKeys[primaryValue.Interface()] = struct{}{}
 	}
 
 	v := reflect.ValueOf(s.Value)
@@ -171,7 +172,7 @@ func (s *Scope) getUniqueForeignKeyValues(foreign *mapping.StructField) ([]inter
 		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 
-	for foreign := range foreigns {
+	for foreign := range foreignKeys {
 		values = append(values, foreign)
 	}
 

@@ -225,17 +225,17 @@ func (r *Relationship) ForeignKey() *StructField {
 }
 
 // IsManyToMany defines if the relationship is of many to many type.
-func (r Relationship) IsManyToMany() bool {
+func (r *Relationship) IsManyToMany() bool {
 	return r.isMany2Many()
 }
 
 // IsToMany defines if the relationship is of to many kind.
-func (r Relationship) IsToMany() bool {
+func (r *Relationship) IsToMany() bool {
 	return r.isToMany()
 }
 
 // IsToOne defines if the relationship is of to one type.
-func (r Relationship) IsToOne() bool {
+func (r *Relationship) IsToOne() bool {
 	return r.isToOne()
 }
 
@@ -274,7 +274,7 @@ func (r *Relationship) Struct() *ModelStruct {
 	return r.mStruct
 }
 
-func (r Relationship) isToOne() bool {
+func (r *Relationship) isToOne() bool {
 	switch r.kind {
 	case RelHasOne, RelBelongsTo:
 		return true
@@ -282,7 +282,7 @@ func (r Relationship) isToOne() bool {
 	return false
 }
 
-func (r Relationship) isToMany() bool {
+func (r *Relationship) isToMany() bool {
 	switch r.kind {
 	case RelHasOne, RelBelongsTo, RelUnknown:
 		return false
@@ -290,7 +290,7 @@ func (r Relationship) isToMany() bool {
 	return true
 }
 
-func (r Relationship) isMany2Many() bool {
+func (r *Relationship) isMany2Many() bool {
 	return r.kind == RelMany2Many
 }
 
