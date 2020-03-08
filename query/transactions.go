@@ -37,26 +37,36 @@ func (t *Tx) CommitContext(ctx context.Context) error {
 	return t.root.CommitContext(ctx)
 }
 
-// NewC creates new scope for given transaction.
-func (t *Tx) NewC(c *controller.Controller, model interface{}) (*Scope, error) {
+// Query creates new query scope for given transaction.
+func (t *Tx) Query(model interface{}) (*Scope, error) {
+	return t.newC(context.Background(), t.root.Controller(), model)
+}
+
+// QueryC creates new query scope for given transaction with the controller 'c'.
+func (t *Tx) QueryC(c *controller.Controller, model interface{}) (*Scope, error) {
 	return t.newC(context.Background(), c, model)
 }
 
-// NewContextC creates new scope for given transaction with the 'ctx' context.
-func (t *Tx) NewContextC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
+// QueryContext creates new scope for given transaction with respect to given context 'ctx'.
+func (t *Tx) QueryContext(ctx context.Context, model interface{}) (*Scope, error) {
+	return t.newC(ctx, t.root.Controller(), model)
+}
+
+// QueryContextC creates new scope for given transaction with the 'ctx' context.
+func (t *Tx) QueryContextC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
 	return t.newC(ctx, c, model)
 }
 
-// NewContextModelC creates new scope for given 'model' structure and 'ctx' context. It also initializes scope's value.
+// QueryModelC creates new scope for given model structure, and initializes it's value.
 // The value might be a slice of instances if 'isMany' is true or a single instance if false.
-func (t *Tx) NewContextModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(ctx, c, model, isMany)
+func (t *Tx) QueryModelC(c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
+	return t.newModelC(context.Background(), c, model, isMany)
 }
 
-// NewModelC creates new scope for given model structure, and initializes it's value.
+// QueryContextModelC creates new scope for given 'model' structure and 'ctx' context. It also initializes scope's value.
 // The value might be a slice of instances if 'isMany' is true or a single instance if false.
-func (t *Tx) NewModelC(c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(context.Background(), c, model, isMany)
+func (t *Tx) QueryContextModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
+	return t.newModelC(ctx, c, model, isMany)
 }
 
 // Rollback rolls back the transaction.
@@ -64,7 +74,7 @@ func (t *Tx) Rollback() error {
 	return t.root.Rollback()
 }
 
-// RollbackContext rollsback the transaction with given 'ctx' context.
+// RollbackContext rollback the transaction with given 'ctx' context.
 func (t *Tx) RollbackContext(ctx context.Context) error {
 	return t.root.RollbackContext(ctx)
 }
@@ -160,7 +170,7 @@ func (s *TxState) MarshalJSON() ([]byte, error) {
 	return []byte(s.String()), nil
 }
 
-// UnmarshalJSON unmarshals the state from the json string value
+// UnmarshalJSON unmarshal the state from the json string value
 // Implements json.Unmarshaler interface
 func (s *TxState) UnmarshalJSON(data []byte) error {
 	str := string(data)
@@ -248,9 +258,7 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 		log.Debugf("Unknown transaction isolation level: %s", string(data))
 		return errors.NewDetf(class.QueryTxUnknownIsolationLevel, "unknown transaction isolation level: %s", string(data))
 	}
-
 	return nil
-
 }
 
 var _ fmt.Stringer = LevelDefault

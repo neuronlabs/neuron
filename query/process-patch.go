@@ -69,7 +69,7 @@ func patchFunc(ctx context.Context, s *Scope) error {
 
 	var listScope *Scope
 	if tx := s.Tx(); tx != nil {
-		listScope, err = tx.NewModelC(s.Controller(), s.Struct(), true)
+		listScope, err = tx.QueryModelC(s.Controller(), s.Struct(), true)
 		if err != nil {
 			return err
 		}
@@ -341,7 +341,7 @@ func patchHasOneRelationship(
 
 	var relScope *Scope
 	if tx := s.Tx(); tx != nil {
-		relScope, err = tx.NewContextC(ctx, s.Controller(), relScopeValue)
+		relScope, err = tx.QueryContextC(ctx, s.Controller(), relScopeValue)
 		if err != nil {
 			return err
 		}
@@ -508,7 +508,7 @@ func patchHasManyRelationship(ctx context.Context, s *Scope, relField *mapping.S
 
 	if tx := s.Tx(); tx != nil {
 		log.Debug3f("SCOPE[%s][%s] Creating patch relationship: '%s' scope with tx:'%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), tx.ID)
-		relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
+		relatedScope, err = tx.QueryContextC(ctx, s.Controller(), relatedValue.Interface())
 		if err != nil {
 			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
 			return err
@@ -819,7 +819,7 @@ func patchMany2ManyRelationship(
 		}
 
 		if tx != nil {
-			insertScope, err = tx.NewC(s.Controller(), single.Interface())
+			insertScope, err = tx.QueryC(s.Controller(), single.Interface())
 		} else {
 			insertScope, err = NewC(s.Controller(), single.Interface())
 		}

@@ -37,7 +37,7 @@ func commitOrRollbackFunc(ctx context.Context, s *Scope) error {
 	_, ok := s.StoreGet(internal.AutoBeginStoreKey)
 	if !ok {
 		if log.Level().IsAllowed(log.LDEBUG3) {
-			log.Debug3f("SCOPE[%s][%s] No autobegin store key", s.ID(), s.Struct().Collection())
+			log.Debug3f("SCOPE[%s][%s] No auto begin store key", s.ID(), s.Struct().Collection())
 		}
 		return nil
 	}

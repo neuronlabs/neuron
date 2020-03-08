@@ -2,6 +2,8 @@ package mapping
 
 import (
 	"strings"
+
+	"github.com/neuronlabs/neuron-core/annotation"
 )
 
 // FieldTag is the key: values pair for the given field struct's tag.
@@ -25,42 +27,39 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 	}
 
 	var (
-		seperators []int
+		separators []int
 		tags       []*FieldTag
 		options    []string
 	)
-	// find all the seperators
+	// find all the separators
 	for i, r := range tag {
 		if i != 0 && r == ';' {
 			// check if the  rune before is not an 'escape'
 			if tag[i-1] != '\\' {
-				seperators = append(seperators, i)
+				separators = append(separators, i)
 			}
 		}
 	}
 
-	for i, sep := range seperators {
+	// iterate over the option separators
+	for i, sep := range separators {
 		if i == 0 {
 			options = append(options, tag[:sep])
 		} else {
-			options = append(options, tag[seperators[i-1]+1:sep])
+			options = append(options, tag[separators[i-1]+1:sep])
 		}
 
-		if i == len(seperators)-1 {
+		if i == len(separators)-1 {
 			options = append(options, tag[sep+1:])
 		}
 	}
-
-	// if no seperators found add the option as whole tag tag
+	// if no separators found add the option as whole tag tag
 	if options == nil {
 		options = append(options, tag)
 	}
-
 	// options should be now a legal values defined for the struct tag
-
 	for _, o := range options {
 		var equalIndex int
-
 		// find the equalIndex
 		for i, r := range o {
 			if r == '=' {
@@ -71,20 +70,19 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 			}
 		}
 
+		// create tag
 		tag := &FieldTag{}
-
 		if equalIndex != 0 {
 			// the left part would be the key
 			tag.Key = o[:equalIndex]
 
 			// the right would be the values
-			tag.Values = strings.Split(o[equalIndex+1:], ",")
+			tag.Values = strings.Split(o[equalIndex+1:], annotation.Separator)
 		} else {
 			// in that case only the key should exists
 			tag.Key = o
 		}
 		tags = append(tags, tag)
-
 	}
 	return tags
 }

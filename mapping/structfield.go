@@ -56,7 +56,7 @@ func (s *StructField) Kind() FieldKind {
 
 // GetDereferencedType returns structField dereferenced type.
 func (s *StructField) GetDereferencedType() reflect.Type {
-	return s.getDereferencedType()
+	return s.getDeferenceType()
 }
 
 // IsArray checks if the field is an array.
@@ -109,7 +109,7 @@ func (s *StructField) IsNestedField() bool {
 	return s.isNestedField()
 }
 
-//IsNestedStruct checks if the field is a nested structure.
+// IsNestedStruct checks if the field is a nested structure.
 func (s *StructField) IsNestedStruct() bool {
 	return s.nested != nil
 }
@@ -149,7 +149,7 @@ func (s *StructField) IsSortable() bool {
 	return s.isSortable()
 }
 
-// IsTime checks wether the field uses time flag.
+// IsTime checks whether the field uses time flag.
 func (s *StructField) IsTime() bool {
 	return s.isTime()
 }
@@ -233,7 +233,7 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 	log.Debug2f("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
 }
 
-// Struct returns fields modelstruct
+// Struct returns fields Model Structure.
 func (s *StructField) Struct() *ModelStruct {
 	return s.mStruct
 }
@@ -274,7 +274,7 @@ func (s *StructField) allowClientID() bool {
 	return s.fieldFlags&fClientID != 0
 }
 
-// baseFieldType is the field's base dereferenced type
+// baseFieldType is the field's base dereference type
 func (s *StructField) baseFieldType() reflect.Type {
 	elem := s.reflectField.Type
 	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
@@ -334,7 +334,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	return nil
 }
 
-func (s *StructField) getDereferencedType() reflect.Type {
+func (s *StructField) getDeferenceType() reflect.Type {
 	t := s.reflectField.Type
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()

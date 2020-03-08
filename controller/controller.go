@@ -26,11 +26,11 @@ var (
 type Controller struct {
 	// Config is the configuration struct for the controller.
 	Config *config.Controller
-	// Namer defines the function strategy how the model's and it's fields are being named.
+	// NamerFunc defines the function strategy how the model's and it's fields are being named.
 	NamerFunc namer.Namer
 	// CreateValidator is used as a validator for the Create processes.
 	CreateValidator *validator.Validate
-	//PatchValidator is used as a validator for the Patch processes.
+	// PatchValidator is used as a validator for the Patch processes.
 	PatchValidator *validator.Validate
 
 	// modelMap is a mapping for the model's structures.
