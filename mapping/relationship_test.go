@@ -338,8 +338,10 @@ func TestMappedRelationships(t *testing.T) {
 	t.Run("MultipleRelations", func(t *testing.T) {
 		m := testingModelMap(t)
 		log.Default()
-		log.SetLevel(log.LDEBUG3)
-		err := m.RegisterModels(Comment{}, User{}, Job{})
+		err := log.SetLevel(log.LDEBUG3)
+		require.NoError(t, err)
+
+		err = m.RegisterModels(Comment{}, User{}, Job{})
 		require.NoError(t, err)
 
 		model, err := m.GetModelStruct(Comment{})
