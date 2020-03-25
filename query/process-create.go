@@ -101,7 +101,7 @@ func setCreatedAtField(ctx context.Context, s *Scope) error {
 		return nil
 	}
 	// by default scope has auto selected fields setCreatedAt should be true
-	setCreatedAt := s.autosetFields
+	setCreatedAt := s.autoSelectedFields
 	if !setCreatedAt {
 		_, found := s.Fieldset[createdAtField.NeuronName()]
 		// if the fields were not auto selected check if the field is selected by user
@@ -114,7 +114,7 @@ func setCreatedAtField(ctx context.Context, s *Scope) error {
 	// Check if the value of the created at field is not already set by the user.
 	v := reflect.ValueOf(s.Value).Elem().FieldByIndex(createdAtField.ReflectField().Index)
 
-	if s.autosetFields {
+	if s.autoSelectedFields {
 		setCreatedAt = reflect.DeepEqual(v.Interface(), reflect.Zero(createdAtField.ReflectField().Type).Interface())
 	}
 

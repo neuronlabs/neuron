@@ -677,7 +677,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autosetFields)
+				assert.False(t, s.autoSelectedFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)
@@ -710,7 +710,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				_, ok = s.InFieldset(createdAt)
 				// Field should be selected by the create process.
-				assert.False(t, s.autosetFields)
+				assert.False(t, s.autoSelectedFields)
 				assert.True(t, ok)
 
 				tm := s.Value.(*timer)

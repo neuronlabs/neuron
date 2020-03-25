@@ -96,7 +96,7 @@ func (s *Scope) autoSelectAllFields() error {
 	if len(s.Fieldset) != 0 {
 		return nil
 	}
-
+	s.autoSelectedFields = true
 	for _, field := range s.mStruct.Fields() {
 		s.Fieldset[field.NeuronName()] = field
 	}
@@ -109,11 +109,11 @@ func (s *Scope) autoSelectFields() error {
 	if len(s.Fieldset) != 0 {
 		return nil
 	}
-
+	// check if the value is set
 	if s.Value == nil {
 		return errors.NewDet(class.QueryNoValue, "no value provided for scope")
 	}
-
+	s.autoSelectedFields = true
 	if log.Level() == log.LDEBUG3 {
 		defer func() {
 			fieldsInflection := "field"
@@ -154,6 +154,7 @@ func (s *Scope) autoSelectFields() error {
 func (s *Scope) fillFieldsetIfNotSet() {
 	if s.Fieldset == nil || len(s.Fieldset) == 0 {
 		s.setAllFields()
+		s.autoSelectedFields = true
 	}
 }
 

@@ -32,10 +32,8 @@ type Scope struct {
 	id uuid.UUID
 	// Struct is a modelStruct this scope is based on
 	mStruct *mapping.ModelStruct
-
 	// Value is the values or / value of the queried object / objects
 	Value interface{}
-
 	// Fieldset represents fields used specified to get / update for this query scope
 	Fieldset map[string]*mapping.StructField
 	// CollectionScopes contains filters, fieldsets and values for included collections
@@ -49,7 +47,6 @@ type Scope struct {
 	// the key is the - primary key value
 	// the value is the single object value for given ID
 	includedValues *safemap.SafeHashMap
-
 	// PrimaryFilters contain filter for the primary field.
 	PrimaryFilters Filters
 	// RelationFilters contain relationship field filters.
@@ -62,27 +59,23 @@ type Scope struct {
 	FilterKeyFilters Filters
 	// LanguageFilters contain information about language filters
 	LanguageFilters *FilterField
-
 	// SortFields are the query sort fields.
 	SortFields []*SortField
 	// Pagination is the query pagination
 	Pagination *Pagination
 	// Processor is current query processor.
 	Processor *Processor
-
 	// SubscopesChain is the array of the scope's used for committing or rolling back the transaction.
 	SubscopesChain []*Scope
-
 	// Error defines the process error.
 	Error error
-
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
-
+	// isMany defines if the scope is of
 	isMany bool
 	kind   Kind
-
-	autosetFields bool
+	// autoSelectedFields is the flag that defines if the query had automatically selected fieldset.
+	autoSelectedFields bool
 	// CollectionScope is a pointer to the scope containing the collection root
 	collectionScope *Scope
 	// rootScope is the root of all scopes where the query begins
@@ -135,6 +128,12 @@ func New(model interface{}) (*Scope, error) {
 	return newQueryScope(controller.Default(), model)
 }
 
+// AutoSelectedFields checks if the scope fieldset was set automatically.
+// This function returns false if a user had defined any field in the Fieldset.
+func (s *Scope) AutoSelectedFields() bool {
+	return s.autoSelectedFields
+}
+
 // Begin begins the transaction for the provided scope with the default Options.
 func (s *Scope) Begin() (*Tx, error) {
 	return s.begin(context.Background(), nil, true)
@@ -145,7 +144,7 @@ func (s *Scope) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
 	return s.begin(ctx, opts, true)
 }
 
-// Commit commits the transaction for the scope and it's subscopes.
+// Commit commits the transaction for the scope and it's subScopes.
 func (s *Scope) Commit() error {
 	return s.commit(context.Background())
 }
@@ -157,8 +156,8 @@ func (s *Scope) CommitContext(ctx context.Context) error {
 
 // Controller gets the scope's internalController.
 func (s *Scope) Controller() *controller.Controller {
-	cval, _ := s.StoreGet(internal.ControllerStoreKey)
-	return cval.(*controller.Controller)
+	ctrl, _ := s.StoreGet(internal.ControllerStoreKey)
+	return ctrl.(*controller.Controller)
 }
 
 // Copy creates a copy of the given scope.
