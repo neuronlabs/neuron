@@ -270,7 +270,7 @@ func (m *ModelStruct) RelationFields() (relations []*StructField) {
 	for _, rel := range m.structFields {
 		switch rel.kind {
 		case KindRelationshipSingle, KindRelationshipMultiple:
-			log.Debug("Adding relation: '%s'", rel.NeuronName())
+			log.Debug2f("Adding relation: '%s'", rel.NeuronName())
 			relations = append(relations, rel)
 		}
 	}
