@@ -687,10 +687,9 @@ func (s *Scope) createContext(ctx context.Context) error {
 	}
 
 	// if no fields were selected set automatically all fields for the model.
-	if err := s.autoSelectAllFields(); err != nil {
+	if err := s.autoSelectFields(); err != nil {
 		return err
 	}
-
 	if err := s.defaultProcessor().Create(ctx, s); err != nil {
 		return err
 	}
