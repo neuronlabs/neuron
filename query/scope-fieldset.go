@@ -91,19 +91,6 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 	return nil
 }
 
-// autoSelectAllFields if the fieldset is not defined the function sets all fields in the field set.
-func (s *Scope) autoSelectAllFields() error {
-	if len(s.Fieldset) != 0 {
-		return nil
-	}
-	s.autoSelectedFields = true
-	for _, field := range s.mStruct.Fields() {
-		s.Fieldset[field.NeuronName()] = field
-	}
-	log.Debug3f("SCOPE[%s][%s] Auto selected all fields", s.ID(), s.Struct().Collection())
-	return nil
-}
-
 // autoSelectFields selects the fields automatically if none of the select field method were called.
 func (s *Scope) autoSelectFields() error {
 	if len(s.Fieldset) != 0 {

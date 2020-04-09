@@ -3,6 +3,7 @@ package neuron
 import (
 	"context"
 
+	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/query"
 )
 
@@ -24,14 +25,20 @@ type TxFn func(tx *query.Tx) error
 func RunInTransaction(ctx context.Context, txOpts *query.TxOptions, txFn TxFn) (err error) {
 	tx := query.BeginCtx(ctx, txOpts)
 	defer func() {
-		if p := recover(); p != nil {
+		p := recover()
+		switch {
+		case p != nil:
 			// a panic occurred, rollback and repanic
-			tx.Rollback()
+			if er := tx.Rollback(); er != nil {
+				log.Errorf("Rolling back on recover failed: %v", er)
+			}
 			panic(p)
-		} else if err != nil {
+		case err != nil:
 			// something went wrong, rollback
-			tx.Rollback()
-		} else {
+			if er := tx.Rollback(); er != nil {
+				log.Errorf("Rolling back failed: %v", er)
+			}
+		default:
 			// all good, commit
 			err = tx.Commit()
 		}
