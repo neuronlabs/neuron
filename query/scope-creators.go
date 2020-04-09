@@ -10,7 +10,7 @@ import (
 // createModelsRootScope creates scope for given model (mStruct) and
 // stores it within the rootScope.includedScopes.
 // Used for collection unique root scopes
-// (filters, fieldsets etc. for given collection scope)
+// (filters, fieldset etc. for given collection scope)
 func (s *Scope) createModelsRootScope(c *controller.Controller, mStruct *mapping.ModelStruct) *Scope {
 	rootScope := s.createModelsScope(c, mStruct)
 	rootScope.rootScope.includedScopes[mStruct] = rootScope

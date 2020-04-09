@@ -1,6 +1,6 @@
 package annotation
 
-// Neuron is the root structfield annotation tag.
+// Neuron is the root struct field annotation tag.
 const Neuron = "neuron"
 
 // Model primary field annotation tags.

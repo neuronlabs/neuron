@@ -172,8 +172,8 @@ func (s *Scope) getUniqueForeignKeyValues(foreign *mapping.StructField) ([]inter
 		return nil, errors.NewDet(class.QueryValueType, "invalid query value type")
 	}
 
-	for foreign := range foreignKeys {
-		values = append(values, foreign)
+	for foreignKey := range foreignKeys {
+		values = append(values, foreignKey)
 	}
 
 	return values, nil

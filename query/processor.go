@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/log"
@@ -24,7 +23,7 @@ func RegisterProcess(name string, p ProcessFunc) {
 func registerQueryProcess(name string, p ProcessFunc) {
 	_, ok := processes[name]
 	if ok {
-		panic(fmt.Errorf("Process: '%s' already registered", name))
+		log.Panicf("Process: '%s' already registered", name)
 	}
 	log.Debugf("Registered process: '%s'.", name)
 	processes[name] = p

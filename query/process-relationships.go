@@ -442,7 +442,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 			nestedFilter = relScope.getOrCreatePrimaryFilter()
 		case mapping.KindAttribute:
 			if nested.StructField.IsLanguage() {
-				nestedFilter = relScope.getOrCreateLangaugeFilter()
+				nestedFilter = relScope.getOrCreateLanguageFilter()
 			} else {
 				nestedFilter = relScope.getOrCreateAttributeFilter(nested.StructField)
 			}

@@ -6,8 +6,7 @@ import (
 	"github.com/neuronlabs/neuron-core/mapping"
 )
 
-// FullRepository is the interface that implements both repository methoder
-// and the transactioner intefaces.
+// FullRepository is the interface that implements both repository CRUDRepository and the transactioner interfaces.
 type FullRepository interface {
 	CRUDRepository
 	Transactioner

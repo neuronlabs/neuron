@@ -39,7 +39,7 @@ Private filter methods and functions
 func (s *Scope) addFilterField(filter *FilterField) error {
 	if filter.StructField.Struct() != s.mStruct {
 		log.Debugf("Filter's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField.Name(), filter.StructField.Struct().Type().Name())
-		err := errors.NewDet(class.QueryFitlerNonMatched, "provied filter field's model structure doesn't match scope's model")
+		err := errors.NewDet(class.QueryFitlerNonMatched, "provided filter field's model structure doesn't match scope's model")
 		return err
 	}
 	switch filter.StructField.Kind() {
@@ -94,7 +94,7 @@ func (s *Scope) getOrCreatePrimaryFilter() *FilterField {
 	return filter
 }
 
-func (s *Scope) getOrCreateLangaugeFilter() *FilterField {
+func (s *Scope) getOrCreateLanguageFilter() *FilterField {
 	if !s.mStruct.UseI18n() {
 		return nil
 	}
@@ -141,7 +141,7 @@ func (s *Scope) getOrCreateFilterKeyFilter(sField *mapping.StructField) *FilterF
 
 // getOrCreateForeignKeyFilter gets the filter field for given StructField
 // If the filterField already exists for given scope, the function returns the existing one.
-// Otherwise it craetes new filter field and returns it.
+// Otherwise it creates new filter field and returns it.
 func (s *Scope) getOrCreateForeignKeyFilter(sField *mapping.StructField) *FilterField {
 	if s.ForeignFilters == nil {
 		s.ForeignFilters = Filters{}
@@ -262,7 +262,7 @@ func (s *Scope) setBelongsToForeignKeyFields() error {
 // setFiltersTo set the filters to the scope with the same model struct.
 func (s *Scope) setFiltersTo(to *Scope) error {
 	if s.mStruct != to.mStruct {
-		log.Errorf("SetFiltersTo mismatch scope's structs. Is: '%s' should be: '%s'", to.mStruct.Collection(), s.mStruct.Collection())
+		log.Errorf("SetFiltersTo mismatch scope's struct. Is: '%s' should be: '%s'", to.mStruct.Collection(), s.mStruct.Collection())
 		return errors.NewDet(class.InternalQueryModelMismatch, "scope's model mismatch")
 	}
 

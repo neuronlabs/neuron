@@ -57,27 +57,27 @@ var defaultOperators = []*Operator{
 
 // Operator is the operator used for filtering the query.
 type Operator struct {
-	// ID is the filter operator id used for comparing the operator type
+	// ID is the filter operator id used for comparing the operator type.
 	ID uint16
-	// Raw is the filtering string value of the current operator
+	// Raw is the filtering string value of the current operator.
 	Raw string
-	// Name is the human readable filter operator name
+	// Name is the human readable filter operator name.
 	Name string
 }
 
-// IsStandard checks if the operator is standard
+// IsStandard checks if the operator is standard.
 func (f Operator) IsStandard() bool {
 	return f.ID <= FilterOperators.lastStandardID
 }
 
-// IsBasic checks if the operator is 'OpEqual' or OpNotEqual
+// IsBasic checks if the operator is 'OpEqual' or OpNotEqual.
 func (f Operator) IsBasic() bool {
 	return f.isBasic()
 }
 
 // IsRangeable checks if the operator allows to have value ranges.
 func (f Operator) IsRangeable() bool {
-	return f.isRangable()
+	return f.isRangeable()
 }
 
 // IsStringOnly checks if the operator is 'string only'.
@@ -94,7 +94,7 @@ func (f Operator) isBasic() bool {
 	return f.ID == OpEqual.ID || f.ID == OpNotEqual.ID
 }
 
-func (f Operator) isRangable() bool {
+func (f Operator) isRangeable() bool {
 	return f.ID >= OpGreaterThan.ID && f.ID <= OpLessEqual.ID
 }
 

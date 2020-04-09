@@ -54,7 +54,7 @@ func (s *Scope) addToFieldset(fields ...interface{}) error {
 		var found bool
 		switch f := field.(type) {
 		case string:
-			if "*" == f && len(fields) == 1 {
+			if f == "*" && len(fields) == 1 {
 				for _, sField := range s.mStruct.Fields() {
 					s.Fieldset[sField.NeuronName()] = sField
 				}

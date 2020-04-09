@@ -30,16 +30,16 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 		return err
 	}
 
+	errChan := make(chan error)
+	for job := range jobs {
+		c.closeRepo(ctx, job, wg, errChan)
+	}
+
 	waitChan := make(chan struct{})
 	go func() {
 		wg.Wait()
 		waitChan <- struct{}{}
 	}()
-
-	errChan := make(chan error)
-	for job := range jobs {
-		c.closeRepo(ctx, job, wg, errChan)
-	}
 
 	select {
 	case <-ctx.Done():

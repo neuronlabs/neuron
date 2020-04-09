@@ -2,7 +2,7 @@ package annotation
 
 // Separators and other symbols.
 const (
-	// Separator is the symbol used to separate the subtags for given neuron tag.
+	// Separator is the symbol used to separate the sub-tags for given neuron tag.
 	// Example: `neuron:"many2many=foreign,related_foreign"`
 	//										 ^
 	Separator = ","

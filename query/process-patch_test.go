@@ -319,7 +319,7 @@ func TestPatch(t *testing.T) {
 					sv, ok := s.Value.(*[]*HasOneModel)
 					require.True(t, ok)
 
-					(*sv) = append((*sv), &HasOneModel{ID: model.ID})
+					*sv = append((*sv), &HasOneModel{ID: model.ID})
 
 				}).Return(nil)
 				repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)

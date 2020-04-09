@@ -217,7 +217,7 @@ func TestDelete(t *testing.T) {
 
 			defer clearRepository(repo2)
 
-			// Begin the transaction on subquery
+			// Begin the transaction on sub query.
 			repo2.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 			repo2.On("List", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {

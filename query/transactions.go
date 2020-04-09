@@ -38,6 +38,11 @@ func BeginCtx(ctx context.Context, options *TxOptions) *Tx {
 	return begin(ctx, options)
 }
 
+// ID gets unique transaction uuid.
+func (t *Tx) ID() uuid.UUID {
+	return t.id
+}
+
 // Query builds up a new query for given model.
 // The query is executed using transaction context.
 func (t *Tx) Query(model interface{}) Builder {
@@ -65,7 +70,7 @@ func (t *Tx) Commit() error {
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
-	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactioners(false)...)
+	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactions(false)...)
 
 	errChan := make(chan error, 1)
 	for tx := range txChan {
@@ -112,7 +117,7 @@ func (t *Tx) Rollback() error {
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
-	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactioners(true)...)
+	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactions(true)...)
 
 	errChan := make(chan error, 1)
 	for tx := range txChan {
@@ -175,7 +180,7 @@ func (t *Tx) produceUniqueTxChan(ctx context.Context, wg *sync.WaitGroup, txs ..
 	return txChan
 }
 
-func (t *Tx) getUniqueTransactioners(reverse bool) []*uniqueTx {
+func (t *Tx) getUniqueTransactions(reverse bool) []*uniqueTx {
 	if !reverse {
 		return t.uniqueTransactions
 	}

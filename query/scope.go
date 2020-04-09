@@ -39,17 +39,6 @@ type Scope struct {
 	Value interface{}
 	// Fieldset represents fields used specified to get / update for this query scope
 	Fieldset map[string]*mapping.StructField
-	// CollectionScopes contains filters, fieldsets and values for included collections
-	// every collection that is inclued would contain it's subscope
-	// if filters, fieldsets are set for non-included scope error should occur
-	includedScopes map[*mapping.ModelStruct]*Scope
-	// includedFields contain fields to include. If the included field is a relationship type, then
-	// specific includefield contains information about it
-	includedFields []*IncludeField
-	// IncludeValues contain unique values for given include fields
-	// the key is the - primary key value
-	// the value is the single object value for given ID
-	includedValues *safemap.SafeHashMap
 	// PrimaryFilters contain filter for the primary field.
 	PrimaryFilters Filters
 	// RelationFilters contain relationship field filters.
@@ -68,10 +57,19 @@ type Scope struct {
 	Pagination *Pagination
 	// Processor is current query processor.
 	Processor *Processor
-	// SubscopesChain is the array of the scope's used for committing or rolling back the transaction.
-	SubscopesChain []*Scope
 	// Err defines the process error.
 	Err error
+	// includedScopes contains filters, fieldset and values for included collections
+	// every collection that is included would contain it's sub-scope
+	// if filters, fieldset are set for non-included scope error should occur
+	includedScopes map[*mapping.ModelStruct]*Scope
+	// includedFields contain fields to include. If the included field is a relationship type, then
+	// specific included field contains information about it
+	includedFields []*IncludeField
+	// IncludeValues contain unique values for given include fields
+	// the key is the - primary key value
+	// the value is the single object value for given ID
+	includedValues *safemap.SafeHashMap
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
 	// isMany defines if the scope is of
@@ -240,8 +238,8 @@ func (s *Scope) list(ctx context.Context) error {
 	return nil
 }
 
-// Query creates new subscope with the provided model 'value'.
-// If the root scope is on the transacation the new one will be
+// Query creates new sub-scope with the provided model 'value'.
+// If the root scope is on the transaction the new one will be
 // added to the root's transaction chain.
 // It is a recommended way to create new scope's within hooks if the given scope
 // should be included in the given transaction.
@@ -429,144 +427,6 @@ Private scope methods
 
 */
 
-// func (s *Scope) begin(ctx context.Context, opts *TxOptions, checkError bool) (*transaction, error) {
-// 	// check if the context contains the transaction
-// 	if v, ok := s.StoreGet(internal.TxStateStoreKey); ok {
-// 		txn := v.(*transaction)
-// 		if checkError {
-// 			if txn.State != TxDone {
-// 				return nil, errors.NewDet(class.QueryTxAlreadyBegin, "transaction had already began")
-// 			}
-// 		}
-// 	}
-// 	if s.transactions == nil {
-// 		s.transactions = make(map[repository.Repository]*transaction)
-// 	}
-//
-// 	// for nil options set it to default value
-// 	if opts == nil {
-// 		opts = &TxOptions{}
-// 	}
-//
-// 	txn := &transaction{
-// 		Options: *opts,
-// 		root:    s,
-// 	}
-//
-// 	// generate the id
-// 	// TODO: enterprise set the uuid based on the namespace of the gateway
-// 	// so that the node name can be taken from the UUID v3 or v5 namespace
-// 	var err error
-// 	txn.ID, err = uuid.NewRandom()
-// 	if err != nil {
-// 		return nil, errors.NewDetf(class.InternalCommon, "new uuid failed: '%s'", err.Error())
-// 	}
-// 	log.Debug3f("SCOPE[%s][%s] Begins transaction[%s]", s.ID(), s.Struct().Collection(), txn.ID)
-//
-// 	txn.State = TxBegin
-//
-// 	// set the transaction to the context
-// 	s.StoreSet(internal.TxStateStoreKey, txn)
-//
-// 	repo, err := s.Controller().GetRepository(s.Struct())
-// 	if err != nil {
-// 		log.Errorf("No repository found for the %s model. %s", s.Struct().Collection(), err)
-// 		return nil, err
-// 	}
-//
-// 	transactioner, ok := repo.(Transactioner)
-// 	if !ok {
-// 		log.Errorf("The repository doesn't implement Creator interface for model: %s", s.Struct().Collection())
-// 		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
-// 	}
-//
-// 	if err = transactioner.Begin(ctx, s); err != nil {
-// 		return nil, err
-// 	}
-//
-// 	return txn, nil
-// }
-//
-// func (s *Scope) commit(ctx context.Context) error {
-// 	txV, ok := s.StoreGet(internal.TxStateStoreKey)
-// 	if txV == nil || !ok {
-// 		log.Debugf("COMMIT: No transaction found for the scope")
-// 		return errors.NewDet(class.QueryTxNotFound, "transaction not found for the scope")
-// 	}
-//
-// 	transactioner := txV.(*transaction)
-//
-// 	if transactioner != nil && ok && transactioner.State != TxBegin {
-// 		log.Debugf("COMMIT: Transaction already resolved: %s", transactioner.State)
-// 		return errors.NewDet(class.QueryTxAlreadyResolved, "transaction already resolved")
-// 	}
-//
-// 	if len(s.SubscopesChain) > 0 {
-// 		// create the cancelable context for the sub context
-// 		maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-// 		for _, sub := range s.SubscopesChain {
-// 			if sub.Struct().Config() == nil {
-// 				continue
-// 			}
-// 			if modelRepo := sub.Struct().Config().Repository; modelRepo != nil {
-// 				if tm := modelRepo.MaxTimeout; tm != nil {
-// 					if *tm > maxTimeout {
-// 						maxTimeout = *tm
-// 					}
-// 				}
-// 			}
-//
-// 		}
-// 		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
-// 		defer cancel()
-//
-// 		results := make(chan interface{}, len(s.SubscopesChain))
-// 		for _, sub := range s.SubscopesChain {
-// 			// create goroutine for the given subscope that commits the query
-// 			go sub.commitSingle(ctx, results)
-// 		}
-//
-// 		var resultCount int
-// 	fl:
-// 		for {
-// 			select {
-// 			case <-ctx.Done():
-// 				return ctx.Err()
-// 			case v, ok := <-results:
-// 				// break when the result count is equal to the length of the chain
-// 				if !ok {
-// 					break fl
-// 				}
-//
-// 				//check if value is an error
-// 				if err, ok := v.(errors.DetailedError); ok {
-// 					if err.Class() != class.RepositoryNotImplementsTransactioner &&
-// 						err.Class() != class.QueryTxAlreadyResolved {
-// 						return err
-// 					}
-// 				}
-//
-// 				resultCount++
-// 				if resultCount == len(s.SubscopesChain) {
-// 					break fl
-// 				}
-// 			}
-// 		}
-// 	}
-//
-// 	single := make(chan interface{}, 1)
-// 	s.commitSingle(ctx, single)
-// 	select {
-// 	case <-ctx.Done():
-// 		return ctx.Err()
-// 	case v := <-single:
-// 		if err, ok := v.(error); ok {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
 func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
 	scope := &Scope{
 		id:      uuid.New(),
@@ -750,34 +610,6 @@ func (s *Scope) formatQuery() url.Values {
 	return q
 }
 
-// func (s *Scope) newSubscope(ctx context.Context, value interface{}) (*Scope, error) {
-// 	sub, err := newQueryScope(s.Controller(), value)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	sub.kind = SubscopeKind
-//
-// 	if txn := s.getTx(); txn != nil {
-// 		repo, err := s.Controller().GetRepository(sub.Struct())
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		transactioner, ok := s.transactions[repo]
-// 		if ok {
-// 			sub.StoreSet(internal.TxStateStoreKey, transactioner)
-// 			return sub, nil
-// 		}
-//
-// 		if _, err := sub.begin(ctx, &txn.Options, false); err != nil {
-// 			log.Debug("Begin subscope failed: %v", err)
-// 			return nil, err
-// 		}
-// 		s.SubscopesChain = append(s.SubscopesChain, sub)
-// 	}
-// 	return sub, nil
-// }
-
 func (s *Scope) patch(ctx context.Context) error {
 	// check if scope's value is single
 	if s.isMany {
@@ -810,92 +642,6 @@ func (s *Scope) repository() repository.Repository {
 	return repo
 }
 
-// func (s *Scope) rollback(ctx context.Context) error {
-// 	txV, ok := s.StoreGet(internal.TxStateStoreKey)
-// 	if txV == nil || !ok {
-// 		log.Debugf("ROLLBACK: No transaction found for the scope")
-// 		return errors.NewDet(class.QueryTxNotFound, "transaction not found within the scope")
-// 	}
-//
-// 	transactioner := txV.(*transaction)
-// 	if transactioner != nil && ok && transactioner.State != TxBegin {
-// 		log.Debugf("ROLLBACK: Transaction already resolved: %s", transactioner.State)
-// 		return errors.NewDet(class.QueryTxAlreadyResolved, "transaction already resolved")
-// 	}
-//
-// 	if len(s.SubscopesChain) > 0 {
-// 		results := make(chan interface{}, len(s.SubscopesChain))
-//
-// 		// get initial time out from the internalController builder config
-// 		maxTimeout := s.Controller().Config.Processor.DefaultTimeout
-//
-// 		// check if any model has a preset timeout greater than the maxTimeout
-// 		for _, sub := range s.SubscopesChain {
-// 			if sub.Struct().Config() == nil {
-// 				continue
-// 			}
-// 			if modelRepo := sub.Struct().Config().Repository; modelRepo != nil {
-// 				if tm := modelRepo.MaxTimeout; tm != nil {
-// 					if *tm > maxTimeout {
-// 						maxTimeout = *tm
-// 					}
-// 				}
-// 			}
-// 		}
-//
-// 		ctx, cancel := context.WithTimeout(ctx, maxTimeout)
-// 		defer cancel()
-//
-// 		for _, sub := range s.SubscopesChain {
-// 			// get the cancel functions
-// 			// create goroutine for the given subscope that commits the query
-// 			go (*Scope)(sub).rollbackSingle(ctx, results)
-// 		}
-//
-// 		var rescount int
-//
-// 	fl:
-// 		for {
-// 			select {
-// 			case <-ctx.Done():
-// 				return ctx.Err()
-// 			case v, ok := <-results:
-// 				if !ok {
-// 					break fl
-// 				}
-//
-// 				if err, ok := v.(errors.DetailedError); ok {
-// 					if err.Class() != class.RepositoryNotImplementsTransactioner &&
-// 						err.Class() != class.QueryTxAlreadyResolved {
-// 						return err
-// 					}
-// 				}
-//
-// 				rescount++
-// 				if rescount == len(s.SubscopesChain) {
-// 					break fl
-// 				}
-// 			}
-// 		}
-// 	}
-//
-// 	single := make(chan interface{}, 1)
-//
-// 	go s.rollbackSingle(ctx, single)
-//
-// 	select {
-// 	case <-ctx.Done():
-// 		return ctx.Err()
-// 	case v := <-single:
-// 		if err, ok := v.(errors.DetailedError); ok {
-// 			if err.Class() != class.QueryTxAlreadyResolved {
-// 				return err
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
-
 func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.DetailedError {
 	err := v.Struct(s.Value)
 	if err == nil {
@@ -910,38 +656,38 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.D
 		return []errors.DetailedError{e}
 	case validator.ValidationErrors:
 		var errs []errors.DetailedError
-		for _, verr := range er {
-			tag := verr.Tag()
+		for _, valueError := range er {
+			tag := valueError.Tag()
 
 			var errObj errors.DetailedError
 			if tag == "required" {
 				// if field is required and the field tag is empty
-				if verr.Field() == "" {
+				if valueError.Field() == "" {
 					log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
 					errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
 					return append(errs, errObj)
 				}
 
 				errObj = errors.NewDet(class.QueryValueMissingRequired, "missing required field")
-				errObj.SetDetailsf("The field: %s, is required.", verr.Field())
+				errObj.SetDetailsf("The field: %s, is required.", valueError.Field())
 				errs = append(errs, errObj)
 				continue
 			} else if tag == "isdefault" {
 				switch {
-				case verr.Field() == "":
+				case valueError.Field() == "":
 					errObj = errors.NewDet(class.QueryValueValidation, "non default field value")
-					errObj.SetDetailsf("The field: '%s' must be of zero value.", verr.Field())
+					errObj.SetDetailsf("The field: '%s' must be of zero value.", valueError.Field())
 					errs = append(errs, errObj)
 					continue
 				case strings.HasPrefix(tag, "len"):
 					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj.SetDetailsf("The value of the field: %s is of invalid length.", verr.Field())
+					errObj.SetDetailsf("The value of the field: %s is of invalid length.", valueError.Field())
 					errs = append(errs, errObj)
 					continue
 				default:
 					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - invalid field value")
-					if verr.Field() != "" {
-						errObj.SetDetailsf("Invalid value for the field: '%s'.", verr.Field())
+					if valueError.Field() != "" {
+						errObj.SetDetailsf("Invalid value for the field: '%s'.", valueError.Field())
 					}
 
 					errs = append(errs, errObj)

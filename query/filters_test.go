@@ -31,7 +31,7 @@ type filterNestedModel struct {
 	Field string
 }
 
-//TestParseQuery tests parsing the query into a string.
+// TestParseQuery tests parsing the query into a string.
 func TestParseQuery(t *testing.T) {
 	cfg := controller.Default().Config
 	cfg.Repositories = map[string]*config.Repository{

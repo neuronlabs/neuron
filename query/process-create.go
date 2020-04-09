@@ -29,7 +29,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDet(class.RepositoryNotImplementsCreator, "repository doesn't implement Creator interface")
 	}
 
-	if err := creator.Create(ctx, s); err != nil {
+	if err = creator.Create(ctx, s); err != nil {
 		return err
 	}
 

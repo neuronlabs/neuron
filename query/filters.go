@@ -71,11 +71,11 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 
 	collection := f.StructField.ModelStruct().Collection()
 
-	for k, vals := range temp {
+	for k, val := range temp {
 		if k[0] == '[' {
 			k = fmt.Sprintf("filter[%s]%s", collection, k)
 		}
-		query.Add(k, strings.Join(vals, annotation.Separator))
+		query.Add(k, strings.Join(val, annotation.Separator))
 	}
 	return query
 }

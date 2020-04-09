@@ -29,7 +29,7 @@ type SortField struct {
 	SubFields []*SortField
 }
 
-// Copy creates a copy of the sortfield.
+// Copy creates a copy of the sort field.
 func (s *SortField) Copy() *SortField {
 	return s.copy()
 }
@@ -141,7 +141,7 @@ func newUniqueSortFields(m *mapping.ModelStruct, disallowFK bool, sorts ...strin
 			sort = sort[1:]
 		}
 
-		// check if no dups provided
+		// check if no duplicates provided
 		count := fields[sort]
 		count++
 
@@ -180,8 +180,8 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		err       errors.DetailedError
 	)
 
-	splitted := strings.Split(sort, annotation.NestedSeparator)
-	l := len(splitted)
+	split := strings.Split(sort, annotation.NestedSeparator)
+	l := len(split)
 	switch {
 	case l == 1:
 		// for length == 1 the sort must be an attribute, primary or a foreign key field
@@ -217,8 +217,8 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		sortField = newSortField(sField, order)
 		return sortField, nil
 	case l <= (MaxNestedRelLevel + 1):
-		// for splitted length greater than 1 it must be a relationship
-		sField, ok = m.RelationField(splitted[0])
+		// for split length greater than 1 it must be a relationship
+		sField, ok = m.RelationField(split[0])
 		if !ok {
 			err = errors.NewDet(class.QuerySortField, "sort field not found")
 			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
@@ -226,7 +226,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		}
 
 		sortField = newSortField(sField, order)
-		err := sortField.setSubfield(splitted[1:], order, disallowFK)
+		err := sortField.setSubfield(split[1:], order, disallowFK)
 		if err != nil {
 			return nil, err
 		}

@@ -4,7 +4,7 @@ import (
 	"github.com/neuronlabs/errors"
 )
 
-// MjrInternal is the major internal error classfication.
+// MjrInternal is the major internal error classification.
 var MjrInternal errors.Major
 
 func registerInternalClasses() {
