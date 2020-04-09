@@ -13,9 +13,6 @@ import (
 
 	"github.com/neuronlabs/neuron-core/config"
 	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/mapping"
-
-	"github.com/neuronlabs/neuron-core/internal"
 )
 
 var (
@@ -77,9 +74,9 @@ func TestCreate(t *testing.T) {
 
 		defer clearRepository(repo)
 
-		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
-		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.Create()
 		if assert.NoError(t, err) {
@@ -99,9 +96,9 @@ func TestCreate(t *testing.T) {
 		require.True(t, ok)
 		defer clearRepository(repo)
 
-		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
-		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.CreateContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
@@ -119,9 +116,9 @@ func TestCreate(t *testing.T) {
 		repo := r.(*Repository)
 		defer clearRepository(repo)
 
-		repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 		repo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
-		repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+		repo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 		err = s.CreateContext(context.WithValue(context.Background(), testCtxKey, t))
 		if assert.NoError(t, err) {
@@ -162,23 +159,16 @@ func TestCreateTransactions(t *testing.T) {
 			err := c.RegisterModels(&foreignKeyModel{})
 			require.NoError(t, err)
 
-			model := &foreignKeyModel{
-				FK: 24,
-			}
-
-			s, err := NewC(c, model)
+			fkModelRepo, err := c.GetRepository(&foreignKeyModel{})
 			require.NoError(t, err)
 
-			fkModel, err := c.GetRepository(&foreignKeyModel{})
-			require.NoError(t, err)
-
-			foreignKeyRepo, ok := fkModel.(*Repository)
+			foreignKeyRepo, ok := fkModelRepo.(*Repository)
 			require.True(t, ok)
 
 			defer clearRepository(foreignKeyRepo)
 
 			// begin
-			foreignKeyRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+			foreignKeyRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 			// create
 			foreignKeyRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 				s := a[1].(*Scope)
@@ -187,21 +177,21 @@ func TestCreateTransactions(t *testing.T) {
 				v.ID = 1
 			}).Return(nil)
 			// commit
-			foreignKeyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			foreignKeyRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
-			_, err = s.Begin()
+			tx := Begin()
+
+			model := &foreignKeyModel{FK: 24}
+
+			err = tx.QueryC(c, model).Create()
 			require.NoError(t, err)
 
-			foreignKeyRepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
-			err = s.Create()
-			require.NoError(t, err)
-
+			foreignKeyRepo.AssertNumberOfCalls(t, "Begin", 1)
 			foreignKeyRepo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
 
-			err = s.Commit()
+			err = tx.Commit()
 			require.NoError(t, err)
-			foreignKeyRepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+			foreignKeyRepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything, mock.Anything)
 		})
 
 		t.Run("WithForeignRelationships", func(t *testing.T) {
@@ -209,6 +199,7 @@ func TestCreateTransactions(t *testing.T) {
 				// valid transactions with the has one model should act like a normal valid create process
 				// and as a subsequent process the begin, patch and commit on the related field should occur
 				c := newController(t)
+
 				err := c.RegisterModels(&hasOneModel{}, &foreignKeyModel{})
 				require.NoError(t, err)
 
@@ -229,16 +220,14 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(repo)
 
-				repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-				repo.On("Create", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+				repo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+				repo.On("Create", mock.Anything, s).Once().Run(func(a mock.Arguments) {
 					s := a[1].(*Scope)
-					_, ok := s.StoreGet(internal.TxStateStoreKey)
-					assert.True(t, ok)
 
 					sv := s.Value.(*hasOneModel)
 					sv.ID = 1
 				}).Return(nil)
-				repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				repo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				// do the create
 
@@ -250,21 +239,21 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(fkModelRepo)
 
-				fkModelRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				fkModelRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				fkModelRepo.On("Patch", mock.Anything, mock.Anything).Once().Return(nil)
-				fkModelRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				fkModelRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				// Create the scope
 				require.NoError(t, s.Create())
 
-				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything, mock.Anything)
 				repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
 
-				fkModelRepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				fkModelRepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything, mock.Anything)
 				fkModelRepo.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
-				fkModelRepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+				fkModelRepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything, mock.Anything)
 
-				repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything, mock.Anything)
 			})
 
 			t.Run("HasMany", func(t *testing.T) {
@@ -303,7 +292,7 @@ func TestCreateTransactions(t *testing.T) {
 				defer clearRepository(foreignKeyRepo)
 
 				// must begin
-				hasManyRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				hasManyRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				// needs to create
 				hasManyRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 					// create and set the ID
@@ -312,11 +301,11 @@ func TestCreateTransactions(t *testing.T) {
 					model.ID = 1
 				}).Return(nil)
 				// allow to commit
-				hasManyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				hasManyRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				// foreign key repo should at first clear the old fk's, get the begin, patch, commit processes
 				// while it would get the filters on the FK then it should list the patched id first
-				foreignKeyRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				foreignKeyRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				// first patch would clear the foreign keys
 				foreignKeyRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 					s := a[1].(*Scope)
@@ -336,7 +325,7 @@ func TestCreateTransactions(t *testing.T) {
 					}
 				}).Return(nil)
 				// double commits - first clears the second adds the foreign keys
-				foreignKeyRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				foreignKeyRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				err = s.Create()
 				require.NoError(t, err)
@@ -373,7 +362,7 @@ func TestCreateTransactions(t *testing.T) {
 
 				defer clearRepository(joinModel)
 
-				many2many.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				many2many.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				many2many.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
@@ -384,7 +373,7 @@ func TestCreateTransactions(t *testing.T) {
 					v.ID = 4
 				}).Return(nil)
 
-				relatedModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				relatedModel.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				relatedModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
@@ -415,7 +404,7 @@ func TestCreateTransactions(t *testing.T) {
 					(*v) = append((*v), &RelatedModel{ID: 1})
 				}).Return(nil)
 
-				joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				joinModel.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				joinModel.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
@@ -429,9 +418,9 @@ func TestCreateTransactions(t *testing.T) {
 					v.ID = 33
 				}).Return(nil)
 
-				joinModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-				relatedModel.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
-				many2many.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				joinModel.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+				relatedModel.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+				many2many.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				s, err := NewC(c, model)
 				require.NoError(t, err)
@@ -440,19 +429,6 @@ func TestCreateTransactions(t *testing.T) {
 				require.NoError(t, err)
 
 				assert.Equal(t, 4, model.ID)
-
-				many2many.AssertNumberOfCalls(t, "Begin", 1)
-				many2many.AssertNumberOfCalls(t, "Create", 1)
-
-				relatedModel.AssertNumberOfCalls(t, "Begin", 1)
-				relatedModel.AssertNumberOfCalls(t, "List", 1)
-
-				joinModel.AssertNumberOfCalls(t, "Begin", 1)
-				joinModel.AssertNumberOfCalls(t, "Create", 1)
-				joinModel.AssertNumberOfCalls(t, "Commit", 1)
-
-				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
-				many2many.AssertNumberOfCalls(t, "Commit", 1)
 			})
 
 			t.Run("Both", func(t *testing.T) {
@@ -469,7 +445,7 @@ func TestCreateTransactions(t *testing.T) {
 				hbRepo, ok := repo.(*Repository)
 				require.True(t, ok)
 
-				hbRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				hbRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				hbRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
@@ -479,7 +455,7 @@ func TestCreateTransactions(t *testing.T) {
 
 					v.ID = 4
 				}).Return(nil)
-				hbRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				hbRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				repo, err = c.GetRepository(foreignKeyModel{})
 				require.NoError(t, err)
@@ -488,7 +464,7 @@ func TestCreateTransactions(t *testing.T) {
 				require.True(t, ok)
 
 				var tx1ID, tx2ID uuid.UUID
-				fkRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
+				fkRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 				fkRepo.On("List", mock.Anything, mock.Anything).Twice().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
@@ -513,16 +489,16 @@ func TestCreateTransactions(t *testing.T) {
 					require.True(t, ok)
 
 					tx := s.Tx()
-					tx1ID = tx.ID
+					tx1ID = tx.id
 				}).Return(nil)
 				fkRepo.On("Patch", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
 
 					tx := s.Tx()
-					tx2ID = tx.ID
+					tx2ID = tx.id
 				}).Return(nil)
-				fkRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+				fkRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 				err = s.Create()
 				require.NoError(t, err)
@@ -538,36 +514,23 @@ func TestCreateTransactions(t *testing.T) {
 			err := c.RegisterModels(&hasOneModel{}, &foreignKeyModel{})
 			require.NoError(t, err)
 
-			tm := &hasOneModel{
-				ID: 2,
-				HasOne: &foreignKeyModel{
-					ID: 1,
-				},
-			}
-
-			s, err := NewC(c, tm)
-			require.NoError(t, err)
-			r, _ := s.Controller().GetRepository(s.Struct())
+			r, _ := c.GetRepository(hasOneModel{})
 
 			// prepare the transaction
-			hasOneModel := r.(*Repository)
+			hasOneModelRepo := r.(*Repository)
 
 			// Begin the transaction
-			hasOneModel.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+			hasOneModelRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 			}).Return(nil)
 
-			defer func() { hasOneModel.Calls = []mock.Call{} }()
+			defer func() { hasOneModelRepo.Calls = []mock.Call{} }()
 
-			_, err = s.Begin()
-			require.NoError(t, err)
-			hasOneModel.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
-			hasOneModel.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
+			hasOneModelRepo.On("Create", mock.Anything, mock.Anything).Once().Return(nil)
 
 			model, err := c.ModelStruct(&foreignKeyModel{})
 			require.NoError(t, err)
 
-			m2Repo, err := s.Controller().GetRepository((*mapping.ModelStruct)(model))
+			m2Repo, err := c.GetRepository(model)
 			require.NoError(t, err)
 
 			foreignKey, ok := m2Repo.(*Repository)
@@ -578,34 +541,31 @@ func TestCreateTransactions(t *testing.T) {
 			}()
 
 			// Begin the transaction on subscope
-			foreignKey.On("Begin", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+			foreignKey.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 			}).Return(nil)
 
 			foreignKey.On("Patch", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 			}).Return(errors.New("some error"))
 
 			// Rollback the result
-			foreignKey.On("Rollback", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+			foreignKey.On("Rollback", mock.Anything, mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 			}).Return(nil)
 
-			hasOneModel.On("Rollback", mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
+			hasOneModelRepo.On("Rollback", mock.Anything, mock.Anything, mock.Anything).Once().Run(func(a mock.Arguments) {
 			}).Return(nil)
 
-			err = s.Create()
+			tm := &hasOneModel{
+				ID: 2,
+				HasOne: &foreignKeyModel{
+					ID: 1,
+				},
+			}
+			tx := Begin()
+			err = tx.QueryC(c, tm).Create()
 			require.Error(t, err)
 
-			err = s.Rollback()
+			err = tx.Rollback()
 			require.NoError(t, err)
-
-			// Assert calls
-
-			foreignKey.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
-			hasOneModel.AssertCalled(t, "Create", mock.Anything, mock.Anything)
-			foreignKey.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
-
-			hasOneModel.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
-			foreignKey.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 		})
 	})
 
@@ -635,8 +595,8 @@ func TestCreateTransactions(t *testing.T) {
 			require.NoError(t, err)
 
 			// timerRepo
-			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 			timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 				s, ok := args[1].(*Scope)
@@ -665,8 +625,8 @@ func TestCreateTransactions(t *testing.T) {
 			require.NoError(t, err)
 
 			// timerRepo
-			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 			timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 				s, ok := args[1].(*Scope)
@@ -698,8 +658,8 @@ func TestCreateTransactions(t *testing.T) {
 			require.NoError(t, err)
 
 			// timerRepo
-			timerRepo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-			timerRepo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+			timerRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
 			timerRepo.On("Create", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 				s, ok := args[1].(*Scope)
@@ -727,10 +687,13 @@ func TestCreateTransactions(t *testing.T) {
 
 func newController(t testing.TB) *controller.Controller {
 	t.Helper()
-	c := controller.NewDefault()
-	c.Config.DefaultRepositoryName = repoName
-	c.Config.Repositories = map[string]*config.Repository{
+	cfg := config.Default()
+	cfg.DefaultRepositoryName = repoName
+	cfg.Repositories = map[string]*config.Repository{
 		repoName: {DriverName: repoName},
 	}
+	c, err := controller.New(cfg)
+	require.NoError(t, err)
+	require.NoError(t, c.DialAll(context.Background()))
 	return c
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/neuronlabs/errors"
-	unilogger "github.com/neuronlabs/uni-logger"
 
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
@@ -15,19 +14,15 @@ type Controller struct {
 	// NamingConvention is the naming convention used while preparing the models.
 	// Allowed values:
 	// - camel
-	// - lowercamel
+	// - lower_camel
 	// - snake
 	// - kebab
-	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lowercamel snake kebab"`
+	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lower_camel snake kebab"`
 	// Models defines the model's configurations.
 	Models map[string]*ModelConfig `mapstructure:"models"`
 	// Repositories contains the connection configs for the given repository instance name
 	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
-
-	// LogLevel is the current logging level
-	LogLevel string `mapstructure:"log_level" validate:"isdefault|oneof=debug3 debug2 debug info warning error critical"`
-
-	// DefaultRepositoryName defines default repositoy name
+	// DefaultRepositoryName defines default repository name
 	DefaultRepositoryName string `mapstructure:"default_repository_name"`
 	// DefaultRepository defines controller default repository
 	DefaultRepository *Repository `mapstructure:"default_repository" validate:"-"`
@@ -142,27 +137,6 @@ func (c *Controller) SetDefaultRepository() error {
 		return nil
 	}
 	return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.DefaultRepositoryName)
-}
-
-// SetLogger sets the logger based on the config log level.
-func (c *Controller) SetLogger() error {
-	level := unilogger.ParseLevel(c.LogLevel)
-	if level == unilogger.UNKNOWN {
-		return errors.NewDetf(class.ConfigValueInvalid, "invalid 'log_level' value: '%s'", c.LogLevel)
-	}
-
-	// if the logger is null set it to default
-	if log.Logger() == nil {
-		log.Default()
-	}
-
-	if log.Level() != level {
-		// get and set default logger
-		if err := log.SetLevel(level); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // mapProcessor gets the processor if the ProcessorName is already set.

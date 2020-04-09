@@ -15,7 +15,7 @@ import (
 )
 
 func patchFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -52,7 +52,7 @@ func patchFunc(ctx context.Context, s *Scope) error {
 	}
 
 	if !onlyForeignRelationships || hasUpdatedAt {
-		if log.Level().IsAllowed(log.LDEBUG3) {
+		if log.Level().IsAllowed(log.LevelDebug3) {
 			log.Debug3f("SCOPE[%s][%s] patching: %s", s.ID().String(), s.Struct().Collection(), s.String())
 		}
 		if err := patchRepo.Patch(ctx, s); err != nil {
@@ -67,33 +67,22 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	var listScope *Scope
-	if tx := s.Tx(); tx != nil {
-		listScope, err = tx.QueryModelC(s.Controller(), s.Struct(), true)
-		if err != nil {
-			return err
-		}
-	} else {
-		listScope = newScopeWithModel(s.Controller(), s.Struct(), true)
-	}
-
-	if err = s.setFiltersTo(listScope); err != nil {
+	// create query for then many models
+	q := s.query(ctx, s.c, mapping.NewValueMany(s.Struct()))
+	// add filters from 's' scope.
+	if err = s.setFiltersTo(q.Scope()); err != nil {
 		return err
 	}
-	listScope.Fieldset = map[string]*mapping.StructField{"id": listScope.Struct().Primary()}
-
-	if log.Level().IsAllowed(log.LDEBUG3) {
-		log.Debug3f("SCOPE[%s][%s] check patch with the list scope: '%s'", s.ID().String(), s.Struct().Collection(), listScope.String())
+	// set fields to primary only
+	q.SetFields(q.Scope().Struct().Primary())
+	if log.Level().IsAllowed(log.LevelDebug3) && q.Err() != nil {
+		log.Debug3f("SCOPE[%s][%s] check patch with the list scope: '%s'", s.ID().String(), s.Struct().Collection(), q.Scope())
 	}
-	if err = listScope.ListContext(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return q.List()
 }
 
 func beforePatchFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -110,7 +99,7 @@ func beforePatchFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterPatchFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -128,7 +117,7 @@ func afterPatchFunc(ctx context.Context, s *Scope) error {
 }
 
 func patchBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	err := s.setBelongsToForeignKeyFields()
@@ -140,7 +129,7 @@ func patchBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -224,7 +213,7 @@ func patchForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func patchForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -317,9 +306,9 @@ func patchHasOneRelationship(
 	// the foreign key must be in a join model
 	if len(primaries) > 1 {
 		log.Debugf("SCOPE[%s] Patching multiple primary with HasOne relationship is unsupported.", s.ID())
-		err := errors.NewDet(class.QueryValuePrimary, "patching has one relationship for many primaries")
-		err.SetDetailsf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
-		return err
+		errDetailed := errors.NewDet(class.QueryValuePrimary, "patching has one relationship for many primaries")
+		errDetailed.SetDetailsf("Patching multiple primary values on the struct's: '%s' relationship: '%s' is not possible.", s.Struct().Collection(), relField.NeuronName())
+		return errDetailed
 	}
 
 	// get the reflection value of the scope's value
@@ -339,30 +328,14 @@ func patchHasOneRelationship(
 
 	relScopeValue := relFieldValue.Addr().Interface()
 
-	var relScope *Scope
-	if tx := s.Tx(); tx != nil {
-		relScope, err = tx.QueryContextC(ctx, s.Controller(), relScopeValue)
-		if err != nil {
-			return err
-		}
-	} else {
-		relScope, err = NewC(s.Controller(), relScopeValue)
-		// create the relation scope that will patch the relation
-		if err != nil {
-			log.Errorf("Cannot create related scope for HasOne patch relationship: %v of type: %T", err, relScopeValue)
-			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
-			return err
-		}
-	}
-
-	// the scope should have only primary field and foreign key selected
-	relScope.setFieldsetNoCheck(relScope.Struct().Primary(), relField.Relationship().ForeignKey())
-
 	log.Debug2f("SCOPE[%s] Patching foreign HasOne relationship: '%s'", s.ID(), relField.NeuronName())
 	// the primary field filter would be added by the process makePrimaryFilters
-	if err = relScope.PatchContext(ctx); err != nil {
-		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
 
+	b := s.query(ctx, s.c, relScopeValue)
+	err = b.SetFields(b.Scope().Struct().Primary(), relField.Relationship().ForeignKey()).
+		Patch()
+	if err != nil {
+		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
 		if e, ok := err.(errors.DetailedError); ok {
 			// change the class of the error
 			if e.Class() == class.QueryValueNoResult {
@@ -457,103 +430,30 @@ func patchHasManyRelationship(ctx context.Context, s *Scope, relField *mapping.S
 	// 1) for related field with values
 	// check if there are multiple primaries
 	if len(primaries) > 1 {
-		err := errors.NewDet(class.QueryValuePrimary, "multiple query primaries while patching has many relationship")
-		err.SetDetails("Can't patch multiple instances with the relation of type hasMany")
+		errDetailed := errors.NewDet(class.QueryValuePrimary, "multiple query primaries while patching has many relationship")
+		errDetailed.SetDetails("Can't patch multiple instances with the relation of type hasMany")
 		return err
 	}
-
-	// var clearScope *Scope
-	// // clear the related scope - patch all related models with the foreign key filter equal to the given primaries
-	// // create clearScope for the relation field's model
-	// if tx := s.Tx(); tx != nil {
-	// 	clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), false)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	// 	clearScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), false)
-	// 	if _, err = clearScope.BeginTx(ctx, nil); err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// // add selected field into the clear scope
-	// clearScope.setFieldsetNoCheck(relField.Relationship().ForeignKey())
-	// // add the foreign key filter
-	// clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
-
-	// log.Debug2f("SCOPE[%s] Patch relationship: '%s' - clear current relationship values", s.ID(), relField.NeuronName())
-	// // clear the related scope.
-	// if err = clearScope.PatchContext(ctx); err != nil {
-	// 	if e, ok := err.(errors.ClassError); ok {
-	// 		// if the error is no value result clear the error
-	// 		if e.Class() == class.QueryValueNoResult {
-	// 			err = nil
-	// 		}
-	// 	}
-	// 	if err != nil {
-	// 		if tx := s.Tx(); tx == nil {
-	// 			err = clearScope.RollbackContext(ctx)
-	// 		}
-	// 		return err
-	// 	}
-	// }
-
 	// create the related value for the scope
 	relatedValue := mapping.NewReflectValueSingle(relField.Relationship().Struct())
 	// set the foreign key field
 	relatedValue.Elem().FieldByIndex(relField.Relationship().ForeignKey().ReflectField().Index).Set(reflect.ValueOf(primaries[0]))
 	// create the related scope that patches the relatedPrimaries
-	var relatedScope *Scope
-
-	if tx := s.Tx(); tx != nil {
-		log.Debug3f("SCOPE[%s][%s] Creating patch relationship: '%s' scope with tx:'%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), tx.ID)
-		relatedScope, err = tx.QueryContextC(ctx, s.Controller(), relatedValue.Interface())
-		if err != nil {
-			err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
-			return err
-		}
-	}
-	// } else {
-	// 	tx := clearScope.Tx()
-	// 	relatedScope, err = tx.NewContextC(ctx, s.Controller(), relatedValue.Interface())
-	// 	if err != nil {
-	// 		if err := clearScope.RollbackContext(ctx); err != nil {
-	// 			return err
-	// 		}
-	// 		err = errors.NewDet(class.InternalModelRelationNotMapped, err.Error())
-	// 		return err
-	// 	}
-	// }
-	relatedScope.PrimaryFilters = append(relatedScope.PrimaryFilters, NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...))
 
 	log.Debug2f("SCOPE[%s][%s] Patch HasMany relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
 	// patch the related Scope
-	if err := relatedScope.PatchContext(ctx); err != nil {
-		if e, ok := err.(errors.ClassError); ok {
-			if e.Class() == class.QueryValueNoResult {
-				e, ok := err.(errors.DetailedError)
-				if ok {
-					e.WrapDetailsf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
-				}
-				return e
+	err = s.query(ctx, s.c, relatedValue.Interface()).
+		AddFilterField(NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
+		Patch()
+	if e, ok := err.(errors.ClassError); ok {
+		if e.Class() == class.QueryValueNoResult {
+			ed, ok := err.(errors.DetailedError)
+			if ok {
+				ed.WrapDetailsf("Patching related field: '%s' failed - no related resources found", relField.NeuronName())
 			}
 		}
 	}
-	// 	if tx := s.Tx(); tx == nil {
-	// 		if err := clearScope.RollbackContext(ctx); err != nil {
-	// 			log.Errorf("Rollback failed: %v", err.Error())
-	// 		}
-	// 	}
-	// 	return err
-	// }
-
-	if tx := s.Tx(); tx == nil {
-		if err = relatedScope.CommitContext(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return err
 }
 
 func patchMany2ManyRelationshipChan(
@@ -622,86 +522,41 @@ func patchMany2ManyRelationship(
 	_, justCreated := s.StoreGet(internal.JustCreated)
 
 	if isEmpty && !justCreated {
-		var (
-			clearScope *Scope
-			rootTx     bool
-		)
 		// create the scope for clearing the relationship
-		if tx := s.tx(); tx != nil {
-			rootTx = true
-			clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().JoinModel(), false)
-			if err != nil {
-				return err
-			}
-		} else {
-			clearScope = newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false)
-			if _, err = clearScope.begin(ctx, nil, false); err != nil {
-				return err
-			}
-		}
-		clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
-
+		err = s.query(ctx, s.c, mapping.NewValueSingle(relField.Relationship().JoinModel())).
+			AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+			Delete()
 		// delete the rows in the many2many relationship containing provided values
-		if err = clearScope.DeleteContext(ctx); err != nil {
+		if err != nil {
 			e, ok := err.(errors.ClassError)
 			if ok && e.Class() == class.QueryValueNoResult {
 				err = nil
-			}
-
-			if err != nil {
-				if !rootTx {
-					if err := clearScope.RollbackContext(ctx); err != nil {
-						log.Debugf("[SCOPE][%s]Rollback failed for clearScope: %s", clearScope.ID(), err)
-					}
-				}
-				return err
 			}
 		}
 		return nil
 	} else if isEmpty && justCreated {
 		return nil
 	}
-
 	// 1) clear the join model values
 	// create the clearScope based on the join model
-	var clearScope *Scope
-	var rootTx bool
-
 	if !justCreated {
-		if tx := s.Tx(); tx != nil {
-			rootTx = true
-			clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().JoinModel(), false)
-			if err != nil {
-				return err
-			}
-		} else {
-			clearScope = newScopeWithModel(s.Controller(), relField.Relationship().JoinModel(), false)
-			if _, err = clearScope.begin(ctx, nil, false); err != nil {
-				return err
-			}
-		}
-
 		// it also should get all 'old' entries matched with root.primary
 		// value as the backreference primary field
 		// copy the root scope primary filters into backreference foreign key
-		clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
-
+		err = s.query(ctx, s.c, mapping.NewValueSingle(relField.Relationship().JoinModel())).
+			AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+			Delete()
 		// delete the entries in the join model
-		if err := clearScope.DeleteContext(ctx); err != nil {
-			if e, ok := err.(errors.ClassError); ok {
-				// if the err is no result
-				if e.Class() == class.QueryValueNoResult {
-					err = nil
-				}
+		switch e := err.(type) {
+		case errors.ClassError:
+			// if the err is no result
+			if e.Class() == class.QueryValueNoResult {
+				err = nil
 			}
-			if err != nil {
-				if rootTx {
-					if err := clearScope.RollbackContext(ctx); err != nil {
-						log.Errorf("[SCOPE][%s] clearScope failed to rollback: %v", clearScope.ID(), err)
-					}
-				}
-				return err
-			}
+		case nil:
+		}
+		if err != nil {
+			return err
 		}
 	}
 
@@ -709,47 +564,25 @@ func patchMany2ManyRelationship(
 	// then if correct insert the new entries into the the join model
 
 	// get the primary field values from the relationship field
-	var checkScope *Scope
-
-	tx := s.Tx()
-	if tx == nil && !justCreated {
-		tx = clearScope.Tx()
-	}
-	// if tx is not nill use transaction
-	if tx != nil {
-		checkScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), true)
-		if err != nil {
-			return err
-		}
-	} else {
-		checkScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), true)
-	}
-
 	// we need only primary fields
-	checkScope.Fieldset = map[string]*mapping.StructField{"id": checkScope.Struct().Primary()}
-	checkScope.PrimaryFilters = append(checkScope.PrimaryFilters, NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...))
-
-	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values in scope: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName(), checkScope.ID())
-	// get the values from the checkScope
+	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values.", s.ID(), s.Struct().Collection(), relField.NeuronName())
+	checkScope := s.query(ctx, s.c, mapping.NewValueMany(relField.Relationship().Struct())).
+		SetFields("id").
+		AddFilterField(NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
+		Scope()
 	err = checkScope.ListContext(ctx)
+	switch e := err.(type) {
+	case errors.ClassError:
+		if e.Class() == class.QueryValueNoResult {
+			if ed, ok := err.(errors.DetailedError); ok {
+				ed.WrapDetails("No many2many relationship values found with the provided ids")
+			}
+		}
+	case nil:
+	}
 	if err != nil {
-		if e, ok := err.(errors.ClassError); ok {
-			if e.Class() == class.QueryValueNoResult {
-				if e, ok := err.(errors.DetailedError); ok {
-					e.WrapDetails("No many2many relationship values found with the provided ids")
-				}
-			}
-			err = e
-		}
-		if !justCreated && !rootTx {
-			err := clearScope.RollbackContext(ctx)
-			if err != nil {
-				return err
-			}
-		}
 		return err
 	}
-
 	var primaryMap = map[interface{}]bool{}
 	// set the primaryMap with the relation primaries
 	for _, primary := range relatedPrimaries {
@@ -758,12 +591,6 @@ func patchMany2ManyRelationship(
 
 	checkPrimaries, err := checkScope.getPrimaryFieldValues()
 	if err != nil {
-		if !justCreated && !rootTx {
-			err := clearScope.RollbackContext(ctx)
-			if err != nil {
-				return err
-			}
-		}
 		return err
 	}
 
@@ -781,16 +608,10 @@ func patchMany2ManyRelationship(
 	}
 
 	if len(nonExistsPrimaries) > 0 {
-		// violation integrity constraint erorr
-		if !justCreated && !rootTx {
-			err := clearScope.RollbackContext(ctx)
-			if err != nil {
-				return err
-			}
-		}
-		err := errors.NewDet(class.QueryViolationIntegrityConstraint, "relationship values doesn't exists")
-		err.SetDetailsf("Patching relationship field: '%s' failed. The relationships: %v doesn't exists", relField.NeuronName(), nonExistsPrimaries)
-		return err
+		// violation integrity constraint error
+		errDetailed := errors.NewDet(class.QueryViolationIntegrityConstraint, "relationship values doesn't exists")
+		errDetailed.SetDetailsf("Patching relationship field: '%s' failed. The relationships: %v doesn't exists", relField.NeuronName(), nonExistsPrimaries)
+		return errDetailed
 	}
 
 	// 3) when all the primaries exists in the relation model
@@ -812,44 +633,10 @@ func patchMany2ManyRelationship(
 			fk.Set(reflect.ValueOf(primary))
 		}
 
-		var insertScope *Scope
-		tx := s.Tx()
-		if tx == nil && !justCreated {
-			tx = clearScope.Tx()
-		}
-
-		if tx != nil {
-			insertScope, err = tx.QueryC(s.Controller(), single.Interface())
-		} else {
-			insertScope, err = NewC(s.Controller(), single.Interface())
-		}
-
+		err = s.query(ctx, s.Controller(), single.Interface()).
+			SetFields(relField.Relationship().ManyToManyForeignKey(), relField.Relationship().ForeignKey()).
+			Create()
 		if err != nil {
-			log.Debugf("SCOPE[%s][%s] Many2Many Relationship InsertScope failed: %v", s.ID(), s.Struct().Collection(), err)
-			if !justCreated && !rootTx {
-				err := clearScope.RollbackContext(ctx)
-				if err != nil {
-					return err
-				}
-			}
-			return err
-		}
-		insertScope.setFieldsetNoCheck(relField.Relationship().ManyToManyForeignKey(), relField.Relationship().ForeignKey())
-
-		// create the newly created relationships
-		if err = insertScope.CreateContext(ctx); err != nil {
-			if !justCreated && !rootTx {
-				err := clearScope.RollbackContext(ctx)
-				if err != nil {
-					return err
-				}
-			}
-			return err
-		}
-	}
-
-	if !justCreated && !rootTx {
-		if err = clearScope.CommitContext(ctx); err != nil {
 			return err
 		}
 	}
@@ -858,41 +645,21 @@ func patchMany2ManyRelationship(
 
 func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relField *mapping.StructField, primaries []interface{}) error {
 	// create clearScope for the relation field's model
-	var (
-		clearScope *Scope
-		err        error
-	)
-	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), relField.Relationship().Struct(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = newScopeWithModel(s.Controller(), relField.Relationship().Struct(), false)
-	}
-
-	// add selected field into the clear scope
-	clearScope.setFieldsetNoCheck(relField.Relationship().ForeignKey())
-	clearScope.ForeignFilters = append(clearScope.ForeignFilters, NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...))
-
-	// clear the related scope
-	if err = clearScope.PatchContext(ctx); err != nil {
-		if e, ok := err.(errors.ClassError); ok {
-			// if the error is no value result clear the error
-			if e.Class() == class.QueryValueNoResult {
-				err = nil
-			}
-		}
-
-		if err != nil {
-			return err
+	err := s.query(ctx, s.c, relField.Relationship().Struct()).
+		SetFields(relField.Relationship().ForeignKey()).
+		AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+		Patch()
+	if e, ok := err.(errors.ClassError); ok {
+		// if the error is no value result clear the error
+		if e.Class() == class.QueryValueNoResult {
+			err = nil
 		}
 	}
-	return nil
+	return err
 }
 
 func setUpdatedAtField(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 

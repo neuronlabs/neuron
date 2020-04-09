@@ -78,9 +78,6 @@ func (s *Scope) clearFilters() {
 }
 
 func (s *Scope) getOrCreatePrimaryFilter() *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	if s.PrimaryFilters == nil {
 		s.PrimaryFilters = Filters{}
 	}
@@ -98,9 +95,6 @@ func (s *Scope) getOrCreatePrimaryFilter() *FilterField {
 }
 
 func (s *Scope) getOrCreateLangaugeFilter() *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	if !s.mStruct.UseI18n() {
 		return nil
 	}
@@ -116,9 +110,6 @@ func (s *Scope) getOrCreateLangaugeFilter() *FilterField {
 }
 
 func (s *Scope) getOrCreateAttributeFilter(sField *mapping.StructField) *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	if s.AttributeFilters == nil {
 		s.AttributeFilters = Filters{}
 	}
@@ -134,9 +125,6 @@ func (s *Scope) getOrCreateAttributeFilter(sField *mapping.StructField) *FilterF
 }
 
 func (s *Scope) getOrCreateFilterKeyFilter(sField *mapping.StructField) *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	if s.FilterKeyFilters == nil {
 		s.FilterKeyFilters = Filters{}
 	}
@@ -155,9 +143,6 @@ func (s *Scope) getOrCreateFilterKeyFilter(sField *mapping.StructField) *FilterF
 // If the filterField already exists for given scope, the function returns the existing one.
 // Otherwise it craetes new filter field and returns it.
 func (s *Scope) getOrCreateForeignKeyFilter(sField *mapping.StructField) *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	if s.ForeignFilters == nil {
 		s.ForeignFilters = Filters{}
 	}
@@ -173,9 +158,6 @@ func (s *Scope) getOrCreateForeignKeyFilter(sField *mapping.StructField) *Filter
 }
 
 func (s *Scope) getOrCreateRelationshipFilter(sField *mapping.StructField) *FilterField {
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
 	// Create if empty
 	if s.RelationFilters == nil {
 		s.RelationFilters = Filters{}

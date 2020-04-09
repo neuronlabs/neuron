@@ -38,7 +38,6 @@ func defaultConfig() *Controller {
 		NamingConvention:     "snake",
 		CreateValidatorAlias: "create",
 		PatchValidatorAlias:  "patch",
-		LogLevel:             "info",
 		Processor:            ThreadSafeProcessor(),
 		Repositories:         map[string]*Repository{},
 		IncludedDepthLimit:   2,

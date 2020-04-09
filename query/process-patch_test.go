@@ -13,9 +13,6 @@ import (
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/mapping"
-
-	"github.com/neuronlabs/neuron-core/internal"
 )
 
 type testPatcher struct {
@@ -158,17 +155,7 @@ func TestPatch(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("Valid", func(t *testing.T) {
-			tm := &patchTMRelations{
-				ID: 2,
-				Rel: &patchTMRelated{
-					ID: 1,
-				},
-			}
-
-			s, err := NewC(c, tm)
-			require.NoError(t, err)
-
-			r, _ := s.Controller().GetRepository(s.Struct())
+			r, _ := c.GetRepository(patchTMRelations{})
 			repo := r.(*Repository)
 
 			defer clearRepository(repo)
@@ -176,22 +163,15 @@ func TestPatch(t *testing.T) {
 			// Begin define
 			repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 
-			_, err = s.Begin()
-			require.NoError(t, err)
+			tx := Begin()
 
-			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
-			repo.On("List", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
-				s := a[1].(*Scope)
-				_, ok := s.StoreGet(internal.TxStateStoreKey)
-				assert.True(t, ok)
-			}).Once().Return(nil)
+			repo.On("List", mock.Anything, mock.Anything).Once().Return(nil)
 
 			// get the related model
 			model, err := c.ModelStruct(&patchTMRelated{})
 			require.NoError(t, err)
 
-			mr, err := s.Controller().GetRepository((*mapping.ModelStruct)(model))
+			mr, err := c.GetRepository(model)
 			require.NoError(t, err)
 
 			repo2, ok := mr.(*Repository)
@@ -202,7 +182,14 @@ func TestPatch(t *testing.T) {
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 			repo2.On("Patch", mock.Anything, mock.Anything).Once().Return(nil)
 
-			require.NoError(t, s.Patch())
+			tm := &patchTMRelations{
+				ID: 2,
+				Rel: &patchTMRelated{
+					ID: 1,
+				},
+			}
+			err = tx.QueryC(c, tm).Patch()
+			require.NoError(t, err)
 
 			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
@@ -211,23 +198,14 @@ func TestPatch(t *testing.T) {
 			repo.On("Commit", mock.Anything, mock.Anything).Return(nil)
 			repo2.On("Commit", mock.Anything, mock.Anything).Return(nil)
 
-			require.NoError(t, s.Commit())
+			require.NoError(t, tx.Commit())
 
 			repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
 		})
 
 		t.Run("Rollback", func(t *testing.T) {
-			tm := &patchTMRelations{
-				ID: 2,
-				Rel: &patchTMRelated{
-					ID: 1,
-				},
-			}
-
-			s, err := NewC(c, tm)
-			require.NoError(t, err)
-			r, _ := s.Controller().GetRepository(s.Struct())
+			r, _ := c.GetRepository(patchTMRelations{})
 
 			// prepare the transaction
 			repo := r.(*Repository)
@@ -237,16 +215,12 @@ func TestPatch(t *testing.T) {
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 			}).Return(nil)
 
-			_, err = s.Begin()
-			require.NoError(t, err)
-
-			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 			repo.On("List", mock.Anything, mock.Anything).Once().Return(nil)
 
 			model, err := c.ModelStruct(&patchTMRelated{})
 			require.NoError(t, err)
 
-			m2Repo, err := s.Controller().GetRepository((*mapping.ModelStruct)(model))
+			m2Repo, err := c.GetRepository(model)
 			require.NoError(t, err)
 
 			repo2, ok := m2Repo.(*Repository)
@@ -258,22 +232,27 @@ func TestPatch(t *testing.T) {
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 			repo2.On("Patch", mock.Anything, mock.Anything).Once().Return(stdErrors.New("Some error"))
 
-			err = s.Patch()
+			tx := Begin()
+			tm := &patchTMRelations{
+				ID: 2,
+				Rel: &patchTMRelated{
+					ID: 1,
+				},
+			}
+			err = tx.QueryC(c, tm).Patch()
 			require.Error(t, err)
 
 			// Rollback the result
 			repo2.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 			repo.On("Rollback", mock.Anything, mock.Anything).Once().Return(nil)
 
-			err = s.Rollback()
+			err = tx.Rollback()
 			require.NoError(t, err)
 
 			// Assert calls
-
+			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
-
 			repo2.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
-
 			repo.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 			repo2.AssertCalled(t, "Rollback", mock.Anything, mock.Anything)
 		})
@@ -369,15 +348,14 @@ func TestPatch(t *testing.T) {
 
 				require.NoError(t, s.Patch())
 
-				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything, mock.Anything)
 				repo.AssertCalled(t, "List", mock.Anything, mock.Anything)
-				repo.AssertNotCalled(t, "Patch", mock.Anything, mock.Anything)
 
-				frepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
+				frepo.AssertCalled(t, "Begin", mock.Anything, mock.Anything, mock.Anything)
 				frepo.AssertCalled(t, "Patch", mock.Anything, mock.Anything)
 
-				frepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
-				repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything)
+				frepo.AssertCalled(t, "Commit", mock.Anything, mock.Anything, mock.Anything)
+				repo.AssertCalled(t, "Commit", mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -473,17 +451,6 @@ func TestPatch(t *testing.T) {
 
 				err = s.Patch()
 				require.NoError(t, err)
-
-				// one call to hasMany - check if exists
-				hasMany.AssertNumberOfCalls(t, "Begin", 1)
-				hasMany.AssertNumberOfCalls(t, "List", 1)
-				hasMany.AssertNumberOfCalls(t, "Commit", 1)
-
-				// one call to foreign List - get the primary id's - a part of clear scope
-				foreignModel.AssertNumberOfCalls(t, "Begin", 1)
-				// 1. patch scope
-				foreignModel.AssertNumberOfCalls(t, "Patch", 1)
-				foreignModel.AssertNumberOfCalls(t, "Commit", 1)
 			})
 
 			t.Run("Clear", func(t *testing.T) {
@@ -602,15 +569,6 @@ func TestPatch(t *testing.T) {
 
 				err = s.Patch()
 				require.NoError(t, err)
-
-				// one call to hasMany - check if exists
-				hasMany.AssertNumberOfCalls(t, "List", 1)
-
-				// one call to foreign List - get the primary id's - a part of clear scope
-				foreignModel.AssertNumberOfCalls(t, "List", 1)
-
-				// 1. clear scope
-				foreignModel.AssertNumberOfCalls(t, "Patch", 1)
 			})
 
 			t.Run("Error", func(t *testing.T) {
@@ -800,91 +758,84 @@ func TestPatch(t *testing.T) {
 				many2many.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 
 				// check the values
-				many2many.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				many2many.On("List", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
 					require.True(t, ok)
 
-					primaries := s.PrimaryFilters
-					if assert.Len(t, primaries, 1) {
-						if assert.Len(t, primaries[0].Values, 1) {
-							pv := primaries[0].Values[0]
+					switch s.Struct() {
+					case c.MustGetModelStruct(Many2ManyModel{}):
+						primaries := s.PrimaryFilters
+						if assert.Len(t, primaries, 1) {
+							if assert.Len(t, primaries[0].Values, 1) {
+								pv := primaries[0].Values[0]
 
-							assert.Equal(t, OpIn, pv.Operator)
-							if assert.Len(t, pv.Values, 1) {
-								assert.Equal(t, 4, pv.Values[0])
+								assert.Equal(t, OpIn, pv.Operator)
+								if assert.Len(t, pv.Values, 1) {
+									assert.Equal(t, 4, pv.Values[0])
+								}
 							}
 						}
+
+						v, ok := s.Value.(*[]*Many2ManyModel)
+						require.True(t, ok)
+
+						(*v) = append((*v), &Many2ManyModel{ID: 4})
+					case c.MustGetModelStruct(RelatedModel{}):
+						primaries := s.PrimaryFilters
+						if assert.Len(t, primaries, 1) {
+							pf := primaries[0]
+							pfValues := pf.Values
+
+							if assert.Len(t, pfValues, 1) {
+								pfOpValue := pfValues[0]
+
+								assert.Equal(t, OpIn, pfOpValue.Operator)
+
+								if assert.Len(t, pfOpValue.Values, 1) {
+									assert.Equal(t, 1, pfOpValue.Values[0])
+								}
+							}
+						}
+						fieldset := s.Fieldset
+						assert.Len(t, fieldset, 1)
+						assert.Contains(t, s.Fieldset, "id")
+
+						v, ok := s.Value.(*[]*RelatedModel)
+						require.True(t, ok)
+
+						(*v) = append((*v), &RelatedModel{ID: 1})
+					case c.MustGetModelStruct(JoinModel{}):
+						foreigns := s.ForeignFilters
+						if assert.Len(t, foreigns, 1) {
+							foreignValues := foreigns[0].Values
+							fk, ok := s.Struct().ForeignKey("ForeignKey")
+							if assert.True(t, ok) {
+								assert.Equal(t, fk, foreigns[0].StructField)
+							}
+
+							if assert.Len(t, foreignValues, 1) {
+								foreignFirst := foreignValues[0]
+
+								assert.Equal(t, OpIn, foreignFirst.Operator)
+								if assert.Len(t, foreignFirst.Values, 1) {
+									assert.Equal(t, 4, foreignFirst.Values[0])
+								}
+							}
+						}
+
+						v, ok := s.Value.(*[]*JoinModel)
+						require.True(t, ok)
+
+						*v = append(*v,
+							&JoinModel{ID: 6, ForeignKey: 4, MtMForeignKey: 17},
+							&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
+						)
 					}
 
-					v, ok := s.Value.(*[]*Many2ManyModel)
-					require.True(t, ok)
-
-					(*v) = append((*v), &Many2ManyModel{ID: 4})
 				}).Return(nil)
 
 				relatedModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-				relatedModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s, ok := args[1].(*Scope)
-					require.True(t, ok)
-
-					primaries := s.PrimaryFilters
-					if assert.Len(t, primaries, 1) {
-						pf := primaries[0]
-						pfValues := pf.Values
-
-						if assert.Len(t, pfValues, 1) {
-							pfOpValue := pfValues[0]
-
-							assert.Equal(t, OpIn, pfOpValue.Operator)
-
-							if assert.Len(t, pfOpValue.Values, 1) {
-								assert.Equal(t, 1, pfOpValue.Values[0])
-							}
-						}
-					}
-					fieldset := s.Fieldset
-					assert.Len(t, fieldset, 1)
-					assert.Contains(t, s.Fieldset, "id")
-
-					v, ok := s.Value.(*[]*RelatedModel)
-					require.True(t, ok)
-
-					(*v) = append((*v), &RelatedModel{ID: 1})
-				}).Return(nil)
-
 				joinModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
-
-				// List is the reduce primaries lister
-				joinModel.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-					s, ok := args[1].(*Scope)
-					require.True(t, ok)
-
-					foreigns := s.ForeignFilters
-					if assert.Len(t, foreigns, 1) {
-						foreignValues := foreigns[0].Values
-						fk, ok := s.Struct().ForeignKey("ForeignKey")
-						if assert.True(t, ok) {
-							assert.Equal(t, fk, foreigns[0].StructField)
-						}
-
-						if assert.Len(t, foreignValues, 1) {
-							foreignFirst := foreignValues[0]
-
-							assert.Equal(t, OpIn, foreignFirst.Operator)
-							if assert.Len(t, foreignFirst.Values, 1) {
-								assert.Equal(t, 4, foreignFirst.Values[0])
-							}
-						}
-					}
-
-					v, ok := s.Value.(*[]*JoinModel)
-					require.True(t, ok)
-
-					(*v) = append((*v),
-						&JoinModel{ID: 6, ForeignKey: 4, MtMForeignKey: 17},
-						&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
-					)
-				}).Return(nil)
 
 				joinModel.On("Delete", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
 					s, ok := args[1].(*Scope)
@@ -932,19 +883,6 @@ func TestPatch(t *testing.T) {
 
 				err = s.Patch()
 				require.NoError(t, err)
-
-				many2many.AssertNumberOfCalls(t, "Begin", 1)
-				many2many.AssertNumberOfCalls(t, "List", 1)
-
-				relatedModel.AssertNumberOfCalls(t, "Begin", 1)
-				relatedModel.AssertNumberOfCalls(t, "List", 1)
-
-				joinModel.AssertNumberOfCalls(t, "Begin", 1)
-				joinModel.AssertNumberOfCalls(t, "Create", 1)
-				joinModel.AssertNumberOfCalls(t, "Commit", 1)
-
-				relatedModel.AssertNumberOfCalls(t, "Commit", 1)
-				many2many.AssertNumberOfCalls(t, "Commit", 1)
 			})
 
 			t.Run("Clear", func(t *testing.T) {

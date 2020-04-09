@@ -114,7 +114,7 @@ func (s *Scope) autoSelectFields() error {
 		return errors.NewDet(class.QueryNoValue, "no value provided for scope")
 	}
 	s.autoSelectedFields = true
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		defer func() {
 			fieldsInflection := "field"
 			if len(s.Fieldset) > 1 {

@@ -15,7 +15,7 @@ import (
 )
 
 func deleteFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -33,7 +33,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 			return errors.NewDetf(class.RepositoryNotImplementsPatcher, "repository: '%T' doesn't implement Patcher interface", repo)
 		}
 
-		if log.Level().IsAllowed(log.LDEBUG3) {
+		if log.Level().IsAllowed(log.LevelDebug3) {
 			log.Debug3f("SCOPE[%s][%s] Deleting by patching the 'DeletedAt' field: %s", s.ID().String(), s.Struct().Collection(), s.String())
 		}
 		if err = patcher.Patch(ctx, s); err != nil {
@@ -48,7 +48,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 		return errors.NewDetf(class.RepositoryNotImplementsDeleter, "repository: %T doesn't implement Deleter interface", repo)
 	}
 
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s][%s] deleting: %s", s.ID().String(), s.Struct().Collection(), s.String())
 	}
 	// do the delete operation
@@ -59,7 +59,7 @@ func deleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeDeleteFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func beforeDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterDeleteFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func afterDeleteFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -161,7 +161,7 @@ func deleteForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func deleteForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -227,34 +227,23 @@ func deleteHasOneRelationshipsChan(ctx context.Context, s *Scope, field *mapping
 
 func deleteHasOneRelationships(ctx context.Context, s *Scope, field *mapping.StructField) error {
 	// clearScope clears the foreign key values for the relationships
-	var (
-		clearScope *Scope
-		err        error
-	)
-
 	rel := field.Relationship()
 
-	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = newScopeWithModel(s.Controller(), rel.Struct(), false)
-	}
+	q := s.query(ctx, s.c, rel.Struct()).
+		SetFields(rel.ForeignKey())
 
 	// the selected field would be only the foreign key -> zero valued
-	clearScope.Fieldset[rel.ForeignKey().NeuronName()] = rel.ForeignKey()
 	for _, prim := range s.PrimaryFilters {
-		clearScope.ForeignFilters = append(clearScope.ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
+		q.Scope().ForeignFilters = append(q.Scope().ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
 	}
 
 	// patch the clearScope
-	if err = clearScope.PatchContext(ctx); err != nil {
-		if e, ok := err.(errors.ClassError); ok {
-			if e.Class() == class.QueryValueNoResult {
-				err = nil
-			}
+	err := q.Patch()
+	switch e := err.(type) {
+	case nil:
+	case errors.ClassError:
+		if e.Class() == class.QueryValueNoResult {
+			err = nil
 		}
 	}
 	return err
@@ -270,31 +259,16 @@ func deleteHasManyRelationshipsChan(ctx context.Context, s *Scope, field *mappin
 
 func deleteHasManyRelationships(ctx context.Context, s *Scope, field *mapping.StructField) error {
 	// clearScope clears the foreign key values for the relationships
-	var (
-		clearScope *Scope
-		err        error
-	)
-
 	rel := field.Relationship()
 
-	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.Struct(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = newScopeWithModel(s.Controller(), rel.Struct(), false)
-	}
-
-	// the selected field would be only the foreign key -> zero valued
-	clearScope.Fieldset[rel.ForeignKey().NeuronName()] = rel.ForeignKey()
-
+	q := s.query(ctx, s.Controller(), mapping.NewValueSingle(rel.Struct())).
+		SetFields(rel.ForeignKey())
 	for _, prim := range s.PrimaryFilters {
-		clearScope.ForeignFilters = append(clearScope.ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
+		q.Scope().ForeignFilters = append(q.Scope().ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
 	}
 
 	// patch the clearScope
-	err = clearScope.PatchContext(ctx)
+	err := q.Patch()
 	if err != nil {
 		e, ok := err.(errors.ClassError)
 		if ok && e.Class() == class.QueryValueNoResult {
@@ -313,22 +287,8 @@ func deleteMany2ManyRelationshipsChan(ctx context.Context, s *Scope, field *mapp
 }
 
 func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *mapping.StructField) error {
-	var (
-		clearScope *Scope
-		err        error
-	)
 	rel := field.Relationship()
 	// there is assumption that only the primary filters exists on the delete scope
-	// delete the many2many rows within the join model
-	if tx := s.Tx(); tx != nil {
-		clearScope, err = tx.newModelC(ctx, s.Controller(), rel.JoinModel(), false)
-		if err != nil {
-			return err
-		}
-	} else {
-		clearScope = newScopeWithModel(s.Controller(), rel.JoinModel(), false)
-	}
-
 	// add the backreference filter
 	foreignKeyFilter := &FilterField{StructField: rel.ForeignKey()}
 
@@ -336,10 +296,9 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *mapping.
 	for _, prim := range s.PrimaryFilters {
 		foreignKeyFilter.Values = append(foreignKeyFilter.Values, prim.Values...)
 	}
-	clearScope.ForeignFilters = append(clearScope.ForeignFilters, foreignKeyFilter)
-
-	// delete the entries in the join model
-	err = clearScope.DeleteContext(ctx)
+	err := s.query(ctx, s.c, rel.JoinModel()).
+		AddFilterField(foreignKeyFilter).
+		Delete()
 	if err != nil {
 		e, ok := err.(errors.ClassError)
 		if ok && e.Class() == class.QueryValueNoResult {
@@ -352,7 +311,7 @@ func deleteMany2ManyRelationships(ctx context.Context, s *Scope, field *mapping.
 // reducePrimaryFilters is the process func that changes the delete scope filters so that
 // if the root model contains any nonBelongsTo relationship then the filters must be converted into primary field filter
 func reducePrimaryFilters(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -497,7 +456,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 }
 
 func setDeletedAtField(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	deletedAt, hasDeletedAt := s.Struct().DeletedAt()

@@ -6,55 +6,55 @@ import (
 	"log"
 	"os"
 
+	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/uni-logger"
 
-	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/neuron-core/class"
 )
 
 const (
-	// LDEBUG3 is the logger DEBUG3 level.
-	LDEBUG3 = unilogger.DEBUG3
-	// LDEBUG2 is the logger DEBUG2 level.
-	LDEBUG2 = unilogger.DEBUG2
-	// LDEBUG is the logger DEBUG level.
-	LDEBUG = unilogger.DEBUG
-	// LINFO is the logger INFO level.
-	LINFO = unilogger.INFO
-	// LWARNING is the logger WARNING level.
-	LWARNING = unilogger.WARNING
-	// LERROR is the logger ERROR level.
-	LERROR = unilogger.ERROR
-	// LCRITICAL is the logger CRITICAL level.
-	LCRITICAL = unilogger.CRITICAL
-	// LPRINT is the logger PRINT level.
-	LPRINT = unilogger.PRINT
-	// LUNKNOWN is the unspecified logger level.
-	LUNKNOWN = unilogger.UNKNOWN
+	// LevelDebug3 is the logger DEBUG3 level.
+	LevelDebug3 = unilogger.DEBUG3
+	// LevelDebug2 is the logger DEBUG2 level.
+	LevelDebug2 = unilogger.DEBUG2
+	// LevelDebug is the logger DEBUG level.
+	LevelDebug = unilogger.DEBUG
+	// LevelInfo is the logger INFO level.
+	LevelInfo = unilogger.INFO
+	// LevelWarning is the logger WARNING level.
+	LevelWarning = unilogger.WARNING
+	// LevelError is the logger ERROR level.
+	LevelError = unilogger.ERROR
+	// LevelCritical is the logger CRITICAL level.
+	LevelCritical = unilogger.CRITICAL
+	// LevelPrint is the logger PRINT level.
+	LevelPrint = unilogger.PRINT
+	// LevelUnknown is the unspecified logger level.
+	LevelUnknown = unilogger.UNKNOWN
 )
 
 var (
 	logger         unilogger.LeveledLogger
-	currentLevel   = LINFO
+	currentLevel   = LevelInfo
 	debugLeveled   unilogger.DebugLeveledLogger
 	isDebugLeveled bool
 )
 
-// Default creates and sets new unilogger.BasicLogger with writer to 'os.Stderr'.
-func Default() {
+func init() {
 	basic := unilogger.NewBasicLogger(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile)
 	basic.SetOutputDepth(4)
+	basic.SetLevel(LevelInfo)
 	SetLogger(basic)
 }
 
-// Debug writes the LDEBUG level log.
+// Debug writes the LevelDebug level log.
 func Debug(args ...interface{}) {
 	if logger != nil {
 		logger.Debug(args...)
 	}
 }
 
-// Debug2 writes the LDEBUG2 level logs.
+// Debug2 writes the LevelDebug2 level logs.
 func Debug2(args ...interface{}) {
 	if !isDebugLeveled {
 		if logger != nil {
@@ -67,7 +67,7 @@ func Debug2(args ...interface{}) {
 	}
 }
 
-// Debug2f writes the formated LDEBUG2 level log.
+// Debug2f writes the formatted LevelDebug2 level log.
 func Debug2f(format string, args ...interface{}) {
 	if !isDebugLeveled {
 		if logger != nil {
@@ -80,7 +80,7 @@ func Debug2f(format string, args ...interface{}) {
 	}
 }
 
-// Debug3 writes the LDEBUG3 level logs.
+// Debug3 writes the LevelDebug3 level logs.
 func Debug3(args ...interface{}) {
 	if !isDebugLeveled {
 		if logger != nil {
@@ -93,7 +93,7 @@ func Debug3(args ...interface{}) {
 	}
 }
 
-// Debug3f writes the formated LDEBUG2 level log.
+// Debug3f writes the formatted LevelDebug2 level log.
 func Debug3f(format string, args ...interface{}) {
 	if !isDebugLeveled {
 		if logger != nil {
@@ -106,35 +106,35 @@ func Debug3f(format string, args ...interface{}) {
 	}
 }
 
-// Debugf writes the formated LDEBUG level log.
+// Debugf writes the formatted LevelDebug level log.
 func Debugf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Debugf(format, args...)
 	}
 }
 
-// Error writes the LERROR level log.
+// Error writes the LevelError level log.
 func Error(args ...interface{}) {
 	if logger != nil {
 		logger.Error(args...)
 	}
 }
 
-// Errorf writes the formated LERROR level log.
+// Errorf writes the formatted LevelError level log.
 func Errorf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Errorf(format, args...)
 	}
 }
 
-// Fatal writes the fatal - LCRITICAL level log.
+// Fatal writes the fatal - LevelCritical level log.
 func Fatal(args ...interface{}) {
 	if logger != nil {
 		logger.Fatal(args...)
 	}
 }
 
-// Fatalf writes the formated fatal - LCRITICAL level log.
+// Fatalf writes the formatted fatal - LevelCritical level log.
 func Fatalf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Fatalf(format, args...)
@@ -144,14 +144,14 @@ func Fatalf(format string, args ...interface{}) {
 	}
 }
 
-// Info writes the LINFO level log.
+// Info writes the LevelInfo level log.
 func Info(args ...interface{}) {
 	if logger != nil {
 		logger.Info(args...)
 	}
 }
 
-// Infof writes the formated LINFO level log.
+// Infof writes the formatted LevelInfo level log.
 func Infof(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Infof(format, args...)
@@ -188,7 +188,7 @@ func Panicf(format string, args ...interface{}) {
 
 // SetLevel sets the level if possible for the logger file.
 func SetLevel(level unilogger.Level) error {
-	if level == LUNKNOWN {
+	if level == LevelUnknown {
 		return errors.NewDet(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
 	}
 
@@ -247,7 +247,7 @@ func SetLogger(log unilogger.LeveledLogger) {
 
 // SetModulesLevel sets the 'level' for all modules.
 func SetModulesLevel(level unilogger.Level) error {
-	if level == LUNKNOWN {
+	if level == LevelUnknown {
 		return errors.NewDet(class.CommonLoggerUnknownLevel, "can't set unknown logger level. provided level is not valid")
 	}
 	for _, module := range modules {
@@ -271,7 +271,7 @@ func Warning(args ...interface{}) {
 	}
 }
 
-// Warningf writes the formated warning level log.
+// Warningf writes the formatted warning level log.
 func Warningf(format string, args ...interface{}) {
 	if logger != nil {
 		logger.Warningf(format, args...)

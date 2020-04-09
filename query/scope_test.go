@@ -132,7 +132,7 @@ func TestFormatQuery(t *testing.T) {
 		s, err := NewC(c, &formatter{})
 		require.NoError(t, err)
 
-		err = s.Limit(12, 0)
+		err = s.Limit(12)
 		require.NoError(t, err)
 
 		q := s.FormatQuery()

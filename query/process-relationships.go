@@ -12,7 +12,7 @@ import (
 )
 
 func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	if len(s.RelationFilters) == 0 {
@@ -93,7 +93,7 @@ func convertRelationshipFiltersFunc(ctx context.Context, s *Scope) error {
 }
 
 func convertRelationshipFiltersSafeFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -158,7 +158,7 @@ func convertBelongsToRelationshipFilterChan(ctx context.Context, s *Scope, index
 }
 
 func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int, filter *FilterField) (int, error) {
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("[SCOPE][%s] convertBelongsToRelationshipFilter field: '%s'", s.ID(), filter.StructField.Name())
 	}
 	// for the belongs to relationships if the relationship filters only over the relations primary
@@ -236,7 +236,7 @@ func convertHasManyRelationshipFilterChan(ctx context.Context, s *Scope, index i
 // having the foreign key from the related model, the root scope should have primary field filter key with
 // the values of the related model's foreign key results
 func convertHasManyRelationshipFilter(ctx context.Context, s *Scope, index int, filter *FilterField) (int, error) {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("[SCOPE][%s] convertHasManyRelationshipFilter field: '%s'", s.ID(), filter.StructField.Name())
 	}
 	// if all the nested filters are the foreign key of this relationship then there is no need to get values from scope
@@ -503,7 +503,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 }
 
 func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	relations := map[string]*mapping.StructField{}
@@ -596,7 +596,7 @@ func getForeignRelationshipsFunc(ctx context.Context, s *Scope) error {
 }
 
 func getForeignRelationshipsSafeFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	relations := map[string]*mapping.StructField{}
@@ -747,7 +747,7 @@ func getForeignRelationshipHasOne(ctx context.Context, s *Scope, v reflect.Value
 	}
 
 	log.Debug2f("SCOPE[%s][%s] Getting hasOne relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("hasOne Scope: %s", relatedScope.String())
 	}
 	// distinguish if the root scope has a single or many values
@@ -924,7 +924,7 @@ func getForeignRelationshipHasMany(ctx context.Context, s *Scope, v reflect.Valu
 	relatedScope.setFieldsetNoCheck(relatedScope.Struct().Primary(), fk)
 
 	log.Debug2f("SCOPE[%s][%s] Getting hasMany relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("hasMany Scope: %s", relatedScope.String())
 	}
 	if err = relatedScope.ListContext(ctx); err != nil {
@@ -1217,7 +1217,7 @@ func getForeignRelationshipBelongsTo(ctx context.Context, s *Scope, v reflect.Va
 
 // setBelongsToRelationshipsFunc sets the value from the belongs to relationship ID's to the foreign keys
 func setBelongsToRelationshipsFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	return s.setBelongsToForeignKeyFields()

@@ -42,10 +42,10 @@ func newIncludeField(field *mapping.StructField, scope *Scope) *IncludeField {
 	includeField.StructField = field
 
 	// Set NewScope for given field
-	includeField.Scope = scope.createModelsScope(field.Relationship().Struct())
+	includeField.Scope = scope.createModelsScope(scope.Controller(), field.Relationship().Struct())
 
 	// Set the root collection scope for given scope
-	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(field.Relationship().Struct())
+	includeField.Scope.collectionScope = scope.getOrCreateModelsRootScope(scope.Controller(), field.Relationship().Struct())
 	if _, ok := includeField.Scope.collectionScope.Fieldset[includeField.NeuronName()]; !ok {
 		includeField.NotInFieldset = true
 		scope.hasFieldNotInFieldset = true
@@ -79,7 +79,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 		v = v.Elem()
 		switch v.Kind() {
 		case reflect.Slice:
-			if log.Level() == log.LDEBUG3 {
+			if log.Level() == log.LevelDebug3 {
 				log.Debug3f("Getting from slice")
 			}
 
@@ -91,7 +91,7 @@ func (i *IncludeField) getMissingPrimaries() ([]interface{}, error) {
 					}
 					elem = elem.Elem()
 				}
-				if log.Level() == log.LDEBUG3 {
+				if log.Level() == log.LevelDebug3 {
 					log.Debug3f("i'th: %d element: %v", j, elem.Interface())
 				}
 				if err := i.getMissingFromSingle(elem, uniqueMissing); err != nil {
@@ -136,7 +136,7 @@ func (i *IncludeField) getMissingFromSingle(value reflect.Value, uniqueMissing m
 			i.Scope.collectionScope.includedValues.UnsafeSet(primary, nil)
 			if _, ok = uniqueMissing[primary]; !ok {
 				uniqueMissing[primary] = struct{}{}
-			} else if log.Level() == log.LDEBUG3 {
+			} else if log.Level() == log.LevelDebug3 {
 				log.Debug3f("Primary: '%v' already exists - duplicated value", primary)
 			}
 		}

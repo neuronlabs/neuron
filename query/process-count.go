@@ -11,7 +11,7 @@ import (
 )
 
 func countProcessFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -37,7 +37,7 @@ func countProcessFunc(ctx context.Context, s *Scope) error {
 
 func beforeCountProcessFunc(ctx context.Context, s *Scope) error {
 	var ok bool
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func beforeCountProcessFunc(ctx context.Context, s *Scope) error {
 
 func afterCountProcessFunc(ctx context.Context, s *Scope) error {
 	var ok bool
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 	if ok = s.Struct().IsAfterCounter(); !ok {

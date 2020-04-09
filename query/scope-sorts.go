@@ -11,8 +11,12 @@ import (
 // If the scope already have sorted fields the function appends newly created sort fields.
 // If the fields are duplicated returns error.
 func (s *Scope) Sort(fields ...string) (err error) {
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("[SCOPE][%s] Sorting by fields: %v ", s.ID(), fields)
+	}
+	if len(fields) == 0 {
+		log.Debug("[SCOPE][%s] - Sort - provided no fields")
+		return nil
 	}
 	if len(s.SortFields) > 0 {
 		sortFields, err := s.createSortFields(false, fields...)

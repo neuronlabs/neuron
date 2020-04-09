@@ -11,7 +11,7 @@ import (
 )
 
 func listFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -38,7 +38,7 @@ func listFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterListFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func afterListFunc(ctx context.Context, s *Scope) error {
 }
 
 func beforeListFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -83,7 +83,7 @@ func beforeListFunc(ctx context.Context, s *Scope) error {
 
 // checkPaginationFunc is the process func that checks the validity of the pagination
 func checkPaginationFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 

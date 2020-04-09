@@ -74,12 +74,11 @@ func (m *ModelMap) GetModelStruct(model interface{}) (*ModelStruct, error) {
 
 // Models returns all models set within given model map.
 func (m *ModelMap) Models() []*ModelStruct {
-	structs := []*ModelStruct{}
-
+	var models []*ModelStruct
 	for _, model := range m.models {
-		structs = append(structs, model)
+		models = append(models, model)
 	}
-	return structs
+	return models
 }
 
 // ModelByName gets the model by it's struct name.
@@ -601,7 +600,7 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 
 	var collection string
 
-	collectioner, ok := model.(Collectioner)
+	collectioner, ok := model.(CollectionNamer)
 	if ok {
 		collection = collectioner.CollectionName()
 	} else {

@@ -4,7 +4,7 @@ import (
 	"github.com/neuronlabs/uni-logger"
 )
 
-var modules = []*ModuleLogger{}
+var modules []*ModuleLogger
 
 // ModuleLogger is the logger used for getting the specific modules.
 type ModuleLogger struct {
@@ -87,7 +87,7 @@ func (m *ModuleLogger) SetLevel(level unilogger.Level) {
 // Debug3f writes the formated debug3 log.
 func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG3 {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -106,7 +106,7 @@ func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 // Debug2f writes the formated debug2 log.
 func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG2 {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -125,7 +125,7 @@ func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 // Debugf writes the formated debug log.
 func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -140,7 +140,7 @@ func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 // Infof writes the formated info log.
 func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LINFO {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -155,7 +155,7 @@ func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 // Warningf writes the formated warning log.
 func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LWARNING {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -170,7 +170,7 @@ func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 // Errorf writes the formated error log.
 func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LERROR {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -185,7 +185,7 @@ func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 // Fatalf writes the formated fatal log.
 func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LCRITICAL {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -200,7 +200,7 @@ func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 // Panicf writes the formated panic log.
 func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LCRITICAL {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -215,7 +215,7 @@ func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 // Debug3 writes the debug3 level log.
 func (m *ModuleLogger) Debug3(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG3 {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -234,7 +234,7 @@ func (m *ModuleLogger) Debug3(args ...interface{}) {
 // Debug2 writes the debug2 level log.
 func (m *ModuleLogger) Debug2(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG2 {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -253,7 +253,7 @@ func (m *ModuleLogger) Debug2(args ...interface{}) {
 // Debug writes the debug level log.
 func (m *ModuleLogger) Debug(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LDEBUG {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -268,7 +268,7 @@ func (m *ModuleLogger) Debug(args ...interface{}) {
 // Info writes the info level log.
 func (m *ModuleLogger) Info(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LINFO {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -283,7 +283,7 @@ func (m *ModuleLogger) Info(args ...interface{}) {
 // Warning writes the warning level log.
 func (m *ModuleLogger) Warning(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LWARNING {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -298,7 +298,7 @@ func (m *ModuleLogger) Warning(args ...interface{}) {
 // Error writes the error level log.
 func (m *ModuleLogger) Error(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LERROR {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -313,7 +313,7 @@ func (m *ModuleLogger) Error(args ...interface{}) {
 // Fatal writes the fatal level log.
 func (m *ModuleLogger) Fatal(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LCRITICAL {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -328,7 +328,7 @@ func (m *ModuleLogger) Fatal(args ...interface{}) {
 // Panic writes the panic level log.
 func (m *ModuleLogger) Panic(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LCRITICAL {
+		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}

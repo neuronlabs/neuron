@@ -94,7 +94,7 @@ type Processor config.Processor
 
 // Count initializes the Count Process Chain for the Scope.
 func (p *Processor) Count(ctx context.Context, s *Scope) error {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.Count: %s.", s.String(), s.Value)
 	}
 	var processError error
@@ -106,7 +106,7 @@ func (p *Processor) Count(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Count failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -116,7 +116,7 @@ func (p *Processor) Count(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] Count process finished", s.ID())
 	}
 	return processError
@@ -124,7 +124,7 @@ func (p *Processor) Count(ctx context.Context, s *Scope) error {
 
 // Create initializes the Create Process Chain for the Scope.
 func (p *Processor) Create(ctx context.Context, s *Scope) error {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.Create: %s. Value: %+v", s.String(), s.Value)
 	}
 	var processError error
@@ -136,7 +136,7 @@ func (p *Processor) Create(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Creating failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -146,7 +146,7 @@ func (p *Processor) Create(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] Create process finished", s.ID())
 	}
 	return processError
@@ -157,7 +157,7 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 	var processError error
 	s.processMethod = pmGet
 
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.Get: %s", s.String())
 	}
 	for _, processName := range p.GetProcesses {
@@ -166,7 +166,7 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Getting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -176,7 +176,7 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] Get process finished", s.ID())
 	}
 	return processError
@@ -184,7 +184,7 @@ func (p *Processor) Get(ctx context.Context, s *Scope) error {
 
 // List initializes the List Process Chain for the scope.
 func (p *Processor) List(ctx context.Context, s *Scope) error {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.List: %s", s.String())
 	}
 	var processError error
@@ -196,7 +196,7 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Listing failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -206,7 +206,7 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] List process finished", s.ID())
 	}
 	return processError
@@ -214,7 +214,7 @@ func (p *Processor) List(ctx context.Context, s *Scope) error {
 
 // Patch initializes the Patch Process Chain for the scope 's'.
 func (p *Processor) Patch(ctx context.Context, s *Scope) error {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.Patch: %s with value: %+v", s.String(), s.Value)
 	}
 	var processError error
@@ -226,7 +226,7 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Patching failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -236,7 +236,7 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] Patch process finished", s.ID())
 	}
 	return processError
@@ -244,7 +244,7 @@ func (p *Processor) Patch(ctx context.Context, s *Scope) error {
 
 // Delete initializes the Delete Process Chain for the scope 's'.
 func (p *Processor) Delete(ctx context.Context, s *Scope) error {
-	if log.Level() == log.LDEBUG3 {
+	if log.Level() == log.LevelDebug3 {
 		log.Debug3f("Processor.Delete: %s", s.String())
 	}
 	var processError error
@@ -256,7 +256,7 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 
 		if err := processFunc(ctx, s); err != nil {
 			log.Debug2f("Scope[%s][%s] Deleting failed on process: '%s'. %v", s.ID(), s.Struct().Collection(), processName, err)
-			s.Error = err
+			s.Err = err
 			processError = err
 		}
 		select {
@@ -266,7 +266,7 @@ func (p *Processor) Delete(ctx context.Context, s *Scope) error {
 		}
 		s.StoreSet(internal.PreviousProcessStoreKey, processName)
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
+	if log.Level().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s] Delete process finished", s.ID())
 	}
 	return processError

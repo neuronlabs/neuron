@@ -11,7 +11,7 @@ import (
 
 // get returns the single value for the provided scope
 func getFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -37,7 +37,7 @@ func getFunc(ctx context.Context, s *Scope) error {
 
 // processHookBeforeGet is the function that makes the beforeGet hook.
 func beforeGetFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -54,7 +54,7 @@ func beforeGetFunc(ctx context.Context, s *Scope) error {
 }
 
 func afterGetFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 

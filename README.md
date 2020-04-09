@@ -77,15 +77,12 @@ import (
 )
 
 func main() {
-    cfg := config.ReadDefaultConfig()
-    // By setting the LogLevel the default logger would be used.
-    cfg.LogLevel = "debug"    
-...    
+    cfg := config.Default()   
 ```
 * Create the `*controller.Controller` and register repositories.
 ```go
     // Provided create config 'cfg' to the Controller method.
-    c := neuron.Controller(cfg)
+    c := neuron.NewController(cfg)
 
     // As the 'neuron-core' allows to use multiple repository for the models
     // we can declare the DefaultRepository within the config. The first 
@@ -117,6 +114,10 @@ func main() {
     if err := c.RegisterRepository("secondary", secondaryDB); err != nil {
         // handle error
     }
+
+    if err := c.Dial(context.TODO()); err != nil {
+        // handle error    
+    }
 ```
 
 * Register models 
@@ -130,15 +131,11 @@ func main() {
 ```go
     users := []*User{}
     
-    s := neuron.MustQueryC(c, &users)
-    // the query scope may be filtered
-    s.Filter("filter[users][name][$in]","John", "Sam")
-    // it might also be sorted
-    s.Sort("-id")
-    
-    // list all the users with the name 'John' or 'Sam' with 'id' ordered 
-    // descending.
-    if err = s.List(); err != nil {
+    err := neuron.QueryC(c, &users).        
+        .Filter("filter[users][name][$in]","John", "Sam"). // the query scope may be filtered        
+        .Sort("-id"). // it might also be sorted
+        .List() // list all the users with the name 'John' or 'Sam' with 'id' ordered in decrease manner.
+    if  err != nil {
         // resolve the error
     }
 ```

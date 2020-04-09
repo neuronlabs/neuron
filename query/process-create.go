@@ -14,7 +14,7 @@ import (
 )
 
 func createFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -39,7 +39,7 @@ func createFunc(ctx context.Context, s *Scope) error {
 
 // beforeCreate is the function that is used before the create process
 func beforeCreateFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -59,7 +59,7 @@ func beforeCreateFunc(ctx context.Context, s *Scope) error {
 // afterCreate is the function that is used after the create process
 // It uses AfterCreateR hook if the model implements it.
 func afterCreateFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -76,7 +76,7 @@ func afterCreateFunc(ctx context.Context, s *Scope) error {
 }
 
 func storeScopePrimaries(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func storeScopePrimaries(ctx context.Context, s *Scope) error {
 }
 
 func setCreatedAtField(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
 

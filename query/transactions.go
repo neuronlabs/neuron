@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -12,121 +13,261 @@ import (
 	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/log"
 	"github.com/neuronlabs/neuron-core/mapping"
-	"github.com/neuronlabs/neuron-core/repository"
-
-	"github.com/neuronlabs/neuron-core/internal"
 )
 
-// Tx is the scope's transaction model.
-// It is bound to the single model type.
+// Tx is an in-progress transaction. A transaction must end with a call to Commit or Rollback.
+// After a call to Commit or Rollback all operations on the transaction fail with an error of class
 type Tx struct {
-	ID      uuid.UUID `json:"id"`
-	State   TxState   `json:"state"`
-	Options TxOptions `json:"options"`
+	id uuid.UUID
 
-	root *Scope
+	ctx   context.Context
+	state TxState
+
+	options            *TxOptions
+	err                error
+	uniqueTransactions []*uniqueTx
+}
+
+// Begin starts new transaction.
+func Begin() *Tx {
+	return begin(context.Background(), nil)
+}
+
+// BeginCtx starts new transaction with respect to the 'ctx' context and transaction options 'options'.
+func BeginCtx(ctx context.Context, options *TxOptions) *Tx {
+	return begin(ctx, options)
+}
+
+// Query builds up a new query for given model.
+// The query is executed using transaction context.
+func (t *Tx) Query(model interface{}) Builder {
+	return t.query(controller.Default(), model)
+}
+
+// QueryC builds up a new query for given 'model' with given 'c' controller.
+// The query is executed using transaction context.
+func (t *Tx) QueryC(c *controller.Controller, model interface{}) Builder {
+	return t.query(c, model)
 }
 
 // Commit commits the transaction.
 func (t *Tx) Commit() error {
-	return t.root.Commit()
-}
-
-// CommitContext commits the transaction with 'ctx' context.
-func (t *Tx) CommitContext(ctx context.Context) error {
-	return t.root.CommitContext(ctx)
-}
-
-// Query creates new query scope for given transaction.
-func (t *Tx) Query(model interface{}) (*Scope, error) {
-	return t.newC(context.Background(), t.root.Controller(), model)
-}
-
-// QueryC creates new query scope for given transaction with the controller 'c'.
-func (t *Tx) QueryC(c *controller.Controller, model interface{}) (*Scope, error) {
-	return t.newC(context.Background(), c, model)
-}
-
-// QueryContext creates new scope for given transaction with respect to given context 'ctx'.
-func (t *Tx) QueryContext(ctx context.Context, model interface{}) (*Scope, error) {
-	return t.newC(ctx, t.root.Controller(), model)
-}
-
-// QueryContextC creates new scope for given transaction with the 'ctx' context.
-func (t *Tx) QueryContextC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
-	return t.newC(ctx, c, model)
-}
-
-// QueryModelC creates new scope for given model structure, and initializes it's value.
-// The value might be a slice of instances if 'isMany' is true or a single instance if false.
-func (t *Tx) QueryModelC(c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(context.Background(), c, model, isMany)
-}
-
-// QueryContextModelC creates new scope for given 'model' structure and 'ctx' context. It also initializes scope's value.
-// The value might be a slice of instances if 'isMany' is true or a single instance if false.
-func (t *Tx) QueryContextModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	return t.newModelC(ctx, c, model, isMany)
-}
-
-// Rollback rolls back the transaction.
-func (t *Tx) Rollback() error {
-	return t.root.Rollback()
-}
-
-// RollbackContext rollback the transaction with given 'ctx' context.
-func (t *Tx) RollbackContext(ctx context.Context) error {
-	return t.root.RollbackContext(ctx)
-}
-
-func (t *Tx) newC(ctx context.Context, c *controller.Controller, model interface{}) (*Scope, error) {
-	s, err := newQueryScope(c, model)
-	if err != nil {
-		return nil, err
+	if len(t.uniqueTransactions) == 0 {
+		log.Debugf("Commit transaction: %s, nothing to commit", t.id.String())
+		return nil
 	}
-
-	if err = t.setToScope(ctx, s); err != nil {
-		return nil, err
+	if t.state.Done() {
+		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.id.String())
 	}
+	t.state = TxCommit
 
-	return s, nil
-}
+	ctx, cancelFunc := context.WithCancel(t.ctx)
+	defer cancelFunc()
 
-func (t *Tx) newModelC(ctx context.Context, c *controller.Controller, model *mapping.ModelStruct, isMany bool) (*Scope, error) {
-	s := newScopeWithModel(c, model, isMany)
-	if err := t.setToScope(ctx, s); err != nil {
-		return nil, err
+	wg := &sync.WaitGroup{}
+	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactioners(false)...)
+
+	errChan := make(chan error, 1)
+	for tx := range txChan {
+		go func(tx *uniqueTx) {
+			defer wg.Done()
+			log.Debug2f("Commit transaction '%s' for model: %s, %s", t.id, tx.model, tx.id)
+			if err := tx.transactioner.Commit(ctx, t, tx.model); err != nil {
+				errChan <- err
+			}
+		}(tx)
 	}
+	waitChan := make(chan struct{}, 1)
+	go func() {
+		log.Debug2f("Transaction: '%s' waiting for commits...", t.id)
+		wg.Wait()
+		waitChan <- struct{}{}
+	}()
 
-	return s, nil
-}
-
-func (t *Tx) setToScope(ctx context.Context, s *Scope) error {
-	if s.Struct() != t.root.Struct() {
-		// for models of different structure then the root one,
-		// create new transactions with begin method and add it to the
-		// subscope chain.
-		repo, err := s.Controller().GetRepository(s.Struct())
-		if err != nil {
-			return err
-		}
-
-		tx, ok := t.root.transactions[repo]
-		if ok {
-			s.StoreSet(internal.TxStateStoreKey, tx)
-			return nil
-		}
-
-		if _, err := s.begin(ctx, &t.Options, true); err != nil {
-			return err
-		}
-		t.root.transactions[repo] = s.Tx()
-		t.root.SubscopesChain = append(t.root.SubscopesChain, s)
-	} else {
-		// otherwise set the transaction to the store.
-		s.StoreSet(internal.TxStateStoreKey, t)
+	select {
+	case <-ctx.Done():
+		log.Debugf("Commit transaction: '%s' canceled by context: %v", t.id.String(), ctx.Err())
+		return ctx.Err()
+	case e := <-errChan:
+		log.Debugf("Commit transaction: '%s' failed: %v", t.id.String(), e)
+		return e
+	case <-waitChan:
+		log.Debugf("Commit transaction: '%s' with success", t.id.String())
 	}
 	return nil
+}
+
+// Rollback aborts the transaction.
+func (t *Tx) Rollback() error {
+	if len(t.uniqueTransactions) == 0 {
+		log.Debugf("Rollback transaction: %s, nothing to rollback", t.id.String())
+		return nil
+	}
+	if t.state.Done() {
+		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.id)
+	}
+	t.state = TxRollback
+
+	ctx, cancelFunc := context.WithCancel(t.ctx)
+	defer cancelFunc()
+
+	wg := &sync.WaitGroup{}
+	txChan := t.produceUniqueTxChan(ctx, wg, t.getUniqueTransactioners(true)...)
+
+	errChan := make(chan error, 1)
+	for tx := range txChan {
+		go func(tx *uniqueTx) {
+			defer wg.Done()
+			log.Debug3f("Rollback transaction: '%s' for model: '%s'", t.id, tx.model)
+			if err := tx.transactioner.Rollback(ctx, t, tx.model); err != nil {
+				errChan <- err
+			}
+		}(tx)
+	}
+
+	waitChan := make(chan struct{}, 1)
+	go func() {
+		log.Debug3f("Transaction: '%s' waiting for rollbacks...", t.id)
+		wg.Wait()
+		waitChan <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Debugf("Rollback transaction: '%s' canceled by context: %v.", t.id.String(), ctx.Err())
+		return ctx.Err()
+	case e := <-errChan:
+		log.Debugf("Rollback transaction: '%s' failed: %v.", t.id.String(), e)
+		return e
+	case <-waitChan:
+		log.Debugf("Rollback transaction: '%s' with success.", t.id.String())
+	}
+	return nil
+}
+
+func begin(ctx context.Context, options *TxOptions) *Tx {
+	tx := &Tx{
+		id:      uuid.New(),
+		ctx:     ctx,
+		options: options,
+		state:   TxBegin,
+	}
+	log.Debug2f("Begin transaction '%s'", tx.id.String())
+	return tx
+}
+
+func (t *Tx) produceUniqueTxChan(ctx context.Context, wg *sync.WaitGroup, txs ...*uniqueTx) <-chan *uniqueTx {
+	txChan := make(chan *uniqueTx, len(txs))
+	go func() {
+		defer close(txChan)
+		for _, tx := range txs {
+			func(tx *uniqueTx) {
+				defer wg.Add(1)
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					txChan <- tx
+				}
+			}(tx)
+		}
+	}()
+	return txChan
+}
+
+func (t *Tx) getUniqueTransactioners(reverse bool) []*uniqueTx {
+	if !reverse {
+		return t.uniqueTransactions
+	}
+	txs := make([]*uniqueTx, len(t.uniqueTransactions))
+	for i := 0; i < len(t.uniqueTransactions); i++ {
+		j := len(t.uniqueTransactions) - 1 - i
+		txs[i] = t.uniqueTransactions[j]
+	}
+	return txs
+}
+
+func (t *Tx) query(c *controller.Controller, model interface{}) *TxQuery {
+	tb := &TxQuery{tx: t}
+	if t.err != nil {
+		return tb
+	}
+	if t.state.Done() {
+		t.err = errors.NewDetf(class.QueryTxDone, "transaction: '%s' is already done", t.id.String())
+		return tb
+	}
+	// create new scope and add it to the TxQuery.
+	s, err := NewC(c, model)
+	if err != nil {
+		t.err = err
+		return tb
+	}
+	tb.scope = s
+	s.tx = t
+
+	// get the repository mapped to given model.
+	repo := s.repository()
+	// check if given repository is a transactioner.
+	transactioner, ok := repo.(Transactioner)
+	if ok {
+		if err = t.beginUniqueTransaction(transactioner, s.mStruct); err != nil {
+			t.err = err
+		}
+	} else {
+		log.Debug2f("Repository for model: '%s' doesn't support transactions", s.Struct().String())
+	}
+	return tb
+}
+
+func (t *Tx) beginUniqueTransaction(transactioner Transactioner, model *mapping.ModelStruct) error {
+	singleRepository := true
+	repoPosition := -1
+
+	id, err := transactioner.ModelTxID(model)
+	if err != nil {
+		log.Warningf("Cannot get unique transaction ID for model: '%s'", model.String())
+		return err
+	}
+
+	for i := 0; i < len(t.uniqueTransactions); i++ {
+		if t.uniqueTransactions[i].id == id {
+			repoPosition = i
+		} else {
+			singleRepository = false
+		}
+	}
+
+	switch {
+	case singleRepository && repoPosition != -1:
+		// there is only one repository and it is 'transactioner'
+		return nil
+	case singleRepository:
+		// there is only a single repository and it is not a 'transactioner'
+		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+	case repoPosition != -1:
+		if len(t.uniqueTransactions)-1 == repoPosition {
+			// the last repository in the transaction is of given type - do nothing
+			return nil
+		}
+		// move transactioner from 'repoPosition' to the last
+		t.uniqueTransactions = append(t.uniqueTransactions[:repoPosition], t.uniqueTransactions[repoPosition+1:]...)
+		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+	default:
+		// current repository was not found - add it to the end of the queue.
+		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+	}
+
+	if repoPosition == -1 {
+		log.Debug2f("Begin transaction '%s' for model: '%s'", t.id.String(), model.String())
+		return transactioner.Begin(t.ctx, t, model)
+	}
+	return nil
+}
+
+type uniqueTx struct {
+	id            string
+	transactioner Transactioner
+	model         *mapping.ModelStruct
 }
 
 // TxOptions are the options for the Transaction
@@ -138,18 +279,21 @@ type TxOptions struct {
 // TxState defines the current transaction state
 type TxState int
 
+// Done checks if current transaction is already finished.
+func (t TxState) Done() bool {
+	return t == TxRollback || t == TxCommit
+}
+
 // Transaction state enums
 const (
-	_ TxState = iota
-	TxBegin
+	TxBegin TxState = iota
 	TxCommit
 	TxRollback
-	TxDone
 )
 
-func (s TxState) String() string {
+func (t TxState) String() string {
 	var str string
-	switch s {
+	switch t {
 	case TxBegin:
 		str = "begin"
 	case TxCommit:
@@ -166,23 +310,23 @@ var _ fmt.Stringer = TxBegin
 
 // MarshalJSON marshals the state into string value
 // Implements the json.Marshaler interface
-func (s *TxState) MarshalJSON() ([]byte, error) {
-	return []byte(s.String()), nil
+func (t *TxState) MarshalJSON() ([]byte, error) {
+	return []byte(t.String()), nil
 }
 
 // UnmarshalJSON unmarshal the state from the json string value
 // Implements json.Unmarshaler interface
-func (s *TxState) UnmarshalJSON(data []byte) error {
+func (t *TxState) UnmarshalJSON(data []byte) error {
 	str := string(data)
 	switch str {
 	case "commit":
-		*s = TxCommit
+		*t = TxCommit
 	case "begin":
-		*s = TxBegin
+		*t = TxBegin
 	case "rollback":
-		*s = TxRollback
+		*t = TxRollback
 	case "unknown":
-		*s = 0
+		*t = 0
 	default:
 		log.Errorf("Unknown transaction state: %s", str)
 		return errors.NewDet(class.QueryTxUnknownState, "unknown transaction state")
@@ -234,7 +378,7 @@ func (i *IsolationLevel) MarshalJSON() ([]byte, error) {
 	return []byte(i.String()), nil
 }
 
-// UnmarshalJSON unmarshals isolation level from the provided data
+// UnmarshalJSON unmarshal isolation level from the provided data
 // Implements json.Unmarshaler
 func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 	switch string(data) {
@@ -262,72 +406,3 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 }
 
 var _ fmt.Stringer = LevelDefault
-
-func (s *Scope) commitSingle(ctx context.Context, results chan<- interface{}) {
-	var err error
-	defer func() {
-		if err != nil {
-			results <- err
-		} else {
-			results <- struct{}{}
-		}
-
-		s.tx().State = TxCommit
-	}()
-
-	if txn := s.tx(); txn.State != TxBegin {
-		return
-	}
-	log.Debug3f("Scope[%s][%s] Commits transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
-
-	var repo repository.Repository
-	repo, err = s.Controller().GetRepository(s.Struct())
-	if err != nil {
-		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
-		return
-	}
-
-	cm, ok := repo.(Transactioner)
-	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Commiter interface", repo.FactoryName())
-		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement Transactioner")
-		return
-	}
-
-	if err = cm.Commit(ctx, s); err != nil {
-		return
-	}
-}
-
-func (s *Scope) rollbackSingle(ctx context.Context, results chan<- interface{}) {
-	var err error
-
-	if txn := s.tx(); txn.State == TxRollback {
-		results <- struct{}{}
-		return
-	}
-	log.Debug3f("Scope[%s][%s] Rolls back transaction[%s]", s.ID().String(), s.Struct().Collection(), s.tx().ID.String())
-
-	var repo repository.Repository
-	repo, err = s.Controller().GetRepository(s.Struct())
-	if err != nil {
-		log.Warningf("Repository not found for model: %v", s.Struct().Type().Name())
-		results <- err
-		return
-	}
-
-	rb, ok := repo.(Transactioner)
-	if !ok {
-		log.Debugf("Repository for model: '%s' doesn't implement Rollbacker interface", repo.FactoryName())
-		err = errors.NewDet(class.RepositoryNotImplementsTransactioner, "repository doesn't implement transactioner")
-		results <- err
-		return
-	}
-
-	if err = rb.Rollback(ctx, s); err != nil {
-		results <- err
-		return
-	}
-	s.tx().State = TxRollback
-	results <- struct{}{}
-}

@@ -10,7 +10,6 @@ import (
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Model1WithMany2Many is the model with the many2many relationship.
@@ -337,11 +336,8 @@ func TestMappedRelationships(t *testing.T) {
 
 	t.Run("MultipleRelations", func(t *testing.T) {
 		m := testingModelMap(t)
-		log.Default()
-		err := log.SetLevel(log.LDEBUG3)
-		require.NoError(t, err)
 
-		err = m.RegisterModels(Comment{}, User{}, Job{})
+		err := m.RegisterModels(Comment{}, User{}, Job{})
 		require.NoError(t, err)
 
 		model, err := m.GetModelStruct(Comment{})

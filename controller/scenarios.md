@@ -1,4 +1,14 @@
-# Controller creation scenarios 
+# Controller creation scenarios
+
+## Initialization Flow
+
+- Create Controller `controller.New(cfg)`
+- Register Repositories `c.RegisterRepository(repositoryConfig)`
+- Dial with repositories to check if there is no problem. `c.Dial(ctx)`
+- Register Models - registers all models in `neuron` and related repositories `c.RegisterModels(models...)`
+- (Optional) Migrate models (i.e. create tables, collections etc.) `c.MigrateModels(models...)`
+- Run application
+- On close, SIGINT, SIGTERM close all repository connections - `c.Close(ctx)`. 
 
 ## Scenarios with Default Controller:
 

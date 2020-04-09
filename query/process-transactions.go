@@ -9,15 +9,19 @@ import (
 )
 
 func beginTransactionFunc(ctx context.Context, s *Scope) error {
-	if s.Error != nil {
+	if s.Err != nil {
 		return nil
 	}
-	if tx := s.tx(); tx != nil {
+	if s.tx != nil {
 		return nil
 	}
 
-	_, err := s.BeginTx(ctx, nil)
-	if err != nil {
+	transactioner, ok := s.repository().(Transactioner)
+	if !ok {
+		return nil
+	}
+	s.tx = BeginCtx(ctx, nil)
+	if err := s.tx.beginUniqueTransaction(transactioner, s.mStruct); err != nil {
 		return err
 	}
 
@@ -26,38 +30,30 @@ func beginTransactionFunc(ctx context.Context, s *Scope) error {
 }
 
 func commitOrRollbackFunc(ctx context.Context, s *Scope) error {
-	tx := s.Tx()
-	if tx == nil {
-		if log.Level().IsAllowed(log.LDEBUG3) {
+	if s.tx == nil {
+		if log.Level().IsAllowed(log.LevelDebug3) {
 			log.Debug3f("Scope[%s][%s] No transaction", s.ID(), s.Struct().Collection())
 		}
 		return nil
 	}
 
+	// check if the transaction was created by the process begin transaction.
 	_, ok := s.StoreGet(internal.AutoBeginStoreKey)
 	if !ok {
-		if log.Level().IsAllowed(log.LDEBUG3) {
+		if log.Level().IsAllowed(log.LevelDebug3) {
 			log.Debug3f("SCOPE[%s][%s] No auto begin store key", s.ID(), s.Struct().Collection())
 		}
 		return nil
 	}
 
-	if s.Error == nil {
-		if log.Level().IsAllowed(log.LDEBUG3) {
-			log.Debug3f("SCOPE[%s][%s] Commit transaction[%s]", s.ID(), s.Struct().Collection(), tx.ID)
+	if s.Err == nil {
+		if log.Level().IsAllowed(log.LevelDebug3) {
+			log.Debug3f("SCOPE[%s][%s] Commit transaction[%s]", s.ID(), s.Struct().Collection(), s.tx.id)
 		}
-		if err := tx.CommitContext(ctx); err != nil {
-			return err
-		}
-		return nil
+		return s.tx.Commit()
 	}
-	if log.Level().IsAllowed(log.LDEBUG3) {
-		log.Debug3f("SCOPE[%s][%s] Rolling back transaction[%s]", s.ID(), s.Struct().Collection(), tx.ID)
+	if log.Level().IsAllowed(log.LevelDebug3) {
+		log.Debug3f("SCOPE[%s][%s] Rolling back transaction[%s]", s.ID(), s.Struct().Collection(), s.tx.id)
 	}
-	err := tx.RollbackContext(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.tx.Rollback()
 }

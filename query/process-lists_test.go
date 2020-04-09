@@ -137,46 +137,43 @@ func TestListRelationshipFilters(t *testing.T) {
 			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
 
-			repoRelated, err := s.Controller().GetRepository(&relatedModel{})
-			require.NoError(t, err)
-
 			rr := repoRoot.(*Repository)
 
+			defer clearRepository(rr)
 			// there should be one query on root repo
-			rr.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+			rr.On("List", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 				s := args[1].(*Scope)
 
-				foreignFilters := s.ForeignFilters
-				if assert.Len(t, foreignFilters, 1) {
-					if assert.Len(t, foreignFilters[0].Values, 1) {
-						if assert.Len(t, foreignFilters[0].Values[0].Values, 2) {
-							assert.Equal(t, foreignFilters[0].Values[0].Values[0], 4)
-							assert.Equal(t, foreignFilters[0].Values[0].Values[1], 3)
-							assert.Equal(t, foreignFilters[0].Values[0].Operator, OpIn)
+				switch s.Struct() {
+				case c.MustGetModelStruct(relationModel{}):
+					foreignFilters := s.ForeignFilters
+					if assert.Len(t, foreignFilters, 1) {
+						if assert.Len(t, foreignFilters[0].Values, 1) {
+							if assert.Len(t, foreignFilters[0].Values[0].Values, 2) {
+								assert.Equal(t, foreignFilters[0].Values[0].Values[0], 4)
+								assert.Equal(t, foreignFilters[0].Values[0].Values[1], 3)
+								assert.Equal(t, foreignFilters[0].Values[0].Operator, OpIn)
+							}
 						}
 					}
-				}
-			}).Return(nil)
-
-			rl := repoRelated.(*Repository)
-			rl.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
-				s := args[1].(*Scope)
-
-				attrFilters := s.AttributeFilters
-				if assert.NotEmpty(t, attrFilters) {
-					if assert.Len(t, attrFilters[0].Values, 1) {
-						if assert.Len(t, attrFilters[0].Values[0].Values, 1) {
-							assert.Equal(t, attrFilters[0].Values[0].Values[0], "test-value")
-							assert.Equal(t, attrFilters[0].Values[0].Operator, OpEqual)
+				case c.MustGetModelStruct(relatedModel{}):
+					attrFilters := s.AttributeFilters
+					if assert.NotEmpty(t, attrFilters) {
+						if assert.Len(t, attrFilters[0].Values, 1) {
+							if assert.Len(t, attrFilters[0].Values[0].Values, 1) {
+								assert.Equal(t, attrFilters[0].Values[0].Values[0], "test-value")
+								assert.Equal(t, attrFilters[0].Values[0].Operator, OpEqual)
+							}
 						}
 					}
-				}
-				if assert.Len(t, s.Fieldset, 1) {
-					_, ok := s.InFieldset("id")
-					assert.True(t, ok)
+					if assert.Len(t, s.Fieldset, 1) {
+						_, ok := s.InFieldset("id")
+						assert.True(t, ok)
+					}
+
+					s.Value = &([]*relationModel{{ID: 4}, {ID: 3}})
 				}
 
-				s.Value = &([]*relationModel{{ID: 4}, {ID: 3}})
 			}).Return(nil)
 
 			require.NotPanics(t, func() {
@@ -603,9 +600,6 @@ func TestListRelationshipFilters(t *testing.T) {
 					assert.Equal(t, 4, mtm.ID)
 				}
 			}
-
-			m2m.AssertNumberOfCalls(t, "List", 1)
-			joinModel.AssertNumberOfCalls(t, "List", 2)
 		})
 
 		t.Run("RelatedFilter", func(t *testing.T) {
@@ -616,7 +610,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				scopeValue := []*Many2ManyModel{}
 
-				s, err := NewC((*controller.Controller)(c), &scopeValue)
+				s, err := NewC(c, &scopeValue)
 				require.NoError(t, err)
 
 				err = s.Filter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
@@ -668,7 +662,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 					sv := s.Value.(*[]*RelatedModel)
 
-					(*sv) = append((*sv), &RelatedModel{ID: 5})
+					*sv = append(*sv, &RelatedModel{ID: 5})
 				}).Return(nil)
 
 				// now the join model should be queried by the mtmForeignKey equal to the relatedScope primary.
@@ -756,10 +750,6 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				err = s.List()
 				require.NoError(t, err)
-
-				related.AssertNumberOfCalls(t, "List", 1)
-				joinModel.AssertNumberOfCalls(t, "List", 2)
-				m2m.AssertNumberOfCalls(t, "List", 1)
 			})
 
 			t.Run("RelatedNotExists", func(t *testing.T) {

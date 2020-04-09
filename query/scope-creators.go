@@ -1,9 +1,9 @@
 package query
 
 import (
+	"github.com/neuronlabs/neuron-core/controller"
 	"github.com/neuronlabs/neuron-core/mapping"
 
-	"github.com/neuronlabs/neuron-core/internal"
 	"github.com/neuronlabs/neuron-core/internal/safemap"
 )
 
@@ -11,17 +11,16 @@ import (
 // stores it within the rootScope.includedScopes.
 // Used for collection unique root scopes
 // (filters, fieldsets etc. for given collection scope)
-func (s *Scope) createModelsRootScope(mStruct *mapping.ModelStruct) *Scope {
-	rootScope := s.createModelsScope(mStruct)
+func (s *Scope) createModelsRootScope(c *controller.Controller, mStruct *mapping.ModelStruct) *Scope {
+	rootScope := s.createModelsScope(c, mStruct)
 	rootScope.rootScope.includedScopes[mStruct] = rootScope
 	rootScope.includedValues = safemap.New()
 	return rootScope
 }
 
 // createsModelsScope
-func (s *Scope) createModelsScope(mStruct *mapping.ModelStruct) *Scope {
-	scope := newScope(mStruct)
-	scope.store[internal.ControllerStoreKey] = s.store[internal.ControllerStoreKey]
+func (s *Scope) createModelsScope(c *controller.Controller, mStruct *mapping.ModelStruct) *Scope {
+	scope := newScope(c, mStruct)
 
 	if s.rootScope == nil {
 		scope.rootScope = s
@@ -45,10 +44,10 @@ func (s *Scope) getModelsRootScope(mStruct *mapping.ModelStruct) (collRootScope 
 }
 
 // getOrCreateModelsRootScope gets ModelsRootScope and if it is null it creates new.
-func (s *Scope) getOrCreateModelsRootScope(mStruct *mapping.ModelStruct) *Scope {
+func (s *Scope) getOrCreateModelsRootScope(c *controller.Controller, mStruct *mapping.ModelStruct) *Scope {
 	rootScope := s.getModelsRootScope(mStruct)
 	if rootScope == nil {
-		rootScope = s.createModelsRootScope(mStruct)
+		rootScope = s.createModelsRootScope(c, mStruct)
 	}
 	return rootScope
 }
