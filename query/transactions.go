@@ -43,6 +43,11 @@ func (t *Tx) ID() uuid.UUID {
 	return t.id
 }
 
+// Options gets transaction options.
+func (t *Tx) Options() TxOptions {
+	return *t.options
+}
+
 // Query builds up a new query for given model.
 // The query is executed using transaction context.
 func (t *Tx) Query(model interface{}) Builder {
@@ -151,6 +156,9 @@ func (t *Tx) Rollback() error {
 }
 
 func begin(ctx context.Context, options *TxOptions) *Tx {
+	if options == nil {
+		options = &TxOptions{}
+	}
 	tx := &Tx{
 		id:      uuid.New(),
 		ctx:     ctx,
