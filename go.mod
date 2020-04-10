@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/leodido/go-urn v1.1.0 // indirect
-	github.com/neuronlabs/errors v1.2.0
+	github.com/neuronlabs/errors v1.1.1-0.20190801002318-9535ebe7d446
 	github.com/neuronlabs/inflection v1.0.1
 	github.com/neuronlabs/strcase v1.0.0
 	github.com/neuronlabs/uni-logger v1.1.1

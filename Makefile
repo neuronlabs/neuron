@@ -98,8 +98,8 @@ else
 	$(info $(M) nothing to commit)
 endif
 
-.PHONY: info
-info:
+.PHONY: infof
+infof:
 	@echo "Git Commit:        ${COMMIT}"
 	@echo "Git Tree State:    ${GIT_DIRTY}"
 
@@ -112,6 +112,18 @@ ifneq ($(strip $(NEURON_PACKAGES)),)
 else
 	$(info $(M) no neuron packages found)
 endif
+
+## Neuron packages
+.PHONY: get-neuron-develop
+get-neuron-develop:
+ifneq ($(strip $(NEURON_PACKAGES)),)
+	$(info $(M) getting latest neuron packages…)
+	$(foreach pkg,$(NEURON_PACKAGES),$(info getting $(pkg)@develop $(shell go get $(firstword $(pkg)@develop))))
+else
+	$(info $(M) no neuron packages found)
+endif
+
+
 
 ## Todos
 .PHONY: todo
