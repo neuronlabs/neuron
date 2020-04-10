@@ -8,6 +8,9 @@ import (
 
 // Repository is the interface that defines the base neuron Repository.
 type Repository interface {
+	// ID gets the repository unique identification string. A 'model' might be used for repositories that
+	// acts like a gateway for other repositories.
+	ID(ctx context.Context, model *mapping.ModelStruct) (string, error)
 	// Dial establish all possible repository connections.
 	Dial(ctx context.Context) error
 	// FactoryName returns the factory name for given repository.

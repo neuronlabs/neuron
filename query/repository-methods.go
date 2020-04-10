@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron-core/repository"
 )
 
 // FullRepository is the interface that implements both repository CRUDRepository and the transactioner interfaces.
@@ -61,13 +62,11 @@ TRANSACTIONS
 
 // Transactioner is the interface used for the transactions.
 type Transactioner interface {
+	repository.Repository
 	// Begin the scope's transaction.
 	Begin(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
 	// Commit the scope's transaction.
 	Commit(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
 	// Rollback the scope's transaction.
 	Rollback(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
-	// ModelTxID gets unique identification for given model - the id might be non unique for multiple models if
-	// they exists within single scope of transaction (i.e. single database for multiple models).
-	ModelTxID(model *mapping.ModelStruct) (string, error)
 }

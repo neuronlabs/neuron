@@ -218,8 +218,8 @@ func (_m *Repository) FactoryName() string {
 	return repoName
 }
 
-// ModelTxID implements Transactioner interface.
-func (_m *Repository) ModelTxID(model *mapping.ModelStruct) (string, error) {
+// ID implements repository.Repository interface.
+func (_m *Repository) ID(ctx context.Context, model *mapping.ModelStruct) (string, error) {
 	// ret := _m.Called()
 	//
 	// var r0 string

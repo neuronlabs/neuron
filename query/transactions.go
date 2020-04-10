@@ -246,9 +246,9 @@ func (t *Tx) beginUniqueTransaction(transactioner Transactioner, model *mapping.
 	singleRepository := true
 	repoPosition := -1
 
-	id, err := transactioner.ModelTxID(model)
+	id, err := transactioner.ID(t.ctx, model)
 	if err != nil {
-		log.Warningf("Cannot get unique transaction ID for model: '%s'", model.String())
+		log.Warningf("Cannot get unique ID of the repository for model: '%s'", model.String())
 		return err
 	}
 

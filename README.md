@@ -69,11 +69,12 @@ package main
 
 // blank imported repository registers it's factory
 // and the driver.
-import _ "github.com/neuronlabs/neuron-pq"
+import _ "github.com/neuronlabs/neuron-postgres"
 
 import (
     "github.com/neuronlabs/neuron-core"
     "github.com/neuronlabs/neuron-core/config"
+    "github.com/neuronlabs/neuron-core/log"
 )
 
 func main() {
@@ -82,7 +83,10 @@ func main() {
 * Create the `*controller.Controller` and register repositories.
 ```go
     // Provided create config 'cfg' to the Controller method.
-    c := neuron.NewController(cfg)
+    err := neuron.Initialize(cfg)
+    if err != nil {
+        log.Fatal(err)
+    } 
 
     // As the 'neuron-core' allows to use multiple repository for the models
     // we can declare the DefaultRepository within the config. The first 
@@ -96,7 +100,7 @@ func main() {
         Password: "main_db_password",
         DBName: "main",
     }
-    if err := c.RegisterRepository("main", mainDB); err != nil {
+    if err := neuron.RegisterRepository("main", mainDB); err != nil {
         // handle error
     }
 
@@ -111,18 +115,18 @@ func main() {
     }
 
     // Register secondary repository.
-    if err := c.RegisterRepository("secondary", secondaryDB); err != nil {
+    if err := neuron.RegisterRepository("secondary", secondaryDB); err != nil {
         // handle error
     }
 
-    if err := c.Dial(context.TODO()); err != nil {
+    if err := neuron.Dial(context.TODO()); err != nil {
         // handle error    
     }
 ```
 
 * Register models 
 ```go
-    if err := c.RegisterModels(models.User{}, models.Pet{}); err != nil {
+    if err := neuron.RegisterModels(models.User{}, models.Pet{}); err != nil {
         // handle error
     }
 ```
