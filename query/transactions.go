@@ -43,9 +43,19 @@ func (t *Tx) ID() uuid.UUID {
 	return t.id
 }
 
+// Err returns current transaction runtime error.
+func (t *Tx) Err() error {
+	return t.err
+}
+
 // Options gets transaction options.
 func (t *Tx) Options() TxOptions {
 	return *t.options
+}
+
+// State gets current transaction state.
+func (t *Tx) State() TxState {
+	return t.state
 }
 
 // Query builds up a new query for given model.

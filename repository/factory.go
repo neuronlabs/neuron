@@ -9,5 +9,5 @@ type Factory interface {
 	// DriverName gets the driver name for given factory.
 	DriverName() string
 	// New creates new instance of the Repository for given 'model'.
-	New(c Controller, config *config.Repository) (Repository, error)
+	New(config *config.Repository) (Repository, error)
 }

@@ -231,6 +231,10 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	c.PatchValidator.SetTagName(cfg.PatchValidatorAlias)
 	log.Debug2f("Using: '%s' patch validator struct tag", cfg.PatchValidatorAlias)
 
+	if cfg.Processor == nil {
+		cfg.Processor = config.ThreadSafeProcessor()
+	}
+
 	c.Config = cfg
 
 	// map repositories from config.
@@ -245,7 +249,6 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 		}
 		// map the repository to its name.
 		c.Repositories[name] = repo
-
 	}
 	return nil
 }

@@ -15,7 +15,7 @@ type Repository interface {
 	// RegisterModels registers provided 'models' into Repository specific mappings.
 	RegisterModels(models ...*mapping.ModelStruct) error
 	// HealthCheck defines the health status of the repository.
-	HealthCheck(ctx context.Context) (HealthResponse, error)
+	HealthCheck(ctx context.Context) (*HealthResponse, error)
 	// Close closes the connection for given repository.
 	Close(ctx context.Context) error
 }

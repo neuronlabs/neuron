@@ -8,7 +8,7 @@ import (
 // then the basic data types.
 // It may contain multiple fields *NestedFields.
 type NestedStruct struct {
-	// structField is the reference to it's root structfield
+	// structField is the reference to it's root struct field
 	structField StructFielder
 	// modelType is the NestedStruct's model type
 	modelType reflect.Type

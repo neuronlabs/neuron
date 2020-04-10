@@ -33,7 +33,7 @@ type Factory struct {
 
 // New creates new repository
 // Implements repository.Factory method
-func (f *Factory) New(s repository.Controller, model *config.Repository) (repository.Repository, error) {
+func (f *Factory) New(model *config.Repository) (repository.Repository, error) {
 	return &Repository{}, nil
 }
 
@@ -163,8 +163,8 @@ func (_m *Repository) Get(ctx context.Context, s *Scope) error {
 }
 
 // HealthCheck implements repository.Repository.
-func (_m *Repository) HealthCheck(ctx context.Context) (repository.HealthResponse, error) {
-	return repository.HealthResponse{Status: repository.StatusPass}, nil
+func (_m *Repository) HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
+	return &repository.HealthResponse{Status: repository.StatusPass}, nil
 }
 
 // List provides a mock function with given fields: ctx, s
