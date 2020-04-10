@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron-core/log"
 )
 
 type testDeleter struct {
@@ -361,7 +359,6 @@ func TestDelete(t *testing.T) {
 		})
 
 		t.Run("HasMany", func(t *testing.T) {
-			log.SetLevel(log.LevelDebug2)
 			model := &HasManyModel{ID: 3}
 
 			s, err := NewC(c, model)

@@ -533,7 +533,7 @@ func patchMany2ManyRelationship(
 				err = nil
 			}
 		}
-		return nil
+		return err
 	} else if isEmpty && justCreated {
 		return nil
 	}
