@@ -281,7 +281,7 @@ func (c *Controller) newRepository(cfg *config.Repository) (repository.Repositor
 		log.Errorf("Factory for driver: '%s' is not found", driverName)
 		return nil, errors.NewDetf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", driverName)
 	}
-	repo, err := factory.New(c, cfg)
+	repo, err := factory.New(cfg)
 	if err != nil {
 		return nil, err
 	}
