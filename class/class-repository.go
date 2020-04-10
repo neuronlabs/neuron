@@ -134,34 +134,30 @@ var (
 	// MnrRepositoryNotImplements is the 'MjrRepository' minor error classification
 	// for the repository interfaces.
 	MnrRepositoryNotImplements errors.Minor
-
 	// RepositoryNotImplementsTransactioner is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Transactioner interface.
 	RepositoryNotImplementsTransactioner errors.Class
-
 	// RepositoryNotImplementsCreator is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Creator interface.
 	RepositoryNotImplementsCreator errors.Class
-
 	// RepositoryNotImplementsDeleter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Deleter interface.
 	RepositoryNotImplementsDeleter errors.Class
-
 	// RepositoryNotImplementsPatcher is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Patcher interface.
 	RepositoryNotImplementsPatcher errors.Class
-
 	// RepositoryNotImplementsLister is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Lister interface.
 	RepositoryNotImplementsLister errors.Class
-
 	// RepositoryNotImplementsGetter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Getter interface.
 	RepositoryNotImplementsGetter errors.Class
-
 	// RepositoryNotImplementsCounter is the 'MjrRepository', 'MnrRepositoryInterface' error classification
 	// for errors when the repository doesn't implement query.Counter interface.
 	RepositoryNotImplementsCounter errors.Class
+	// RepositoryNotImplementsMigrator is the 'MjrRepository', 'MnrRepositoryInterface' error classification
+	// for errors when the repository doesn't implement repository.Migrator interface.
+	RepositoryNotImplementsMigrator errors.Class
 )
 
 func registerRepositoryInterface() {
@@ -179,6 +175,8 @@ func registerRepositoryInterface() {
 	RepositoryNotImplementsLister = newClass()
 	RepositoryNotImplementsPatcher = newClass()
 	RepositoryNotImplementsTransactioner = newClass()
+	RepositoryNotImplementsMigrator = newClass()
+
 }
 
 var (

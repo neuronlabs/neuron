@@ -22,5 +22,5 @@ type Repository interface {
 
 // Migrator migrates the models into the repository.
 type Migrator interface {
-	MigrateModels(models ...*mapping.ModelStruct) error
+	MigrateModels(ctx context.Context, models ...*mapping.ModelStruct) error
 }
