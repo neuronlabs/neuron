@@ -67,23 +67,22 @@ func (p *Pet) RepositoryName() string {
 ```go
 package main
 
-// blank imported repository registers it's factory
-// and the driver.
-import _ "github.com/neuronlabs/neuron-postgres"
-
 import (
+    "context"
+    // blank imported repository registers it's factory
+    // and the driver.
+    _ "github.com/neuronlabs/neuron-postgres"
+
     "github.com/neuronlabs/neuron-core"
     "github.com/neuronlabs/neuron-core/config"
     "github.com/neuronlabs/neuron-core/log"
+
 )
 
 func main() {
-    cfg := config.Default()   
-```
-* Create the `*controller.Controller` and register repositories.
-```go
+    cfg := config.Default()
     // Provided create config 'cfg' to the Controller method.
-    err := neuron.Initialize(cfg)
+    n, err := neuron.New(cfg)
     if err != nil {
         log.Fatal(err)
     } 
@@ -95,53 +94,55 @@ func main() {
         // Currently registered repository 'neuron-pq' has it's driver name: 'pq'.
         DriverName: "pq",        
         Host: "localhost",   
-        Port: "5432",
+        Port: 5432,
         Username: "main_db_user",
         Password: "main_db_password",
         DBName: "main",
     }
-    if err := neuron.RegisterRepository("main", mainDB); err != nil {
-        // handle error
+    if err = n.RegisterRepository("main", mainDB); err != nil {
+        log.Fatal(err)
     }
 
     // We can register and use different repository for other models.
     secondaryDB := &config.Repository{        
         DriverName: "pq",        
         Host: "172.16.1.10",
-        Port: "5432",
+        Port: 5432,
         Username: "secondary_user",
         Password: "secondary_password",
         DBName: "secondary",
     }
 
     // Register secondary repository.
-    if err := neuron.RegisterRepository("secondary", secondaryDB); err != nil {
-        // handle error
+    if err = n.RegisterRepository("secondary", secondaryDB); err != nil {
+        log.Fatal(err)
     }
 
-    if err := neuron.Dial(context.TODO()); err != nil {
-        // handle error    
+    if err = n.DialAll(context.TODO()); err != nil {
+        log.Fatal(err)    
     }
-```
-
-* Register models 
-```go
-    if err := neuron.RegisterModels(models.User{}, models.Pet{}); err != nil {
-        // handle error
-    }
-```
-
-* Query registered models
-```go
-    users := []*User{}
     
-    err := neuron.QueryC(c, &users).        
+    // Register models 
+    if err = n.RegisterModels(models.User{}, models.Pet{}); err != nil {
+        log.Fatal(err)
+    }
+
+    // If necessary migrate the models
+    if err = n.MigrateModels(models.User{}, models.Pet{}); err != nil {
+        log.Fatal(err)
+    }
+
+    // Start application and query models
+    users := []*models.User{}
+    err = n.Query(&users).        
         .Filter("filter[users][name][$in]","John", "Sam"). // the query scope may be filtered        
         .Sort("-id"). // it might also be sorted
         .List() // list all the users with the name 'John' or 'Sam' with 'id' ordered in decrease manner.
     if  err != nil {
-        // resolve the error
+        log.Fatal(err)
     }
+    log.Infof("Queried users: %v", users)
+}
 ```
 
 ## Packages

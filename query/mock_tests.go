@@ -33,7 +33,7 @@ type Factory struct {
 
 // New creates new repository
 // Implements repository.Factory method
-func (f *Factory) New(model *config.Repository) (repository.Repository, error) {
+func (f *Factory) New(*config.Repository) (repository.Repository, error) {
 	return &Repository{}, nil
 }
 
@@ -41,11 +41,6 @@ func (f *Factory) New(model *config.Repository) (repository.Repository, error) {
 // Implements repository.Repository
 func (f *Factory) DriverName() string {
 	return repoName
-}
-
-// Close closes the factory
-func (f *Factory) Close(ctx context.Context, done chan<- interface{}) {
-	done <- struct{}{}
 }
 
 /**
@@ -63,12 +58,12 @@ type Repository struct {
 }
 
 // Begin provides a mock function with given fields: ctx, s
-func (_m *Repository) Begin(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error {
+func (_m *Repository) Begin(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Tx, *mapping.ModelStruct) error); ok {
-		r0 = rf(ctx, tx, model)
+	if rf, ok := ret.Get(0).(func(context.Context, *Tx) error); ok {
+		r0 = rf(ctx, tx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -76,17 +71,17 @@ func (_m *Repository) Begin(ctx context.Context, tx *Tx, model *mapping.ModelStr
 }
 
 // Close closes the repository connection
-func (_m *Repository) Close(ctx context.Context) error {
+func (_m *Repository) Close(context.Context) error {
 	return nil
 }
 
 // Commit provides a mock function with given fields: ctx, s
-func (_m *Repository) Commit(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error {
+func (_m *Repository) Commit(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Tx, *mapping.ModelStruct) error); ok {
-		r0 = rf(ctx, tx, model)
+	if rf, ok := ret.Get(0).(func(context.Context, *Tx) error); ok {
+		r0 = rf(ctx, tx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -130,7 +125,7 @@ func (_m *Repository) Create(ctx context.Context, s *Scope) error {
 }
 
 // Dial implements repository.Repository
-func (_m *Repository) Dial(ctx context.Context) error {
+func (_m *Repository) Dial(context.Context) error {
 	return nil
 }
 
@@ -163,8 +158,13 @@ func (_m *Repository) Get(ctx context.Context, s *Scope) error {
 }
 
 // HealthCheck implements repository.Repository.
-func (_m *Repository) HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
+func (_m *Repository) HealthCheck(context.Context) (*repository.HealthResponse, error) {
 	return &repository.HealthResponse{Status: repository.StatusPass}, nil
+}
+
+// ID implements repository.Repository interface.
+func (_m *Repository) ID() string {
+	return "mock"
 }
 
 // List provides a mock function with given fields: ctx, s
@@ -196,17 +196,17 @@ func (_m *Repository) Patch(ctx context.Context, s *Scope) error {
 }
 
 // RegisterModels implements repository.Repository interface.
-func (_m *Repository) RegisterModels(models ...*mapping.ModelStruct) error {
+func (_m *Repository) RegisterModels(...*mapping.ModelStruct) error {
 	return nil
 }
 
 // Rollback provides a mock function with given fields: ctx, s
-func (_m *Repository) Rollback(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error {
+func (_m *Repository) Rollback(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *Tx, *mapping.ModelStruct) error); ok {
-		r0 = rf(ctx, tx, model)
+	if rf, ok := ret.Get(0).(func(context.Context, *Tx) error); ok {
+		r0 = rf(ctx, tx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -216,28 +216,6 @@ func (_m *Repository) Rollback(ctx context.Context, tx *Tx, model *mapping.Model
 // FactoryName provides a mock function that implements FactoryName method.
 func (_m *Repository) FactoryName() string {
 	return repoName
-}
-
-// ID implements repository.Repository interface.
-func (_m *Repository) ID(ctx context.Context, model *mapping.ModelStruct) (string, error) {
-	// ret := _m.Called()
-	//
-	// var r0 string
-	// if rf, ok := ret.Get(0).(func(*mapping.ModelStruct) string); ok {
-	// 	r0 = rf(model)
-	// } else {
-	// 	r0 = ret.Get(0).(string)
-	// }
-	//
-	// var r1 error
-	// if rf, ok := ret.Get(1).(func(*mapping.ModelStruct) error); ok {
-	// 	r1 = rf(model)
-	// } else {
-	// 	r1 = ret.Error(1)
-	// }
-	// return r0, r1
-	return "mock_" + model.String(), nil
-
 }
 
 func clearRepository(repo *Repository) {

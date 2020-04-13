@@ -20,6 +20,7 @@ import (
 type Tx struct {
 	id uuid.UUID
 
+	c     *controller.Controller
 	ctx   context.Context
 	state TxState
 
@@ -28,19 +29,20 @@ type Tx struct {
 	uniqueTransactions []*uniqueTx
 }
 
-// Begin starts new transaction.
-func Begin() *Tx {
-	return begin(context.Background(), nil)
-}
-
-// BeginCtx starts new transaction with respect to the 'ctx' context and transaction options 'options'.
-func BeginCtx(ctx context.Context, options *TxOptions) *Tx {
-	return begin(ctx, options)
+// Begin startsC new transaction with respect to the 'ctx' context and transaction options 'options' and
+// controller 'c'.
+func Begin(ctx context.Context, c *controller.Controller, options *TxOptions) *Tx {
+	return begin(ctx, c, options)
 }
 
 // ID gets unique transaction uuid.
 func (t *Tx) ID() uuid.UUID {
 	return t.id
+}
+
+// Controller returns transaction controller.
+func (t *Tx) Controller() *controller.Controller {
+	return t.c
 }
 
 // Err returns current transaction runtime error.
@@ -58,16 +60,16 @@ func (t *Tx) State() TxState {
 	return t.state
 }
 
-// Query builds up a new query for given model.
+// Query builds up a new query for given 'model'.
 // The query is executed using transaction context.
 func (t *Tx) Query(model interface{}) Builder {
-	return t.query(controller.Default(), model)
+	return t.query(t.c, model)
 }
 
-// QueryC builds up a new query for given 'model' with given 'c' controller.
-// The query is executed using transaction context.
-func (t *Tx) QueryC(c *controller.Controller, model interface{}) Builder {
-	return t.query(c, model)
+// QueryCtx builds up a new query for given 'model'.
+// The query is executed using transaction context - provided context is used only for Builder purpose.
+func (t *Tx) QueryCtx(ctx context.Context, model interface{}) Builder {
+	return t.query(t.c, model)
 }
 
 // Commit commits the transaction.
@@ -92,7 +94,7 @@ func (t *Tx) Commit() error {
 		go func(tx *uniqueTx) {
 			defer wg.Done()
 			log.Debug2f("Commit transaction '%s' for model: %s, %s", t.id, tx.model, tx.id)
-			if err := tx.transactioner.Commit(ctx, t, tx.model); err != nil {
+			if err := tx.transactioner.Commit(ctx, t); err != nil {
 				errChan <- err
 			}
 		}(tx)
@@ -139,7 +141,7 @@ func (t *Tx) Rollback() error {
 		go func(tx *uniqueTx) {
 			defer wg.Done()
 			log.Debug3f("Rollback transaction: '%s' for model: '%s'", t.id, tx.model)
-			if err := tx.transactioner.Rollback(ctx, t, tx.model); err != nil {
+			if err := tx.transactioner.Rollback(ctx, t); err != nil {
 				errChan <- err
 			}
 		}(tx)
@@ -165,11 +167,12 @@ func (t *Tx) Rollback() error {
 	return nil
 }
 
-func begin(ctx context.Context, options *TxOptions) *Tx {
+func begin(ctx context.Context, c *controller.Controller, options *TxOptions) *Tx {
 	if options == nil {
 		options = &TxOptions{}
 	}
 	tx := &Tx{
+		c:       c,
 		id:      uuid.New(),
 		ctx:     ctx,
 		options: options,
@@ -246,12 +249,7 @@ func (t *Tx) beginUniqueTransaction(transactioner Transactioner, model *mapping.
 	singleRepository := true
 	repoPosition := -1
 
-	id, err := transactioner.ID(t.ctx, model)
-	if err != nil {
-		log.Warningf("Cannot get unique ID of the repository for model: '%s'", model.String())
-		return err
-	}
-
+	id := transactioner.ID()
 	for i := 0; i < len(t.uniqueTransactions); i++ {
 		if t.uniqueTransactions[i].id == id {
 			repoPosition = i
@@ -282,7 +280,7 @@ func (t *Tx) beginUniqueTransaction(transactioner Transactioner, model *mapping.
 
 	if repoPosition == -1 {
 		log.Debug2f("Begin transaction '%s' for model: '%s'", t.id.String(), model.String())
-		return transactioner.Begin(t.ctx, t, model)
+		return transactioner.Begin(t.ctx, t)
 	}
 	return nil
 }

@@ -238,13 +238,13 @@ func (s *Scope) list(ctx context.Context) error {
 	return nil
 }
 
-// Query creates new sub-scope with the provided model 'value'.
+// Query creates new query with the provided model 'value'.
 // If the root scope is on the transaction the new one will be
 // added to the root's transaction chain.
 // It is a recommended way to create new scope's within hooks if the given scope
 // should be included in the given transaction.
-func (s *Scope) Query(value interface{}) Builder {
-	return s.query(context.Background(), s.c, value)
+func (s *Scope) Query(model interface{}) Builder {
+	return s.query(context.Background(), s.c, model)
 }
 
 // QueryC creates new query with the provided 'model' and controller 'c'.
@@ -262,7 +262,7 @@ func (s *Scope) QueryC(c *controller.Controller, model interface{}) Builder {
 // It is a recommended way to create new scope's within hooks if the given scope
 // should be included in the given transaction.
 func (s *Scope) QueryCtx(ctx context.Context, model interface{}) Builder {
-	return s.query(ctx, controller.Default(), model)
+	return s.query(ctx, s.c, model)
 }
 
 // QueryCtxC creates new Query with the provided 'model' with the context.Context 'ctx'.
@@ -403,9 +403,58 @@ func (s *Scope) String() string {
 	return sb.String()
 }
 
+/**
+ *
+ * Transactions
+ *
+ */
+
+// Begin starts new transactions for given scope.
+func (s *Scope) Begin() (*Tx, error) {
+	tx := Begin(context.Background(), s.c, nil)
+	if err := s.WithTransaction(tx); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+// BeginCtx starts new transactions for given scope with respect to the given context 'ctx'.
+func (s *Scope) BeginCtx(ctx context.Context, opts *TxOptions) (*Tx, error) {
+	tx := Begin(ctx, s.c, opts)
+	if err := s.WithTransaction(tx); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
 // Tx returns the transaction for the given scope if exists.
 func (s *Scope) Tx() *Tx {
 	return s.tx
+}
+
+// WithTransaction applies transaction 't' to the query scope. The transactions are divided by the repositories.
+// It begins a sub-transaction for the scope's repository if it is not already started yet,
+// Returns error if given scope is already connected with other transaction
+func (s *Scope) WithTransaction(t *Tx) error {
+	switch s.tx {
+	case nil:
+		log.Debugf("Scope: '%s' is already included in another transaction: '%s'", s.id, s.tx.id)
+		return errors.Newf(class.QueryTxAlreadyBegin, "scope '%s' already have a transaction: '%s'", s.id, s.tx.id)
+	case t:
+		log.Debugf("Scope: '%s' is already included in the transaction: '%s'", s.id, t.id)
+		return nil
+	}
+
+	// check if the model of given scope implements repository interface.
+	transactioner, ok := s.repository().(Transactioner)
+	if !ok {
+		log.Debugf("Factory '%s' repository does not implement Transactioner interface", s.repository().FactoryName())
+		return errors.Newf(class.RepositoryNotImplementsTransactioner, "repository for model: '%s' "+
+			"doesn't allow transactions", s.mStruct)
+	}
+	log.Debug2f("Scope: '%s' is applied to transaction: '%s'", s.id, t.id)
+	s.tx = t
+	return t.beginUniqueTransaction(transactioner, s.mStruct)
 }
 
 // ValidateCreate validates the scope's value with respect to the 'create validator' and

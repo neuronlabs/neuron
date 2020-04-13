@@ -38,7 +38,7 @@ type afterCreateTestModel struct {
 
 var _ AfterCreator = &afterCreateTestModel{}
 
-func (c *beforeCreateTestModel) BeforeCreate(ctx context.Context, s *Scope) error {
+func (c *beforeCreateTestModel) BeforeCreate(ctx context.Context, orm *Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -47,7 +47,7 @@ func (c *beforeCreateTestModel) BeforeCreate(ctx context.Context, s *Scope) erro
 	return nil
 }
 
-func (c *afterCreateTestModel) AfterCreate(ctx context.Context, s *Scope) error {
+func (c *afterCreateTestModel) AfterCreate(ctx context.Context, orm *Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errors.New("Not called")
@@ -179,11 +179,11 @@ func TestCreateTransactions(t *testing.T) {
 			// commit
 			foreignKeyRepo.On("Commit", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
-			tx := Begin()
+			tx := Begin(context.Background(), c, nil)
 
 			model := &foreignKeyModel{FK: 24}
 
-			err = tx.QueryC(c, model).Create()
+			err = tx.Query(model).Create()
 			require.NoError(t, err)
 
 			foreignKeyRepo.AssertNumberOfCalls(t, "Begin", 1)
@@ -560,8 +560,8 @@ func TestCreateTransactions(t *testing.T) {
 					ID: 1,
 				},
 			}
-			tx := Begin()
-			err = tx.QueryC(c, tm).Create()
+			tx := Begin(context.Background(), c, nil)
+			err = tx.Query(tm).Create()
 			require.Error(t, err)
 
 			err = tx.Rollback()

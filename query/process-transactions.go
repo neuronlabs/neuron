@@ -20,7 +20,7 @@ func beginTransactionFunc(ctx context.Context, s *Scope) error {
 	if !ok {
 		return nil
 	}
-	s.tx = BeginCtx(ctx, nil)
+	s.tx = Begin(ctx, s.c, nil)
 	if err := s.tx.beginUniqueTransaction(transactioner, s.mStruct); err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 module github.com/neuronlabs/neuron-core
 
-go 1.12
+go 1.11
 
 require (
 	github.com/go-playground/locales v0.12.1 // indirect
@@ -14,7 +14,6 @@ require (
 	github.com/neuronlabs/uni-logger v1.1.1
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/text v0.3.2
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.0

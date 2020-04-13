@@ -12,12 +12,12 @@ Creator
 
 // BeforeCreator is the interface used for hooks before the creation process.
 type BeforeCreator interface {
-	BeforeCreate(ctx context.Context, s *Scope) error
+	BeforeCreate(context.Context, *Scope) error
 }
 
 // AfterCreator is the interface that has a method used as a hook after the creation process.
 type AfterCreator interface {
-	AfterCreate(ctx context.Context, s *Scope) error
+	AfterCreate(context.Context, *Scope) error
 }
 
 /**
@@ -28,12 +28,12 @@ Getter
 
 // BeforeGetter is the interface used as a hook before getting value.
 type BeforeGetter interface {
-	BeforeGet(ctx context.Context, s *Scope) error
+	BeforeGet(context.Context, *Scope) error
 }
 
 // AfterGetter is the interface used as a hook after getting the value.
 type AfterGetter interface {
-	AfterGet(ctx context.Context, s *Scope) error
+	AfterGet(context.Context, *Scope) error
 }
 
 /**
@@ -44,12 +44,12 @@ Lister
 
 // BeforeLister is the interface used for before list hook.
 type BeforeLister interface {
-	BeforeList(ctx context.Context, s *Scope) error
+	BeforeList(context.Context, *Scope) error
 }
 
 // AfterLister is the interface used as a after list hook.
 type AfterLister interface {
-	AfterList(ctx context.Context, s *Scope) error
+	AfterList(context.Context, *Scope) error
 }
 
 /**

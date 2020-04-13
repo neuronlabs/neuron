@@ -31,10 +31,10 @@ func HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
 	return controller.Default().HealthCheck(ctx)
 }
 
-// Initialize default controller for given configuration.
+// NewDefaultController default controller for given configuration.
 // Returns error if the default controller is already defined.
 // In order to force initializing new controller set the controller.DefaultController to nil.
-func Initialize(cfg *config.Controller) (err error) {
+func NewDefaultController(cfg *config.Controller) (err error) {
 	if controller.DefaultController != nil {
 		return errors.NewDetf(class.InternalInitController, "default controller already defined")
 	}

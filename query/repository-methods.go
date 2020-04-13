@@ -3,7 +3,6 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/mapping"
 	"github.com/neuronlabs/neuron-core/repository"
 )
 
@@ -64,9 +63,9 @@ TRANSACTIONS
 type Transactioner interface {
 	repository.Repository
 	// Begin the scope's transaction.
-	Begin(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
+	Begin(ctx context.Context, tx *Tx) error
 	// Commit the scope's transaction.
-	Commit(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
+	Commit(ctx context.Context, tx *Tx) error
 	// Rollback the scope's transaction.
-	Rollback(ctx context.Context, tx *Tx, model *mapping.ModelStruct) error
+	Rollback(ctx context.Context, tx *Tx) error
 }

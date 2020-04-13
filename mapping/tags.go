@@ -24,7 +24,7 @@ func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
 // 	type Model struct {
 //		Field string `fieldTag:"subtag=value1,value2;subtag2"`
 //	}                     ^                  ^      ^
-//                     fieldTag      tagSeparator   valueSeparator
+//                     fieldTag  valueSeparator   tagSeparator
 func (s *StructField) ExtractCustomFieldTags(fieldTag, tagSeparator, valuesSeparator string) []*FieldTag {
 	return s.extractFieldTags(fieldTag, tagSeparator, valuesSeparator)
 }

@@ -141,7 +141,7 @@ func TestDelete(t *testing.T) {
 			repo.On("Begin", mock.Anything, mock.Anything).Run(func(a mock.Arguments) {
 			}).Once().Return(nil)
 
-			tx := Begin()
+			tx := Begin(context.Background(), c, nil)
 
 			repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -170,7 +170,7 @@ func TestDelete(t *testing.T) {
 			}).Once().Return(nil)
 
 			tm := &deleteTMRelations{ID: 2}
-			err = tx.QueryC(c, tm).Delete()
+			err = tx.Query(tm).Delete()
 			require.NoError(t, err)
 
 			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
@@ -200,7 +200,7 @@ func TestDelete(t *testing.T) {
 			// Begin the transaction
 			repo.On("Begin", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 
-			tx := Begin()
+			tx := Begin(context.Background(), c, nil)
 
 			repo.On("Delete", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -240,7 +240,7 @@ func TestDelete(t *testing.T) {
 				},
 			}
 
-			err = tx.QueryC(c, tm).Delete()
+			err = tx.Query(tm).Delete()
 			require.Error(t, err)
 
 			err = tx.Rollback()

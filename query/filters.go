@@ -178,7 +178,7 @@ func NewRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterF
 
 // NewStringFilter creates the filter field based on the provided 'filter' and 'values'.
 // Example:
-//	- 'fitler': "filter[collection][fieldName][operator]"
+//	- 'fitler': "[collection][fieldName][operator]"
 //  - 'values': 5, 13
 // This function doesn't allow to filter over foreign keys.
 func NewStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
@@ -196,7 +196,10 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 }
 
 func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
+	// it is allowed to have a prefix for filter
 	filter = strings.TrimPrefix(filter, ParamFilter)
+
+	// ID > 100 OR Name STARTS WITH 'marian';
 
 	params, err := SplitBracketParameter(filter)
 	if err != nil {

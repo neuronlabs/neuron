@@ -16,7 +16,7 @@ type beforeGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (b *beforeGetter) BeforeGet(ctx context.Context, s *Scope) error {
+func (b *beforeGetter) BeforeGet(ctx context.Context, orm *Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled
@@ -29,7 +29,7 @@ type afterGetter struct {
 	ID int `neuron:"type=primary"`
 }
 
-func (a *afterGetter) AfterGet(ctx context.Context, s *Scope) error {
+func (a *afterGetter) AfterGet(ctx context.Context, orm *Scope) error {
 	v := ctx.Value(testCtxKey)
 	if v == nil {
 		return errNotCalled

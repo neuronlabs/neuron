@@ -163,7 +163,7 @@ func TestPatch(t *testing.T) {
 			// Begin define
 			repo.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 
-			tx := Begin()
+			tx := Begin(context.Background(), c, nil)
 
 			repo.On("List", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -188,7 +188,7 @@ func TestPatch(t *testing.T) {
 					ID: 1,
 				},
 			}
-			err = tx.QueryC(c, tm).Patch()
+			err = tx.Query(tm).Patch()
 			require.NoError(t, err)
 
 			repo.AssertCalled(t, "Begin", mock.Anything, mock.Anything)
@@ -232,14 +232,14 @@ func TestPatch(t *testing.T) {
 			repo2.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
 			repo2.On("Patch", mock.Anything, mock.Anything).Once().Return(stdErrors.New("Some error"))
 
-			tx := Begin()
+			tx := Begin(context.Background(), c, nil)
 			tm := &patchTMRelations{
 				ID: 2,
 				Rel: &patchTMRelated{
 					ID: 1,
 				},
 			}
-			err = tx.QueryC(c, tm).Patch()
+			err = tx.Query(tm).Patch()
 			require.Error(t, err)
 
 			// Rollback the result

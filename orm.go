@@ -7,6 +7,9 @@ import (
 	"github.com/neuronlabs/neuron-core/query"
 )
 
+// Compile time Queryer interface implementations check.
+var _ query.ORM = &Neuron{}
+
 // Query creates new query for the provided 'model' using the default controller.
 func Query(model interface{}) query.Builder {
 	return query.NewQuery(context.Background(), controller.Default(), model)
