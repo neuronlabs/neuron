@@ -23,6 +23,11 @@ func New(cfg *config.Controller) (*Neuron, error) {
 	return &Neuron{c: c}, nil
 }
 
+// NewC creates new Neuron with the provided 'c' controller.
+func NewC(c *controller.Controller) *Neuron {
+	return &Neuron{c: c}
+}
+
 // Controller gets neuron controller.
 func (n *Neuron) Controller() *controller.Controller {
 	return n.c

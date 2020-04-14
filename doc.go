@@ -12,7 +12,6 @@
 // - mapping - contains the information about the mapped models their fields and settings.
 // - class - contains errors classification system for the neuron packages.
 // - log - is the logging interface for the neuron based applications.
-// - i18n - is the neuron based application supported internationalization.
 // - repository - is a package used to store and register the repositories.
 //
 //	It is also used to get the repository/factory per model. A modular design

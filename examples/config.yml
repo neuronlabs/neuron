@@ -9,14 +9,14 @@ controller:
   # define repositories credentials and connection properties
   repositories:
     external_postgres:
-      driver_name: pq
+      driver_name: postgres
       host: 10.0.1.36
       port: 5432
       username: app_user
       password: 1e21f2eca1!2#
       dbname: usersdb
     internal_postgres:
-      driver_name: pq
+      driver_name: postgres
       raw_url: postgresql://some_user:pass@127.0.0.1:5432/dbname?sslmode=disable
     mongo:
       driver_name: mongo

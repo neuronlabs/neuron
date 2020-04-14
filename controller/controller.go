@@ -148,6 +148,12 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 
 	c.Config = cfg
 
+	if cfg.DefaultRepositoryName != "" && cfg.DefaultRepository != nil {
+		if _, ok := cfg.Repositories[cfg.DefaultRepositoryName]; !ok {
+			cfg.Repositories[cfg.DefaultRepositoryName] = cfg.DefaultRepository
+		}
+	}
+
 	// map repositories from config.
 	for name, repositoryConfig := range cfg.Repositories {
 		if _, ok := c.Repositories[name]; ok {

@@ -19,13 +19,3 @@ func Query(model interface{}) query.Builder {
 func QueryCtx(ctx context.Context, model interface{}) query.Builder {
 	return query.NewQuery(ctx, controller.Default(), model)
 }
-
-// QueryC creates new query for the provided 'model' using 'c' controller.
-func QueryC(c *controller.Controller, model interface{}) query.Builder {
-	return query.NewQuery(context.Background(), c, model)
-}
-
-// QueryCtxC creates new query for the provided 'model' using 'c' controller with respect to the context 'ctx'.
-func QueryCtxC(ctx context.Context, c *controller.Controller, model interface{}) query.Builder {
-	return query.NewQuery(ctx, c, model)
-}
