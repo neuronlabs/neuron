@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"strconv"
 	"strings"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
 )
 
 // Repository defines the repository configuration variables.
@@ -17,8 +17,6 @@ type Repository struct {
 	DriverName string `mapstructure:"driver_name" validate:"required"`
 	// Host defines the access hostname or the ip address
 	Host string `mapstructure:"host" validate:"isdefault|hostname|ip"`
-	// Path is the connection path, just after the protocol and
-	Path string `mapstructure:"path" validate:"isdefault|uri"`
 	// Port is the connection port
 	Port int `mapstructure:"port"`
 	// Protocol is the protocol used in the connection
@@ -36,12 +34,12 @@ type Repository struct {
 	MaxTimeout *time.Duration `mapstructure:"max_timeout"`
 	// DBName gets the database name
 	DBName string `mapstructure:"dbname"`
-	// SSLMode defines if the ssl is enabled
-	SSLMode string `mapstructure:"sslmode"`
+	// TLS defines the tls configuration for given repository.
+	TLS *tls.Config
 }
 
 // Parse parses the repository configuration from the whitespace separated key value string.
-// I.e. 'host=172.16.1.1 port=5432 username=some password=pass drivername=pq'
+// I.e. 'host=172.16.1.1 port=5432 username=some password=pass drivername=postgres'
 func (r *Repository) Parse(s string) error {
 	spaceSplit := strings.Split(s, " ")
 	for _, pair := range spaceSplit {
@@ -57,8 +55,6 @@ func (r *Repository) Parse(s string) error {
 			r.DriverName = value
 		case "host", "hostname":
 			r.Host = value
-		case "path":
-			r.Path = value
 		case "port":
 			port, err := strconv.Atoi(value)
 			if err != nil {
@@ -81,10 +77,11 @@ func (r *Repository) Parse(s string) error {
 			r.MaxTimeout = &d
 		case "dbname":
 			r.DBName = value
-		case "sslmode":
-			r.SSLMode = value
 		default:
-			log.Debugf("Invalid repository configuration key: '%s'", key)
+			if r.Options == nil {
+				r.Options = map[string]interface{}{}
+			}
+			r.Options[key] = value
 		}
 	}
 	return nil

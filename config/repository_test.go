@@ -19,7 +19,7 @@ func TestParseRepository(t *testing.T) {
 	tests := []testcase{
 		{
 			"Valid",
-			"host=172.16.1.1 port=5432 username=some password=pass driver_name=pq protocol=postgresql sslmode=true dbname=some_db max_timeout=5m raw_url=some://raw.url path=full_path",
+			"host=172.16.1.1 port=5432 username=some password=pass driver_name=postgres protocol=postgresql sslmode=true dbname=some_db max_timeout=5m raw_url=some://raw.url",
 			func(t *testing.T, r *Repository, err error) {
 				require.NoError(t, err)
 
@@ -27,12 +27,10 @@ func TestParseRepository(t *testing.T) {
 				assert.Equal(t, 5432, r.Port)
 				assert.Equal(t, "some", r.Username)
 				assert.Equal(t, "pass", r.Password)
-				assert.Equal(t, "pq", r.DriverName)
+				assert.Equal(t, "postgres", r.DriverName)
 				assert.Equal(t, "some_db", r.DBName)
-				assert.Equal(t, "true", r.SSLMode)
 				assert.Equal(t, time.Minute*5, *r.MaxTimeout)
 				assert.Equal(t, "some://raw.url", r.RawURL)
-				assert.Equal(t, "full_path", r.Path)
 			},
 		},
 		{
