@@ -18,25 +18,6 @@ const (
 	ParamFilter = "filter"
 )
 
-// filter operator raw values
-const (
-	operatorEqualRaw        = "$eq"
-	operatorInRaw           = "$in"
-	operatorNotEqualRaw     = "$ne"
-	operatorNotInRaw        = "$not_in"
-	operatorGreaterThanRaw  = "$gt"
-	operatorGreaterEqualRaw = "$ge"
-	operatorLessThanRaw     = "$lt"
-	operatorLessEqualRaw    = "$le"
-	operatorIsNullRaw       = "$is_null"
-	operatorNotNullRaw      = "$not_null"
-	operatorExistsRaw       = "$exists"
-	operatorNotExistsRaw    = "$not_exists"
-	operatorContainsRaw     = "$contains"
-	operatorStartsWithRaw   = "$starts_with"
-	operatorEndsWithRaw     = "$ends_with"
-)
-
 // Processes constant names.
 const (
 	ProcessHookBeforeCreate          = internal.ProcessHookBeforeCreate

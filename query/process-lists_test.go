@@ -11,7 +11,6 @@ import (
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/controller"
 )
 
 type beforeLister struct {
@@ -53,7 +52,7 @@ func TestList(t *testing.T) {
 
 	t.Run("NoHooks", func(t *testing.T) {
 		v := []*lister{}
-		s, err := NewC((*controller.Controller)(c), &v)
+		s, err := NewC(c, &v)
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -70,7 +69,7 @@ func TestList(t *testing.T) {
 
 	t.Run("HookBefore", func(t *testing.T) {
 		v := []*beforeLister{}
-		s, err := NewC((*controller.Controller)(c), &v)
+		s, err := NewC(c, &v)
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -87,7 +86,7 @@ func TestList(t *testing.T) {
 
 	t.Run("HookAfter", func(t *testing.T) {
 		v := []*afterLister{}
-		s, err := NewC((*controller.Controller)(c), &v)
+		s, err := NewC(c, &v)
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -129,10 +128,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 	t.Run("BelongsTo", func(t *testing.T) {
 		t.Run("MixedFilters", func(t *testing.T) {
-			s, err := NewC((*controller.Controller)(c), &[]*relationModel{})
+			s, err := NewC(c, &[]*relationModel{})
 			require.NoError(t, err)
 
-			require.NoError(t, s.Filter("[relation_models][relation][some_attr][$eq]", "test-value"))
+			require.NoError(t, s.Filter("relation.some_attr ==", "test-value"))
 
 			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -182,10 +181,10 @@ func TestListRelationshipFilters(t *testing.T) {
 		})
 
 		t.Run("OnlyPrimes", func(t *testing.T) {
-			s, err := NewC((*controller.Controller)(c), &([]*relationModel{}))
+			s, err := NewC(c, &([]*relationModel{}))
 			require.NoError(t, err)
 
-			require.NoError(t, s.Filter("[relation_models][relation][id][$eq]", 1))
+			require.NoError(t, s.Filter("relation.id =", 1))
 
 			repoRoot, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -217,10 +216,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 	t.Run("HasOne", func(t *testing.T) {
 		relatedValues := []*relatedModel{}
-		s, err := NewC((*controller.Controller)(c), &relatedValues)
+		s, err := NewC(c, &relatedValues)
 		require.NoError(t, err)
 
-		require.NoError(t, s.Filter("[related_models][relation][id][$eq]", "1"))
+		require.NoError(t, s.Filter("relation.id =", "1"))
 
 		relatedRepo, err := s.Controller().GetRepository(&relatedModel{})
 		require.NoError(t, err)
@@ -246,7 +245,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				values, ok := s.Value.(*[]*relationModel)
 				require.True(t, ok)
 
-				(*values) = append((*values), &relationModel{ID: 1, FK: 5})
+				*values = append(*values, &relationModel{ID: 1, FK: 5})
 			}).Return(nil)
 
 		related := relatedRepo.(*Repository)
@@ -263,7 +262,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					}
 				}
 				values := s.Value.(*[]*relatedModel)
-				(*values) = append((*values), &relatedModel{ID: 5, SomeAttr: "Attr"})
+				*values = append(*values, &relatedModel{ID: 5, SomeAttr: "Attr"})
 			}).Return(nil)
 
 		// after list
@@ -285,7 +284,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				values, ok := s.Value.(*[]*relationModel)
 				require.True(t, ok)
 
-				(*values) = append((*values), &relationModel{ID: 1, FK: 5})
+				*values = append(*values, &relationModel{ID: 1, FK: 5})
 			}).Return(nil)
 
 		err = s.List()
@@ -304,10 +303,10 @@ func TestListRelationshipFilters(t *testing.T) {
 		t.Run("WithRelated", func(t *testing.T) {
 			// create the multiRelatedModel scope.
 			relatedValues := []*multiRelatedModel{}
-			s, err := NewC((*controller.Controller)(c), &relatedValues)
+			s, err := NewC(c, &relatedValues)
 			require.NoError(t, err)
 
-			require.NoError(t, s.Filter("[multi_related_models][relations][id][$in]", "1", "2"))
+			require.NoError(t, s.Filter("relations.id IN", "1", "2"))
 
 			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -333,7 +332,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				v, ok := s.Value.(*[]*relationModel)
 				require.True(t, ok)
 
-				(*v) = append((*v), []*relationModel{{ID: 1, FK: 3}, {ID: 2, FK: 5}, {ID: 3, FK: 3}}...)
+				*v = append(*v, []*relationModel{{ID: 1, FK: 3}, {ID: 2, FK: 5}, {ID: 3, FK: 3}}...)
 			}).Return(nil)
 
 			relatedRepo, err := s.Controller().GetRepository(&multiRelatedModel{})
@@ -360,7 +359,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				v, ok := s.Value.(*[]*multiRelatedModel)
 				require.True(t, ok)
 
-				(*v) = append((*v), []*multiRelatedModel{{ID: 3}, {ID: 5}}...)
+				*v = append(*v, []*multiRelatedModel{{ID: 3}, {ID: 5}}...)
 			}).Return(nil)
 
 			// handle after getting list
@@ -383,7 +382,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				v, ok := s.Value.(*[]*relationModel)
 				require.True(t, ok)
 
-				(*v) = append((*v), []*relationModel{{ID: 1, FK: 3}, {ID: 2, FK: 5}, {ID: 3, FK: 3}}...)
+				*v = append(*v, []*relationModel{{ID: 1, FK: 3}, {ID: 2, FK: 5}, {ID: 3, FK: 3}}...)
 			}).Return(nil)
 
 			err = s.List()
@@ -420,10 +419,10 @@ func TestListRelationshipFilters(t *testing.T) {
 		})
 
 		t.Run("NoFilterResult", func(t *testing.T) {
-			s, err := NewC((*controller.Controller)(c), &[]*multiRelatedModel{})
+			s, err := NewC(c, &[]*multiRelatedModel{})
 			require.NoError(t, err)
 
-			require.NoError(t, s.Filter("[multi_related_models][relations][id][$in]", "1", "2"))
+			require.NoError(t, s.Filter("relations.id IN", "1", "2"))
 
 			relationRepo, err := s.Controller().GetRepository(&relationModel{})
 			require.NoError(t, err)
@@ -465,10 +464,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			scopeValue := []*Many2ManyModel{}
 
-			s, err := NewC((*controller.Controller)(c), &scopeValue)
+			s, err := NewC(c, &scopeValue)
 			require.NoError(t, err)
 
-			err = s.Filter("[many_2_many_models][many_2_many][id][$in]", "1", "2", "4")
+			err = s.Filter("many_2_many.id IN", "1", "2", "4")
 			require.NoError(t, err)
 
 			m2mRepo, err := c.GetRepository(s.Struct())
@@ -506,7 +505,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				jmValues, ok := s.Value.(*[]*JoinModel)
 				if assert.True(t, ok) {
-					(*jmValues) = append((*jmValues),
+					*jmValues = append(*jmValues,
 						&JoinModel{ForeignKey: 4, MtMForeignKey: 1},
 						&JoinModel{ForeignKey: 8, MtMForeignKey: 2},
 						&JoinModel{ForeignKey: 16, MtMForeignKey: 4},
@@ -535,7 +534,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				v, ok := s.Value.(*[]*Many2ManyModel)
 				if assert.True(t, ok) {
-					(*v) = append((*v),
+					*v = append(*v,
 						&Many2ManyModel{ID: 4},
 						&Many2ManyModel{ID: 8},
 						&Many2ManyModel{ID: 16},
@@ -569,7 +568,7 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				v, ok := s.Value.(*[]*JoinModel)
 				if assert.True(t, ok) {
-					(*v) = append((*v),
+					*v = append(*v,
 						&JoinModel{ForeignKey: 4, MtMForeignKey: 1},
 						&JoinModel{ForeignKey: 8, MtMForeignKey: 2},
 						&JoinModel{ForeignKey: 16, MtMForeignKey: 4},
@@ -613,7 +612,7 @@ func TestListRelationshipFilters(t *testing.T) {
 				s, err := NewC(c, &scopeValue)
 				require.NoError(t, err)
 
-				err = s.Filter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
+				err = s.Filter("many_2_many.float_field >", "1.2415")
 				require.NoError(t, err)
 
 				m2mRepo, err := c.GetRepository(s.Struct())
@@ -687,7 +686,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					}
 
 					sv := s.Value.(*[]*JoinModel)
-					(*sv) = append((*sv),
+					*sv = append(*sv,
 						&JoinModel{ID: 1, ForeignKey: 2, MtMForeignKey: 5},
 						&JoinModel{ID: 3, ForeignKey: 4, MtMForeignKey: 5},
 					)
@@ -711,7 +710,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					}
 
 					sv := s.Value.(*[]*Many2ManyModel)
-					(*sv) = append((*sv), &Many2ManyModel{ID: 2}, &Many2ManyModel{ID: 4})
+					*sv = append(*sv, &Many2ManyModel{ID: 2}, &Many2ManyModel{ID: 4})
 				}).Return(nil)
 
 				// now the join model should be queried by the mtmForeignKey equal to the relatedScope primary.
@@ -742,7 +741,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					assert.True(t, ok)
 
 					sv := s.Value.(*[]*JoinModel)
-					(*sv) = append((*sv),
+					*sv = append(*sv,
 						&JoinModel{ForeignKey: 2, MtMForeignKey: 5},
 						&JoinModel{ForeignKey: 4, MtMForeignKey: 5},
 					)
@@ -759,10 +758,10 @@ func TestListRelationshipFilters(t *testing.T) {
 
 				scopeValue := []*Many2ManyModel{}
 
-				s, err := NewC((*controller.Controller)(c), &scopeValue)
+				s, err := NewC(c, &scopeValue)
 				require.NoError(t, err)
 
-				err = s.Filter("[many_2_many_models][many_2_many][float_field][$gt]", "1.2415")
+				err = s.Filter("Many2Many.FloatField >", "1.2415")
 				require.NoError(t, err)
 
 				relatedRepo, err := c.GetRepository(RelatedModel{})
@@ -812,7 +811,7 @@ func TestListRelationshipFilters(t *testing.T) {
 		t.Run("InFieldset", func(t *testing.T) {
 			relatedValues := []*relatedModel{}
 
-			s, err := NewC((*controller.Controller)(c), &relatedValues)
+			s, err := NewC(c, &relatedValues)
 			require.NoError(t, err)
 
 			err = s.IncludeFields("relation")

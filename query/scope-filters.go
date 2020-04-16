@@ -15,14 +15,18 @@ func (s *Scope) ClearFilters() {
 	s.clearFilters()
 }
 
-// Filter parses the filter into the filters.FilterField and adds it to the given scope.
-func (s *Scope) Filter(rawFilter string, values ...interface{}) error {
-	filter, err := NewStringFilter(s.Controller(), rawFilter, values...)
+// Filter parses the filter into the  and adds it to the given scope.
+// The 'filter' should be of form:
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+//	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
+// The field might be a Golang model field name or the neuron name.
+func (s *Scope) Filter(filter string, values ...interface{}) error {
+	filterField, err := newFilter(s.c, s.mStruct, filter, values...)
 	if err != nil {
-		log.Debugf("BuildRawFilter: '%s' with values: %v failed. %v", rawFilter, values, err)
+		log.Debugf("SCOPE[%s] Filter '%s' with values: %v failed %v", filter, values, err)
 		return err
 	}
-	return s.addFilterField(filter)
+	return s.addFilterField(filterField)
 }
 
 // FilterField adds the filter field to the given query.
@@ -46,21 +50,11 @@ func (s *Scope) addFilterField(filter *FilterField) error {
 	case mapping.KindPrimary:
 		s.PrimaryFilters = append(s.PrimaryFilters, filter)
 	case mapping.KindAttribute:
-		if filter.StructField.IsLanguage() {
-			if s.LanguageFilters == nil {
-				s.LanguageFilters = filter
-			} else {
-				s.LanguageFilters.Values = append(s.LanguageFilters.Values, filter.Values...)
-			}
-		} else {
-			s.AttributeFilters = append(s.AttributeFilters, filter)
-		}
+		s.AttributeFilters = append(s.AttributeFilters, filter)
 	case mapping.KindForeignKey:
 		s.ForeignFilters = append(s.ForeignFilters, filter)
 	case mapping.KindRelationshipMultiple, mapping.KindRelationshipSingle:
 		s.RelationFilters = append(s.RelationFilters, filter)
-	case mapping.KindFilterKey:
-		s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
 	default:
 		err := errors.NewDetf(class.QueryFilterFieldKind, "unknown field kind: %v", filter.StructField.Kind())
 		return err
@@ -71,8 +65,6 @@ func (s *Scope) addFilterField(filter *FilterField) error {
 func (s *Scope) clearFilters() {
 	s.AttributeFilters = Filters{}
 	s.ForeignFilters = Filters{}
-	s.FilterKeyFilters = Filters{}
-	s.LanguageFilters = nil
 	s.PrimaryFilters = Filters{}
 	s.RelationFilters = Filters{}
 }
@@ -94,21 +86,6 @@ func (s *Scope) getOrCreatePrimaryFilter() *FilterField {
 	return filter
 }
 
-func (s *Scope) getOrCreateLanguageFilter() *FilterField {
-	if !s.mStruct.UseI18n() {
-		return nil
-	}
-
-	if s.LanguageFilters != nil {
-		return s.LanguageFilters
-	}
-
-	filter := &FilterField{StructField: s.mStruct.LanguageField()}
-	s.LanguageFilters = filter
-	return filter
-
-}
-
 func (s *Scope) getOrCreateAttributeFilter(sField *mapping.StructField) *FilterField {
 	if s.AttributeFilters == nil {
 		s.AttributeFilters = Filters{}
@@ -121,21 +98,6 @@ func (s *Scope) getOrCreateAttributeFilter(sField *mapping.StructField) *FilterF
 	}
 	filter := &FilterField{StructField: sField}
 	s.AttributeFilters = append(s.AttributeFilters, filter)
-	return filter
-}
-
-func (s *Scope) getOrCreateFilterKeyFilter(sField *mapping.StructField) *FilterField {
-	if s.FilterKeyFilters == nil {
-		s.FilterKeyFilters = Filters{}
-	}
-
-	for _, fkFilter := range s.FilterKeyFilters {
-		if fkFilter.StructField == sField {
-			return fkFilter
-		}
-	}
-	filter := &FilterField{StructField: sField}
-	s.FilterKeyFilters = append(s.FilterKeyFilters, filter)
 	return filter
 }
 
@@ -268,15 +230,13 @@ func (s *Scope) setFiltersTo(to *Scope) error {
 
 	to.PrimaryFilters = s.PrimaryFilters
 	to.AttributeFilters = s.AttributeFilters
-	to.LanguageFilters = s.LanguageFilters
 	to.RelationFilters = s.RelationFilters
 	to.ForeignFilters = s.ForeignFilters
-	to.FilterKeyFilters = s.FilterKeyFilters
 
 	return nil
 }
 
 func (s *Scope) setPrimaryFilterValues(values ...interface{}) {
 	filter := s.getOrCreatePrimaryFilter()
-	filter.Values = append(filter.Values, &OperatorValues{Operator: OpIn, Values: values})
+	filter.Values = append(filter.Values, OperatorValues{Operator: OpIn, Values: values})
 }

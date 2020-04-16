@@ -28,16 +28,18 @@ import (
 // The scope has its unique 'ID', contains predefined model, operational value, fieldset, filters, sorts and pagination.
 // It also contains the mapping of the included scopes.
 type Scope struct {
+	// id is the unique identification of the scope.
 	id uuid.UUID
 	// controller defines the controller for given scope
 	c *controller.Controller
-	// transactioner defines the transaction related to this scope.
+	// tx defines the transaction related to this scope.
 	tx *Tx
 	// Struct is a modelStruct this scope is based on
 	mStruct *mapping.ModelStruct
-	// Value is the values or / value of the queried object / objects
+
+	// Value is the values or / value of the queried object / objects.
 	Value interface{}
-	// Fieldset represents fields used specified to get / update for this query scope
+	// Fieldset represents fields used specified to get / update for this query scope.
 	Fieldset map[string]*mapping.StructField
 	// PrimaryFilters contain filter for the primary field.
 	PrimaryFilters Filters
@@ -47,18 +49,15 @@ type Scope struct {
 	AttributeFilters Filters
 	// ForeignFilters contain the foreign key filter fields.
 	ForeignFilters Filters
-	// FilterKeyFilters are the for the 'FilterKey' field type
-	FilterKeyFilters Filters
-	// LanguageFilters contain information about language filters
-	LanguageFilters *FilterField
 	// SortFields are the query sort fields.
 	SortFields []*SortField
-	// Pagination is the query pagination
+	// Pagination is the query pagination.
 	Pagination *Pagination
 	// Processor is current query processor.
 	Processor *Processor
 	// Err defines the process error.
 	Err error
+
 	// includedScopes contains filters, fieldset and values for included collections
 	// every collection that is included would contain it's sub-scope
 	// if filters, fieldset are set for non-included scope error should occur
@@ -247,15 +246,6 @@ func (s *Scope) Query(model interface{}) Builder {
 	return s.query(context.Background(), s.c, model)
 }
 
-// QueryC creates new query with the provided 'model' and controller 'c'.
-// If the root scope is on the transaction the new one will be
-// added to the root's transaction chain.
-// It is a recommended way to create new scope's within hooks if the given scope
-// should be included in the given transaction.
-func (s *Scope) QueryC(c *controller.Controller, model interface{}) Builder {
-	return s.query(context.Background(), c, model)
-}
-
 // QueryCtx creates new Query with the provided 'model' with the context.Context 'ctx'.
 // If the root scope is on the transaction the new one will be
 // added to the root's transaction chain.
@@ -263,13 +253,6 @@ func (s *Scope) QueryC(c *controller.Controller, model interface{}) Builder {
 // should be included in the given transaction.
 func (s *Scope) QueryCtx(ctx context.Context, model interface{}) Builder {
 	return s.query(ctx, s.c, model)
-}
-
-// QueryCtxC creates new Query with the provided 'model' with the context.Context 'ctx'.
-// If the root scope is on the transaction the new one will be
-// added to the root's transaction chain.
-func (s *Scope) QueryCtxC(ctx context.Context, c *controller.Controller, model interface{}) Builder {
-	return s.query(ctx, c, model)
 }
 
 // Patch updates the scope's attribute and relationship values based on the scope's value and filters.
@@ -375,17 +358,6 @@ func (s *Scope) String() string {
 		sb.WriteString(s.ForeignFilters.String())
 	}
 
-	// FilterKey Filters
-	if len(s.FilterKeyFilters) > 0 {
-		sb.WriteString(" FilterKey Filters: ")
-		sb.WriteString(s.FilterKeyFilters.String())
-	}
-
-	if s.LanguageFilters != nil {
-		sb.WriteString(" Language Filter: ")
-		sb.WriteString(s.LanguageFilters.String())
-	}
-
 	if s.Pagination != nil {
 		sb.WriteString(" Pagination: ")
 		sb.WriteString(s.Pagination.String())
@@ -436,13 +408,13 @@ func (s *Scope) Tx() *Tx {
 // It begins a sub-transaction for the scope's repository if it is not already started yet,
 // Returns error if given scope is already connected with other transaction
 func (s *Scope) WithTransaction(t *Tx) error {
-	switch s.tx {
-	case nil:
+	if s.tx != nil {
+		if s.tx == t {
+			log.Debugf("Scope: '%s' is already included in the transaction: '%s'", s.id, t.id)
+			return nil
+		}
 		log.Debugf("Scope: '%s' is already included in another transaction: '%s'", s.id, s.tx.id)
 		return errors.Newf(class.QueryTxAlreadyBegin, "scope '%s' already have a transaction: '%s'", s.id, s.tx.id)
-	case t:
-		log.Debugf("Scope: '%s' is already included in the transaction: '%s'", s.id, t.id)
-		return nil
 	}
 
 	// check if the model of given scope implements repository interface.
@@ -622,14 +594,6 @@ func (s *Scope) formatQuery() url.Values {
 
 	for _, rel := range s.RelationFilters {
 		rel.FormatQuery(q)
-	}
-
-	if s.LanguageFilters != nil {
-		s.LanguageFilters.FormatQuery(q)
-	}
-
-	for _, fk := range s.FilterKeyFilters {
-		fk.FormatQuery(q)
 	}
 
 	for _, sort := range s.SortFields {

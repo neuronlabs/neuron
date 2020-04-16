@@ -89,5 +89,5 @@ func getNotDeletedFilter(ctx context.Context, s *Scope) error {
 			return nil
 		}
 	}
-	return s.FilterField(NewFilter(deletedAt, OpIsNull))
+	return s.FilterField(NewFilterField(deletedAt, OpIsNull))
 }

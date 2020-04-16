@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron-core/controller"
 )
 
 type beforeGetter struct {
@@ -50,7 +48,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("NoHooks", func(t *testing.T) {
-		s, err := NewC((*controller.Controller)(c), &getter{})
+		s, err := NewC(c, &getter{})
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -66,7 +64,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("BeforeGet", func(t *testing.T) {
-		s, err := NewC((*controller.Controller)(c), &beforeGetter{})
+		s, err := NewC(c, &beforeGetter{})
 		require.NoError(t, err)
 
 		require.NotNil(t, s.Value)
@@ -84,7 +82,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("AfterGet", func(t *testing.T) {
-		s, err := NewC((*controller.Controller)(c), &afterGetter{})
+		s, err := NewC(c, &afterGetter{})
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -100,7 +98,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("Included", func(t *testing.T) {
-		s, err := NewC((*controller.Controller)(c), &HasManyModel{ID: 3})
+		s, err := NewC(c, &HasManyModel{ID: 3})
 		require.NoError(t, err)
 
 		err = s.IncludeFields("has_many")
@@ -136,7 +134,7 @@ func TestGet(t *testing.T) {
 			m, ok := s.Value.(*[]*ForeignModel)
 			require.True(t, ok)
 
-			(*m) = append((*m), &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
+			*m = append(*m, &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
 		}).Return(nil)
 
 		// the second call is just a list call
@@ -147,7 +145,7 @@ func TestGet(t *testing.T) {
 			m, ok := s.Value.(*[]*ForeignModel)
 			require.True(t, ok)
 
-			(*m) = append((*m), &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
+			*m = append(*m, &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
 		}).Return(nil)
 
 		err = s.Get()
@@ -192,7 +190,7 @@ func TestGet(t *testing.T) {
 			s, err := NewC(c, &timer{ID: 2})
 			require.NoError(t, err)
 
-			err = s.FilterField(NewFilter(deletedAt, OpNotNull))
+			err = s.FilterField(NewFilterField(deletedAt, OpNotNull))
 			require.NoError(t, err)
 
 			timerRepo.On("Get", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/neuronlabs/errors"
+
 	"github.com/neuronlabs/neuron-core/annotation"
 	"github.com/neuronlabs/neuron-core/class"
 	"github.com/neuronlabs/neuron-core/log"
@@ -248,8 +249,6 @@ func (s *StructField) ValueFromString(value string) (result interface{}, err err
 		err = setAttributeField(value, fieldValue)
 	case KindForeignKey:
 		err = setPrimaryField(value, fieldValue)
-	case KindFilterKey:
-		err = setAttributeField(value, fieldValue)
 	default:
 		err = errors.NewDetf(class.ModelFieldType, "invalid field kind: '%s' for getting value", s.Kind().String())
 	}
@@ -664,8 +663,6 @@ const (
 	KindRelationshipMultiple
 	// KindForeignKey is the field type that is responsible for the relationships.
 	KindForeignKey
-	// KindFilterKey is the field that is used only for special case filtering.
-	KindFilterKey
 	// KindNested is the field's type that is signed as Nested.
 	KindNested
 )
@@ -681,8 +678,6 @@ func (f FieldKind) String() string {
 		return "Relationship"
 	case KindForeignKey:
 		return "ForeignKey"
-	case KindFilterKey:
-		return "FilterKey"
 	case KindNested:
 		return "Nested"
 	}

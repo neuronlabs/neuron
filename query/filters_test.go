@@ -19,7 +19,6 @@ type testingModel struct {
 	Attr       string               `neuron:"type=attr"`
 	Relation   *filterRelationModel `neuron:"type=relation;foreign=ForeignKey"`
 	ForeignKey int                  `neuron:"type=foreign"`
-	FilterKey  int                  `neuron:"type=filterkey"`
 	Nested     *filterNestedModel   `neuron:"type=attr"`
 }
 
@@ -51,8 +50,8 @@ func TestParseQuery(t *testing.T) {
 	})
 }
 
-// TestNewStringFilter tests the NewStringFilter function.
-func TestNewStringFilter(t *testing.T) {
+// TestNewStringFilter tests the NewUrlStringFilter function.
+func TestNewUrlStringFilter(t *testing.T) {
 	c := controller.NewDefault()
 
 	err := c.RegisterRepository(repoName, &config.Repository{DriverName: repoName})
@@ -65,7 +64,7 @@ func TestNewStringFilter(t *testing.T) {
 
 	t.Run("Primary", func(t *testing.T) {
 		t.Run("WithoutOperator", func(t *testing.T) {
-			filter, err := NewStringFilter(c, "filter[testing_models][id]", 521)
+			filter, err := NewUrlStringFilter(c, "filter[testing_models][id]", 521)
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField)
@@ -78,7 +77,7 @@ func TestNewStringFilter(t *testing.T) {
 		})
 
 		t.Run("WithoutFilterWord", func(t *testing.T) {
-			filter, err := NewStringFilter(c, "[testing_models][id][$ne]", "some string value")
+			filter, err := NewUrlStringFilter(c, "[testing_models][id][$ne]", "some string value")
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField)
@@ -93,23 +92,23 @@ func TestNewStringFilter(t *testing.T) {
 
 	t.Run("Invalid", func(t *testing.T) {
 		t.Run("Collection", func(t *testing.T) {
-			_, err := NewStringFilter(c, "filter[invalid-collection][fieldname][$eq]", 1)
+			_, err := NewUrlStringFilter(c, "filter[invalid-collection][field_name][$eq]", 1)
 			require.Error(t, err)
 		})
 
 		t.Run("Operator", func(t *testing.T) {
-			_, err := NewStringFilter(c, "filter[testing_models][id][$unknown]", 1)
+			_, err := NewUrlStringFilter(c, "filter[testing_models][id][$unknown]", 1)
 			require.Error(t, err)
 		})
 
 		t.Run("FieldName", func(t *testing.T) {
-			_, err := NewStringFilter(c, "filter[testing_models][field-unknown][$eq]", "", 1)
+			_, err := NewUrlStringFilter(c, "filter[testing_models][field-unknown][$eq]", "", 1)
 			require.Error(t, err)
 		})
 	})
 
 	t.Run("Attribute", func(t *testing.T) {
-		filter, err := NewStringFilter(c, "[testing_models][attr][$ne]", "some string value")
+		filter, err := NewUrlStringFilter(c, "[testing_models][attr][$ne]", "some string value")
 		require.NoError(t, err)
 
 		attrField, ok := mStruct.FieldByName("Attr")
@@ -124,24 +123,8 @@ func TestNewStringFilter(t *testing.T) {
 		assert.Equal(t, "some string value", fv.Values[0])
 	})
 
-	t.Run("FilterKey", func(t *testing.T) {
-		filter, err := NewStringFilter(c, "[testing_models][filter_key][$ne]", "some string value")
-		require.NoError(t, err)
-
-		attrField, ok := mStruct.FieldByName("FilterKey")
-		require.True(t, ok)
-
-		assert.Equal(t, attrField, filter.StructField)
-		require.Len(t, filter.Values, 1)
-
-		fv := filter.Values[0]
-		assert.Equal(t, OpNotEqual, fv.Operator)
-		require.Len(t, fv.Values, 1)
-		assert.Equal(t, "some string value", fv.Values[0])
-	})
-
 	t.Run("ForeignKey", func(t *testing.T) {
-		_, err := NewStringFilter(c, "[testing_models][foreign_key][$ne]", "some string value")
+		_, err := NewUrlStringFilter(c, "[testing_models][foreign_key][$ne]", "some string value")
 		require.Error(t, err)
 
 		filter, err := NewStringFilterWithForeignKey(c, "[testing_models][foreign_key][$ne]", "some string value")
@@ -160,15 +143,15 @@ func TestNewStringFilter(t *testing.T) {
 	})
 
 	t.Run("Relationship", func(t *testing.T) {
-		filter, err := NewStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
+		filter, err := NewUrlStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
 		require.NoError(t, err)
 		attrField, ok := mStruct.FieldByName("Relation")
 		require.True(t, ok)
 
 		assert.Equal(t, attrField, filter.StructField)
-		require.Len(t, filter.NestedFilters(), 1)
+		require.Len(t, filter.Nested, 1)
 
-		nested := filter.NestedFilters()[0]
+		nested := filter.Nested[0]
 		require.Len(t, nested.Values, 1)
 
 		fv := nested.Values[0]
@@ -179,6 +162,7 @@ func TestNewStringFilter(t *testing.T) {
 }
 
 // TestFilterFormatQuery checks the FormatQuery function for the filters.
+//noinspection GoNilness
 func TestFilterFormatQuery(t *testing.T) {
 	c := controller.NewDefault()
 
@@ -192,7 +176,7 @@ func TestFilterFormatQuery(t *testing.T) {
 
 	t.Run("MultipleValue", func(t *testing.T) {
 		tm := time.Now()
-		f := NewFilter(mStruct.Primary(), OpIn, 1, 2.01, 30, "something", []string{"i", "am"}, true, tm, &tm)
+		f := NewFilterField(mStruct.Primary(), OpIn, 1, 2.01, 30, "something", []string{"i", "am"}, true, tm, &tm)
 		q := f.FormatQuery()
 		require.NotNil(t, q)
 
@@ -203,7 +187,8 @@ func TestFilterFormatQuery(t *testing.T) {
 		for k, v = range q {
 		}
 
-		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), OpIn.Raw), k)
+		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), OpIn.URLAlias), k)
+
 		if assert.Len(t, v, 1) {
 			v = strings.Split(v[0], annotation.Separator)
 			assert.Equal(t, "1", v[0])
@@ -222,7 +207,7 @@ func TestFilterFormatQuery(t *testing.T) {
 		rel, ok := mStruct.RelationField("relation")
 		require.True(t, ok)
 
-		relFilter := NewRelationshipFilter(rel, NewFilter(rel.ModelStruct().Primary(), OpIn, uint(1), uint64(2)))
+		relFilter := newRelationshipFilter(rel, NewFilterField(rel.ModelStruct().Primary(), OpIn, uint(1), uint64(2)))
 
 		q := relFilter.FormatQuery()
 
@@ -233,8 +218,9 @@ func TestFilterFormatQuery(t *testing.T) {
 		for k, v = range q {
 		}
 
-		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField.NeuronName(), relFilter.StructField.Relationship().Struct().Primary().NeuronName(), OpIn.Raw), k)
+		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField.NeuronName(), relFilter.StructField.Relationship().Struct().Primary().NeuronName(), OpIn.URLAlias), k)
 		if assert.Len(t, v, 1) {
+			assert.NotNil(t, v)
 			v = strings.Split(v[0], annotation.Separator)
 
 			assert.Equal(t, "1", v[0])

@@ -12,5 +12,5 @@ func TestFilterOperators(t *testing.T) {
 	assert.False(t, OpEqual.isRangeable())
 	assert.False(t, OpEqual.isStringOnly())
 	assert.True(t, OpContains.isStringOnly())
-	assert.Equal(t, operatorGreaterThanRaw, OpGreaterThan.Raw)
+	assert.Equal(t, "$gt", OpGreaterThan.URLAlias)
 }

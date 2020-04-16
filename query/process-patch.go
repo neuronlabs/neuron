@@ -443,7 +443,7 @@ func patchHasManyRelationship(ctx context.Context, s *Scope, relField *mapping.S
 	log.Debug2f("SCOPE[%s][%s] Patch HasMany relationship: '%s'", s.ID(), s.Struct().Collection(), relField.NeuronName())
 	// patch the related Scope
 	err = s.query(ctx, s.c, relatedValue.Interface()).
-		AddFilterField(NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
+		AddFilterField(NewFilterField(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
 		Patch()
 	if e, ok := err.(errors.ClassError); ok {
 		if e.Class() == class.QueryValueNoResult {
@@ -524,7 +524,7 @@ func patchMany2ManyRelationship(
 	if isEmpty && !justCreated {
 		// create the scope for clearing the relationship
 		err = s.query(ctx, s.c, mapping.NewValueSingle(relField.Relationship().JoinModel())).
-			AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+			AddFilterField(NewFilterField(relField.Relationship().ForeignKey(), OpIn, primaries...)).
 			Delete()
 		// delete the rows in the many2many relationship containing provided values
 		if err != nil {
@@ -544,7 +544,7 @@ func patchMany2ManyRelationship(
 		// value as the backreference primary field
 		// copy the root scope primary filters into backreference foreign key
 		err = s.query(ctx, s.c, mapping.NewValueSingle(relField.Relationship().JoinModel())).
-			AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+			AddFilterField(NewFilterField(relField.Relationship().ForeignKey(), OpIn, primaries...)).
 			Delete()
 		// delete the entries in the join model
 		switch e := err.(type) {
@@ -568,7 +568,7 @@ func patchMany2ManyRelationship(
 	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values.", s.ID(), s.Struct().Collection(), relField.NeuronName())
 	checkScope := s.query(ctx, s.c, mapping.NewValueMany(relField.Relationship().Struct())).
 		SetFields("id").
-		AddFilterField(NewFilter(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
+		AddFilterField(NewFilterField(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
 		Scope()
 	err = checkScope.ListContext(ctx)
 	switch e := err.(type) {
@@ -647,7 +647,7 @@ func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relFiel
 	// create clearScope for the relation field's model
 	err := s.query(ctx, s.c, relField.Relationship().Struct()).
 		SetFields(relField.Relationship().ForeignKey()).
-		AddFilterField(NewFilter(relField.Relationship().ForeignKey(), OpIn, primaries...)).
+		AddFilterField(NewFilterField(relField.Relationship().ForeignKey(), OpIn, primaries...)).
 		Patch()
 	if e, ok := err.(errors.ClassError); ok {
 		// if the error is no value result clear the error

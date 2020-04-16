@@ -18,7 +18,7 @@ type countModel1 struct {
 }
 
 func (c *countModel1) BeforeCount(ctx context.Context, s *Scope) error {
-	if err := s.FilterField(NewFilter(s.Struct().Primary(), OpLessThan, 50)); err != nil {
+	if err := s.FilterField(NewFilterField(s.Struct().Primary(), OpLessThan, 50)); err != nil {
 		return err
 	}
 	return nil
@@ -127,7 +127,7 @@ func TestCount(t *testing.T) {
 			count := int64(2)
 			hasOneRepo.On("Count", mock.Anything, mock.Anything).Once().Return(count, nil)
 
-			err = s.Filter("filter[has_one_models][has_one][id][$in]", 12)
+			err = s.Filter("has_one.id IN", 12)
 			require.NoError(t, err)
 
 			i, err := s.Count()

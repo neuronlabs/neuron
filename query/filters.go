@@ -30,25 +30,15 @@ func (f Filters) String() string {
 // It is based on the mapping.StructField.
 type FilterField struct {
 	StructField *mapping.StructField
-	// Key is used for the map type filters as a nested argument.
-	Key string
 	// Values are the filter values for given attribute FilterField
-	Values []*OperatorValues
-	// if given filterField is a relationship type it should be filter by it's
-	// subfields (for given relation type).
-	// Relationships are the filter values for given relationship FilterField
+	Values []OperatorValues
+	// Nested are the relationship fields filters.
 	Nested []*FilterField
 }
 
 // Copy returns the copy of the filter field.
 func (f *FilterField) Copy() *FilterField {
 	return f.copy()
-}
-
-// NestedFilters returns the nested filters for given filter fields.
-// Nested filters are the filters used for relationship or composite attribute filters.
-func (f *FilterField) NestedFilters() []*FilterField {
-	return f.Nested
 }
 
 // FormatQuery formats the filter field into url.Values.
@@ -95,9 +85,9 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relNam
 		}
 
 		if len(relName) > 0 {
-			sb.WriteString(fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.Raw))
+			sb.WriteString(fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.URLAlias))
 		} else {
-			sb.WriteString(fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.Raw))
+			sb.WriteString(fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.URLAlias))
 		}
 
 		var vals []string
@@ -122,16 +112,18 @@ func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relNam
 }
 
 func (f *FilterField) copy() *FilterField {
-	cp := &FilterField{
-		StructField: f.StructField,
-		Key:         f.Key,
+	cp := &FilterField{StructField: f.StructField}
+	if len(f.Values) > 0 {
+		cp.Values = make([]OperatorValues, len(f.Values))
+		for i := range f.Values {
+			cp.Values[i] = f.Values[i].copy()
+		}
 	}
-
-	for _, ov := range f.Values {
-		cp.Values = append(cp.Values, ov.copy())
-	}
-	for _, nested := range f.Nested {
-		cp.Nested = append(cp.Nested, nested.copy())
+	if len(f.Nested) > 0 {
+		cp.Nested = make([]*FilterField, len(f.Nested))
+		for i, nested := range f.Nested {
+			cp.Nested[i] = nested.copy()
+		}
 	}
 	return cp
 }
@@ -143,11 +135,11 @@ func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 		var fk string
 		switch {
 		case len(relName) > 0:
-			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.Raw)
+			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.URLAlias)
 		case f.StructField.IsLanguage():
 			fk = ParamLanguage
 		default:
-			fk = fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.Raw)
+			fk = fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.URLAlias)
 		}
 
 		// [fieldName][operator]
@@ -165,24 +157,42 @@ func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 	}
 }
 
-// NewFilter creates new filterfield for given field, operator and values.
-func NewFilter(field *mapping.StructField, op *Operator, values ...interface{}) *FilterField {
-	return &FilterField{StructField: field, Values: []*OperatorValues{{values, op}}}
+// NewFilterField creates new filterField for given 'field', operator and 'values'.
+func NewFilterField(field *mapping.StructField, op *Operator, values ...interface{}) *FilterField {
+	return &FilterField{StructField: field, Values: []OperatorValues{{values, op}}}
 }
 
-// NewRelationshipFilter creates new relationship filter for the 'relation' StructField.
-// It adds all the nested relation subfilters 'relFilters'.
-func NewRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterField) *FilterField {
-	return &FilterField{StructField: relation, Nested: relFilters}
+// NewFilter creates new filterField for the default controller, 'model', 'filter' query and 'values'.
+// The 'filter' should be of form:
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+//	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
+// The field might be a Golang model field name or the neuron name.
+func NewFilter(model interface{}, filter string, values ...interface{}) (*FilterField, error) {
+	return newFilter(controller.Default(), model, filter, values...)
 }
 
-// NewStringFilter creates the filter field based on the provided 'filter' and 'values'.
+// NewFilterC creates new filterField for the controller 'c', 'model', 'filter' query and 'values'.
+// The 'filter' should be of form:
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+//	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
+// The field might be a Golang model field name or the neuron name.
+func NewFilterC(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
+	return newFilter(c, model, filter, values...)
+}
+
+// NewUrlStringFilter creates the filter field based on the provided 'filter' and 'values' in the 'url' format.
 // Example:
-//	- 'fitler': "[collection][fieldName][operator]"
+//	- 'filter': "[collection][fieldName][operator]"
 //  - 'values': 5, 13
 // This function doesn't allow to filter over foreign keys.
-func NewStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
-	return newStringFilter(c, filter, false, values...)
+func NewUrlStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
+	return newUrlStringFilter(c, filter, false, values...)
+}
+
+// newRelationshipFilter creates new relationship filter for the 'relation' StructField.
+// It adds all the nested relation sub filters 'relFilters'.
+func newRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterField) *FilterField {
+	return &FilterField{StructField: relation, Nested: relFilters}
 }
 
 // NewStringFilterWithForeignKey creates the filter field based on the provided filter, schemaName and values.
@@ -192,14 +202,67 @@ func NewStringFilter(c *controller.Controller, filter string, values ...interfac
 //  - 'values': 5, 13
 // This function allow to filter over the foreign key fields.
 func NewStringFilterWithForeignKey(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
-	return newStringFilter(c, filter, true, values...)
+	return newUrlStringFilter(c, filter, true, values...)
 }
 
-func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
+func newFilter(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
+	mStruct, err := c.ModelStruct(model)
+	if err != nil {
+		return nil, err
+	}
+	field, op, err := filterSplitOperator(filter)
+	if err != nil {
+		return nil, err
+	}
+	return newModelFilter(mStruct, field, op, values...)
+}
+
+func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values ...interface{}) (*FilterField, error) {
+	// check if the field is created for the
+	dotIndex := strings.IndexRune(field, '.')
+	if dotIndex != -1 {
+		// the filter must be of relationship type
+		relation, relationField := field[:dotIndex], field[dotIndex+1:]
+		sField, ok := m.RelationField(relation)
+		if !ok {
+			return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
+		}
+		subFilter, err := newModelFilter(sField.Relationship().Struct(), relationField, op, values...)
+		if err != nil {
+			return nil, err
+		}
+		return &FilterField{
+			StructField: sField,
+			Nested:      []*FilterField{subFilter},
+		}, nil
+	}
+	sField, ok := m.Field(field)
+	if !ok {
+		return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
+	}
+	return &FilterField{
+		StructField: sField,
+		Values:      []OperatorValues{{Operator: op, Values: values}},
+	}, nil
+}
+
+func filterSplitOperator(filter string) (string, *Operator, error) {
+	// divide the query into field and operator
+	spaceIndex := strings.IndexRune(filter, ' ')
+	if spaceIndex == -1 {
+		return "", nil, errors.NewDetf(class.QueryFilterInvalidFormat, "provided invalid filter format: '%s'", filter)
+	}
+	field, operator := filter[:spaceIndex], filter[spaceIndex+1:]
+	op, ok := FilterOperators.Get(strings.ToLower(operator))
+	if !ok {
+		return "", nil, errors.NewDetf(class.QueryFilterUnknownOperator, "provided unsupported operator: '%s'", operator)
+	}
+	return field, op, nil
+}
+
+func newUrlStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
 	// it is allowed to have a prefix for filter
 	filter = strings.TrimPrefix(filter, ParamFilter)
-
-	// ID > 100 OR Name STARTS WITH 'marian';
 
 	params, err := SplitBracketParameter(filter)
 	if err != nil {
@@ -208,9 +271,9 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 
 	mStruct := c.ModelMap.GetByCollection(params[0])
 	if mStruct == nil {
-		err := errors.NewDet(class.QueryFilterUnknownCollection, "provided filter collection not found")
-		err.SetDetailsf("Filter model: '%s' not found", params[0])
-		return nil, err
+		detErr := errors.NewDet(class.QueryFilterUnknownCollection, "provided filter collection not found")
+		detErr.SetDetailsf("Filter model: '%s' not found", params[0])
+		return nil, detErr
 	}
 
 	var (
@@ -222,9 +285,9 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 	findOperator := func(index int) error {
 		op, ok = FilterOperators.Get(params[index])
 		if !ok {
-			err := errors.NewDet(class.QueryFilterUnknownOperator, "operator not found")
-			err.SetDetailsf("Unknown filte operator not found: %s", params[index])
-			return err
+			detErr := errors.NewDet(class.QueryFilterUnknownOperator, "operator not found")
+			detErr.SetDetailsf("Unknown filter operator not found: %s", params[index])
+			return detErr
 		}
 		return nil
 	}
@@ -236,7 +299,7 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 	case 2, 3:
 		// [collection][field][op]
 		if len(params) == 3 {
-			if err := findOperator(2); err != nil {
+			if err = findOperator(2); err != nil {
 				return nil, err
 			}
 		} else {
@@ -250,15 +313,12 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 				field, ok = mStruct.ForeignKey(params[1])
 			}
 			if !ok {
-				field, ok = mStruct.FilterKey(params[1])
-			}
-			if !ok {
-				err := errors.NewDet(class.QueryFilterUnknownField, "field not found")
-				err.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
-				return nil, err
+				detErr := errors.NewDet(class.QueryFilterUnknownField, "field not found")
+				detErr.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
+				return nil, detErr
 			}
 		}
-		f = &FilterField{StructField: field, Values: []*OperatorValues{{values, op}}}
+		f = &FilterField{StructField: field, Values: []OperatorValues{{values, op}}}
 	case 4:
 		// [collection][relationship][field][op]
 		if err = findOperator(3); err != nil {
@@ -275,26 +335,22 @@ func newStringFilter(c *controller.Controller, filter string, foreignKeyAllowed 
 					field, ok = relStruct.ForeignKey(params[2])
 				}
 				if !ok {
-					field, ok = relStruct.FilterKey(params[2])
-				}
-				if !ok {
-					err := errors.NewDet(class.QueryFilterInvalidField, "field not found")
-					err.SetDetailsf("Field: '%s' not found within the relation ModelStruct: '%s'", params[2], relStruct.Collection())
-					return nil, err
+					detErr := errors.NewDet(class.QueryFilterInvalidField, "field not found")
+					detErr.SetDetailsf("Field: '%s' not found within the relation ModelStruct: '%s'", params[2], relStruct.Collection())
+					return nil, detErr
 				}
 			}
 
-			nested := NewFilter(field, op, values...)
+			nested := NewFilterField(field, op, values...)
 			f.Nested = append(f.Nested, nested)
 		} else if attr, ok := mStruct.Attribute(params[1]); ok {
-			// TODO: support nested struct filtering
-			err := errors.NewDet(class.QueryFilterUnsupportedField, "nested fields filter is not supported")
-			err.SetDetailsf("Field: '%s' is a composite field. Filtering nested attribute fields is not supported.", attr.NeuronName())
-			return nil, err
+			detErr := errors.NewDet(class.QueryFilterUnsupportedField, "nested fields filter is not supported")
+			detErr.SetDetailsf("Field: '%s' is a composite field. Filtering nested attribute fields is not supported.", attr.NeuronName())
+			return nil, detErr
 		} else {
-			err := errors.NewDet(class.QueryFilterUnknownField, "field not found")
-			err.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
-			return nil, err
+			detErr := errors.NewDet(class.QueryFilterUnknownField, "field not found")
+			detErr.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
+			return nil, detErr
 		}
 	}
 	return f, nil

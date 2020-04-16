@@ -1,8 +1,6 @@
 package query
 
 import (
-	"sync"
-
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
@@ -13,28 +11,29 @@ import (
 // query filter operators.
 var FilterOperators = newOpContainer()
 
-// Operator definitions variables.
+// Logical Operators
 var (
-	// Logical Operators
-	OpEqual        = &Operator{Raw: operatorEqualRaw, Name: "Equal"}
-	OpIn           = &Operator{Raw: operatorInRaw, Name: "In"}
-	OpNotEqual     = &Operator{Raw: operatorNotEqualRaw, Name: "NotEqual"}
-	OpNotIn        = &Operator{Raw: operatorNotInRaw, Name: "NotIn"}
-	OpGreaterThan  = &Operator{Raw: operatorGreaterThanRaw, Name: "GreaterThan"}
-	OpGreaterEqual = &Operator{Raw: operatorGreaterEqualRaw, Name: "GreaterThanOrEqualTo"}
-	OpLessThan     = &Operator{Raw: operatorLessThanRaw, Name: "LessThan"}
-	OpLessEqual    = &Operator{Raw: operatorLessEqualRaw, Name: "LessThanOrEqualTo"}
+	OpEqual        = &Operator{Value: "=", URLAlias: "$eq", Name: "Equal", Aliases: []string{"=="}}
+	OpIn           = &Operator{Value: "in", URLAlias: "$in", Name: "In"}
+	OpNotEqual     = &Operator{Value: "!=", URLAlias: "$ne", Name: "NotEqual", Aliases: []string{"<>"}}
+	OpNotIn        = &Operator{Value: "not in", URLAlias: "$not_in", Name: "NotIn"}
+	OpGreaterThan  = &Operator{Value: ">", URLAlias: "$gt", Name: "GreaterThan"}
+	OpGreaterEqual = &Operator{Value: ">=", URLAlias: "$ge", Name: "GreaterThanOrEqualTo"}
+	OpLessThan     = &Operator{Value: "<", URLAlias: "$lt", Name: "LessThan"}
+	OpLessEqual    = &Operator{Value: "<=", URLAlias: "$le", Name: "LessThanOrEqualTo"}
+)
 
-	// Strings Only operators.
-	OpContains   = &Operator{Raw: operatorContainsRaw, Name: "Contains"}
-	OpStartsWith = &Operator{Raw: operatorStartsWithRaw, Name: "StartsWith"}
-	OpEndsWith   = &Operator{Raw: operatorEndsWithRaw, Name: "EndsWith"}
+// Strings Only operators.
+var (
+	OpContains   = &Operator{Value: "contains", URLAlias: "$contains", Name: "Contains"}
+	OpStartsWith = &Operator{Value: "starts with", URLAlias: "$starts_with", Name: "StartsWith"}
+	OpEndsWith   = &Operator{Value: "ends with", URLAlias: "$ends_with", Name: "EndsWith"}
+)
 
-	// Null and Existence operators.
-	OpIsNull    = &Operator{Raw: operatorIsNullRaw, Name: "IsNull"}
-	OpNotNull   = &Operator{Raw: operatorNotNullRaw, Name: "NotNull"}
-	OpExists    = &Operator{Raw: operatorExistsRaw, Name: "Exists"}
-	OpNotExists = &Operator{Raw: operatorNotExistsRaw, Name: "NotExists"}
+// Null and Existence operators.
+var (
+	OpIsNull  = &Operator{Value: "is null", URLAlias: "$is_null", Name: "IsNull"}
+	OpNotNull = &Operator{Value: "not null", URLAlias: "$not_null", Name: "NotNull"}
 )
 
 var defaultOperators = []*Operator{
@@ -51,18 +50,20 @@ var defaultOperators = []*Operator{
 	OpEndsWith,
 	OpIsNull,
 	OpNotNull,
-	OpExists,
-	OpNotExists,
 }
 
 // Operator is the operator used for filtering the query.
 type Operator struct {
 	// ID is the filter operator id used for comparing the operator type.
 	ID uint16
-	// Raw is the filtering string value of the current operator.
-	Raw string
+	// Value is the operator query value
+	Value string
 	// Name is the human readable filter operator name.
 	Name string
+	// URLAlias is the alias value for the url parsable value operator.
+	URLAlias string
+	// Aliases is the alias for the operator raw value.
+	Aliases []string
 }
 
 // IsStandard checks if the operator is standard.
@@ -115,8 +116,8 @@ type OperatorValues struct {
 	Operator *Operator
 }
 
-func (o *OperatorValues) copy() *OperatorValues {
-	ov := &OperatorValues{
+func (o OperatorValues) copy() OperatorValues {
+	ov := OperatorValues{
 		Operator: o.Operator,
 		Values:   make([]interface{}, len(o.Values)),
 	}
@@ -146,8 +147,8 @@ Operator Container
 // It registers new operators and checks if no operator with
 // provided Raw value already exists inside.
 type operatorContainer struct {
-	operators map[string]*Operator
-	*sync.Mutex
+	operators      map[string]*Operator
+	urlOperators   map[string]*Operator
 	lastID         uint16
 	lastStandardID uint16
 }
@@ -156,7 +157,6 @@ type operatorContainer struct {
 func newOpContainer() *operatorContainer {
 	o := &operatorContainer{
 		operators: make(map[string]*Operator),
-		Mutex:     &sync.Mutex{},
 	}
 
 	err := o.registerManyOperators(defaultOperators...)
@@ -191,12 +191,8 @@ func (c *operatorContainer) nextID() uint16 {
 }
 
 func (c *operatorContainer) registerManyOperators(ops ...*Operator) error {
-	c.Lock()
-	defer c.Unlock()
-
 	for _, op := range ops {
-		nextID := c.nextID()
-		err := c.registerOperatorNonLocked(op, nextID)
+		err := c.registerOperator(op)
 		if err != nil {
 			return err
 		}
@@ -209,26 +205,28 @@ func (c *operatorContainer) registerOperators(ops ...*Operator) error {
 	return c.registerManyOperators(ops...)
 }
 
-func (c *operatorContainer) registerOperatorNonLocked(op *Operator, nextID uint16) error {
+func (c *operatorContainer) registerOperator(op *Operator) error {
+	op.ID = c.nextID()
 	for _, o := range c.operators {
 		if o.Name == op.Name {
-			return errors.NewDetf(class.InternalQueryFilter, "Operator with the name: %s and value: %s already registered.", op.Name, op.Raw)
+			return errors.NewDetf(class.InternalQueryFilter, "operator with the name: %s and value: %s already registered.", op.Name, op.URLAlias)
 		}
-		if o.Raw == op.Raw {
-			return errors.NewDetf(class.InternalQueryFilter, "Operator already registered. %+v", op)
+		if (op.URLAlias != "" && (op.URLAlias == o.URLAlias)) || op.Value == o.Value {
+			return errors.NewDetf(class.InternalQueryFilter, "operator already registered. %+v", op)
 		}
 	}
-	op.ID = nextID
 
-	c.operators[op.Raw] = op
+	c.operators[op.Value] = op
+	// Set any possible alias for given operator.
+	if op.URLAlias != "" {
+		c.operators[op.URLAlias] = op
+	}
+	for _, alias := range op.Aliases {
+		_, ok := c.operators[alias]
+		if ok {
+			return errors.NewDetf(class.InternalQueryFilter, "operator alias: '%s' already registered. Operator: '%s'", alias, op.Name)
+		}
+		c.operators[alias] = op
+	}
 	return nil
-}
-
-// RegisterOperator registers single operator.
-func (c *operatorContainer) registerOperator(op *Operator) error {
-	c.Lock()
-	defer c.Unlock()
-	id := c.nextID()
-
-	return c.registerOperatorNonLocked(op, id)
 }

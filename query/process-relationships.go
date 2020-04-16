@@ -217,7 +217,7 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 	// convert the filters into the foreign key filters of the root scope
 	foreignKey := filter.StructField.Relationship().ForeignKey()
 	filterField := s.getOrCreateForeignKeyFilter(foreignKey)
-	filterField.Values = append(filterField.Values, &OperatorValues{Operator: OpIn, Values: primaries})
+	filterField.Values = append(filterField.Values, OperatorValues{Operator: OpIn, Values: primaries})
 	// send the index of the filter to remove from the scope
 	return index, nil
 }
@@ -290,7 +290,7 @@ func convertHasManyRelationshipFilter(ctx context.Context, s *Scope, index int, 
 		return 0, err
 	}
 	primaryFilter := s.getOrCreatePrimaryFilter()
-	primaryFilter.Values = append(primaryFilter.Values, &OperatorValues{foreignValues, OpIn})
+	primaryFilter.Values = append(primaryFilter.Values, OperatorValues{foreignValues, OpIn})
 	return index, nil
 }
 
@@ -366,7 +366,7 @@ func convertHasOneRelationshipFilter(ctx context.Context, s *Scope, index int, f
 	}
 
 	primaryFilter := s.getOrCreatePrimaryFilter()
-	primaryFilter.Values = append(primaryFilter.Values, &OperatorValues{foreignValues, OpIn})
+	primaryFilter.Values = append(primaryFilter.Values, OperatorValues{foreignValues, OpIn})
 
 	return index, nil
 }
@@ -427,7 +427,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 		// Add (or get) the ID filter for the primary key in the root scope
 		rootIDFilter := s.getOrCreatePrimaryFilter()
 		// add the backreference field values into primary key filter
-		rootIDFilter.Values = append(rootIDFilter.Values, &OperatorValues{fkValues, OpIn})
+		rootIDFilter.Values = append(rootIDFilter.Values, OperatorValues{fkValues, OpIn})
 		return index, nil
 	}
 
@@ -441,15 +441,9 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 		case mapping.KindPrimary:
 			nestedFilter = relScope.getOrCreatePrimaryFilter()
 		case mapping.KindAttribute:
-			if nested.StructField.IsLanguage() {
-				nestedFilter = relScope.getOrCreateLanguageFilter()
-			} else {
-				nestedFilter = relScope.getOrCreateAttributeFilter(nested.StructField)
-			}
+			nestedFilter = relScope.getOrCreateAttributeFilter(nested.StructField)
 		case mapping.KindForeignKey:
 			nestedFilter = relScope.getOrCreateForeignKeyFilter(nested.StructField)
-		case mapping.KindFilterKey:
-			nestedFilter = relScope.getOrCreateFilterKeyFilter(nested.StructField)
 		case mapping.KindRelationshipMultiple, mapping.KindRelationshipSingle:
 			nestedFilter = relScope.getOrCreateRelationshipFilter(nested.StructField)
 		default:
@@ -479,7 +473,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 	joinScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField.Relationship().JoinModel()), true)
 
 	mtmFKFilter := joinScope.getOrCreateForeignKeyFilter(filter.StructField.Relationship().ManyToManyForeignKey())
-	mtmFKFilter.Values = append(mtmFKFilter.Values, &OperatorValues{primaries, OpIn})
+	mtmFKFilter.Values = append(mtmFKFilter.Values, OperatorValues{primaries, OpIn})
 
 	fk := filter.StructField.Relationship().ForeignKey()
 	if err := joinScope.setFields(fk); err != nil {
@@ -497,7 +491,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 	}
 
 	rootIDFilter := s.getOrCreatePrimaryFilter()
-	rootIDFilter.Values = append(rootIDFilter.Values, &OperatorValues{fkValues, OpIn})
+	rootIDFilter.Values = append(rootIDFilter.Values, OperatorValues{fkValues, OpIn})
 
 	return index, nil
 }
@@ -741,7 +735,7 @@ func getForeignRelationshipHasOne(ctx context.Context, s *Scope, v reflect.Value
 	relatedScope.collectionScope = relatedScope
 
 	// set filterfield
-	filter := NewFilter(fk, op, filterValues...)
+	filter := NewFilterField(fk, op, filterValues...)
 	if err := relatedScope.addFilterField(filter); err != nil {
 		return err
 	}
@@ -912,7 +906,7 @@ func getForeignRelationshipHasMany(ctx context.Context, s *Scope, v reflect.Valu
 	relatedScope.collectionScope = relatedScope
 
 	fk := rel.ForeignKey()
-	filterField := NewFilter(fk, op, filterValues...)
+	filterField := NewFilterField(fk, op, filterValues...)
 
 	if err = relatedScope.addFilterField(filterField); err != nil {
 		log.Errorf("AddingFilterField failed. %v", err)
@@ -1056,7 +1050,7 @@ func getForeignRelationshipManyToMany(ctx context.Context, s *Scope, v reflect.V
 	joinScope.collectionScope = joinScope
 
 	// Add filter on the backreference foreign key (root scope primary keys) to the join scope
-	filterField := NewFilter(fk, op, filterValues...)
+	filterField := NewFilterField(fk, op, filterValues...)
 	if err := joinScope.addFilterField(filterField); err != nil {
 		return err
 	}

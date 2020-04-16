@@ -35,8 +35,6 @@ type ModelStruct struct {
 	relationships map[string]*StructField
 	// ForeignKeys is a container for the foreign keys for the relationships
 	foreignKeys map[string]*StructField
-	// filterKeys is a container for the filter keys
-	filterKeys map[string]*StructField
 
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
@@ -66,7 +64,6 @@ func newModelStruct(tp reflect.Type, collection string) *ModelStruct {
 	m.attributes = make(map[string]*StructField)
 	m.relationships = make(map[string]*StructField)
 	m.foreignKeys = make(map[string]*StructField)
-	m.filterKeys = make(map[string]*StructField)
 	m.store = map[interface{}]interface{}{}
 	return m
 }
@@ -145,25 +142,6 @@ func (m *ModelStruct) Fields() (fields []*StructField) {
 // FieldCount gets the field number for given model.
 func (m *ModelStruct) FieldCount() int {
 	return len(m.attributes) + len(m.relationships)
-}
-
-// FilterKey return model's fitler key.
-func (m *ModelStruct) FilterKey(fk string) (*StructField, bool) {
-	s, ok := m.filterKeys[fk]
-	return s, ok
-}
-
-// FilterKeys returns the slice of filter key fields.
-func (m *ModelStruct) FilterKeys() (filterKeys []*StructField) {
-	if len(m.filterKeys) == 0 {
-		return []*StructField{}
-	}
-	for _, field := range m.structFields {
-		if field.kind == KindFilterKey {
-			filterKeys = append(filterKeys, field)
-		}
-	}
-	return filterKeys
 }
 
 // ForeignKey checks and returns model's foreign key field.
@@ -393,12 +371,12 @@ func (m *ModelStruct) computeNestedIncludedCount(limit int) {
 }
 
 func (m *ModelStruct) findTimeRelatedFields() error {
-	namer := m.NamerFunc()
+	namerFunc := m.NamerFunc()
 	var err error
 	_, ok := m.CreatedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultCreatedAt := namer("CreatedAt")
+		defaultCreatedAt := namerFunc("CreatedAt")
 		if createdAtField, ok := m.Attribute(defaultCreatedAt); ok {
 			if err = m.setTimeRelatedField(createdAtField, fCreatedAt); err != nil {
 				return err
@@ -409,7 +387,7 @@ func (m *ModelStruct) findTimeRelatedFields() error {
 	_, ok = m.DeletedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultDeletedAt := namer("DeletedAt")
+		defaultDeletedAt := namerFunc("DeletedAt")
 		if deletedAtField, ok := m.Attribute(defaultDeletedAt); ok {
 			if err = m.setTimeRelatedField(deletedAtField, fDeletedAt); err != nil {
 				return err
@@ -420,7 +398,7 @@ func (m *ModelStruct) findTimeRelatedFields() error {
 	_, ok = m.UpdatedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultUpdatedAt := namer("UpdatedAt")
+		defaultUpdatedAt := namerFunc("UpdatedAt")
 		if updatedAtField, ok := m.Attribute(defaultUpdatedAt); ok {
 			if err = m.setTimeRelatedField(updatedAtField, fUpdatedAt); err != nil {
 				return err
@@ -521,7 +499,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 			nestedModelValue = reflect.New(nestedModelType).Elem()
 
-			if err := m.mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
+			if err = m.mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
 				log.Debugf("Mapping embedded field: %s failed: %v", tField.Name, err)
 				return err
 			}
@@ -599,10 +577,6 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			}
 		case annotation.ForeignKey, annotation.ForeignKeyFull, annotation.ForeignKeyFullS, annotation.ForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
-				return err
-			}
-		case annotation.FilterKey:
-			if err = m.setFilterKeyField(structField); err != nil {
 				return err
 			}
 		default:
@@ -873,19 +847,6 @@ func (m *ModelStruct) setFieldsConfigs() error {
 			break
 		}
 	}
-	return nil
-}
-
-func (m *ModelStruct) setFilterKeyField(structField *StructField) error {
-	// check for duplicates
-	_, ok := m.FilterKey(structField.NeuronName())
-	if ok {
-		return errors.NewDetf(class.ModelFieldName, "duplicated filter key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
-	}
-
-	structField.kind = KindFilterKey
-	m.filterKeys[structField.neuronName] = structField
-	m.filterKeys[structField.fieldName()] = structField
 	return nil
 }
 

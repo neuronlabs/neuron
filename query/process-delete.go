@@ -347,7 +347,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 				// remove primary key from fieldset
 				delete(s.Fieldset, s.Struct().Primary().NeuronName())
 			}
-			primaryFilter.Values = append(primaryFilter.Values, &OperatorValues{Operator: OpIn, Values: primaryValues})
+			primaryFilter.Values = append(primaryFilter.Values, OperatorValues{Operator: OpIn, Values: primaryValues})
 		}
 	}
 	var primaries []interface{}
@@ -396,7 +396,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	if !reduce {
 		// if the scope has any non primary field filters set the reduction true
-		if len(s.AttributeFilters) != 0 || len(s.RelationFilters) != 0 || s.LanguageFilters != nil || len(s.ForeignFilters) != 0 {
+		if len(s.AttributeFilters) != 0 || len(s.RelationFilters) != 0 || len(s.ForeignFilters) != 0 {
 			reduce = true
 		}
 	}
@@ -447,7 +447,7 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 
 	// reduce the filters as the primary filters in the root scope
 	primaryFilter := s.getOrCreatePrimaryFilter()
-	primaryFilter.Values = append(primaryFilter.Values, &OperatorValues{Operator: OpIn, Values: primaries})
+	primaryFilter.Values = append(primaryFilter.Values, OperatorValues{Operator: OpIn, Values: primaries})
 
 	s.StoreSet(internal.ReducedPrimariesStoreKey, primaries)
 	s.StoreSet(internal.PrimariesAlreadyChecked, struct{}{})
