@@ -477,5 +477,4 @@ func TestPaginationString(t *testing.T) {
 
 	assert.Contains(t, s, "Limit: 10")
 	assert.Contains(t, s, "Offset: 10")
-
 }

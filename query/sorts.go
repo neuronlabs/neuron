@@ -97,7 +97,6 @@ func (o SortOrder) String() string {
 // The function throws errors on duplicated field values.
 func NewSortFields(m *mapping.ModelStruct, disallowFK bool, sortFields ...string) ([]*SortField, error) {
 	return newUniqueSortFields(m, disallowFK, sortFields...)
-
 }
 
 // NewSort creates new 'sort' field for given model 'm'. If the 'disallowFK' is set to true
@@ -342,6 +341,5 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 func newSortField(sField *mapping.StructField, o SortOrder, subs ...*SortField) *SortField {
 	sort := &SortField{StructField: sField, Order: o}
 	sort.SubFields = append(sort.SubFields, subs...)
-
 	return sort
 }

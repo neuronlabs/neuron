@@ -235,8 +235,3 @@ func (s *Scope) setFiltersTo(to *Scope) error {
 
 	return nil
 }
-
-func (s *Scope) setPrimaryFilterValues(values ...interface{}) {
-	filter := s.getOrCreatePrimaryFilter()
-	filter.Values = append(filter.Values, OperatorValues{Operator: OpIn, Values: values})
-}

@@ -73,5 +73,4 @@ func TestOrderedFields(t *testing.T) {
 			assert.Equal(t, "Third", field.Name())
 		}
 	}
-
 }

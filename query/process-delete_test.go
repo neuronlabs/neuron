@@ -189,7 +189,6 @@ func TestDelete(t *testing.T) {
 		})
 
 		t.Run("Rollback", func(t *testing.T) {
-
 			r, err := c.GetRepository(deleteTMRelations{})
 			require.NoError(t, err)
 

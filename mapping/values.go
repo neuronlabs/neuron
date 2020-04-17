@@ -255,7 +255,7 @@ func stringValue(val interface{}, values *[]string) {
 	case uint32:
 		*values = append(*values, strconv.FormatUint(uint64(v), 10))
 	case uint64:
-		*values = append(*values, strconv.FormatUint(uint64(v), 10))
+		*values = append(*values, strconv.FormatUint(v, 10))
 	case int:
 		*values = append(*values, strconv.FormatInt(int64(v), 10))
 	case int8:
@@ -265,7 +265,7 @@ func stringValue(val interface{}, values *[]string) {
 	case int32:
 		*values = append(*values, strconv.FormatInt(int64(v), 10))
 	case int64:
-		*values = append(*values, strconv.FormatInt(int64(v), 10))
+		*values = append(*values, strconv.FormatInt(v, 10))
 	case float32:
 		*values = append(*values, strconv.FormatFloat(float64(v), 'f', -1, 32))
 	case float64:

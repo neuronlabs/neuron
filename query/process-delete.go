@@ -357,13 +357,13 @@ func reducePrimaryFilters(ctx context.Context, s *Scope) error {
 	// if the operator is different than OpIn and OpEqual
 	// then the reduction is necessary
 	for _, pk := range s.PrimaryFilters {
-		for _, fv := range pk.Values {
-			switch fv.Operator {
+		for i := range pk.Values {
+			switch pk.Values[i].Operator {
 			case OpIn:
-				primaries = append(primaries, fv.Values...)
+				primaries = append(primaries, pk.Values[i].Values...)
 			case OpEqual:
-				fv.Operator = OpIn
-				primaries = append(primaries, fv.Values...)
+				pk.Values[i].Operator = OpIn
+				primaries = append(primaries, pk.Values[i].Values...)
 			default:
 				reduce = true
 			}

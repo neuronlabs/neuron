@@ -288,7 +288,6 @@ func TestMappedRelationships(t *testing.T) {
 				assert.Equal(t, fk, hasManyField.relationship.foreignKey)
 				assert.Equal(t, RelHasMany, hasManyField.relationship.kind)
 				assert.Equal(t, fkModel, hasManyField.relationship.mStruct)
-
 			}
 		})
 	})

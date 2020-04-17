@@ -121,7 +121,6 @@ func registerRepositoryConnection() {
 	RepositoryConnectionTimedOut = newClass()
 	RepositoryConnectionURI = newClass()
 	RepositoryConnectionSSL = newClass()
-
 }
 
 /**
@@ -176,7 +175,6 @@ func registerRepositoryInterface() {
 	RepositoryNotImplementsPatcher = newClass()
 	RepositoryNotImplementsTransactioner = newClass()
 	RepositoryNotImplementsMigrator = newClass()
-
 }
 
 var (

@@ -277,7 +277,6 @@ func (s *StructField) baseFieldType() reflect.Type {
 	elem := s.reflectField.Type
 	for elem.Kind() == reflect.Ptr || elem.Kind() == reflect.Slice ||
 		elem.Kind() == reflect.Array || elem.Kind() == reflect.Map {
-
 		elem = elem.Elem()
 	}
 	return elem

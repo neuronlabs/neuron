@@ -67,39 +67,39 @@ type Operator struct {
 }
 
 // IsStandard checks if the operator is standard.
-func (f Operator) IsStandard() bool {
+func (f *Operator) IsStandard() bool {
 	return f.ID <= FilterOperators.lastStandardID
 }
 
 // IsBasic checks if the operator is 'OpEqual' or OpNotEqual.
-func (f Operator) IsBasic() bool {
+func (f *Operator) IsBasic() bool {
 	return f.isBasic()
 }
 
 // IsRangeable checks if the operator allows to have value ranges.
-func (f Operator) IsRangeable() bool {
+func (f *Operator) IsRangeable() bool {
 	return f.isRangeable()
 }
 
 // IsStringOnly checks if the operator is 'string only'.
-func (f Operator) IsStringOnly() bool {
+func (f *Operator) IsStringOnly() bool {
 	return f.isStringOnly()
 }
 
 // String implements Stringer interface.
-func (f Operator) String() string {
+func (f *Operator) String() string {
 	return f.Name
 }
 
-func (f Operator) isBasic() bool {
+func (f *Operator) isBasic() bool {
 	return f.ID == OpEqual.ID || f.ID == OpNotEqual.ID
 }
 
-func (f Operator) isRangeable() bool {
+func (f *Operator) isRangeable() bool {
 	return f.ID >= OpGreaterThan.ID && f.ID <= OpLessEqual.ID
 }
 
-func (f Operator) isStringOnly() bool {
+func (f *Operator) isStringOnly() bool {
 	return f.ID >= OpContains.ID && f.ID <= OpEndsWith.ID
 }
 
@@ -148,7 +148,6 @@ Operator Container
 // provided Raw value already exists inside.
 type operatorContainer struct {
 	operators      map[string]*Operator
-	urlOperators   map[string]*Operator
 	lastID         uint16
 	lastStandardID uint16
 }

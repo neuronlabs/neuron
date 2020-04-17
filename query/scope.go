@@ -118,7 +118,7 @@ func (s *Scope) Controller() *controller.Controller {
 
 // Copy creates a copy of the given scope.
 func (s *Scope) Copy() *Scope {
-	return s.copy(nil)
+	return s.copy()
 }
 
 // Count returns the number of the values for the provided query scope.
@@ -389,7 +389,7 @@ Private scope methods
 
 */
 
-func (s *Scope) copy(from *Scope) *Scope {
+func (s *Scope) copy() *Scope {
 	copiedScope := &Scope{
 		id:      uuid.New(),
 		mStruct: s.mStruct,
@@ -435,7 +435,6 @@ func (s *Scope) copy(from *Scope) *Scope {
 		for i, v := range s.SortFields {
 			copiedScope.SortFields[i] = v.Copy()
 		}
-
 	}
 
 	if s.IncludedFields != nil {

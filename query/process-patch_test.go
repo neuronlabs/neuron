@@ -319,8 +319,7 @@ func TestPatch(t *testing.T) {
 					sv, ok := s.Value.(*[]*HasOneModel)
 					require.True(t, ok)
 
-					*sv = append((*sv), &HasOneModel{ID: model.ID})
-
+					*sv = append(*sv, &HasOneModel{ID: model.ID})
 				}).Return(nil)
 				repo.On("Commit", mock.Anything, mock.Anything).Once().Return(nil)
 
@@ -831,7 +830,6 @@ func TestPatch(t *testing.T) {
 							&JoinModel{ID: 7, ForeignKey: 4, MtMForeignKey: 33},
 						)
 					}
-
 				}).Return(nil)
 
 				relatedModel.On("Begin", mock.Anything, mock.Anything).Once().Return(nil)
@@ -1064,7 +1062,6 @@ func TestPatch(t *testing.T) {
 				require.NoError(t, err)
 
 				timerRepo.AssertNumberOfCalls(t, "Patch", 1)
-
 			})
 
 			t.Run("NonZero", func(t *testing.T) {

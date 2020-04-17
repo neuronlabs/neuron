@@ -481,7 +481,6 @@ func (m *ModelMap) setRelationships() error {
 
 				// provided invalid foreign field name
 				return errors.NewDetf(class.ModelFieldForeignKeyNotFound, "foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", fkeyName, relField.Name(), model.Type().Name())
-
 			}
 		}
 

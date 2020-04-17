@@ -184,7 +184,7 @@ func convertBelongsToRelationshipFilter(ctx context.Context, s *Scope, index int
 		// send the index of the filter to remove from the scope
 		return index, nil
 	}
-	relScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField.Relationship().Struct()), true)
+	relScope := NewModelC(s.Controller(), filter.StructField.Relationship().Struct(), true)
 
 	for _, nested := range filter.Nested {
 		if err := relScope.addFilterField(nested); err != nil {
@@ -470,7 +470,7 @@ func convertMany2ManyRelationshipFilter(ctx context.Context, s *Scope, index int
 		return 0, err
 	}
 
-	joinScope := NewModelC(s.Controller(), (*mapping.ModelStruct)(filter.StructField.Relationship().JoinModel()), true)
+	joinScope := NewModelC(s.Controller(), filter.StructField.Relationship().JoinModel(), true)
 
 	mtmFKFilter := joinScope.getOrCreateForeignKeyFilter(filter.StructField.Relationship().ManyToManyForeignKey())
 	mtmFKFilter.Values = append(mtmFKFilter.Values, OperatorValues{primaries, OpIn})

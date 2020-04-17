@@ -22,10 +22,8 @@ func (s *Scope) Include(relation string, relationFieldset ...string) error {
 			fieldset[field.NeuronName()] = field
 		}
 		includedField.Fieldset = fieldset
-	} else {
-		if err := includedField.setFieldset(relationFieldset...); err != nil {
-			return err
-		}
+	} else if err := includedField.setFieldset(relationFieldset...); err != nil {
+		return err
 	}
 	s.IncludedFields = append(s.IncludedFields, includedField)
 	return nil

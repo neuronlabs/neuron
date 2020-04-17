@@ -156,6 +156,5 @@ func TestFormatQuery(t *testing.T) {
 			assert.Contains(t, fields, "fk")
 			assert.Contains(t, fields, "lang")
 		})
-
 	})
 }

@@ -100,7 +100,6 @@ func TestList(t *testing.T) {
 			repo.AssertCalled(t, "List", mock.Anything, mock.Anything)
 		}
 	})
-
 }
 
 type relationModel struct {
@@ -172,7 +171,6 @@ func TestListRelationshipFilters(t *testing.T) {
 
 					s.Value = &([]*relationModel{{ID: 4}, {ID: 3}})
 				}
-
 			}).Return(nil)
 
 			require.NotPanics(t, func() {
@@ -399,7 +397,6 @@ func TestListRelationshipFilters(t *testing.T) {
 								t.Errorf("invalid relaiton id: %v", relation.ID)
 							}
 						}
-
 					}
 				}
 
@@ -977,7 +974,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					require.True(t, ok)
 
 					modelValue, ok := s.Value.(*[]*ForeignWithRelation)
-					require.NoError(t, err)
+					require.True(t, ok)
 
 					(*modelValue)[0].ForeignKey = 5
 					(*modelValue)[1].ForeignKey = 10
@@ -1002,7 +999,7 @@ func TestListRelationshipFilters(t *testing.T) {
 					require.True(t, ok)
 
 					modelsValues, ok := s.Value.(*[]*ForeignWithRelation)
-					require.NoError(t, err)
+					require.True(t, ok)
 
 					*modelsValues = append(*modelsValues,
 						&ForeignWithRelation{ID: 3, ForeignKey: 5},

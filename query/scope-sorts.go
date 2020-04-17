@@ -32,7 +32,6 @@ func (s *Scope) Sort(fields ...string) error {
 	}
 	s.SortFields = append(s.SortFields, sortFields...)
 	return nil
-
 }
 
 // SortField adds the sort 'field' to the scope.
@@ -73,7 +72,6 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*Sort
 		if sort[0] == '-' {
 			order = DescendingOrder
 			sort = sort[1:]
-
 		} else {
 			order = AscendingOrder
 		}

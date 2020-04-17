@@ -79,22 +79,22 @@ func (f *FilterField) String() string {
 }
 
 func (f *FilterField) buildString(sb *strings.Builder, filtersAdded *int, relName ...string) {
-	for _, fv := range f.Values {
+	for i := range f.Values {
 		if *filtersAdded != 0 {
 			sb.WriteRune('&')
 		}
 
 		if len(relName) > 0 {
-			sb.WriteString(fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.URLAlias))
+			sb.WriteString(fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), f.Values[i].Operator.URLAlias))
 		} else {
-			sb.WriteString(fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.URLAlias))
+			sb.WriteString(fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), f.Values[i].Operator.URLAlias))
 		}
 
 		var vals []string
-		if len(fv.Values) > 0 {
+		if len(f.Values[i].Values) > 0 {
 			sb.WriteRune('=')
 		}
-		for _, val := range fv.Values {
+		for _, val := range f.Values[i].Values {
 			mapping.StringValues(val, &vals)
 		}
 
@@ -131,20 +131,20 @@ func (f *FilterField) copy() *FilterField {
 // formatQuery parses the into url.Values.
 func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 	// parse the internal value
-	for _, fv := range f.Values {
+	for i := range f.Values {
 		var fk string
 		switch {
 		case len(relName) > 0:
-			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), fv.Operator.URLAlias)
+			fk = fmt.Sprintf("[%s][%s][%s]", relName[0], f.StructField.NeuronName(), f.Values[i].Operator.URLAlias)
 		case f.StructField.IsLanguage():
 			fk = ParamLanguage
 		default:
-			fk = fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), fv.Operator.URLAlias)
+			fk = fmt.Sprintf("[%s][%s]", f.StructField.NeuronName(), f.Values[i].Operator.URLAlias)
 		}
 
 		// [fieldName][operator]
 		var vals []string
-		for _, val := range fv.Values {
+		for _, val := range f.Values[i].Values {
 			mapping.StringValues(val, &vals)
 		}
 
@@ -180,13 +180,13 @@ func NewFilterC(c *controller.Controller, model interface{}, filter string, valu
 	return newFilter(c, model, filter, values...)
 }
 
-// NewUrlStringFilter creates the filter field based on the provided 'filter' and 'values' in the 'url' format.
+// NewURLStringFilter creates the filter field based on the provided 'filter' and 'values' in the 'url' format.
 // Example:
 //	- 'filter': "[collection][fieldName][operator]"
 //  - 'values': 5, 13
 // This function doesn't allow to filter over foreign keys.
-func NewUrlStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
-	return newUrlStringFilter(c, filter, false, values...)
+func NewURLStringFilter(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
+	return newURLStringFilter(c, filter, false, values...)
 }
 
 // newRelationshipFilter creates new relationship filter for the 'relation' StructField.
@@ -202,7 +202,7 @@ func newRelationshipFilter(relation *mapping.StructField, relFilters ...*FilterF
 //  - 'values': 5, 13
 // This function allow to filter over the foreign key fields.
 func NewStringFilterWithForeignKey(c *controller.Controller, filter string, values ...interface{}) (*FilterField, error) {
-	return newUrlStringFilter(c, filter, true, values...)
+	return newURLStringFilter(c, filter, true, values...)
 }
 
 func newFilter(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
@@ -260,7 +260,7 @@ func filterSplitOperator(filter string) (string, *Operator, error) {
 	return field, op, nil
 }
 
-func newUrlStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
+func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllowed bool, values ...interface{}) (*FilterField, error) {
 	// it is allowed to have a prefix for filter
 	filter = strings.TrimPrefix(filter, ParamFilter)
 

@@ -230,7 +230,7 @@ func TestGet(t *testing.T) {
 				require.True(t, ok)
 
 				modelValue, ok := s.Value.(*ForeignWithRelation)
-				require.NoError(t, err)
+				require.True(t, ok)
 
 				modelValue.ForeignKey = 5
 			}).
@@ -252,7 +252,7 @@ func TestGet(t *testing.T) {
 				require.True(t, ok)
 
 				modelsValues, ok := s.Value.(*[]*ForeignWithRelation)
-				require.NoError(t, err)
+				require.True(t, ok)
 
 				*modelsValues = append(*modelsValues, &ForeignWithRelation{ID: 3, ForeignKey: 5}, &ForeignWithRelation{ID: 10, ForeignKey: 5})
 			}).Return(nil)

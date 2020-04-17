@@ -82,7 +82,6 @@ func TestCreate(t *testing.T) {
 		if assert.NoError(t, err) {
 			repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
 		}
-
 	})
 
 	t.Run("HookBefore", func(t *testing.T) {
@@ -104,7 +103,6 @@ func TestCreate(t *testing.T) {
 		if assert.NoError(t, err) {
 			repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
 		}
-
 	})
 
 	t.Run("HookAfter", func(t *testing.T) {
@@ -124,9 +122,7 @@ func TestCreate(t *testing.T) {
 		if assert.NoError(t, err) {
 			repo.AssertCalled(t, "Create", mock.Anything, mock.Anything)
 		}
-
 	})
-
 }
 
 // TestCreateTransactions tests the create process with transactions
@@ -320,7 +316,6 @@ func TestCreateTransactions(t *testing.T) {
 							assert.Equal(t, OpIn, v.Operator)
 							assert.Contains(t, v.Values, 2)
 							assert.Contains(t, v.Values, 4)
-
 						}
 					}
 				}).Return(nil)

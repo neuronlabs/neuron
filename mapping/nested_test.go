@@ -139,5 +139,4 @@ func TestNestedFields(t *testing.T) {
 			}
 		})
 	})
-
 }

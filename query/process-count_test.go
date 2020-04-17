@@ -199,5 +199,4 @@ func TestCount(t *testing.T) {
 			assert.Equal(t, count+50, i)
 		})
 	})
-
 }

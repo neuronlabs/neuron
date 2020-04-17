@@ -360,7 +360,6 @@ func patchHasManyRelationshipChan(
 	} else {
 		results <- struct{}{}
 	}
-
 }
 
 func patchHasManyRelationship(ctx context.Context, s *Scope, relField *mapping.StructField, primaries []interface{}) error {
