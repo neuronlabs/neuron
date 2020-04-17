@@ -101,10 +101,7 @@ func TestGet(t *testing.T) {
 		s, err := NewC(c, &HasManyModel{ID: 3})
 		require.NoError(t, err)
 
-		err = s.IncludeFields("has_many")
-		require.NoError(t, err)
-
-		err = s.SetFieldset(s.Struct().Primary())
+		err = s.Include("has_many")
 		require.NoError(t, err)
 
 		r, _ := s.Controller().GetRepository(s.Struct())
@@ -114,10 +111,8 @@ func TestGet(t *testing.T) {
 			s, ok := args[1].(*Scope)
 			require.True(t, ok)
 
-			m, ok := s.Value.(*HasManyModel)
+			_, ok = s.Value.(*HasManyModel)
 			require.True(t, ok)
-
-			m.HasMany = []*ForeignModel{{ID: 3}, {ID: 4}}
 		}).Return(nil)
 
 		foreignRepo, err := s.Controller().GetRepository(&ForeignModel{})
@@ -134,33 +129,136 @@ func TestGet(t *testing.T) {
 			m, ok := s.Value.(*[]*ForeignModel)
 			require.True(t, ok)
 
-			*m = append(*m, &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
+			*m = append(*m, &ForeignModel{ID: 3, ForeignKey: 3}, &ForeignModel{ID: 4, ForeignKey: 3})
 		}).Return(nil)
 
-		// the second call is just a list call
-		foreign.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+		err = s.Get()
+		require.NoError(t, err)
+	})
+
+	t.Run("Many2Many", func(t *testing.T) {
+		c := newController(t)
+
+		err = c.RegisterModels(Many2ManyModel{}, JoinModel{}, RelatedModel{})
+		require.NoError(t, err)
+
+		model := &Many2ManyModel{ID: 3}
+		s, err := NewC(c, model)
+		require.NoError(t, err)
+
+		err = s.Include("Many2Many")
+		require.NoError(t, err)
+
+		repo, err := c.GetRepository(model)
+		require.NoError(t, err)
+
+		rp, ok := repo.(*Repository)
+		require.True(t, ok)
+
+		rp.On("Get", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+			// Many2Many
 			s, ok := args[1].(*Scope)
 			require.True(t, ok)
 
-			m, ok := s.Value.(*[]*ForeignModel)
+			modelValue, ok := s.Value.(*Many2ManyModel)
 			require.True(t, ok)
 
-			*m = append(*m, &ForeignModel{ID: 3}, &ForeignModel{ID: 4})
+			modelValue.ID = 3
+		}).Return(nil)
+
+		rp.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+			// JoinTable
+			s, ok := args[1].(*Scope)
+			require.True(t, ok)
+
+			modelValues, ok := s.Value.(*[]*JoinModel)
+			require.True(t, ok)
+
+			*modelValues = append(*modelValues,
+				&JoinModel{ForeignKey: 3, MtMForeignKey: 5},
+				&JoinModel{ForeignKey: 3, MtMForeignKey: 6},
+			)
+		}).Return(nil)
+
+		rp.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+			// RelatedModel
+			s, ok := args[1].(*Scope)
+			require.True(t, ok)
+
+			modelValues, ok := s.Value.(*[]*RelatedModel)
+			require.True(t, ok)
+
+			*modelValues = append(*modelValues,
+				&RelatedModel{ID: 5, FloatField: 230.2},
+				&RelatedModel{ID: 6, FloatField: 1024.0},
+			)
 		}).Return(nil)
 
 		err = s.Get()
 		require.NoError(t, err)
 
-		foreignIncludes, err := s.IncludedModelValues(&ForeignModel{})
+		if assert.Len(t, model.Many2Many, 2) {
+			assert.Equal(t, 5, model.Many2Many[0].ID)
+			assert.Equal(t, 230.2, model.Many2Many[0].FloatField)
+			assert.Equal(t, 6, model.Many2Many[1].ID)
+			assert.Equal(t, 1024.0, model.Many2Many[1].FloatField)
+		}
+	})
+
+	t.Run("BelongsTo", func(t *testing.T) {
+		c := newController(t)
+
+		err = c.RegisterModels(ForeignWithRelation{}, HasManyWithRelation{})
 		require.NoError(t, err)
 
-		_, ok = foreignIncludes[3]
-		assert.True(t, ok)
+		model := &ForeignWithRelation{ID: 3}
+		s, err := NewC(c, model)
+		require.NoError(t, err)
 
-		_, ok = foreignIncludes[4]
-		assert.True(t, ok)
+		repo, err := c.GetRepository(model)
+		require.NoError(t, err)
 
-		assert.Len(t, foreignIncludes, 2)
+		rp, ok := repo.(*Repository)
+		require.True(t, ok)
+
+		err = s.Include("Relation")
+		require.NoError(t, err)
+
+		rp.On("Get", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				modelValue, ok := s.Value.(*ForeignWithRelation)
+				require.NoError(t, err)
+
+				modelValue.ForeignKey = 5
+			}).
+			Return(nil)
+
+		rp.On("Get", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				hmModel, ok := s.Value.(*HasManyWithRelation)
+				require.True(t, ok)
+				hmModel.ID = 5
+			}).Return(nil)
+
+		rp.On("List", mock.Anything, mock.Anything).Once().
+			Run(func(args mock.Arguments) {
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				modelsValues, ok := s.Value.(*[]*ForeignWithRelation)
+				require.NoError(t, err)
+
+				*modelsValues = append(*modelsValues, &ForeignWithRelation{ID: 3, ForeignKey: 5}, &ForeignWithRelation{ID: 10, ForeignKey: 5})
+			}).Return(nil)
+
+		err = s.Get()
+		require.NoError(t, err)
 	})
 
 	t.Run("TimeRelated", func(t *testing.T) {

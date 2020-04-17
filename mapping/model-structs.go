@@ -115,7 +115,7 @@ func (m *ModelStruct) DeletedAt() (*StructField, bool) {
 
 // Field checks if the 'field' is an 'attribute', 'primary', 'foreign' or 'relationship' field.
 func (m *ModelStruct) Field(field string) (*StructField, bool) {
-	return m.checkField(field)
+	return m.getField(field)
 }
 
 // FieldByName returns structField by it's 'name'. It matches both reflect.StructField.Name and NeuronName.
@@ -331,7 +331,7 @@ func (m *ModelStruct) assignedFields() int {
 	return assignedFields
 }
 
-func (m *ModelStruct) checkField(field string) (*StructField, bool) {
+func (m *ModelStruct) getField(field string) (*StructField, bool) {
 	if field == "id" || m.primary.fieldName() == field {
 		return m.primary, true
 	}

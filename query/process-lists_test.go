@@ -814,7 +814,7 @@ func TestListRelationshipFilters(t *testing.T) {
 			s, err := NewC(c, &relatedValues)
 			require.NoError(t, err)
 
-			err = s.IncludeFields("relation")
+			err = s.Include("relation")
 			require.NoError(t, err)
 
 			relatedRepo, err := c.GetRepository(s.Struct())
@@ -873,17 +873,147 @@ func TestListRelationshipFilters(t *testing.T) {
 
 			err = s.List()
 			require.NoError(t, err)
+		})
 
-			values, err := s.IncludedModelValues(&relationModel{})
+		t.Run("Many2Many", func(t *testing.T) {
+			c := newController(t)
+
+			err = c.RegisterModels(Many2ManyModel{}, JoinModel{}, RelatedModel{})
 			require.NoError(t, err)
 
-			if assert.Len(t, values, 2) {
-				_, ok = values[firstIncluded.ID]
-				assert.True(t, ok)
+			model := []*Many2ManyModel{{ID: 3}, {ID: 5}}
+			s, err := NewC(c, &model)
+			require.NoError(t, err)
 
-				_, ok = values[secondIncluded.ID]
-				assert.True(t, ok)
+			err = s.Include("Many2Many")
+			require.NoError(t, err)
+
+			repo, err := c.GetRepository(model)
+			require.NoError(t, err)
+
+			rp, ok := repo.(*Repository)
+			require.True(t, ok)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				// Many2Many
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				_, ok = s.Value.(*[]*Many2ManyModel)
+				require.True(t, ok)
+			}).Return(nil)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				// JoinTable
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				modelValues, ok := s.Value.(*[]*JoinModel)
+				require.True(t, ok)
+
+				*modelValues = append(*modelValues,
+					&JoinModel{ForeignKey: 3, MtMForeignKey: 5},
+					&JoinModel{ForeignKey: 3, MtMForeignKey: 6},
+					&JoinModel{ForeignKey: 5, MtMForeignKey: 4},
+				)
+			}).Return(nil)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().Run(func(args mock.Arguments) {
+				// RelatedModel
+				s, ok := args[1].(*Scope)
+				require.True(t, ok)
+
+				modelValues, ok := s.Value.(*[]*RelatedModel)
+				require.True(t, ok)
+
+				*modelValues = append(*modelValues,
+					&RelatedModel{ID: 5, FloatField: 230.2},
+					&RelatedModel{ID: 6, FloatField: 1024.0},
+					&RelatedModel{ID: 4, FloatField: 512.0},
+				)
+			}).Return(nil)
+
+			err = s.List()
+			require.NoError(t, err)
+
+			if assert.Len(t, model, 2) {
+				first := model[0]
+				if assert.Len(t, first.Many2Many, 2) {
+					assert.Equal(t, 5, first.Many2Many[0].ID)
+					assert.Equal(t, 230.2, first.Many2Many[0].FloatField)
+					assert.Equal(t, 6, first.Many2Many[1].ID)
+					assert.Equal(t, 1024.0, first.Many2Many[1].FloatField)
+				}
+				second := model[1]
+				if assert.Len(t, second.Many2Many, 1) {
+					assert.Equal(t, 4, second.Many2Many[0].ID)
+					assert.Equal(t, 512.0, second.Many2Many[0].FloatField)
+				}
 			}
+		})
+
+		t.Run("BelongsTo", func(t *testing.T) {
+			c := newController(t)
+
+			err = c.RegisterModels(ForeignWithRelation{}, HasManyWithRelation{})
+			require.NoError(t, err)
+
+			model := []*ForeignWithRelation{{ID: 3}, {ID: 5}, {ID: 6}}
+			s, err := NewC(c, &model)
+			require.NoError(t, err)
+
+			repo, err := c.GetRepository(model)
+			require.NoError(t, err)
+
+			rp, ok := repo.(*Repository)
+			require.True(t, ok)
+
+			err = s.Include("Relation")
+			require.NoError(t, err)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					modelValue, ok := s.Value.(*[]*ForeignWithRelation)
+					require.NoError(t, err)
+
+					(*modelValue)[0].ForeignKey = 5
+					(*modelValue)[1].ForeignKey = 10
+					(*modelValue)[2].ForeignKey = 5
+				}).
+				Return(nil)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					hmModels, ok := s.Value.(*[]*HasManyWithRelation)
+					require.True(t, ok)
+
+					*hmModels = append(*hmModels, &HasManyWithRelation{ID: 5}, &HasManyWithRelation{ID: 10})
+				}).Return(nil)
+
+			rp.On("List", mock.Anything, mock.Anything).Once().
+				Run(func(args mock.Arguments) {
+					s, ok := args[1].(*Scope)
+					require.True(t, ok)
+
+					modelsValues, ok := s.Value.(*[]*ForeignWithRelation)
+					require.NoError(t, err)
+
+					*modelsValues = append(*modelsValues,
+						&ForeignWithRelation{ID: 3, ForeignKey: 5},
+						&ForeignWithRelation{ID: 5, ForeignKey: 10},
+						&ForeignWithRelation{ID: 6, ForeignKey: 5},
+						&ForeignWithRelation{ID: 10, ForeignKey: 10},
+					)
+				}).Return(nil)
+
+			err = s.List()
+			require.NoError(t, err)
 		})
 	})
 }

@@ -123,6 +123,15 @@ func (b *TxQuery) Filter(filter string, values ...interface{}) Builder {
 	return b
 }
 
+// Include includes provided 'relation' field in the query result with respect to provided 'relationFieldset'.
+func (b *TxQuery) Include(relation string, relationFieldset ...string) Builder {
+	if b.tx.err != nil {
+		return b
+	}
+	b.tx.err = b.scope.Include(relation, relationFieldset...)
+	return b
+}
+
 // Limit sets the maximum number of objects returned by the List process,
 func (b *TxQuery) Limit(limit int64) Builder {
 	if b.tx.err != nil {
@@ -160,10 +169,19 @@ func (b *TxQuery) PageNumber(pageNumber int64) Builder {
 	return b
 }
 
-// SetFields adds the fields to the scope's fieldset.
+// Processor sets the query processor. Implements Builder interface.
+func (b *TxQuery) Processor(processor *Processor) Builder {
+	if b.tx.err != nil {
+		return b
+	}
+	b.scope.Processor = processor
+	return b
+}
+
+// Fields adds the fields to the scope's fieldset.
 // The fields may be a mapping.StructField as well as field's NeuronName (string) or
 // the StructField Name (string).
-func (b *TxQuery) SetFields(fields ...interface{}) Builder {
+func (b *TxQuery) Fields(fields ...interface{}) Builder {
 	if b.tx.err != nil {
 		return b
 	}

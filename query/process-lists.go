@@ -91,5 +91,5 @@ func checkPaginationFunc(ctx context.Context, s *Scope) error {
 		return nil
 	}
 
-	return s.Pagination.IsValid()
+	return s.Pagination.Validate()
 }

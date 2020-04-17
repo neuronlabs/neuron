@@ -17,7 +17,7 @@ import (
 // Returns the slice of interfaces containing primary field values.
 func PrimaryValues(m *ModelStruct, value reflect.Value) (primaries []interface{}, err error) {
 	if value.IsNil() {
-		err = errors.NewDet(class.QueryNoValue, "nil value provided")
+		err = errors.NewDet(class.QueryNilValue, "nil value provided")
 		return nil, err
 	}
 
@@ -168,9 +168,8 @@ func setAttributeField(value string, fieldValue reflect.Value) errors.DetailedEr
 		if _, ok := fieldValue.Elem().Interface().(time.Time); ok {
 			err = setTimeField(value, fieldValue)
 		} else {
-			// TODO: set the nested attribute struct
-			err = errors.NewDet(class.QueryFilterValue, "filtering over nested structure is not supported yet")
-			err.SetDetails("Filtering over nested structures is not supported yet.")
+			err = errors.NewDet(class.QueryFilterValue, "nested structure is not supported yet")
+			err.SetDetails("Nested structures is not supported yet.")
 		}
 	default:
 		log.Debug("Filtering over unsupported type: '%s'", t.Name())

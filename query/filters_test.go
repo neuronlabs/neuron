@@ -30,26 +30,6 @@ type filterNestedModel struct {
 	Field string
 }
 
-// TestParseQuery tests parsing the query into a string.
-func TestParseQuery(t *testing.T) {
-	cfg := controller.Default().Config
-	cfg.Repositories = map[string]*config.Repository{
-		repoName: {DriverName: repoName},
-	}
-	cfg.DefaultRepositoryName = repoName
-
-	c := controller.DefaultController
-	require.NoError(t, c.RegisterModels(&testingModel{}, &filterRelationModel{}))
-
-	t.Run("Attribute", func(t *testing.T) {
-		// TODO: write parse query attribute tests
-	})
-
-	t.Run("Relationship", func(t *testing.T) {
-		// TODO: write parse query relationship tests
-	})
-}
-
 // TestNewStringFilter tests the NewUrlStringFilter function.
 func TestNewUrlStringFilter(t *testing.T) {
 	c := controller.NewDefault()

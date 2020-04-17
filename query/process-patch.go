@@ -74,7 +74,7 @@ func patchFunc(ctx context.Context, s *Scope) error {
 		return err
 	}
 	// set fields to primary only
-	q.SetFields(q.Scope().Struct().Primary())
+	q.Fields(q.Scope().Struct().Primary())
 	if log.Level().IsAllowed(log.LevelDebug3) && q.Err() != nil {
 		log.Debug3f("SCOPE[%s][%s] check patch with the list scope: '%s'", s.ID().String(), s.Struct().Collection(), q.Scope())
 	}
@@ -332,7 +332,7 @@ func patchHasOneRelationship(
 	// the primary field filter would be added by the process makePrimaryFilters
 
 	b := s.query(ctx, s.c, relScopeValue)
-	err = b.SetFields(b.Scope().Struct().Primary(), relField.Relationship().ForeignKey()).
+	err = b.Fields(b.Scope().Struct().Primary(), relField.Relationship().ForeignKey()).
 		Patch()
 	if err != nil {
 		log.Debugf("SCOPE[%s] Patching HasOne relationship failed: %v", s.ID(), err)
@@ -567,7 +567,7 @@ func patchMany2ManyRelationship(
 	// we need only primary fields
 	log.Debug3f("SCOPE[%s][%s] checking many2many field: '%s' related values.", s.ID(), s.Struct().Collection(), relField.NeuronName())
 	checkScope := s.query(ctx, s.c, mapping.NewValueMany(relField.Relationship().Struct())).
-		SetFields("id").
+		Fields("id").
 		AddFilterField(NewFilterField(relField.Relationship().Struct().Primary(), OpIn, relatedPrimaries...)).
 		Scope()
 	err = checkScope.ListContext(ctx)
@@ -619,7 +619,7 @@ func patchMany2ManyRelationship(
 	joinModel := relField.Relationship().JoinModel()
 
 	// create multiple instances of join models
-	// TODO: change to CreateMany if implemented.
+	// NOTE: Change to create many if implemented.
 	for _, primary := range primaries {
 		single := mapping.NewReflectValueSingle(joinModel)
 		for _, relPrimary := range relatedPrimaries {
@@ -634,7 +634,7 @@ func patchMany2ManyRelationship(
 		}
 
 		err = s.query(ctx, s.Controller(), single.Interface()).
-			SetFields(relField.Relationship().ManyToManyForeignKey(), relField.Relationship().ForeignKey()).
+			Fields(relField.Relationship().ManyToManyForeignKey(), relField.Relationship().ForeignKey()).
 			Create()
 		if err != nil {
 			return err
@@ -646,7 +646,7 @@ func patchMany2ManyRelationship(
 func patchClearRelationshipWithForeignKey(ctx context.Context, s *Scope, relField *mapping.StructField, primaries []interface{}) error {
 	// create clearScope for the relation field's model
 	err := s.query(ctx, s.c, relField.Relationship().Struct()).
-		SetFields(relField.Relationship().ForeignKey()).
+		Fields(relField.Relationship().ForeignKey()).
 		AddFilterField(NewFilterField(relField.Relationship().ForeignKey(), OpIn, primaries...)).
 		Patch()
 	if e, ok := err.(errors.ClassError); ok {

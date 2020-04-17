@@ -23,8 +23,6 @@ var Processes = map[string]struct{}{
 	ProcessHookBeforeList:             struct{}{},
 	ProcessList:                       struct{}{},
 	ProcessHookAfterList:              struct{}{},
-	ProcessGetIncluded:                struct{}{},
-	ProcessGetIncludedSafe:            struct{}{},
 	ProcessSetUpdatedAt:               struct{}{},
 	ProcessHookBeforePatch:            struct{}{},
 	ProcessPatch:                      struct{}{},
@@ -42,6 +40,8 @@ var Processes = map[string]struct{}{
 	ProcessHookBeforeCount:            struct{}{},
 	ProcessCount:                      struct{}{},
 	ProcessHookAfterCount:             struct{}{},
+	ProcessValidateScope:              struct{}{},
+	ProcessInitialValidateScope:       struct{}{},
 }
 
 // Processes constant names.
@@ -72,8 +72,6 @@ const (
 	ProcessHookBeforeList  = "hook_before_list"
 	ProcessList            = "list"
 	ProcessHookAfterList   = "hook_after_list"
-	ProcessGetIncluded     = "get_included"
-	ProcessGetIncludedSafe = "get_included_safe"
 
 	// Patch processes
 	ProcessHookBeforePatch         = "hook_before_patch"
@@ -96,7 +94,11 @@ const (
 	ProcessTxCommitOrRollback = "tx_commit_or_rollback"
 
 	// Count Processess
-	ProcessHookBeforeCount = "hook_before_ount"
+	ProcessHookBeforeCount = "hook_before_count"
 	ProcessCount           = "count"
 	ProcessHookAfterCount  = "hook_after_count"
+
+	// Validate provided scope.
+	ProcessValidateScope        = "validate_scope"
+	ProcessInitialValidateScope = "initial_validate_scope"
 )

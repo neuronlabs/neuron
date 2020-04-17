@@ -13,10 +13,6 @@ import (
 	"github.com/neuronlabs/neuron-core/mapping"
 )
 
-// MaxNestedRelLevel is a temporary maximum nested check while creating sort fields
-// TODO: change the variable into config settable.
-var MaxNestedRelLevel = 1
-
 // ParamSort is the url query parameter name for the sorting fields.
 const ParamSort = "sort"
 
@@ -216,7 +212,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		}
 		sortField = newSortField(sField, order)
 		return sortField, nil
-	case l <= (MaxNestedRelLevel + 1):
+	case l <= 2:
 		// for split length greater than 1 it must be a relationship
 		sField, ok = m.RelationField(split[0])
 		if !ok {
@@ -226,8 +222,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		}
 
 		sortField = newSortField(sField, order)
-		err := sortField.setSubfield(split[1:], order, disallowFK)
-		if err != nil {
+		if err = sortField.setSubfield(split[1:], order, disallowFK); err != nil {
 			return nil, err
 		}
 		return sortField, nil

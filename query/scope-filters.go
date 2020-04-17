@@ -140,7 +140,7 @@ func (s *Scope) getOrCreateRelationshipFilter(sField *mapping.StructField) *Filt
 // setBelongsToForeignKeyFields sets the foreign key fields for the 'belongs to' relationships.
 func (s *Scope) setBelongsToForeignKeyFields() error {
 	if s.Value == nil {
-		return errors.NewDet(class.QueryNoValue, "nil query scope value provided")
+		return errors.NewDet(class.QueryNilValue, "nil query scope value provided")
 	}
 
 	setField := func(v reflect.Value) ([]*mapping.StructField, error) {

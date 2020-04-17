@@ -21,11 +21,13 @@ type Builder interface {
 
 	AddFilterField(filter *FilterField) Builder
 	Filter(filter string, values ...interface{}) Builder
+	Include(relation string, relationFieldset ...string) Builder
 	Limit(limit int64) Builder
 	Offset(offset int64) Builder
 	PageSize(pageSize int64) Builder
 	PageNumber(pageNumber int64) Builder
-	SetFields(fields ...interface{}) Builder
+	Processor(processor *Processor) Builder
+	Fields(fields ...interface{}) Builder
 	Sort(fields ...string) Builder
 }
 
@@ -166,6 +168,15 @@ func (b *Query) Filter(filter string, values ...interface{}) Builder {
 	return b
 }
 
+// Include includes 'relation' into given query.
+func (b *Query) Include(relation string, relationFieldset ...string) Builder {
+	if b.err != nil {
+		return b
+	}
+	b.err = b.scope.Include(relation, relationFieldset...)
+	return b
+}
+
 // Limit sets the maximum number of objects returned by the List process,
 func (b *Query) Limit(limit int64) Builder {
 	if b.err != nil {
@@ -203,10 +214,19 @@ func (b *Query) PageNumber(pageNumber int64) Builder {
 	return b
 }
 
-// SetFields adds the fields to the scope's fieldset.
+// Processor sets the query processor. Implements Builder interface.
+func (b *Query) Processor(processor *Processor) Builder {
+	if b.err != nil {
+		return b
+	}
+	b.scope.Processor = processor
+	return b
+}
+
+// Fields adds the fields to the scope's fieldset.
 // The fields may be a mapping.StructField as well as field's NeuronName (string) or
 // the StructField Name (string).
-func (b *Query) SetFields(fields ...interface{}) Builder {
+func (b *Query) Fields(fields ...interface{}) Builder {
 	if b.err != nil {
 		return b
 	}

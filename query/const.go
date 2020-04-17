@@ -43,8 +43,6 @@ const (
 	ProcessHookBeforeList  = internal.ProcessHookBeforeList
 	ProcessList            = internal.ProcessList
 	ProcessHookAfterList   = internal.ProcessHookAfterList
-	ProcessGetIncluded     = internal.ProcessGetIncluded
-	ProcessGetIncludedSafe = internal.ProcessGetIncludedSafe
 
 	ProcessHookBeforePatch         = internal.ProcessHookBeforePatch
 	ProcessSetUpdatedAt            = internal.ProcessSetUpdatedAt
@@ -66,4 +64,7 @@ const (
 	ProcessCount           = internal.ProcessCount
 	ProcessHookBeforeCount = internal.ProcessHookBeforeCount
 	ProcessHookAfterCount  = internal.ProcessHookAfterCount
+
+	ProcessValidateScope        = internal.ProcessValidateScope
+	ProcessInitialValidateScope = internal.ProcessInitialValidateScope
 )

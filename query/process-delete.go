@@ -230,7 +230,7 @@ func deleteHasOneRelationships(ctx context.Context, s *Scope, field *mapping.Str
 	rel := field.Relationship()
 
 	q := s.query(ctx, s.c, rel.Struct()).
-		SetFields(rel.ForeignKey())
+		Fields(rel.ForeignKey())
 
 	// the selected field would be only the foreign key -> zero valued
 	for _, prim := range s.PrimaryFilters {
@@ -262,7 +262,7 @@ func deleteHasManyRelationships(ctx context.Context, s *Scope, field *mapping.St
 	rel := field.Relationship()
 
 	q := s.query(ctx, s.Controller(), mapping.NewValueSingle(rel.Struct())).
-		SetFields(rel.ForeignKey())
+		Fields(rel.ForeignKey())
 	for _, prim := range s.PrimaryFilters {
 		q.Scope().ForeignFilters = append(q.Scope().ForeignFilters, &FilterField{StructField: rel.ForeignKey(), Values: prim.Values})
 	}

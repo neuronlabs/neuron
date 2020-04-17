@@ -20,7 +20,6 @@ import (
 	"github.com/neuronlabs/neuron-core/repository"
 
 	"github.com/neuronlabs/neuron-core/internal"
-	"github.com/neuronlabs/neuron-core/internal/safemap"
 )
 
 // Scope is the query's structure that contains information required
@@ -51,6 +50,9 @@ type Scope struct {
 	ForeignFilters Filters
 	// SortFields are the query sort fields.
 	SortFields []*SortField
+	// IncludedFields contain fields to include. If the included field is a relationship type, then
+	// specific included field contains information about it
+	IncludedFields []*IncludedField
 	// Pagination is the query pagination.
 	Pagination *Pagination
 	// Processor is current query processor.
@@ -58,32 +60,13 @@ type Scope struct {
 	// Err defines the process error.
 	Err error
 
-	// includedScopes contains filters, fieldset and values for included collections
-	// every collection that is included would contain it's sub-scope
-	// if filters, fieldset are set for non-included scope error should occur
-	includedScopes map[*mapping.ModelStruct]*Scope
-	// includedFields contain fields to include. If the included field is a relationship type, then
-	// specific included field contains information about it
-	includedFields []*IncludeField
-	// IncludeValues contain unique values for given include fields
-	// the key is the - primary key value
-	// the value is the single object value for given ID
-	includedValues *safemap.SafeHashMap
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
 	// isMany defines if the scope is of
 	isMany bool
-	kind   Kind
 	// autoSelectedFields is the flag that defines if the query had automatically selected fieldset.
 	autoSelectedFields bool
-	// CollectionScope is a pointer to the scope containing the collection root
-	collectionScope *Scope
-	// rootScope is the root of all scopes where the query begins
-	rootScope *Scope
-
-	totalIncludeCount     int
-	hasFieldNotInFieldset bool
-	processMethod         processMethod
+	processMethod      processMethod
 }
 
 // MustNewC creates new scope with given 'model' for the given controller 'c'.
@@ -135,7 +118,7 @@ func (s *Scope) Controller() *controller.Controller {
 
 // Copy creates a copy of the given scope.
 func (s *Scope) Copy() *Scope {
-	return s.copy(true, nil)
+	return s.copy(nil)
 }
 
 // Count returns the number of the values for the provided query scope.
@@ -221,36 +204,12 @@ func (s *Scope) ListContext(ctx context.Context) error {
 	return s.list(ctx)
 }
 
-func (s *Scope) list(ctx context.Context) error {
-	if !s.isMany {
-		err := errors.NewDet(class.QueryValueType, "provided non slice value for the list query")
-		err.SetDetails("Single value provided for the List process")
-		return err
-	}
-	if log.Level() <= log.LevelDebug2 {
-		log.Debug2f("[SCOPE][%s] process list", s.ID())
-	}
-	// list from the processor
-	if err := s.processor().List(ctx, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Query creates new query with the provided model 'value'.
-// If the root scope is on the transaction the new one will be
-// added to the root's transaction chain.
-// It is a recommended way to create new scope's within hooks if the given scope
-// should be included in the given transaction.
+// Query creates new query with the provided 'model'.
 func (s *Scope) Query(model interface{}) Builder {
 	return s.query(context.Background(), s.c, model)
 }
 
 // QueryCtx creates new Query with the provided 'model' with the context.Context 'ctx'.
-// If the root scope is on the transaction the new one will be
-// added to the root's transaction chain.
-// It is a recommended way to create new scope's within hooks if the given scope
-// should be included in the given transaction.
 func (s *Scope) QueryCtx(ctx context.Context, model interface{}) Builder {
 	return s.query(ctx, s.c, model)
 }
@@ -270,17 +229,12 @@ func (s *Scope) PatchContext(ctx context.Context) error {
 	return s.patch(ctx)
 }
 
-// RootScope gets the root scope for included field queries.
-func (s *Scope) RootScope(mStruct *mapping.ModelStruct) *Scope {
-	return s.getModelsRootScope(mStruct)
-}
-
 // SetFields adds the fields to the scope's fieldset.
 // The fields may be a mapping.StructField as well as field's NeuronName (string) or
 // the StructField Name (string).
 func (s *Scope) SetFields(fields ...interface{}) error {
 	if len(fields) == 0 {
-		log.Debug("SetFields - provided no fields")
+		log.Debug("Fields - provided no fields")
 		return nil
 	}
 	return s.addToFieldset(fields...)
@@ -429,110 +383,69 @@ func (s *Scope) WithTransaction(t *Tx) error {
 	return t.beginUniqueTransaction(transactioner, s.mStruct)
 }
 
-// ValidateCreate validates the scope's value with respect to the 'create validator' and
-// the 'create' validation tags.
-func (s *Scope) ValidateCreate() []errors.DetailedError {
-	v := s.Controller().CreateValidator
-	return s.validate(v, "CreateValidator")
-}
-
-// ValidatePatch validates the scope's value with respect to the 'Patch Validator'.
-func (s *Scope) ValidatePatch() []errors.DetailedError {
-	v := s.Controller().PatchValidator
-	return s.validate(v, "PatchValidator")
-}
-
 /**
 
 Private scope methods
 
 */
 
-func (s *Scope) copy(isRoot bool, root *Scope) *Scope {
-	scope := &Scope{
+func (s *Scope) copy(from *Scope) *Scope {
+	copiedScope := &Scope{
 		id:      uuid.New(),
 		mStruct: s.mStruct,
 		store:   map[interface{}]interface{}{internal.ControllerStoreKey: s.Controller()},
 		isMany:  s.isMany,
-		kind:    s.kind,
-
-		totalIncludeCount:     s.totalIncludeCount,
-		hasFieldNotInFieldset: s.hasFieldNotInFieldset,
 	}
 
 	if s.isMany {
-		scope.Value = mapping.NewValueMany(s.mStruct)
+		copiedScope.Value = mapping.NewValueMany(s.mStruct)
 	} else {
-		scope.Value = mapping.NewValueSingle(s.mStruct)
-	}
-
-	if isRoot {
-		scope.rootScope = nil
-		scope.collectionScope = scope
-		root = scope
-	} else {
-		if s.rootScope == nil {
-			scope.rootScope = nil
-		}
-		scope.collectionScope = root.getOrCreateModelsRootScope(nil, s.mStruct)
+		copiedScope.Value = mapping.NewValueSingle(s.mStruct)
 	}
 
 	if s.Fieldset != nil {
-		scope.Fieldset = make(map[string]*mapping.StructField)
+		copiedScope.Fieldset = make(map[string]*mapping.StructField)
 		for k, v := range s.Fieldset {
-			scope.Fieldset[k] = v
+			copiedScope.Fieldset[k] = v
 		}
 	}
 
 	if s.PrimaryFilters != nil {
-		scope.PrimaryFilters = make([]*FilterField, len(s.PrimaryFilters))
+		copiedScope.PrimaryFilters = make([]*FilterField, len(s.PrimaryFilters))
 		for i, v := range s.PrimaryFilters {
-			scope.PrimaryFilters[i] = v.Copy()
+			copiedScope.PrimaryFilters[i] = v.Copy()
 		}
 	}
 
 	if s.AttributeFilters != nil {
-		scope.AttributeFilters = make([]*FilterField, len(s.AttributeFilters))
+		copiedScope.AttributeFilters = make([]*FilterField, len(s.AttributeFilters))
 		for i, v := range s.AttributeFilters {
-			scope.AttributeFilters[i] = v.Copy()
+			copiedScope.AttributeFilters[i] = v.Copy()
 		}
 	}
 
 	if s.RelationFilters != nil {
 		for i, v := range s.RelationFilters {
-			scope.RelationFilters[i] = v.Copy()
+			copiedScope.RelationFilters[i] = v.Copy()
 		}
 	}
 
 	if s.SortFields != nil {
-		scope.SortFields = make([]*SortField, len(s.SortFields))
+		copiedScope.SortFields = make([]*SortField, len(s.SortFields))
 		for i, v := range s.SortFields {
-			scope.SortFields[i] = v.Copy()
+			copiedScope.SortFields[i] = v.Copy()
 		}
 
 	}
 
-	if s.includedScopes != nil {
-		scope.includedScopes = make(map[*mapping.ModelStruct]*Scope)
-		for k, v := range s.includedScopes {
-			scope.includedScopes[k] = v.copy(false, root)
+	if s.IncludedFields != nil {
+		copiedScope.IncludedFields = make([]*IncludedField, len(s.IncludedFields))
+		for i, v := range s.IncludedFields {
+			copiedScope.IncludedFields[i] = v.copy()
 		}
 	}
 
-	if s.includedFields != nil {
-		scope.includedFields = make([]*IncludeField, len(s.includedFields))
-		for i, v := range s.includedFields {
-			scope.includedFields[i] = v.copy(scope, root)
-		}
-	}
-
-	if s.includedValues != nil {
-		scope.includedValues = safemap.New()
-		for k, v := range s.includedValues.Values() {
-			scope.includedValues.UnsafeSet(k, v)
-		}
-	}
-	return scope
+	return copiedScope
 }
 
 func (s *Scope) count(ctx context.Context) (int64, error) {
@@ -579,31 +492,42 @@ func (s *Scope) processor() *Processor {
 
 func (s *Scope) formatQuery() url.Values {
 	q := url.Values{}
+	s.formatQueryFilters(q)
+	s.formatQuerySorts(q)
+	s.formatQueryPagination(q)
+	s.formatQueryFieldset(q)
+	s.formatQueryIncludes(q)
+	return q
+}
 
-	for _, prim := range s.PrimaryFilters {
-		prim.FormatQuery(q)
-	}
-
-	for _, fk := range s.ForeignFilters {
-		fk.FormatQuery(q)
-	}
-
-	for _, attr := range s.AttributeFilters {
-		attr.FormatQuery(q)
-	}
-
-	for _, rel := range s.RelationFilters {
-		rel.FormatQuery(q)
-	}
-
+func (s *Scope) formatQuerySorts(q url.Values) {
 	for _, sort := range s.SortFields {
 		sort.FormatQuery(q)
 	}
+}
 
+func (s *Scope) formatQueryPagination(q url.Values) {
 	if s.Pagination != nil {
 		s.Pagination.FormatQuery(q)
 	}
+}
 
+func (s *Scope) formatQueryFilters(q url.Values) {
+	for _, prim := range s.PrimaryFilters {
+		prim.FormatQuery(q)
+	}
+	for _, fk := range s.ForeignFilters {
+		fk.FormatQuery(q)
+	}
+	for _, attr := range s.AttributeFilters {
+		attr.FormatQuery(q)
+	}
+	for _, rel := range s.RelationFilters {
+		rel.FormatQuery(q)
+	}
+}
+
+func (s *Scope) formatQueryFieldset(q url.Values) {
 	if s.Fieldset != nil {
 		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, s.Struct().Collection())
 		var values string
@@ -617,10 +541,43 @@ func (s *Scope) formatQuery() url.Values {
 		}
 		q.Add(fieldsKey, values)
 	}
+}
 
-	// TODO: add included fields into query formatting
+func (s *Scope) formatQueryIncludes(q url.Values) {
+	var includes []string
+	for _, included := range s.IncludedFields {
+		includes = append(includes, included.StructField.NeuronName())
+		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, included.StructField.Relationship().Struct().Collection())
+		var values string
+		var i int
+		for _, field := range included.Fieldset {
+			values += field.NeuronName()
+			if i != len(s.Fieldset)-1 {
+				values += ","
+			}
+			i++
+		}
+		q.Add(fieldsKey, values)
+	}
+	if len(includes) > 0 {
+		q.Add("include", strings.Join(includes, ","))
+	}
+}
 
-	return q
+func (s *Scope) list(ctx context.Context) error {
+	if !s.isMany {
+		err := errors.NewDet(class.QueryValueType, "provided non slice value for the list query")
+		err.SetDetails("Single value provided for the List process")
+		return err
+	}
+	if log.Level() <= log.LevelDebug2 {
+		log.Debug2f("[SCOPE][%s] process list", s.ID())
+	}
+	// list from the processor
+	if err := s.processor().List(ctx, s); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Scope) patch(ctx context.Context) error {
@@ -655,20 +612,15 @@ func (s *Scope) repository() repository.Repository {
 	return repo
 }
 
-func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.DetailedError {
-	err := v.Struct(s.Value)
-	if err == nil {
-		return nil
-	}
-
+func (s *Scope) convertValidateError(err error) error {
 	switch er := err.(type) {
 	case *validator.InvalidValidationError:
 		// Invalid argument passed to validator
-		log.Errorf("[%s] %s-> Invalid Validation Error: %v", s.ID().String(), validatorName, er)
+		log.Errorf("[%s] Invalid Validation Error: %v", s.ID().String(), er)
 		e := errors.NewDet(class.InternalQueryValidation, "invalid validation error")
-		return []errors.DetailedError{e}
+		return e
 	case validator.ValidationErrors:
-		var errs []errors.DetailedError
+		var errs []errors.ClassError
 		for _, valueError := range er {
 			tag := valueError.Tag()
 
@@ -676,9 +628,9 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.D
 			if tag == "required" {
 				// if field is required and the field tag is empty
 				if valueError.Field() == "" {
-					log.Errorf("[%s] Model: '%v'. '%s' failed. Field is required and the field tag is empty.", s.ID().String(), validatorName, s.Struct().Type().String())
+					log.Errorf("[%s] Model: '%v' validation failed. Field is required and the field tag is empty.", s.ID().String(), s.Struct().Type().String())
 					errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
-					return append(errs, errObj)
+					return errObj
 				}
 
 				errObj = errors.NewDet(class.QueryValueMissingRequired, "missing required field")
@@ -708,9 +660,12 @@ func (s *Scope) validate(v *validator.Validate, validatorName string) []errors.D
 				}
 			}
 		}
-		return errs
+		if errs != nil {
+			return nil
+		}
+		return errors.MultiError(errs)
 	default:
-		return []errors.DetailedError{errors.NewDetf(class.InternalQueryValidation, "invalid error type: '%T'", er)}
+		return errors.NewDetf(class.InternalQueryValidation, "invalid error type: '%T'", er)
 	}
 }
 
@@ -736,7 +691,7 @@ func newQueryScope(c *controller.Controller, model interface{}) (*Scope, error) 
 		return newScopeWithModel(c, mStruct, false), nil
 	}
 
-	s := newRootScope(c, mStruct)
+	s := newScope(c, mStruct)
 
 	t := reflect.TypeOf(model)
 	if t.Kind() != reflect.Ptr {
@@ -755,7 +710,7 @@ func newQueryScope(c *controller.Controller, model interface{}) (*Scope, error) 
 }
 
 func newScopeWithModel(c *controller.Controller, m *mapping.ModelStruct, isMany bool) *Scope {
-	s := newRootScope(c, m)
+	s := newScope(c, m)
 	if isMany {
 		s.Value = mapping.NewValueMany(m)
 		s.isMany = isMany
@@ -763,13 +718,6 @@ func newScopeWithModel(c *controller.Controller, m *mapping.ModelStruct, isMany 
 		s.Value = mapping.NewValueSingle(m)
 	}
 	return s
-}
-
-// newRootScope creates new root scope for provided model.
-func newRootScope(c *controller.Controller, modelStruct *mapping.ModelStruct) *Scope {
-	scope := newScope(c, modelStruct)
-	scope.collectionScope = scope
-	return scope
 }
 
 // initialize new scope with added primary field to fieldset

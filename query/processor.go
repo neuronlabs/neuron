@@ -56,8 +56,6 @@ func init() {
 	registerQueryProcess(ProcessHookBeforeList, beforeListFunc)
 	registerQueryProcess(ProcessList, listFunc)
 	registerQueryProcess(ProcessHookAfterList, afterListFunc)
-	registerQueryProcess(ProcessGetIncluded, getIncludedFunc)
-	registerQueryProcess(ProcessGetIncludedSafe, getIncludedSafeFunc)
 
 	// Patch
 	registerQueryProcess(ProcessHookBeforePatch, beforePatchFunc)
@@ -83,6 +81,18 @@ func init() {
 	registerQueryProcess(ProcessHookBeforeCount, beforeCountProcessFunc)
 	registerQueryProcess(ProcessCount, countProcessFunc)
 	registerQueryProcess(ProcessHookAfterCount, afterCountProcessFunc)
+
+	// VerifyScope
+	registerQueryProcess(ProcessValidateScope, validateScopeProcessFunc)
+	registerQueryProcess(ProcessInitialValidateScope, validateInitialScopeProcessFunc)
+}
+
+func validateScopeProcessFunc(ctx context.Context, s *Scope) error {
+	return s.validateQuery(ctx)
+}
+
+func validateInitialScopeProcessFunc(ctx context.Context, s *Scope) error {
+	return s.validateInitialQuery(ctx)
 }
 
 // ProcessFunc is the function that modifies or changes the scope value
@@ -275,8 +285,8 @@ type processMethod int8
 
 const (
 	_ processMethod = iota
-	pmCreate
 	pmCount
+	pmCreate
 	pmDelete
 	pmGet
 	pmList

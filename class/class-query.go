@@ -90,9 +90,9 @@ var (
 	// when unselecting fields which were not selected.
 	QuerySelectedFieldsNotSelected errors.Class
 
-	// QuerySelectedFieldsInvalidModel is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
+	// QueryFieldsetInvalidModel is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
 	// when provided selected field is of invalid or non matched model.
-	QuerySelectedFieldsInvalidModel errors.Class
+	QueryFieldsetInvalidModel errors.Class
 
 	// QuerySelectedFieldInvalid is the 'MjrQuery', 'MnrQuerySelectedFields' error classification
 	// when the selected field is not valid.
@@ -113,7 +113,7 @@ func registerQuerySelectedFields() {
 
 	QuerySelectedFieldsNotFound = newClass()
 	QuerySelectedFieldsNotSelected = newClass()
-	QuerySelectedFieldsInvalidModel = newClass()
+	QueryFieldsetInvalidModel = newClass()
 	QuerySelectedFieldInvalid = newClass()
 	QuerySelectedFieldAlreadyUsed = newClass()
 }
@@ -285,9 +285,9 @@ var (
 	// MnrQueryValue is the 'MjrQuery' minor that classifies errors related with the query values.
 	MnrQueryValue errors.Minor
 
-	// QueryNoValue is the 'MjrQuery', 'MnrQueryValue' error classification
+	// QueryNilValue is the 'MjrQuery', 'MnrQueryValue' error classification
 	// for queries with no values provided.
-	QueryNoValue errors.Class
+	QueryNilValue errors.Class
 
 	// QueryValueMissingRequired is the 'MjrQuery', 'MnrQueryValue' error classifcation
 	// occurred on missing required field values.
@@ -322,7 +322,7 @@ func registerQueryValue() {
 		return errors.MustNewClass(mjr, mnr, errors.MustNewIndex(mjr, mnr))
 	}
 
-	QueryNoValue = newClass()
+	QueryNilValue = newClass()
 	QueryValueMissingRequired = newClass()
 	QueryValueNoResult = newClass()
 	QueryValuePrimary = newClass()

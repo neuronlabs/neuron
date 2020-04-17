@@ -42,7 +42,7 @@ const (
 // NewPaginationLimitOffset creates new Limit Offset pagination for given 'limit' and 'offset'.
 func NewPaginationLimitOffset(limit, offset int64) (*Pagination, error) {
 	pagination := &Pagination{Type: LimitOffsetPagination, Size: limit, Offset: offset}
-	if err := pagination.IsValid(); err != nil {
+	if err := pagination.Validate(); err != nil {
 		return nil, err
 	}
 	return pagination, nil
@@ -51,7 +51,7 @@ func NewPaginationLimitOffset(limit, offset int64) (*Pagination, error) {
 // NewPaginationNumberSize sets the pagination of the type PageNumberSize with the page 'number' and page 'size'.
 func NewPaginationNumberSize(number, size int64) (*Pagination, error) {
 	pagination := &Pagination{Size: size, Offset: number, Type: PageNumberPagination}
-	if err := pagination.IsValid(); err != nil {
+	if err := pagination.Validate(); err != nil {
 		return nil, err
 	}
 	return pagination, nil
@@ -76,7 +76,7 @@ type Pagination struct {
 // If the 'p' pagination is already the 'first' pagination the function
 // returns it as the result directly.
 func (p *Pagination) First() (*Pagination, error) {
-	if err := p.IsValid(); err != nil {
+	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 	var first *Pagination
@@ -191,8 +191,8 @@ func (p *Pagination) GetNumberSize() (pageNumber, pageSize int64) {
 	return pageNumber, pageSize
 }
 
-// IsValid checks if the pagination is well formed.
-func (p *Pagination) IsValid() error {
+// Validate checks if the pagination is well formed.
+func (p *Pagination) Validate() error {
 	return p.checkValues()
 }
 
@@ -207,7 +207,7 @@ func (p *Pagination) IsZero() bool {
 // directly as the result. In order to check if the 'p' is last pagination
 // compare it's pointer with the 'p'.
 func (p *Pagination) Last(total int64) (*Pagination, error) {
-	if err := p.IsValid(); err != nil {
+	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 	if total < 0 {
@@ -259,7 +259,7 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 // If current pagination 'p' is the last one, then the function returns 'p' pagination directly.
 // In order to check if there is a next pagination compare the result pointer with the 'p' pagination.
 func (p *Pagination) Next(total int64) (*Pagination, error) {
-	if err := p.IsValid(); err != nil {
+	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 	if total < 0 {
@@ -302,7 +302,7 @@ func (p *Pagination) Next(total int64) (*Pagination, error) {
 // If current pagination 'p' is the first page then the function returns 'p' pagination.
 // If the previouse size would overflow the 0th offset then the previous starts from 0th offset.
 func (p *Pagination) Previous() (*Pagination, error) {
-	if err := p.IsValid(); err != nil {
+	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 

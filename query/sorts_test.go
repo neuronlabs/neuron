@@ -110,11 +110,6 @@ func TestNew(t *testing.T) {
 			})
 		})
 	})
-
-	t.Run("TooDeep", func(t *testing.T) {
-		_, err := NewSort(mStruct, "posts.comments.id", true)
-		require.Error(t, err)
-	})
 }
 
 // TestSortField tests the sortfield copy method.

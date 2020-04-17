@@ -98,7 +98,7 @@ func (s *Scope) autoSelectFields() error {
 	}
 	// check if the value is set
 	if s.Value == nil {
-		return errors.NewDet(class.QueryNoValue, "no value provided for scope")
+		return errors.NewDet(class.QueryNilValue, "no value provided for scope")
 	}
 	s.autoSelectedFields = true
 	if log.Level() == log.LevelDebug3 {
@@ -115,7 +115,7 @@ func (s *Scope) autoSelectFields() error {
 
 	// check if the value is a struct
 	if v.Kind() != reflect.Struct {
-		return errors.NewDet(class.QuerySelectedFieldsInvalidModel, "auto select fields model is not a single struct model")
+		return errors.NewDet(class.QueryFieldsetInvalidModel, "auto select fields model is not a single struct model")
 	}
 
 	for _, field := range s.mStruct.Fields() {
@@ -139,7 +139,7 @@ func (s *Scope) autoSelectFields() error {
 
 // fillFieldsetIfNotSet sets the fieldset to full if the fieldset is not set
 func (s *Scope) fillFieldsetIfNotSet() {
-	if s.Fieldset == nil || len(s.Fieldset) == 0 {
+	if len(s.Fieldset) == 0 {
 		s.setAllFields()
 		s.autoSelectedFields = true
 	}

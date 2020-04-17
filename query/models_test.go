@@ -36,3 +36,14 @@ type RelatedModel struct {
 	ID         int     `neuron:"type=primary"`
 	FloatField float64 `neuron:"type=attr"`
 }
+
+type ForeignWithRelation struct {
+	ID         int
+	Relation   *HasManyWithRelation `neuron:"foreign=ForeignKey"`
+	ForeignKey int                  `neuron:"type=foreign"`
+}
+
+type HasManyWithRelation struct {
+	ID       int
+	Relation []*ForeignWithRelation `neuron:"foreign=ForeignKey"`
+}

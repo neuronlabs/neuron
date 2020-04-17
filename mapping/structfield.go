@@ -167,7 +167,6 @@ func (s *StructField) IsUpdatedAt() bool {
 
 // IsZeroValue checks if the provided field has Zero value.
 func (s *StructField) IsZeroValue(fieldValue interface{}) bool {
-	// TODO: store zero value to check.
 	return reflect.DeepEqual(fieldValue, reflect.Zero(s.reflectField.Type).Interface())
 }
 

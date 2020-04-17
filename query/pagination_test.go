@@ -12,7 +12,7 @@ import (
 func TestPaginationFormatQuery(t *testing.T) {
 	t.Run("Paged", func(t *testing.T) {
 		p := &Pagination{Size: 10, Offset: 2, Type: PageNumberPagination}
-		require.NoError(t, p.IsValid())
+		require.NoError(t, p.Validate())
 
 		q := url.Values{}
 
@@ -26,7 +26,7 @@ func TestPaginationFormatQuery(t *testing.T) {
 	t.Run("Limited", func(t *testing.T) {
 		p := &Pagination{Size: 10}
 
-		require.NoError(t, p.IsValid())
+		require.NoError(t, p.Validate())
 
 		q := p.FormatQuery()
 		require.Len(t, q, 1)
@@ -37,7 +37,7 @@ func TestPaginationFormatQuery(t *testing.T) {
 	t.Run("Offseted", func(t *testing.T) {
 		p := &Pagination{Offset: 10}
 
-		require.NoError(t, p.IsValid())
+		require.NoError(t, p.Validate())
 
 		q := p.FormatQuery()
 		require.Len(t, q, 1)
@@ -48,7 +48,7 @@ func TestPaginationFormatQuery(t *testing.T) {
 	t.Run("LimitOffset", func(t *testing.T) {
 		p := &Pagination{10, 140, LimitOffsetPagination}
 
-		require.NoError(t, p.IsValid())
+		require.NoError(t, p.Validate())
 
 		q := p.FormatQuery()
 		require.Len(t, q, 2)
