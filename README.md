@@ -5,7 +5,7 @@
 
 Neuron-core is the golang cloud-native, distributed ORM implementation.
 
-* [What is Neuron?](#what-is-neuron)
+* [What is Neuron?](#what-is-neuron-core)
 * [Install](#install)
 * [Docs](#docs)
 * [Quick Start](#quick-start)
@@ -14,8 +14,8 @@ Neuron-core is the golang cloud-native, distributed ORM implementation.
 
 ## What is Neuron-Core?
 
-Neuron-core is a cloud-ready **Golang** ORM. It's design allows to
-query multiple related models located on different datastores/repositories.
+Neuron-core is a cloud-ready **Golang** ORM. It's design allows querying multiple related models located on different 
+data stores or repositories using a single API.
 
 ## Design
 
@@ -23,11 +23,12 @@ Package `neuron` provides golang ORM implementation designed to process microser
 
 The mapped models must have all the field's with [defined type](https://docs.neuronlabs.io/neuron-core/models/structure.html#model-structure). The initial model mapping was based on the [JSONAPI v1.0](https://jsonapi.org/format/#document-resource-objects) model definition. The distributed environment required each [relationship](https://docs.neuronlabs.io/neuron-core/models/relationship.html) to be specified of it's kind and type, just as their foreign keys.
 
-The query processor needs to work as the orchestrator, choreographer. As each model's repository might use different database, it needs to implement distributed [transactions](https://docs.neuronlabs.io/neuron-core/query/transactions.html). 
+The query processor works as the orchestrator and choreographer. It allows to join the queries where each model's 
+use a different database. It also allows distributed transactions [transactions](https://docs.neuronlabs.io/neuron-core/query/transactions.html). 
 
 ## Install
 
-`go get -u github.com/neuronlabs/neuron-core`
+`go get github.com/neuronlabs/neuron-core`
 
 ## Docs
 - Neuron-Core: https://docs.neuronlabs.io/neuron-core
@@ -46,15 +47,15 @@ type User struct {
     ID      int
     Name    string
     Surname string
-    Pets []*Pet `neuron:"type=relation;foreign=OwnerID"`
+    Pets    []*Pet `neuron:"foreign=OwnerID"`
 }
 
 // Pet is the model related with the User.
 // It is stored in the 'secondary' repository.
 type Pet struct {
-    ID      int
-    Name    string
-    OwnerID int `neuron:"type=foreign"`
+    ID          int
+    Name        string
+    OwnerID     int     `neuron:"type=foreign"`
 }
 
 // RepositoryName implements RepositoryNamer interface.
@@ -92,7 +93,7 @@ func main() {
     // registered repository would be set as the default as well. 
     mainDB := &config.Repository{
         // Currently registered repository 'neuron-pq' has it's driver name: 'pq'.
-        DriverName: "pq",        
+        DriverName: "postgres",        
         Host: "localhost",   
         Port: 5432,
         Username: "main_db_user",
@@ -105,7 +106,7 @@ func main() {
 
     // We can register and use different repository for other models.
     secondaryDB := &config.Repository{        
-        DriverName: "pq",        
+        DriverName: "postgres",        
         Host: "172.16.1.10",
         Port: 5432,
         Username: "secondary_user",
@@ -135,9 +136,10 @@ func main() {
     // Start application and query models
     users := []*models.User{}
     err = n.Query(&users).        
-        .Filter("filter[users][name][$in]","John", "Sam"). // the query scope may be filtered        
-        .Sort("-id"). // it might also be sorted
-        .List() // list all the users with the name 'John' or 'Sam' with 'id' ordered in decrease manner.
+        .Filter("Name IN","John", "Sam"). // Filter the results by the 'Name' which might be 'John' or 'Sam'.        
+        .Sort("-ID"). // Sort the results by user's ids.
+        .Include("Pets"). // Include the 'Pets' field for each user in the 'users'.
+        .List() // List all the users with the name 'John' or 'Sam' with 'id' ordered in decrease manner.
     if  err != nil {
         log.Fatal(err)
     }
