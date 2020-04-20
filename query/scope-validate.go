@@ -8,6 +8,23 @@ import (
 	"github.com/neuronlabs/neuron-core/class"
 )
 
+// CreateValidator is an interface implemented by the neuron models used for validating create values.
+type CreateValidator interface {
+	ValidateCreate(s *Scope) error
+}
+
+// PatchValidator is an interface implemented by the neuron models used for validating patch values.
+type PatchValidator interface {
+	ValidatePatch(s *Scope) error
+}
+
+// Validator is common validator, used if a model doesn't implement CreateValidator or PatchValidator.
+// A model should implement this interface if it's validation is done in the same way for both create and patch
+// processes.
+type Validator interface {
+	Validate(s *Scope) error
+}
+
 // this should be done just at the beginning of the processor.
 func (s *Scope) validateInitialQuery(ctx context.Context) error {
 	switch s.processMethod {
@@ -93,8 +110,8 @@ func (s *Scope) validateCreateQuery(ctx context.Context) (err error) {
 	if err = s.validateScopeNilValue(); err != nil {
 		return err
 	}
-	if err = s.c.CreateValidator.Struct(s.Value); err != nil {
-		return s.convertValidateError(err)
+	if err = s.validateCreateValue(); err != nil {
+		return err
 	}
 	if err = s.validateCreateFieldset(); err != nil {
 		return err
@@ -128,8 +145,8 @@ func (s *Scope) validatePatchQuery(ctx context.Context) (err error) {
 	if err = s.validateScopeNilValue(); err != nil {
 		return err
 	}
-	if err = s.c.PatchValidator.Struct(s.Value); err != nil {
-		return s.convertValidateError(err)
+	if err = s.validatePatchValue(); err != nil {
+		return err
 	}
 	if err = s.validateFieldset(); err != nil {
 		return err
@@ -283,6 +300,26 @@ func (s *Scope) validateContext(ctx context.Context) error {
 func (s *Scope) validateScopeNilValue() error {
 	if s.Value == nil {
 		return errors.Newf(class.QueryNilValue, "provided nil scope value")
+	}
+	return nil
+}
+
+func (s *Scope) validateCreateValue() error {
+	switch validator := s.Value.(type) {
+	case CreateValidator:
+		return validator.ValidateCreate(s)
+	case Validator:
+		return validator.Validate(s)
+	}
+	return nil
+}
+
+func (s *Scope) validatePatchValue() error {
+	switch validator := s.Value.(type) {
+	case PatchValidator:
+		return validator.ValidatePatch(s)
+	case Validator:
+		return validator.Validate(s)
 	}
 	return nil
 }

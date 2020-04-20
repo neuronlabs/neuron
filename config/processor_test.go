@@ -9,7 +9,7 @@ import (
 // TestProcessor tests the processor config.
 func TestProcessor(t *testing.T) {
 	var p *Processor
-	t.Run("Threadsafe", func(t *testing.T) {
+	t.Run("ThreadSafe", func(t *testing.T) {
 		assert.NotPanics(t, func() { p = ThreadSafeProcessor() })
 		if assert.NotNil(t, p) {
 			err := p.Validate()

@@ -322,6 +322,7 @@ func (t TxState) String() string {
 	case TxRollback:
 		str = "rollback"
 	default:
+		//nolint:goconst
 		str = "unknown"
 	}
 	return str

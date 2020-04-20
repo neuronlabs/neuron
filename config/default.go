@@ -1,21 +1,13 @@
 package config
 
-import (
-	"gopkg.in/go-playground/validator.v9"
-)
-
 var (
-	validate = validator.New()
-
 	// Set defaults for the controller
 	defaultValues = map[string]interface{}{
-		"naming_convention":      "snake",
-		"create_validator_alias": "create",
-		"patch_validator_alias":  "patch",
-		"log_level":              "info",
-		"processor":              defaultThreadsafeProcessorConfig(),
-		"repositories":           map[string]*Repository{},
-		"included_depth_limit":   2,
+		"naming_convention":    "snake",
+		"log_level":            "info",
+		"processor":            defaultThreadsafeProcessorConfig(),
+		"repositories":         map[string]*Repository{},
+		"included_depth_limit": 2,
 	}
 )
 
@@ -35,11 +27,9 @@ func DefaultValues() map[string]interface{} {
 
 func defaultConfig() *Controller {
 	return &Controller{
-		NamingConvention:     "snake",
-		CreateValidatorAlias: "create",
-		PatchValidatorAlias:  "patch",
-		Processor:            ThreadSafeProcessor(),
-		Repositories:         map[string]*Repository{},
-		IncludedDepthLimit:   2,
+		NamingConvention:   "snake",
+		Processor:          ThreadSafeProcessor(),
+		Repositories:       map[string]*Repository{},
+		IncludedDepthLimit: 2,
 	}
 }

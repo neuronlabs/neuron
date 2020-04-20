@@ -338,6 +338,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 	}
 }
 
+//nolint:unparam
 func newSortField(sField *mapping.StructField, o SortOrder, subs ...*SortField) *SortField {
 	sort := &SortField{StructField: sField, Order: o}
 	sort.SubFields = append(sort.SubFields, subs...)

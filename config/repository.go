@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/tls"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -89,5 +90,17 @@ func (r *Repository) Parse(s string) error {
 
 // Validate validates the repository config.
 func (r *Repository) Validate() error {
-	return validate.Struct(r)
+	if r.DriverName == "" {
+		return errors.New(class.ConfigValueNil, "no repository driver name provided in the config")
+	}
+	if r.RawURL != "" {
+		if _, err := url.Parse(r.RawURL); err != nil {
+			return errors.Newf(class.ConfigValueInvalid, "invalid raw url for the repository config: %v", err)
+		}
+	} else {
+		if r.Port < 0 {
+			return errors.Newf(class.ConfigValueNil, "repository port value cannot be < 0")
+		}
+	}
+	return nil
 }

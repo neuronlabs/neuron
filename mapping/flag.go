@@ -6,12 +6,12 @@ func (f fieldFlag) containsFlag(other fieldFlag) bool {
 	return f&other != 0
 }
 
-// field flags
+// Field flags
 const (
 	// fDefault is a default flag value
-	fDefault fieldFlag = iota
+	fDefault fieldFlag = 1 << iota
 	// fOmitEmpty is a field flag for omitting empty value.
-	fOmitempty fieldFlag = 1 << (iota - 1)
+	fOmitempty
 	// fISO8601 is a time field flag marking it usable with IS08601 formatting.
 	fISO8601
 	// fI18n is the i18n field flag.

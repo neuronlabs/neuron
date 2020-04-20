@@ -17,32 +17,45 @@ type Controller struct {
 	// - lower_camel
 	// - snake
 	// - kebab
-	NamingConvention string `mapstructure:"naming_convention" validate:"isdefault|oneof=camel lower_camel snake kebab"`
+	NamingConvention string `mapstructure:"naming_convention"`
 	// Models defines the model's configurations.
 	Models map[string]*ModelConfig `mapstructure:"models"`
 	// Repositories contains the connection configs for the given repository instance name
-	Repositories map[string]*Repository `mapstructure:"repositories" validate:"-"`
+	Repositories map[string]*Repository `mapstructure:"repositories"`
 	// DefaultRepositoryName defines default repository name
 	DefaultRepositoryName string `mapstructure:"default_repository_name"`
 	// DefaultRepository defines controller default repository
-	DefaultRepository *Repository `mapstructure:"default_repository" validate:"-"`
+	DefaultRepository *Repository `mapstructure:"default_repository"`
 	// DisallowDefaultRepository determines if the default repository are allowed.
 	DisallowDefaultRepository bool `mapstructure:"disallow_default_repository"`
 
 	// Processor is the config used for the scope processor
 	ProcessorName string     `mapstructure:"processor_name"`
-	Processor     *Processor `mapstructure:"processor" validate:"required"`
-
-	// CreateValidatorAlias is the alias for the create validators
-	CreateValidatorAlias string `mapstructure:"create_validator_alias"`
-	// PatchValidatorAlias is the alis used for the Patch validator
-	PatchValidatorAlias string `mapstructure:"patch_validator_alias"`
-	// DefaultValidatorAlias is the alias used as a default validator alias
-	DefaultValidatorAlias string `mapstructure:"default_validator_alias"`
+	Processor     *Processor `mapstructure:"processor"`
 
 	// IncludedDepthLimit is the default limit for the nested included query paremeter.
 	// Each model can specify its custom limit in the model's config.
 	IncludedDepthLimit int `mapstructure:"included_depth_limit"`
+}
+
+// Validate checks the validity of the config.
+func (c *Controller) Validate() error {
+	if c.NamingConvention != "" {
+		var found bool
+		for _, naming := range []string{"camel", "lower_camel", "snake", "kebab"} {
+			if c.NamingConvention == naming {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.Newf(class.ConfigValueInvalid, "provided invalid naming convention")
+		}
+	}
+	if c.Processor == nil {
+		return errors.Newf(class.ConfigValueNil, "provided nil processor")
+	}
+	return nil
 }
 
 // MapModelsRepositories maps the repositories configurations for all model's.

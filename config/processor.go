@@ -14,7 +14,7 @@ var processors = map[string]*Processor{
 	"single_thread": ThreadSafeProcessor(),
 }
 
-// ConcurrentProcessor creates the concurrent processor confuration.
+// ConcurrentProcessor creates the concurrent processor configuration.
 func ConcurrentProcessor() *Processor {
 	p := &Processor{}
 	p.unmarshal(defaultConcurrentProcessorConfig())

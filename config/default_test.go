@@ -17,7 +17,5 @@ func TestReadDefaultConfig(t *testing.T) {
 
 	t.Run("Controller", func(t *testing.T) {
 		assert.Equal(t, "snake", c.NamingConvention)
-		assert.Equal(t, "create", c.CreateValidatorAlias)
-		assert.Equal(t, "patch", c.PatchValidatorAlias)
 	})
 }

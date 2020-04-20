@@ -3,8 +3,6 @@ package controller
 import (
 	"strings"
 
-	"gopkg.in/go-playground/validator.v9"
-
 	"github.com/neuronlabs/errors"
 
 	"github.com/neuronlabs/neuron-core/class"
@@ -15,20 +13,13 @@ import (
 	"github.com/neuronlabs/neuron-core/repository"
 )
 
-var validate = validator.New()
-
 // Controller is the structure that contains, initialize and control the flow of the application.
-// It contains repositories, model definitions, validators.
+// It contains repositories, model definitions.
 type Controller struct {
 	// Config is the configuration struct for the controller.
 	Config *config.Controller
 	// NamerFunc defines the function strategy how the model's and it's fields are being named.
 	NamerFunc namer.Namer
-	// CreateValidator is used as a validator for the Create processes.
-	CreateValidator *validator.Validate
-	// PatchValidator is used as a validator for the Patch processes.
-	PatchValidator *validator.Validate
-
 	// ModelMap is a mapping for the model's structures.
 	ModelMap *mapping.ModelMap
 	// Repositories is the mapping of the repositoryName to the repository.
@@ -105,7 +96,7 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 		return err
 	}
 	// validate config
-	if err = validate.Struct(cfg); err != nil {
+	if err = cfg.Validate(); err != nil {
 		return errors.NewDet(class.ConfigValueInvalid, "validating config failed")
 	}
 	// validate processor functions
@@ -127,25 +118,6 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 		return errors.NewDetf(class.ConfigValueInvalid, "unknown naming convention name: %s", cfg.NamingConvention)
 	}
 	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
-
-	// set create validation struct tag
-	if cfg.CreateValidatorAlias == "" {
-		cfg.CreateValidatorAlias = "create"
-	}
-	c.CreateValidator.SetTagName(cfg.CreateValidatorAlias)
-	log.Debug2f("Using: '%s' create validator struct tag", cfg.CreateValidatorAlias)
-
-	// set patch validation struct tag
-	if cfg.PatchValidatorAlias == "" {
-		cfg.PatchValidatorAlias = "patch"
-	}
-	c.PatchValidator.SetTagName(cfg.PatchValidatorAlias)
-	log.Debug2f("Using: '%s' patch validator struct tag", cfg.PatchValidatorAlias)
-
-	if cfg.Processor == nil {
-		cfg.Processor = config.ThreadSafeProcessor()
-	}
-
 	c.Config = cfg
 
 	if cfg.DefaultRepositoryName != "" && cfg.DefaultRepository != nil {
@@ -154,17 +126,17 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 		}
 	}
 
-	// map repositories from config.
+	// Map repositories from config.
 	for name, repositoryConfig := range cfg.Repositories {
 		if _, ok := c.Repositories[name]; ok {
 			return errors.NewDetf(class.RepositoryConfigInvalid, "repository: '%s' already registered for the controller", name)
 		}
-		// create new repository from factory.
+		// Create new repository from factory.
 		repo, err := c.newRepository(repositoryConfig)
 		if err != nil {
 			return err
 		}
-		// map the repository to its name.
+		// Map the repository to its name.
 		c.Repositories[name] = repo
 	}
 	return nil
@@ -207,17 +179,11 @@ func (c *Controller) newRepository(cfg *config.Repository) (repository.Repositor
 
 func newController(cfg *config.Controller) (*Controller, error) {
 	var err error
-	c := &Controller{
-		CreateValidator: validator.New(),
-		PatchValidator:  validator.New(),
-		Repositories:    make(map[string]repository.Repository),
-	}
-
+	c := &Controller{Repositories: make(map[string]repository.Repository)}
 	if err = c.setConfig(cfg); err != nil {
 		return nil, err
 	}
 
-	// create and initialize model mapping
 	c.ModelMap = mapping.NewModelMap(c.NamerFunc, c.Config)
 	return c, nil
 }

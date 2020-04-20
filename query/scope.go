@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/neuronlabs/errors"
 
@@ -572,7 +571,7 @@ func (s *Scope) list(ctx context.Context) error {
 	if log.Level() <= log.LevelDebug2 {
 		log.Debug2f("[SCOPE][%s] process list", s.ID())
 	}
-	// list from the processor
+	// List from the processor.
 	if err := s.processor().List(ctx, s); err != nil {
 		return err
 	}
@@ -609,63 +608,6 @@ func (s *Scope) repository() repository.Repository {
 		log.Panicf("Can't find repository for model: %s", s.mStruct.String())
 	}
 	return repo
-}
-
-func (s *Scope) convertValidateError(err error) error {
-	switch er := err.(type) {
-	case *validator.InvalidValidationError:
-		// Invalid argument passed to validator
-		log.Errorf("[%s] Invalid Validation Error: %v", s.ID().String(), er)
-		e := errors.NewDet(class.InternalQueryValidation, "invalid validation error")
-		return e
-	case validator.ValidationErrors:
-		var errs []errors.ClassError
-		for _, valueError := range er {
-			tag := valueError.Tag()
-
-			var errObj errors.DetailedError
-			if tag == "required" {
-				// if field is required and the field tag is empty
-				if valueError.Field() == "" {
-					log.Errorf("[%s] Model: '%v' validation failed. Field is required and the field tag is empty.", s.ID().String(), s.Struct().Type().String())
-					errObj = errors.NewDet(class.InternalQueryValidation, "empty field tag")
-					return errObj
-				}
-
-				errObj = errors.NewDet(class.QueryValueMissingRequired, "missing required field")
-				errObj.SetDetailsf("The field: %s, is required.", valueError.Field())
-				errs = append(errs, errObj)
-				continue
-			} else if tag == "isdefault" {
-				switch {
-				case valueError.Field() == "":
-					errObj = errors.NewDet(class.QueryValueValidation, "non default field value")
-					errObj.SetDetailsf("The field: '%s' must be of zero value.", valueError.Field())
-					errs = append(errs, errObj)
-					continue
-				case strings.HasPrefix(tag, "len"):
-					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - field of invalid length")
-					errObj.SetDetailsf("The value of the field: %s is of invalid length.", valueError.Field())
-					errs = append(errs, errObj)
-					continue
-				default:
-					errObj = errors.NewDet(class.QueryValueValidation, "validation failed - invalid field value")
-					if valueError.Field() != "" {
-						errObj.SetDetailsf("Invalid value for the field: '%s'.", valueError.Field())
-					}
-
-					errs = append(errs, errObj)
-					continue
-				}
-			}
-		}
-		if errs != nil {
-			return nil
-		}
-		return errors.MultiError(errs)
-	default:
-		return errors.NewDetf(class.InternalQueryValidation, "invalid error type: '%T'", er)
-	}
 }
 
 func newQueryScope(c *controller.Controller, model interface{}) (*Scope, error) {
