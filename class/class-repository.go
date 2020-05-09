@@ -10,6 +10,7 @@ var MjrRepository errors.Major
 
 func registerRepositoryClasses() {
 	MjrRepository = errors.MustNewMajor()
+	MnrRepository = errors.MustNewMinor(MjrNeuron)
 
 	registerRepositoryUnavailable()
 	registerRepositoryAuth()
@@ -28,6 +29,32 @@ func registerRepositoryClasses() {
 Repository Unavailable
 
 */
+
+var (
+	// MnrRepository is the errors Minor errors classification user for
+	MnrRepository errors.Minor
+
+	RepositoryNotImplements errors.Class
+)
+
+func newIndexClass(mnr errors.Minor) errors.Class {
+	return errors.MustNewClass(MjrNeuron, mnr, errors.MustNewIndex(MjrNeuron, mnr))
+}
+func registerNewRepositoryClasses() {
+	RepositoryNotImplements = newIndexClass(MnrRepository)
+}
+
+/**
+ *
+ *
+ *
+ *
+ * OLD CLASSES
+ *
+ *
+ *
+ *
+ */
 
 var (
 	// MnrRepositoryUnavailable is a 'MjrRepository' minor error classification

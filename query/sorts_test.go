@@ -8,14 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/mapping"
-	"github.com/neuronlabs/neuron-core/namer"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/namer"
 )
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.Default())
+	ms := mapping.NewModelMap(namer.NamingSnake, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.Default())
+	ms := mapping.NewModelMap(namer.NamingSnake, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sortfield copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.Default())
+	ms := mapping.NewModelMap(namer.NamingKebab, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestSortField(t *testing.T) {
 
 // TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.Default())
+	ms := mapping.NewModelMap(namer.NamingKebab, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestSetRelationScopeSort(t *testing.T) {
 	err = sortField.setSubfield([]string{}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	postField, ok := mStruct.RelationField("posts")
+	postField, ok := mStruct.RelationByName("posts")
 	require.True(t, ok)
 
 	sortField = &SortField{StructField: postField}

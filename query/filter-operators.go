@@ -3,8 +3,8 @@ package query
 import (
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
 )
 
 // FilterOperators is the container that stores all
@@ -56,7 +56,7 @@ var defaultOperators = []*Operator{
 type Operator struct {
 	// ID is the filter operator id used for comparing the operator type.
 	ID uint16
-	// Value is the operator query value
+	// Models is the operator query value
 	Value string
 	// Name is the human readable filter operator name.
 	Name string
@@ -105,7 +105,7 @@ func (f *Operator) isStringOnly() bool {
 
 /**
 
-Operator Values
+Operator Models
 
 */
 
@@ -216,7 +216,7 @@ func (c *operatorContainer) registerOperator(op *Operator) error {
 	}
 
 	c.operators[op.Value] = op
-	// Set any possible alias for given operator.
+	// AddModel any possible alias for given operator.
 	if op.URLAlias != "" {
 		c.operators[op.URLAlias] = op
 	}

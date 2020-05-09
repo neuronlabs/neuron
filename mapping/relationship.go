@@ -2,12 +2,6 @@ package mapping
 
 import (
 	"reflect"
-	"strconv"
-	"strings"
-
-	"github.com/neuronlabs/errors"
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
 )
 
 // RelationshipKind is the enum used to define the Relationship's kind.
@@ -55,140 +49,6 @@ func (r RelationshipKind) String() string {
 	return "Unknown"
 }
 
-// Strategy is the strategy for the relationship.
-// It's 'QueryOrder' is the querying order for multiple strategies.
-// It defines which strategies should be used firsts.
-// The 'OnError' error strategy defines how the relation should
-// react on the error occurrence while.
-type Strategy struct {
-	QueryOrder uint
-	OnError    ErrorStrategy
-}
-
-func (s *Strategy) parse(values map[string]string) errors.MultiError {
-	// `neuron:"on_delete=order=1;on_error=fail"`
-	var multiErr errors.MultiError
-	for key, value := range values {
-		switch strings.ToLower(key) {
-		case annotation.Order:
-			err := s.parseOrder(value)
-			if err != nil {
-				multiErr = append(multiErr, err)
-			}
-		case annotation.OnError:
-			err := s.parseOnError(value)
-			if err != nil {
-				multiErr = append(multiErr, err)
-			}
-		default:
-			err := errors.NewDetf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key)
-			err.SetDetails(key)
-			multiErr = append(multiErr, err)
-		}
-	}
-	return multiErr
-}
-
-func (s *Strategy) parseOrder(value string) errors.DetailedError {
-	o, err := strconv.Atoi(value)
-	if err != nil {
-		err := errors.NewDetf(class.ModelRelationshipOptions, "relationship strategy order value is not an integer: '%s'", value)
-		return err
-	}
-
-	if o < 0 {
-		err := errors.NewDet(class.ModelRelationshipOptions, "relationship strategy order is lower than 0")
-		return err
-	}
-	s.QueryOrder = uint(o)
-	return nil
-}
-
-func (s *Strategy) parseOnError(value string) errors.DetailedError {
-	switch strings.ToLower(value) {
-	case annotation.FailOnError:
-		s.OnError = Fail
-	case annotation.ContinueOnError:
-		s.OnError = Continue
-	default:
-		err := errors.NewDetf(class.ModelRelationshipOptions, "invalid on_error option: '%s'", value)
-		return err
-	}
-	return nil
-}
-
-// DeleteStrategy is the strategy for the deletion options.
-// The 'OnChange' varible defines how the relation should react
-// on deletion of the root model.
-type DeleteStrategy struct {
-	Strategy
-	OnChange ChangeStrategy
-}
-
-func (d *DeleteStrategy) parse(values map[string]string) errors.MultiError {
-	var multiErr errors.MultiError
-	for key, value := range values {
-		switch strings.ToLower(key) {
-		case annotation.Order:
-			err := d.parseOrder(value)
-			if err != nil {
-				multiErr = append(multiErr, err)
-			}
-		case annotation.OnError:
-			err := d.parseOnError(value)
-			if err != nil {
-				multiErr = append(multiErr, err)
-			}
-		case annotation.OnChange:
-			err := d.parseOnChange(value)
-			if err != nil {
-				multiErr = append(multiErr, err)
-			}
-		default:
-			err := errors.NewDetf(class.ModelRelationshipOptions, "invalid relationship strategy key: '%s'", key)
-			err.SetDetails(key)
-			multiErr = append(multiErr, err)
-		}
-	}
-	return multiErr
-}
-
-func (d *DeleteStrategy) parseOnChange(value string) errors.DetailedError {
-	switch value {
-	case annotation.RelationSetNull:
-		d.OnChange = SetNull
-	case annotation.RelationCascade:
-		d.OnChange = Cascade
-	case annotation.RelationRestrict:
-		d.OnChange = Restrict
-	case annotation.RelationNoAction:
-		d.OnChange = NoAction
-	default:
-		return errors.NewDetf(class.ModelRelationshipOptions, "relationship invalid 'on delete' option: '%s'", value)
-	}
-	return nil
-}
-
-// ChangeStrategy defines the option on how to process the relationship.
-type ChangeStrategy int
-
-// Relationship options
-const (
-	SetNull ChangeStrategy = iota
-	NoAction
-	Cascade
-	Restrict
-)
-
-// ErrorStrategy is the query strategy for given relationship field.
-type ErrorStrategy int
-
-// Relationship error strategies constant values, with the default set to 'fail'.
-const (
-	Fail ErrorStrategy = iota
-	Continue
-)
-
 // Relationship is the structure that contains the relation's required field's
 // kind, join model (if exists) and the process option (onDelete, onUpdate) as well
 // as the definition for the related model's type 'mStruct'.
@@ -205,13 +65,6 @@ type Relationship struct {
 	joinModel *ModelStruct
 	// joinModelName is the collection name of the join model.
 	joinModelName string
-
-	// onCreate is a relationship strategy for the creation process.
-	onCreate Strategy
-	// onPatch is a relationship strategy for the patch process.
-	onPatch Strategy
-	// onDelete is a relationship strategy for the deletion process.
-	onDelete DeleteStrategy
 
 	// mStruct is the relationship related model's structure
 	mStruct *ModelStruct
@@ -252,21 +105,6 @@ func (r *Relationship) Kind() RelationshipKind {
 // ManyToManyForeignKey returns the foreign key of the many2many related model's.
 func (r *Relationship) ManyToManyForeignKey() *StructField {
 	return r.mtmRelatedForeignKey
-}
-
-// OnCreate gets the on create strategy for the relationship.
-func (r *Relationship) OnCreate() *Strategy {
-	return &r.onCreate
-}
-
-// OnDelete gets the on delete strategy for the relationship.
-func (r *Relationship) OnDelete() *DeleteStrategy {
-	return &r.onDelete
-}
-
-// OnPatch gets the on create strategy for the relationship.
-func (r *Relationship) OnPatch() *Strategy {
-	return &r.onPatch
 }
 
 // Struct returns relationship model *ModelStruct.

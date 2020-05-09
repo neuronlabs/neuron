@@ -1,18 +1,15 @@
 package config
 
 var (
-	// Set defaults for the controller
+	// AddModel defaults for the controller
 	defaultValues = map[string]interface{}{
-		"naming_convention":    "snake",
-		"log_level":            "info",
-		"processor":            defaultThreadsafeProcessorConfig(),
-		"repositories":         map[string]*Repository{},
-		"included_depth_limit": 2,
+		"naming_convention": "snake",
+		"repositories":      map[string]*Repository{},
 	}
 )
 
-// Default returns default controller configuration.
-func Default() *Controller {
+// DefaultController returns default controller configuration.
+func DefaultController() *Controller {
 	return defaultConfig()
 }
 
@@ -27,9 +24,7 @@ func DefaultValues() map[string]interface{} {
 
 func defaultConfig() *Controller {
 	return &Controller{
-		NamingConvention:   "snake",
-		Processor:          ThreadSafeProcessor(),
-		Repositories:       map[string]*Repository{},
-		IncludedDepthLimit: 2,
+		NamingConvention: "snake",
+		Repositories:     map[string]*Repository{},
 	}
 }

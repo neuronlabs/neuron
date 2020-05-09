@@ -9,7 +9,7 @@ import (
 	"github.com/neuronlabs/errors"
 	"github.com/neuronlabs/uni-logger"
 
-	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron/class"
 )
 
 const (

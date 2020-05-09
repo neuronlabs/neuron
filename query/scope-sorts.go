@@ -3,34 +3,34 @@ package query
 import (
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
 )
 
-// Sort adds the sort fields into given scope.
+// OrderBy adds the sort fields into given scope.
 // If the scope already have sorted fields the function appends newly created sort fields.
 // If the fields are duplicated returns error.
-func (s *Scope) Sort(fields ...string) error {
+func (s *Scope) OrderBy(fields ...string) error {
 	if log.Level().IsAllowed(log.LevelDebug3) {
-		log.Debug3f("[SCOPE][%s] Sorting by fields: %v ", s.ID(), fields)
+		log.Debug3f(s.logFormat("Sorting by fields: %v "), fields)
 	}
 	if len(fields) == 0 {
-		log.Debug("[SCOPE][%s] - Sort - provided no fields")
+		log.Debug(s.logFormat("OrderBy - provided no fields"))
 		return nil
 	}
-	if len(s.SortFields) > 0 {
+	if len(s.SortingOrder) > 0 {
 		sortFields, err := s.createSortFields(false, fields...)
 		if err != nil {
 			return err
 		}
-		s.SortFields = append(s.SortFields, sortFields...)
+		s.SortingOrder = append(s.SortingOrder, sortFields...)
 		return nil
 	}
 	sortFields, err := newUniqueSortFields(s.Struct(), false, fields...)
 	if err != nil {
 		return err
 	}
-	s.SortFields = append(s.SortFields, sortFields...)
+	s.SortingOrder = append(s.SortingOrder, sortFields...)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (s *Scope) SortField(field interface{}) error {
 	default:
 		return errors.NewDetf(class.QuerySortField, "invalid sort field type: %T", field)
 	}
-	s.SortFields = append(s.SortFields, sortField)
+	s.SortingOrder = append(s.SortingOrder, sortField)
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*Sort
 		if count > 1 {
 			if count == 2 {
 				er := errors.NewDet(class.QuerySortField, "duplicated sort field")
-				er.SetDetailsf("Sort parameter: %v used more than once.", sort)
+				er.SetDetailsf("OrderBy parameter: %v used more than once.", sort)
 				errs = append(errs, er)
 				continue
 			} else if count > 2 {

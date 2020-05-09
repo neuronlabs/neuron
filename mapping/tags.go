@@ -3,7 +3,7 @@ package mapping
 import (
 	"strings"
 
-	"github.com/neuronlabs/neuron-core/annotation"
+	"github.com/neuronlabs/neuron/annotation"
 )
 
 // FieldTag is the key: values pair for the given field struct's tag.

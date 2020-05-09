@@ -1,0 +1,129 @@
+{{define "fielder" -}}
+{{- $out := . -}}
+// Compile time check if {{.Name}} implements mapping.Fielder interface.
+var _ mapping.Fielder = &{{.Name}}{}
+
+// GetFieldZeroValue implements mapping.Fielder interface.s
+func ({{.Receiver}} *{{.Name}}) GetFieldZeroValue(field *mapping.StructField) (interface{}, error) {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        return {{$field.Zero}}, nil
+    {{end -}}
+    default:
+        return nil, errors.Newf(class.ModelFieldName, "provided invalid field name: '%s'", field.Name())
+    }
+}
+
+// IsFieldZero implements mapping.Fielder interface.
+func ({{.Receiver}} *{{.Name}}) IsFieldZero(field *mapping.StructField) (bool, error) {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        return {{$field.IsZero}}, nil
+    {{end -}}}
+    return false, errors.Newf(class.ModelFieldName, "provided invalid field name: '%s'", field.Name())
+}
+
+// SetFieldZeroValue implements mapping.Fielder interface.s
+func ({{.Receiver}} *{{.Name}}) SetFieldZeroValue(field *mapping.StructField) error {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        {{$out.Receiver}}.{{$field.Name}} = {{$field.Zero}}
+    {{end -}}
+    default:
+        return errors.Newf(class.ModelFieldName, "provided invalid field name: '%s'", field.Name())
+    }
+    return nil
+}
+
+// GetHashableFieldValue implements mapping.Fielder interface.
+func ({{.Receiver}} *{{.Name}}) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        {{if $field.IsPointer -}}
+        if {{$out.Receiver}}.{{$field.Name}} == nil {
+            return nil, nil
+        }
+        {{end -}}
+        {{if $field.IsByteSlice -}}
+            return string({{if $field.IsPointer}}*{{end}}{{$out.Receiver}}.{{$field.Name}}), nil
+        {{- else -}}
+            return {{if $field.IsPointer}}*{{end}}{{$out.Receiver}}.{{$field.Name}}, nil
+        {{- end}}
+    {{end -}}}
+    return nil, errors.Newf(class.ModelInvalidField, "provided invalid field: '%s' for given model: '%s'", field.Name(), {{.Receiver}})
+}
+
+// GetFieldValue implements mapping.Fielder interface.
+func ({{.Receiver}} *{{.Name}}) GetFieldValue(field *mapping.StructField) (interface{}, error) {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        return {{$out.Receiver}}.{{$field.Name}}, nil
+    {{end -}}}
+    return nil, errors.Newf(class.ModelInvalidField, "provided invalid field: '%s' for given model: '%s'", field.Name(), {{.Receiver}})
+}
+
+// SetFieldValue implements mapping.Fielder interface.
+func ({{.Receiver}} *{{.Name}}) SetFieldValue(field *mapping.StructField, value interface{}) (err error) {
+    switch field.Index[0] {
+    {{range $field := .Fields -}}
+    case {{$field.Index}}: // {{$field.Name}}
+        {{if $field.IsPointer -}}
+        if value == nil {
+            {{$out.Receiver}}.{{$field.Name}} = nil
+            return nil
+        }
+        {{end -}}
+        if v, ok := value.({{$field.Type}}); ok {
+            {{$out.Receiver}}.{{$field.Name}} = v
+            return nil
+        }{{if $field.IsPointer }}
+        // Check if it is non-pointer value.
+        if v, ok := value.({{$field.BaseType}}); ok {
+            {{$out.Receiver}}.{{$field.Name}} = &v
+            return nil
+        }{{end -}}{{range $wrapped := $field.WrappedTypes}}
+        if v, ok := value.({{$wrapped}}); ok {
+            {{$out.Receiver}}.{{$field.Name}} = {{if $field.IsPointer}}&{{end}}v
+        }{{end}}{{if $field.AlternateTypes}}
+        {{if eq (len $field.AlternateTypes) 1 -}}
+        // Check alternate types for the {{$field.Name}}.
+        if v, ok := value.({{index $field.AlternateTypes 0}}); ok {
+            {{if $field.IsPointer -}}
+            temp := {{$field.BaseType}}(v)
+            {{$out.Receiver}}.{{$field.Name}} = &temp
+            {{- else -}}
+            {{$out.Receiver}}.{{$field.Name}} = {{$field.Type}}(v)
+            {{- end}}
+            return nil
+        }
+        {{- else -}}
+        switch v := value.(type) {
+        {{range $alternateType := $field.AlternateTypes -}}
+        case {{$alternateType}}:
+            {{if $field.IsPointer -}}
+            temp := {{$field.BaseType}}(v)
+            {{$out.Receiver}}.{{$field.Name}} = &temp
+            {{- else -}}
+            {{$out.Receiver}}.{{$field.Name}} = {{$field.Type}}(v)
+            {{- end}}{{if $field.IsPointer }}
+        case *{{$alternateType}}:
+            temp := {{$field.BaseType}}(*v)
+            {{$out.Receiver}}.{{$field.Name}} = &temp
+        {{- end}}
+        {{end}}
+        {{- /* TODO: set the scanner as switch type case*/ -}}
+        default:
+            return errors.Newf(class.ModelFieldType, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+        }{{end}}{{- end}}
+    {{end -}}
+    default:
+        return errors.Newf(class.ModelFieldName, "provided invalid field: '%s' for the model: '%T'", field.Name(), m)
+    }
+    return nil
+}
+{{- end}}

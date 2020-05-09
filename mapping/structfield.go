@@ -8,10 +8,33 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
 )
+
+// FieldSet is a slice of fields, with some basic search functions.
+type FieldSet []*StructField
+
+// Contains checks if given fieldset contains given 'sField'.
+func (f FieldSet) Contains(sField *StructField) bool {
+	for _, field := range f {
+		if field == sField {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsFieldName checks if a field with 'fieldName' exists in given set.
+func (f FieldSet) ContainsFieldName(fieldName string) bool {
+	for _, field := range f {
+		if field.neuronName == fieldName || field.Name() == fieldName {
+			return true
+		}
+	}
+	return false
+}
 
 // StructField represents a field structure with its json api parameters.
 // and model relationships.
@@ -30,8 +53,8 @@ type StructField struct {
 	fieldFlags fieldFlag
 
 	// store is the key value store used for the local usage
-	store      map[string]interface{}
-	fieldIndex []int
+	store map[string]interface{}
+	Index []int
 }
 
 // BaseType returns the base 'reflect.Type' for the provided field.
@@ -43,11 +66,6 @@ func (s *StructField) BaseType() reflect.Type {
 // CanBeSorted returns if the struct field can be sorted.
 func (s *StructField) CanBeSorted() bool {
 	return s.canBeSorted()
-}
-
-// FieldIndex gets the field's index.
-func (s *StructField) FieldIndex() []int {
-	return s.fieldIndex
 }
 
 // Kind returns struct fields kind.
@@ -150,6 +168,16 @@ func (s *StructField) IsSortable() bool {
 	return s.isSortable()
 }
 
+// IsField checks if given struct field is a primary key, attribute or foreign key field.
+func (s *StructField) IsField() bool {
+	switch s.kind {
+	case KindPrimary, KindAttribute, KindForeignKey:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsTime checks whether the field uses time flag.
 func (s *StructField) IsTime() bool {
 	return s.isTime()
@@ -211,7 +239,7 @@ func (s *StructField) StoreDelete(key string) {
 		return
 	}
 	delete(s.store, key)
-	log.Debug2f("[STORE][%s][%s] deleting key: '%s'", s.mStruct.collectionType, s.neuronName, key)
+	log.Debug2f("[STORE][%s][%s] deleting key: '%s'", s.mStruct.collection, s.neuronName, key)
 }
 
 // StoreGet gets the value from the store at the key: 'key'..
@@ -230,7 +258,7 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 		s.store = make(map[string]interface{})
 	}
 	s.store[key] = value
-	log.Debug2f("[STORE][%s][%s] Set Key: %s, Value: %v", s.mStruct.collectionType, s.NeuronName(), key, value)
+	log.Debug2f("[STORE][%s][%s] AddModel Key: %s, Models: %v", s.mStruct.collection, s.NeuronName(), key, value)
 }
 
 // Struct returns fields Model Structure.
@@ -257,7 +285,7 @@ func (s *StructField) ValueFromString(value string) (result interface{}, err err
 	return fieldValue.Interface(), nil
 }
 
-// TagValues returns the url.Values for the specific tag.
+// TagValues returns the url.Models for the specific tag.
 func (s *StructField) TagValues(tag string) url.Values {
 	return s.getTagValues(tag)
 }
@@ -340,7 +368,7 @@ func (s *StructField) getDeferenceType() reflect.Type {
 }
 
 func (s *StructField) getFieldIndex() []int {
-	return s.fieldIndex
+	return s.Index
 }
 
 func (s *StructField) getRelatedModelType() reflect.Type {
@@ -567,23 +595,6 @@ func (s *StructField) setTagValues() error {
 		if initLength != len(multiError) {
 			continue
 		}
-
-		var errs errors.MultiError
-		//`neuron:"on_delete=order=1;on_error=fail;on_change=restrict"`
-		switch key {
-		case annotation.OnDelete:
-			errs = r.onDelete.parse(kv)
-		case annotation.OnPatch:
-			errs = r.onPatch.parse(kv)
-		case annotation.OnCreate:
-			errs = r.onCreate.parse(kv)
-		default:
-			errs = append(errs, errors.NewDetf(class.ModelFieldTag, "unknown relationship field tag: '%s'", key))
-		}
-
-		if len(errs) > 0 {
-			multiError = append(multiError, errs...)
-		}
 	}
 	if len(multiError) > 0 {
 		return multiError
@@ -609,8 +620,6 @@ func (s *StructField) setFlags(flags ...string) error {
 			s.setFlag(fOmitempty)
 		case annotation.I18n:
 			s.setFlag(fI18n)
-		case annotation.Language:
-			s.mStruct.setLanguage(s)
 		case annotation.DeletedAt:
 			err = s.mStruct.setTimeRelatedField(s, fDeletedAt)
 		case annotation.CreatedAt:
@@ -682,15 +691,15 @@ func (f FieldKind) String() string {
 	return "Unknown"
 }
 
-var _ sort.Interface = OrderedFields{}
+var _ sort.Interface = OrderedFieldset{}
 
-// OrderedFields is the wrapper over the slice of struct fields that allows to keep the fields
+// OrderedFieldset is the wrapper over the slice of struct fields that allows to keep the fields
 // in an ordered sorting. The sorts is based on the fields index.
-type OrderedFields []*StructField
+type OrderedFieldset []*StructField
 
 // Insert inserts the field into an ordered fields slice. In order to insert the field
 // a pointer to ordered fields must be used.
-func (o *OrderedFields) Insert(field *StructField) {
+func (o *OrderedFieldset) Insert(field *StructField) {
 	for i, in := range *o {
 		if !o.less(in, field) {
 			*o = append((*o)[:i], append([]*StructField{field}, (*o)[i:]...)...) // nolint
@@ -700,25 +709,25 @@ func (o *OrderedFields) Insert(field *StructField) {
 }
 
 // Len implements sort.Interface interface.
-func (o OrderedFields) Len() int {
+func (o OrderedFieldset) Len() int {
 	return len(o)
 }
 
 // Less implements sort.Interface interface.
-func (o OrderedFields) Less(i, j int) bool {
+func (o OrderedFieldset) Less(i, j int) bool {
 	return o.less(o[i], o[j])
 }
 
 // Swap implements sort.Interface interface.
-func (o OrderedFields) Swap(i, j int) {
+func (o OrderedFieldset) Swap(i, j int) {
 	o[i], o[j] = o[j], o[i]
 }
 
-func (o OrderedFields) less(first, second *StructField) bool {
+func (o OrderedFieldset) less(first, second *StructField) bool {
 	var result bool
-	for k := 0; k < len(first.fieldIndex); k++ {
-		if first.fieldIndex[k] != second.fieldIndex[k] {
-			result = first.fieldIndex[k] < second.fieldIndex[k]
+	for k := 0; k < len(first.Index); k++ {
+		if first.Index[k] != second.Index[k] {
+			result = first.Index[k] < second.Index[k]
 			break
 		}
 	}

@@ -34,7 +34,7 @@ func (n *NestedStruct) Fields() map[string]*NestedField {
 	return n.fields
 }
 
-// StructField returns nested structs related struct field
+// StructField returns nested struct fields related struct field
 func (n *NestedStruct) StructField() *StructField {
 	return n.structField.Self()
 }
@@ -114,7 +114,7 @@ func newNestedField(root *NestedStruct, structFielder StructFielder, nField refl
 	return nestedField
 }
 
-// NestedAttribute returns nested Fields Attribute
+// NestedAttribute returns nested Select Attribute
 func (n *NestedField) NestedAttribute() *StructField {
 	return n.attr()
 }

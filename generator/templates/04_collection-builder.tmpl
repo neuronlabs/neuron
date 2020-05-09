@@ -1,0 +1,141 @@
+{{define "collection-builder"}}
+
+// {{.Collection.QueryBuilder}} is the query builder used to create and execute
+// queries for the {{.Name}}model.
+type {{.Collection.QueryBuilder}} struct {
+    builder query.Builder
+}
+
+// Scope returns given query scope.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Scope() *query.Scope {
+    return b.builder.Scope()
+}
+
+// Err returns errors that occurred during query building process.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Err() error {
+    return b.builder.Err()
+}
+
+// Ctx returns the context of given query builder.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Ctx() context.Context {
+    return b.builder.Ctx()
+}
+
+// Count returns the number of model instances for provided query.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Count() (int64, error) {
+    return b.builder.Count()
+}
+
+// Create inserts new model instance into the store.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Create() error {
+    return b.builder.Create()
+}
+
+// Patch patches given query model with selected fields in the fieldset.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Patch() error {
+    return b.builder.Patch()
+}
+
+// Find returns all {{.Model.Name}} models that matches to given query.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Find() ([]*{{.Model.Name}}, error) {
+    queryModels, err := b.builder.Find()
+    if err != nil {
+        return nil, err
+    }
+    models := make([]*{{ .Name }}, len(queryModels))
+    for i, model := range queryModels {
+        models[i] = queryModels[i].(*{{ .Name }})
+    }
+    return models, nil
+}
+
+// Get returns single {{.Model.Name}} model that matches given query.
+// If the model is not found the function returns error of class.QueryValueNoResult.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Get() (*{{.Model.Name}}, error) {
+    model, err := b.builder.Get()
+    if err != nil {
+        return nil, err
+    }
+    return model.(*{{ .Model.Name }}, nil
+}
+
+// Delete deletes all {{.Model.Name}} values from the store that matches given query.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Delete() error {
+    return b.builder.Delete()
+}
+
+// AddFilterField adds the 'filter' to the given query.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) AddFilterField(filter *FilterField) (*{{.Collection.QueryBuilder}}) {
+    b.builder.AddFilterField(filter)
+    return b
+}
+
+// Filter creates query 'filter' with provided 'values'.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Filter(filter string, values ...interface{}) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Filter(filter, values...)
+    return b
+}
+
+
+{{ range $relation := .Relations }}
+// Include{{$relation}} includes given 'relation' in the {{.Model.C}} query.
+// Allowed relations to include:
+//  - {{ $relation.Name }}
+// An optional 'relationFieldset' defines the fields to return in the included relation.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Include{{- $relation -}}({{- toLowerCamel $relation -}}Fieldset ...string) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Include("{{$relation}}", relationFieldset...)
+    return b
+}
+{{end}}
+
+// Limit sets the maximum number of objects returned by the Find process,
+// Returns error if the given scope has already different type of pagination.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Limit(limit int64) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Limit(limit)
+    return b
+}
+
+// Offset sets the query result's offset. It says to skip as many object's from the repository
+// before beginning to return the result. 'Offset' 0 is the same as omitting the 'Offset' clause.
+// Returns error if the given scope has already different type of pagination.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Offset(offset int64) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Offset(offset)
+    return b
+}
+
+// PageSize defines pagination page size - maximum amount of returned objects.
+// Returns error if given scope already has a pagination of LimitOffsetPagination type.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) PageSize(pageSize int64) (*{{.Collection.QueryBuilder}}) {
+    b.builder.PageSize(pageSize)
+    return b
+}
+
+// PageNumber defines the pagination page number.
+// Returns error if given scope already has a pagination of LimitOffsetPagination type.
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) PageNumber(pageNumber int64) (*{{.Collection.QueryBuilder}}) {
+    b.builder.PageNumber(pageNumber)
+    return b
+}
+
+// Fields adds the fields to the scope's fieldset.
+// The fields may be a mapping.StructField as well as field's NeuronName (string) or
+// the StructField Name (string).
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Fields(fields ...string) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Fields(fields...)
+    return b
+}
+
+// Sort adds the sort fields into query scope. By default field is ordered ascending. In order to sort descending
+// add '-' before the field name i.e. '-id'. The order of the fields relates to the significance of the sorting order.
+// Allowed fields to sort:
+//  - .PrimaryField.Name
+{{ range $field := .Fields }}
+{{ if $field.Sortable }}
+//  - $field.Name
+{{ end }}
+{{ end }}
+func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Sort(fields ...string) (*{{.Collection.QueryBuilder}}) {
+    b.builder.Sort(fields...)
+    return b
+}
+{{ end }}

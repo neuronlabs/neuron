@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/namer"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/namer"
 )
 
 const defaultRepo = "repo"
@@ -16,7 +16,7 @@ const defaultRepo = "repo"
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	cfg := config.Default()
+	cfg := config.DefaultController()
 	m := NewModelMap(namer.NamingSnake, cfg)
 	return m
 }
@@ -52,16 +52,16 @@ func TestRegisterModel(t *testing.T) {
 		// get embedded attribute
 		sa, ok := ms.Attribute("string_attr")
 		if assert.True(t, ok) {
-			assert.Equal(t, []int{0, 1}, sa.fieldIndex)
+			assert.Equal(t, []int{0, 1}, sa.Index)
 		}
 
 		// get 'this' attribute
 		ia, ok := ms.Attribute("int_attr")
 		if assert.True(t, ok) {
-			assert.Equal(t, []int{1}, ia.fieldIndex)
+			assert.Equal(t, []int{1}, ia.Index)
 		}
 
-		sField, ok := ms.RelationField("rel_field")
+		sField, ok := ms.RelationByName("rel_field")
 		if assert.True(t, ok) {
 			assert.Equal(t, []int{0, 2}, sField.getFieldIndex())
 		}
@@ -112,7 +112,7 @@ func TestRegisterModel(t *testing.T) {
 			assert.True(t, sField.IsTime())
 			assert.Equal(t, "created", sField.neuronName)
 
-			sField, ok = model.RelationField("Related")
+			sField, ok = model.RelationByName("Related")
 			if assert.True(t, ok) {
 				fk, ok := model.ForeignKey("OtherNotTaggedModelID")
 				if assert.True(t, ok) {
@@ -123,7 +123,7 @@ func TestRegisterModel(t *testing.T) {
 			otherModel, err := m.GetModelStruct(OtherNotTaggedModel{})
 			require.NoError(t, err)
 
-			sField, ok = otherModel.RelationField("ManyRelation")
+			sField, ok = otherModel.RelationByName("ManyRelation")
 			if assert.True(t, ok) {
 				fk, ok := model.ForeignKey("ManyRelationID")
 				if assert.True(t, ok) {
@@ -131,7 +131,7 @@ func TestRegisterModel(t *testing.T) {
 				}
 			}
 
-			sField, ok = otherModel.RelationField("SingleRelated")
+			sField, ok = otherModel.RelationByName("SingleRelated")
 			if assert.True(t, ok) {
 				fk, ok := model.ForeignKey("OtherNotTaggedModelID")
 				if assert.True(t, ok) {
@@ -194,7 +194,7 @@ func TestRegisterModel(t *testing.T) {
 		_, ok = car.Attribute("BrandID")
 		assert.False(t, ok)
 
-		brand, ok := car.RelationField("Brand")
+		brand, ok := car.RelationByName("Brand")
 		require.True(t, ok)
 
 		assert.Equal(t, brandID, brand.Relationship().ForeignKey())
@@ -205,7 +205,7 @@ func TestRegisterModel(t *testing.T) {
 		user, err := mm.GetModelStruct(User{})
 		require.NoError(t, err)
 
-		rel, ok := user.RelationField("Cars")
+		rel, ok := user.RelationByName("Cars")
 		require.True(t, ok)
 
 		assert.Equal(t, userID, rel.Relationship().ForeignKey())

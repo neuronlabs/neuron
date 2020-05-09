@@ -9,7 +9,7 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron/class"
 )
 
 // Model1WithMany2Many is the model with the many2many relationship.
@@ -155,16 +155,13 @@ func TestMappedRelationships(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("First", func(t *testing.T) {
-				relField, ok := first.relationships["synced"]
+				relField, ok := first.relationshipField("synced")
 				require.True(t, ok)
 
 				rel := relField.relationship
 				require.NotNil(t, rel)
 
 				assert.True(t, rel.isMany2Many())
-				assert.Equal(t, uint(2), rel.onDelete.QueryOrder)
-				assert.Equal(t, Continue, rel.onDelete.OnError)
-
 				require.Equal(t, RelMany2Many, relField.relationship.kind)
 
 				assert.Equal(t, second, relField.relationship.mStruct)
@@ -181,7 +178,7 @@ func TestMappedRelationships(t *testing.T) {
 			})
 
 			t.Run("Second", func(t *testing.T) {
-				relField, ok := second.relationships["synced"]
+				relField, ok := second.relationshipField("synced")
 				require.True(t, ok)
 
 				rel := relField.relationship
@@ -219,7 +216,7 @@ func TestMappedRelationships(t *testing.T) {
 			firstSeconds, err := m.GetModelStruct(FirstSeconds{})
 			require.NoError(t, err)
 
-			firstRel, ok := first.RelationField("Many")
+			firstRel, ok := first.RelationByName("Many")
 			require.True(t, ok)
 
 			fID, ok := firstSeconds.ForeignKey("FirstID")
@@ -235,7 +232,7 @@ func TestMappedRelationships(t *testing.T) {
 				assert.Equal(t, RelMany2Many, relFirst.kind)
 			}
 
-			secondRel, ok := second.RelationField("Firsts")
+			secondRel, ok := second.RelationByName("Firsts")
 			require.True(t, ok)
 
 			relSecond := secondRel.relationship
@@ -275,13 +272,13 @@ func TestMappedRelationships(t *testing.T) {
 			hasManyModel, err := m.GetModelStruct(modelWithHasMany{})
 			require.NoError(t, err)
 
-			hasManyField, ok := hasManyModel.relationships["has_many"]
+			hasManyField, ok := hasManyModel.relationshipField("has_many")
 			require.True(t, ok)
 
 			fkModel, err := m.GetModelStruct(modelWithForeignKey{})
 			require.NoError(t, err)
 
-			fk, ok := fkModel.foreignKeys["foreign_key"]
+			fk, ok := fkModel.ForeignKey("foreign_key")
 			require.True(t, ok)
 
 			if assert.NotNil(t, hasManyField.relationship) {
@@ -301,7 +298,7 @@ func TestMappedRelationships(t *testing.T) {
 			model, err := m.GetModelStruct(modelWithBelongsTo{})
 			require.NoError(t, err)
 
-			belongsToField, ok := model.relationships["belongs_to"]
+			belongsToField, ok := model.relationshipField("belongs_to")
 			require.True(t, ok)
 
 			if assert.NotNil(t, belongsToField.relationship) {
@@ -315,13 +312,13 @@ func TestMappedRelationships(t *testing.T) {
 			model, err := m.GetModelStruct(modelWithHasOne{})
 			require.NoError(t, err)
 
-			hasOneField, ok := model.relationships["has_one"]
+			hasOneField, ok := model.relationshipField("has_one")
 			require.True(t, ok)
 
 			belongsToModel, err := m.GetModelStruct(modelWithBelongsTo{})
 			require.NoError(t, err)
 
-			fk, ok := belongsToModel.foreignKeys["foreign_key"]
+			fk, ok := belongsToModel.ForeignKey("foreign_key")
 			require.True(t, ok)
 
 			if assert.NotNil(t, hasOneField.relationship) {

@@ -1,17 +1,17 @@
 package mapping
 
 import (
-	"net/url"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/namer"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/namer"
 )
 
 // ModelStruct is the structure definition for the imported models.
@@ -19,22 +19,24 @@ import (
 type ModelStruct struct {
 	// modelType contain a reflect.Type information about given model
 	modelType reflect.Type
-	// collectionType is neuron 'type' for given model
-	collectionType string
-	// struct fields is a container of all fields in the given model.
+	// collection is the name for the models collection.
+	collection string
+	// structFields is a container of all fields (even fields not included in the
+	// neuron model) in the given model.
 	structFields []*StructField
+	// fields is a container for all attributes, foreign keys
+	fields []*StructField
 
 	// Primary is a neuron primary field
 	primary *StructField
-	// language is a field that contains the language information
-	language *StructField
-
 	// Attributes contain attribute fields
 	attributes map[string]*StructField
-	// Relationships contain neuron relationship type fields.
-	relationships map[string]*StructField
 	// ForeignKeys is a container for the foreign keys for the relationships
-	foreignKeys map[string]*StructField
+	foreignKeys []*StructField
+	// Relationships contain neuron relationship type fields.
+	relationships []*StructField
+	// private fields
+	privateFields []*StructField
 
 	// sortScopeCount is the number of sortable fields in the model
 	sortScopeCount int
@@ -42,10 +44,6 @@ type ModelStruct struct {
 	// flags
 	hasForeignRelationships bool
 	isJoin                  bool
-	isAfterCounter          bool
-	isAfterLister           bool
-	isBeforeCounter         bool
-	isBeforeLister          bool
 
 	createdAt *StructField
 	updatedAt *StructField
@@ -53,17 +51,15 @@ type ModelStruct struct {
 
 	namerFunc namer.Namer
 
-	cfg              *config.ModelConfig
+	config           *config.ModelConfig
 	store            map[interface{}]interface{}
 	structFieldCount int
 }
 
 // newModelStruct creates new model struct for given type.
 func newModelStruct(tp reflect.Type, collection string) *ModelStruct {
-	m := &ModelStruct{modelType: tp, collectionType: collection}
+	m := &ModelStruct{modelType: tp, collection: collection}
 	m.attributes = make(map[string]*StructField)
-	m.relationships = make(map[string]*StructField)
-	m.foreignKeys = make(map[string]*StructField)
 	m.store = map[interface{}]interface{}{}
 	return m
 }
@@ -85,7 +81,7 @@ func (m *ModelStruct) Attributes() (attributes []*StructField) {
 	if len(m.attributes) == 0 {
 		return []*StructField{}
 	}
-	for _, field := range m.structFields {
+	for _, field := range m.fields {
 		if field.kind == KindAttribute {
 			attributes = append(attributes, field)
 		}
@@ -93,14 +89,14 @@ func (m *ModelStruct) Attributes() (attributes []*StructField) {
 	return attributes
 }
 
-// Collection returns model's collection.
+// NeuronCollectionName returns model's collection.
 func (m *ModelStruct) Collection() string {
-	return m.collectionType
+	return m.collection
 }
 
-// Config gets the model's defined confgi.ModelConfig.
+// Config gets the model's defined configuration.
 func (m *ModelStruct) Config() *config.ModelConfig {
-	return m.cfg
+	return m.config
 }
 
 // CreatedAt gets the 'CreatedAt' field for the model struct.
@@ -113,14 +109,9 @@ func (m *ModelStruct) DeletedAt() (*StructField, bool) {
 	return m.deletedAt, m.deletedAt != nil
 }
 
-// Field checks if the 'field' is an 'attribute', 'primary', 'foreign' or 'relationship' field.
-func (m *ModelStruct) Field(field string) (*StructField, bool) {
-	return m.getField(field)
-}
-
 // FieldByName returns structField by it's 'name'. It matches both reflect.StructField.Name and NeuronName.
 func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
-	for _, field := range m.structFields {
+	for _, field := range m.fields {
 		if field.neuronName == name || field.Name() == name {
 			return field, true
 		}
@@ -128,40 +119,25 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	return nil, false
 }
 
-// Fields gets the model's primary, attribute, relationship and foreign key fields.
+// Fields gets the model's primary, attribute and foreign key fields.
 func (m *ModelStruct) Fields() (fields []*StructField) {
-	for _, field := range m.structFields {
-		switch field.kind {
-		case KindPrimary, KindAttribute, KindForeignKey, KindRelationshipMultiple, KindRelationshipSingle:
-			fields = append(fields, field)
-		}
-	}
-	return fields
-}
-
-// FieldCount gets the field number for given model.
-func (m *ModelStruct) FieldCount() int {
-	return len(m.attributes) + len(m.relationships)
+	return m.fields
 }
 
 // ForeignKey checks and returns model's foreign key field.
 // The 'fk' foreign key field name may be a Neuron name or Golang StructField name.
-func (m *ModelStruct) ForeignKey(fk string) (*StructField, bool) {
-	s, ok := m.foreignKeys[fk]
-	return s, ok
-}
-
-// ForeignKeys return ForeignKey Structfields for the given model.
-func (m *ModelStruct) ForeignKeys() (foreigns []*StructField) {
-	if len(m.foreignKeys) == 0 {
-		return []*StructField{}
-	}
-	for _, f := range m.structFields {
-		if f.kind == KindForeignKey {
-			foreigns = append(foreigns, f)
+func (m *ModelStruct) ForeignKey(fieldName string) (foreignKey *StructField, ok bool) {
+	for _, foreignKey = range m.foreignKeys {
+		if foreignKey.neuronName == fieldName || foreignKey.Name() == fieldName {
+			return foreignKey, true
 		}
 	}
-	return foreigns
+	return nil, false
+}
+
+// ForeignKeys return ForeignKey struct fields for the given model.
+func (m *ModelStruct) ForeignKeys() []*StructField {
+	return m.foreignKeys
 }
 
 // HasForeignRelationships defines if the model has any foreign relationships (not a BelongsTo relationship).
@@ -169,34 +145,9 @@ func (m *ModelStruct) HasForeignRelationships() bool {
 	return m.hasForeignRelationships
 }
 
-// IsAfterLister defines if the model implements query.AfterLister interface.
-func (m *ModelStruct) IsAfterLister() bool {
-	return m.isAfterLister
-}
-
-// IsBeforeLister defines if the model implements query.BeforeLister interface.
-func (m *ModelStruct) IsBeforeLister() bool {
-	return m.isBeforeLister
-}
-
-// IsAfterCounter checks if the model implements query.AfterCounter interface.
-func (m *ModelStruct) IsAfterCounter() bool {
-	return m.isAfterCounter
-}
-
-// IsBeforeCounter checks if the model implements query.AfterCounter interface.
-func (m *ModelStruct) IsBeforeCounter() bool {
-	return m.isBeforeCounter
-}
-
 // IsJoin defines if the model is a join table for the Many2Many relationship.
 func (m *ModelStruct) IsJoin() bool {
 	return m.isJoin
-}
-
-// LanguageField returns model's language field.
-func (m *ModelStruct) LanguageField() *StructField {
-	return m.language
 }
 
 // MaxIncludedCount gets the maximum included field number for given model.
@@ -233,10 +184,15 @@ func (m *ModelStruct) Primary() *StructField {
 	return m.primary
 }
 
-// RelationField gets the relationship field for the provided string
+// PrivateFields gets model's private struct fields.
+func (m *ModelStruct) PrivateFields() []*StructField {
+	return m.privateFields
+}
+
+// RelationByName gets the relationship field for the provided string
 // The 'rel' relationship field name may be a Neuron or Golang StructField name.
 // If the relationship field doesn't exists returns nil and false
-func (m *ModelStruct) RelationField(field string) (*StructField, bool) {
+func (m *ModelStruct) RelationByName(field string) (*StructField, bool) {
 	return m.relationshipField(field)
 }
 
@@ -245,6 +201,7 @@ func (m *ModelStruct) RelationFields() (relations []*StructField) {
 	if len(m.relationships) == 0 {
 		return []*StructField{}
 	}
+
 	for _, rel := range m.structFields {
 		switch rel.kind {
 		case KindRelationshipSingle, KindRelationshipMultiple:
@@ -252,7 +209,6 @@ func (m *ModelStruct) RelationFields() (relations []*StructField) {
 			relations = append(relations, rel)
 		}
 	}
-
 	return relations
 }
 
@@ -270,19 +226,19 @@ func (m *ModelStruct) StoreDelete(key interface{}) {
 // StoreGet gets the value from the store at the key: 'key'.
 func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
 	v, ok := m.store[key]
-	log.Debug3f("[STORE][%s] Get Key: '%v' - Value: '%v', ok: %v", m.collectionType, key, v, ok)
+	log.Debug3f("[STORE][%s] Get Key: '%v' - Models: '%v', ok: %v", m.collection, key, v, ok)
 	return v, ok
 }
 
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
-	log.Debug3f("[STORE][%s] Set Key: %s, Value: %v", m.collectionType, key, value)
+	log.Debug3f("[STORE][%s] AddModel Key: %s, Models: %v", m.collection, key, value)
 	m.store[key] = value
 }
 
 // String implements fmt.Stringer interface.
 func (m *ModelStruct) String() string {
-	return m.collectionType
+	return m.collection
 }
 
 // StructFields return all the StructFields used in the ModelStruct
@@ -305,11 +261,6 @@ func (m *ModelStruct) UpdatedAt() (*StructField, bool) {
 	return m.updatedAt, m.updatedAt != nil
 }
 
-// UseI18n returns the bool if the model struct uses i18n.
-func (m *ModelStruct) UseI18n() bool {
-	return m.language != nil
-}
-
 /**
 
 PRIVATE METHODS
@@ -329,31 +280,6 @@ func (m *ModelStruct) assignedFields() int {
 		assignedFields = v.(int)
 	}
 	return assignedFields
-}
-
-func (m *ModelStruct) getField(field string) (*StructField, bool) {
-	if field == "id" || m.primary.fieldName() == field {
-		return m.primary, true
-	}
-
-	// check neuron name at attributes
-	sField, ok := m.attributes[field]
-	if ok {
-		return sField, ok
-	}
-
-	// check relationship name
-	sField, ok = m.relationships[field]
-	if ok {
-		return sField, ok
-	}
-
-	// check foreign key name.
-	sField, ok = m.foreignKeys[field]
-	if ok {
-		return sField, ok
-	}
-	return nil, false
 }
 
 func (m *ModelStruct) clearInitializeStoreKeys() {
@@ -415,18 +341,17 @@ func (m *ModelStruct) findUntypedInvalidAttribute(fieldName string) (*StructFiel
 		if ok {
 			continue
 		}
-
-		// if the field has no field type check if it's value is not a foreign key
+		// If the field has no field type check if it's value is not a foreign key
 		if attr.neuronName != fieldName {
 			continue
 		}
 
-		// the field is not an attribute but a foreign key.
+		// The field is not an attribute but a foreign key. Remove it from the attribute and add to foreign keys.
 		delete(m.attributes, fieldName)
 		delete(m.attributes, attr.fieldName())
 
-		m.foreignKeys[fieldName] = attr
-		m.foreignKeys[attr.fieldName()] = attr
+		m.foreignKeys = append(m.foreignKeys, attr)
+
 		attr.kind = KindForeignKey
 		return attr, true
 	}
@@ -484,58 +409,43 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 	for i := 0; i < modelType.NumField(); i++ {
 		fieldIndex := index
 
-		// check if field is embedded
 		tField := modelType.Field(i)
 		fieldIndex = append(fieldIndex, i)
 
+		// Check if field is embedded.
 		if tField.Anonymous {
-			// the field is embedded struct or ptr to struct
-			nestedModelType := tField.Type
-			var nestedModelValue reflect.Value
-
-			if nestedModelType.Kind() == reflect.Ptr {
-				nestedModelType = nestedModelType.Elem()
-			}
-
-			nestedModelValue = reflect.New(nestedModelType).Elem()
-
-			if err = m.mapFields(nestedModelType, nestedModelValue, fieldIndex); err != nil {
-				log.Debugf("Mapping embedded field: %s failed: %v", tField.Name, err)
-				return err
-			}
-			continue
+			return errors.Newf(class.ModelInvalidField, "unsupported embedded field: '%s' in model: '%s'", tField.Name, modelType.String())
 		}
-
-		// don't use private fields
-		if !modelValue.Field(i).CanSet() {
-			log.Debugf("Field not settable: %s", modelType.Field(i).Name)
-			continue
-		}
-
-		tag, hasTag := tField.Tag.Lookup(annotation.Neuron)
-		if tag == "-" {
-			continue
-		}
-
-		var tagValues url.Values
 		structField := newStructField(tField, m)
+
+		// Check if field is private.
+		if !modelValue.Field(i).CanSet() {
+			log.Debugf("Field: %s added to private fields.", modelType.Field(i).Name)
+			m.privateFields = append(m.privateFields, structField)
+			continue
+		}
+
+		// Get the field tag and check if it is not marked to omit - '-'.
+		tag, hasTag := tField.Tag.Lookup(annotation.Neuron)
+		if strings.TrimSpace(tag) == "-" {
+			log.Debugf("Field: '%s' has '-' tag - adding to private fields.")
+			m.privateFields = append(m.privateFields, structField)
+			continue
+		}
+
 		m.structFields = append(m.structFields, structField)
+		structField.Index = make([]int, len(fieldIndex))
+		tagValues := structField.TagValues(tag)
 
-		structField.fieldIndex = make([]int, len(fieldIndex))
-		tagValues = structField.TagValues(tag)
-
-		copy(structField.fieldIndex, fieldIndex)
+		copy(structField.Index, fieldIndex)
 		log.Debug2f("[%s] - Field: %s with tags: %s ", m.Type().Name(), tField.Name, tagValues)
 
 		m.increaseAssignedFields()
 
-		// Check if field contains the name
-		var neuronName string
-		name := tagValues.Get(annotation.Name)
-		if name != "" {
-			neuronName = name
-		} else {
-			neuronName = m.NamerFunc()(tField.Name)
+		// Check if the field had it's neuron name defined.
+		neuronName := tagValues.Get(annotation.Name)
+		if neuronName == "" {
+			neuronName = m.namerFunc(tField.Name)
 		}
 		structField.neuronName = neuronName
 
@@ -544,20 +454,17 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			continue
 		}
 
-		// Set field type
 		values := tagValues[annotation.FieldType]
-
 		switch len(values) {
 		case 0:
 			m.addUntaggedField(structField)
 			continue
 		case 1:
 		default:
-			err = errors.NewDetf(class.ModelFieldTag, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
-			return err
+			return errors.NewDetf(class.ModelFieldTag, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
 		}
 
-		// Set field type
+		// AddModel field type
 		value := values[0]
 		switch value {
 		case annotation.Primary, annotation.ID, annotation.PrimaryFull, annotation.PrimaryFullS, annotation.PrimaryShort:
@@ -752,20 +659,21 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	}
 	m.attributes[structField.neuronName] = structField
 	m.attributes[structField.fieldName()] = structField
+	m.fields = append(m.fields, structField)
 	return nil
 }
 
 // SetConfig sets the config for given ModelStruct
 func (m *ModelStruct) setConfig(cfg *config.ModelConfig) error {
 	log.Debugf("Setting Config for model: %s", m.Collection())
-	m.cfg = cfg
+	m.config = cfg
 
 	if m.store == nil {
 		m.store = make(map[interface{}]interface{})
 	}
 
 	// copy the key value from the config
-	for k, v := range m.cfg.Store {
+	for k, v := range m.config.Store {
 		m.store[k] = v
 	}
 	return nil
@@ -796,54 +704,6 @@ func (m *ModelStruct) setFieldsConfigs() error {
 				rel = &Relationship{}
 				sField.relationship = rel
 			}
-
-			// set on error
-			if cfg.Strategy == nil {
-				continue
-			}
-
-			var err errors.DetailedError
-			// on create
-			onCreate := cfg.Strategy.OnCreate
-			if onCreate.OnError != "" {
-				if err = rel.onCreate.parseOnError(onCreate.OnError); err != nil {
-					return err
-				}
-			}
-
-			if onCreate.QueryOrder != 0 {
-				rel.onCreate.QueryOrder = onCreate.QueryOrder
-			}
-
-			// on create
-			onPatch := cfg.Strategy.OnPatch
-			if onPatch.OnError != "" {
-				if err = rel.onPatch.parseOnError(onPatch.OnError); err != nil {
-					return err
-				}
-			}
-
-			if onPatch.QueryOrder != 0 {
-				rel.onPatch.QueryOrder = onPatch.QueryOrder
-			}
-
-			// on create
-			onDelete := cfg.Strategy.OnDelete
-			if onDelete.OnError != "" {
-				if err = rel.onDelete.parseOnError(onDelete.OnError); err != nil {
-					return err
-				}
-			}
-
-			if onDelete.QueryOrder != 0 {
-				rel.onDelete.QueryOrder = onDelete.QueryOrder
-			}
-			if onDelete.RelationChange != "" {
-				err = rel.onDelete.parseOnChange(onDelete.RelationChange)
-				if err != nil {
-					return err
-				}
-			}
 			break
 		}
 	}
@@ -853,20 +713,15 @@ func (m *ModelStruct) setFieldsConfigs() error {
 func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	structField.kind = KindForeignKey
 
-	// Check if already exists
-	_, ok := m.foreignKeys[structField.NeuronName()]
-	if ok {
-		return errors.NewDetf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+	// Check if given name already exists.
+	for _, foreignKey := range m.foreignKeys {
+		if foreignKey == structField {
+			return errors.NewDetf(class.ModelFieldName, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+		}
 	}
-
-	m.foreignKeys[structField.neuronName] = structField
-	m.foreignKeys[structField.fieldName()] = structField
+	m.foreignKeys = append(m.foreignKeys, structField)
+	m.fields = append(m.fields, structField)
 	return nil
-}
-
-func (m *ModelStruct) setLanguage(f *StructField) {
-	f.fieldFlags |= fLanguage
-	m.language = f
 }
 
 func (m *ModelStruct) setPrimaryField(structField *StructField) error {
@@ -875,6 +730,7 @@ func (m *ModelStruct) setPrimaryField(structField *StructField) error {
 		return errors.NewDetf(class.ModelFieldName, "primary field is already defined for the model: '%s'", m.Type().Name())
 	}
 	m.primary = structField
+	m.fields = append(m.fields, structField)
 	return nil
 }
 
@@ -884,15 +740,12 @@ func (m *ModelStruct) setRelationshipField(structField *StructField) error {
 		return err
 	}
 
-	// check duplicates
-	_, ok := m.relationships[structField.neuronName]
-	if ok {
-		return errors.NewDetf(class.ModelFieldName, "duplicated neuron relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
+	for _, relation := range m.relationships {
+		if relation == structField {
+			return errors.NewDetf(class.ModelFieldName, "duplicated neuron relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
+		}
 	}
-
-	// set relationship field
-	m.relationships[structField.neuronName] = structField
-	m.relationships[structField.fieldName()] = structField
+	m.relationships = append(m.relationships, structField)
 	return nil
 }
 
@@ -929,9 +782,13 @@ func (m *ModelStruct) setTimeRelatedField(field *StructField, flag fieldFlag) er
 	return nil
 }
 
-func (m *ModelStruct) relationshipField(field string) (*StructField, bool) {
-	f, ok := m.relationships[field]
-	return f, ok
+func (m *ModelStruct) relationshipField(fieldName string) (relation *StructField, ok bool) {
+	for _, relation = range m.relationships {
+		if relation.neuronName == fieldName || relation.Name() == fieldName {
+			return relation, true
+		}
+	}
+	return nil, false
 }
 
 func (m *ModelStruct) untaggedFields() []*StructField {

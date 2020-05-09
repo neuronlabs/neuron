@@ -6,9 +6,11 @@ import (
 
 // MjrQuery - major that classifies all the errors related with
 // creating, operating on or changing the queries.
-var MjrQuery errors.Major
+var MnrQuery errors.Minor
 
 func registerQueryClasses() {
+	registerQueryClassesNew()
+	// OLD CLASSES
 	MjrQuery = errors.MustNewMajor()
 
 	registerQueryFieldset()
@@ -24,11 +26,43 @@ func registerQueryClasses() {
 	registerQueryProcessor()
 }
 
+var (
+	QueryNoModelValues errors.Class
+	QueryNothingToDo   errors.Class
+	QueryInvalidInput  errors.Class
+	QueryInvalidModels errors.Class
+	QueryInvalidField  errors.Class
+	QueryInvalidFilter errors.Class
+	QueryNotValid      errors.Class
+	QueryNoResult      errors.Class
+)
+
+func registerQueryClassesNew() {
+	MnrQuery = errors.MustNewMinor(MjrNeuron)
+	QueryNoModelValues = newIndexClass(MnrQuery)
+	QueryNothingToDo = newIndexClass(MnrQuery)
+	QueryInvalidInput = newIndexClass(MnrQuery)
+	QueryInvalidModels = newIndexClass(MnrQuery)
+	QueryInvalidField = newIndexClass(MnrQuery)
+	QueryNoResult = newIndexClass(MnrQuery)
+	QueryInvalidFilter = newIndexClass(MnrQuery)
+}
+
+/**
+ *
+ *
+ *
+ *
+ *
+ * OLD Classes
+ */
+
 /**
 
 Query Fieldset
 
 */
+var MjrQuery errors.Major
 
 var (
 	// MnrQueryFieldset is the 'MjrQuery' minor error classification
@@ -73,7 +107,7 @@ func registerQueryFieldset() {
 
 /**
 
-Query Selected Fields
+Query Selected Select
 
 */
 
@@ -277,7 +311,7 @@ func registerQueryPagination() {
 
 /**
 
-Query Value
+Query Models
 
 */
 

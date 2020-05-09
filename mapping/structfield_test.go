@@ -33,7 +33,7 @@ func TestOrderedFields(t *testing.T) {
 	// Remove the 'Name' field at index [1]
 	fields = append(fields[:1], fields[2:]...)
 
-	ordered := OrderedFields(fields)
+	ordered := OrderedFieldset(fields)
 	// sort the fields
 	sort.Sort(ordered)
 

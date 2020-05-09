@@ -7,10 +7,10 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // ParamSort is the url query parameter name for the sorting fields.
@@ -40,9 +40,9 @@ func (s *SortField) String() string {
 }
 
 // FormatQuery returns the sort field formatted for url query.
-// If the optional argument 'q' is provided the format would be set into the provdied url.Values.
-// Otherwise it creates new url.Values instance.
-// Returns modified url.Values
+// If the optional argument 'q' is provided the format would be set into the provdied url.Models.
+// Otherwise it creates new url.Models instance.
+// Returns modified url.Models
 func (s *SortField) FormatQuery(q ...url.Values) url.Values {
 	var query url.Values
 	if len(q) > 0 {
@@ -100,7 +100,7 @@ func NewSortFields(m *mapping.ModelStruct, disallowFK bool, sortFields ...string
 }
 
 // NewSort creates new 'sort' field for given model 'm'. If the 'disallowFK' is set to true
-// the function would not allow to create Sort field of foreign key field.
+// the function would not allow to create OrderBy field of foreign key field.
 func NewSort(m *mapping.ModelStruct, sort string, disallowFK bool, order ...SortOrder) (*SortField, error) {
 	// Get the order of sort
 	var o SortOrder
@@ -144,7 +144,7 @@ func newUniqueSortFields(m *mapping.ModelStruct, disallowFK bool, sorts ...strin
 		if count > 1 {
 			if count == 2 {
 				err = errors.NewDet(class.QuerySortField, "duplicated sort field provided")
-				err.SetDetailsf("Sort parameter: %v used more than once.", sort)
+				err.SetDetailsf("OrderBy parameter: %v used more than once.", sort)
 				errs = append(errs, err)
 				continue
 			} else if count > 2 {
@@ -197,7 +197,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		if disallowFK {
 			// field not found for the model.
 			err = errors.NewDetf(class.QuerySortField, "sort field: '%s' not found", sort)
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sort, m.Collection())
 			return nil, err
 		}
 
@@ -206,17 +206,17 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		if !ok {
 			// field not found for the model.
 			err = errors.NewDetf(class.QuerySortField, "sort field: '%s' not found", sort)
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sort, m.Collection())
 			return nil, err
 		}
 		sortField = newSortField(sField, order)
 		return sortField, nil
 	case l <= 2:
 		// for split length greater than 1 it must be a relationship
-		sField, ok = m.RelationField(split[0])
+		sField, ok = m.RelationByName(split[0])
 		if !ok {
 			err = errors.NewDet(class.QuerySortField, "sort field not found")
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, m.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sort, m.Collection())
 			return nil, err
 		}
 
@@ -227,7 +227,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		return sortField, nil
 	default:
 		err = errors.NewDet(class.QuerySortField, "sort field nested level too deep")
-		err.SetDetailsf("Sort: field '%s' nested level is too deep: '%d'", sort, l)
+		err.SetDetailsf("OrderBy: field '%s' nested level is too deep: '%d'", sort, l)
 		return nil, err
 	}
 }
@@ -252,7 +252,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 	// Subfields are available only for the relationships
 	if !s.StructField.IsRelationship() {
 		err := errors.NewDet(class.QuerySortRelatedFields, "given sub sortfield is not a relationship")
-		err.SetDetailsf("Sort: field '%s' is not a relationship in the model: '%s'", s.StructField.NeuronName(), s.StructField.Struct().Collection())
+		err.SetDetailsf("OrderBy: field '%s' is not a relationship in the model: '%s'", s.StructField.NeuronName(), s.StructField.Struct().Collection())
 		return err
 	}
 
@@ -286,7 +286,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 			// if the 'sort' is not an attribute nor primary key and the foreign keys are not allowed to sort
 			// return error.
 			err := errors.NewDet(class.QuerySortField, "sort field not found")
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
 			return err
 		}
 
@@ -295,7 +295,7 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 		if !ok {
 			// no 'sort' field found.
 			err := errors.NewDet(class.QuerySortField, "sort field not found")
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
 			return err
 		}
 		s.SubFields = append(s.SubFields, &SortField{StructField: sField, Order: order})
@@ -307,10 +307,10 @@ func (s *SortField) setSubfield(sortSplitted []string, order SortOrder, disallow
 
 		log.Debug2f("More sort fields: '%v'", sortSplitted)
 
-		sField, ok = relatedModel.RelationField(sortSplitted[0])
+		sField, ok = relatedModel.RelationByName(sortSplitted[0])
 		if !ok {
 			err := errors.NewDet(class.QuerySortField, "sort field not found")
-			err.SetDetailsf("Sort: field '%s' not found in the model: '%s'", sortSplitted[0], relatedModel.Collection())
+			err.SetDetailsf("OrderBy: field '%s' not found in the model: '%s'", sortSplitted[0], relatedModel.Collection())
 			return err
 		}
 

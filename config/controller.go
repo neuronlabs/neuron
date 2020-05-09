@@ -5,8 +5,8 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
 )
 
 // Controller defines the configuration for the Controller.
@@ -28,14 +28,10 @@ type Controller struct {
 	DefaultRepository *Repository `mapstructure:"default_repository"`
 	// DisallowDefaultRepository determines if the default repository are allowed.
 	DisallowDefaultRepository bool `mapstructure:"disallow_default_repository"`
-
-	// Processor is the config used for the scope processor
-	ProcessorName string     `mapstructure:"processor_name"`
-	Processor     *Processor `mapstructure:"processor"`
-
-	// IncludedDepthLimit is the default limit for the nested included query paremeter.
-	// Each model can specify its custom limit in the model's config.
-	IncludedDepthLimit int `mapstructure:"included_depth_limit"`
+	// AsynchronousIncludes defines if the query relation includes would be taken concurrently.
+	AsynchronousIncludes bool `mapstructure:"asynchronous_includes"`
+	// UTCTimestamps is the flag that defines the format of the timestamps.
+	UTCTimestamps bool `mapstructure:"utc_timestamps"`
 }
 
 // Validate checks the validity of the config.
@@ -51,9 +47,6 @@ func (c *Controller) Validate() error {
 		if !found {
 			return errors.Newf(class.ConfigValueInvalid, "provided invalid naming convention")
 		}
-	}
-	if c.Processor == nil {
-		return errors.Newf(class.ConfigValueNil, "provided nil processor")
 	}
 	return nil
 }
@@ -74,7 +67,7 @@ func (c *Controller) MapModelsRepositories() error {
 			log.Debug2f("Model: %s config have no Repository nor RepositoryName defined", model.Collection)
 			// check if default repositories are allowed
 			if c.DisallowDefaultRepository {
-				log.Errorf("No repository defined for the model: '%s'. Default repositories are disallowed", model.Collection)
+				log.Errorf("No repository defined for the model: '%s'. DefaultController repositories are disallowed", model.Collection)
 				return fmt.Errorf("no repository config definition found for the: '%s' repository name", model.RepositoryName)
 			}
 			log.Debug2f("Setting default repository for model: '%s'", model.Collection)
@@ -92,12 +85,6 @@ func (c *Controller) MapModelsRepositories() error {
 		log.Debugf("Mapped repository: %s for the model: %s", model.RepositoryName, model.Collection)
 	}
 	return nil
-}
-
-// MapProcessor if the processor name is provided maps it to registered processors.
-// Returns error if the processor is not defined.
-func (c *Controller) MapProcessor() error {
-	return c.mapProcessor()
 }
 
 // SetDefaultRepository sets the default repository for given controller.
@@ -150,19 +137,4 @@ func (c *Controller) SetDefaultRepository() error {
 		return nil
 	}
 	return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.DefaultRepositoryName)
-}
-
-// mapProcessor gets the processor if the ProcessorName is already set.
-func (c *Controller) mapProcessor() error {
-	if c.ProcessorName != "" {
-		var ok bool
-		c.Processor, ok = processors[c.ProcessorName]
-		if !ok {
-			return errors.NewDetf(class.ConfigValueProcessor, "processor: '%s' not registered", c.ProcessorName)
-		}
-	}
-	if c.Processor == nil {
-		return errors.NewDet(class.ConfigValueProcessor, "processor not defined")
-	}
-	return nil
 }

@@ -1,8 +1,8 @@
 package mapping
 
-// CollectionNamer is the interface used to get the collection name from the provided model.
-type CollectionNamer interface {
-	CollectionName() string
+// Collectioner is the interface used to get the collection name from the provided model.
+type Collectioner interface {
+	Collection() string
 }
 
 // RepositoryNamer is the interface used for the repositories to implement

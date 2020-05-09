@@ -6,10 +6,10 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/mapping"
-	"github.com/neuronlabs/neuron-core/repository"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // ListModels returns a list of registered models for given controller.
@@ -22,9 +22,9 @@ func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error
 	return c.getModelStruct(model)
 }
 
-// MustGetModelStruct gets the model struct from the cached model Map.
+// MustModelStruct gets the model struct from the cached model Map.
 // Panics if the model does not exists in the map.
-func (c *Controller) MustGetModelStruct(model interface{}) *mapping.ModelStruct {
+func (c *Controller) MustModelStruct(model interface{}) *mapping.ModelStruct {
 	mStruct, err := c.getModelStruct(model)
 	if err != nil {
 		panic(err)

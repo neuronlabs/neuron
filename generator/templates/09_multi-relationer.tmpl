@@ -1,0 +1,88 @@
+{{define "multi-relationer" -}}
+{{- $out := . -}}
+// Compile time check for the mapping.MultiRelationer interface implementation.
+var _ mapping.MultiRelationer = &{{.Name}}{}
+
+// AddRelationModel implements mapping.MultiRelationer interface.
+func ({{.Receiver}} *{{.Name}}) AddRelationModel(relation *mapping.StructField, model mapping.Model) error {
+    switch relation.Index[0] {
+    {{range $relation := .Relations -}}{{if $relation.IsSlice -}}
+    case {{$relation.Index}}: // {{$relation.Name}}
+        {{ $relationName := (toLowerCamel $relation.BaseType) -}}{{$relationName}}, ok := model.(*{{$relation.BaseType}})
+        if !ok {
+            return errors.Newf(class.ModelFieldInvalidValue, "provided invalid value type: '%T'  for the field: '{{$relation.Name}}'", model)
+        }
+        {{if $relation.IsPointer -}}
+        if {{$out.Receiver}}.{{$relation.Name}} == nil {
+            temp := {{$relation.Type}}{}
+            {{$out.Receiver}}.{{$relation.Name}} = &temp
+        }
+        {{ end -}}
+        {{if $relation.IsPointer }}*{{end}}{{$out.Receiver}}.{{$relation.Name}} = append({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}, {{$relationName}})
+    {{end -}}{{end -}}
+    default:
+        return errors.Newf(class.ModelInvalidRelation, "provided invalid relation: '%T' for the model '{{.Name}}'", model)
+    }
+    return nil
+}
+
+// GetRelationModels implements mapping.MultiRelationer interface.
+func ({{.Receiver}} *{{.Name}}) GetRelationModels(relation *mapping.StructField) (models []mapping.Model, err error) {
+    switch relation.Index[0] {
+    {{range $relation := .Relations -}}{{if $relation.IsSlice -}}
+    case {{$relation.Index}}: // {{$relation.Name}}
+        {{if $relation.IsElemPointer -}}
+        for _, model := range {{$out.Receiver}}.{{$relation.Name}} {
+            models = append(models, model)
+        }
+        {{- else -}}
+        for i := range {{$out.Receiver}}.{{$relation.Name}} {
+            models = append(models, &({{$out.Receiver}}.{{$relation.Name}}[i]))
+        }
+        {{- end}}
+    {{end -}}{{end -}}
+    default:
+        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+    }
+    return models, nil
+}
+
+// GetRelationModelAt implements mapping.MultiRelationer interface.
+func ({{.Receiver}} *{{.Name}}) GetRelationModelAt(relation *mapping.StructField, index int) (models mapping.Model, err error) {
+    switch relation.Index[0] {
+    {{range $relation := .Relations -}}{{if $relation.IsSlice -}}
+    case {{$relation.Index}}: // {{$relation.Name}}
+        {{if $relation.IsPointer -}}
+        if {{$out.Receiver}}.{{$relation.Name}} == nil {
+            return nil, errors.Newf(class.RelationIndexOutOfRange, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
+        }
+        {{end -}}
+        if index > len({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}) - 1 {
+            return nil, errors.Newf(class.RelationIndexOutOfRange, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
+        }
+        return {{if not $relation.IsElemPointer}}&{{end}}{{if $relation.IsPointer}}(*{{end}}{{$out.Receiver}}.{{$relation.Name}}{{if $relation.IsPointer}}){{end}}[index], nil
+    {{end -}}{{end -}}
+    default:
+        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{$out.Receiver}})
+    }
+    return models, nil
+}
+
+// GetRelationLen implements mapping.MultiRelationer interface.
+func ({{.Receiver}} *{{.Name}}) GetRelationLen(relation *mapping.StructField) (int, error) {
+    switch relation.Index[0] {
+    {{range $relation := .Relations -}}{{if $relation.IsSlice -}}
+    case {{$relation.Index}}: // {{$relation.Name}}
+        {{if $relation.IsPointer -}}
+        if {{$out.Receiver}}.{{$relation.Name}} == nil {
+            return 0, nil
+        }
+        {{end -}}
+        return len({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}), nil
+    {{end -}}{{end -}}
+    default:
+        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+    }
+    return models, nil
+}
+{{end}}

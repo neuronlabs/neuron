@@ -11,7 +11,7 @@ import (
 func TestReadDefaultConfig(t *testing.T) {
 	var c *Controller
 	require.NotPanics(t, func() {
-		c = Default()
+		c = DefaultController()
 	})
 	require.NotNil(t, c)
 

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/namer"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/namer"
 )
 
 func BenchmarkField(b *testing.B) {
@@ -16,7 +16,7 @@ func BenchmarkField(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		m.Field("Third")
+		m.FieldByName("Third")
 	}
 }
 
@@ -53,7 +53,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.Default()
+			cfg := config.DefaultController()
 			m := NewModelMap(namer.NamingSnake, cfg)
 			b.StartTimer()
 
@@ -65,7 +65,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Relationship", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.Default()
+			cfg := config.DefaultController()
 			m := NewModelMap(namer.NamingSnake, cfg)
 			b.StartTimer()
 

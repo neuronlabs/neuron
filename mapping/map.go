@@ -10,11 +10,11 @@ import (
 	"github.com/neuronlabs/inflection"
 
 	"github.com/neuronlabs/errors"
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/namer"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/namer"
 )
 
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.
@@ -35,12 +35,11 @@ func NewModelMap(namerFunc namer.Namer, c *config.Controller) *ModelMap {
 		c.Models = make(map[string]*config.ModelConfig)
 	}
 	return &ModelMap{
-		models:              make(map[reflect.Type]*ModelStruct),
-		collections:         make(map[string]reflect.Type),
-		DefaultRepository:   c.DefaultRepositoryName,
-		NamerFunc:           namerFunc,
-		Configs:             c.Models,
-		nestedIncludedLimit: c.IncludedDepthLimit,
+		models:            make(map[reflect.Type]*ModelStruct),
+		collections:       make(map[string]reflect.Type),
+		DefaultRepository: c.DefaultRepositoryName,
+		NamerFunc:         namerFunc,
+		Configs:           c.Models,
 	}
 }
 
@@ -108,19 +107,19 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			return errors.Newf(class.ModelInSchemaAlreadyRegistered, "model: '%s' was already registered.", mStruct.Collection())
 		}
 
-		if err = m.Set(mStruct); err != nil {
+		if err = m.AddModel(mStruct); err != nil {
 			return err
 		}
 		thisModels = append(thisModels, mStruct)
 
-		modelConfig, ok := m.Configs[mStruct.collectionType]
+		modelConfig, ok := m.Configs[mStruct.collection]
 		if !ok {
 			modelConfig = &config.ModelConfig{}
-			m.Configs[mStruct.collectionType] = modelConfig
+			m.Configs[mStruct.collection] = modelConfig
 		}
 		modelConfig.Collection = mStruct.Collection()
 
-		if err := mStruct.setConfig(modelConfig); err != nil {
+		if err = mStruct.setConfig(modelConfig); err != nil {
 			log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())
 			return err
 		}
@@ -184,21 +183,21 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	return nil
 }
 
-// Set sets the *ModelStruct for given map.
+// AddModel sets the *ModelStruct for given map.
 // If the model already exists the function returns an error.
-func (m *ModelMap) Set(value *ModelStruct) error {
-	_, ok := m.models[value.modelType]
+func (m *ModelMap) AddModel(mStruct *ModelStruct) error {
+	_, ok := m.models[mStruct.modelType]
 	if ok {
-		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
+		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", mStruct.Type())
 	}
 
-	_, ok = m.collections[value.collectionType]
+	_, ok = m.collections[mStruct.collection]
 	if ok {
-		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", value.Type())
+		return errors.NewDetf(class.ModelInSchemaAlreadyRegistered, "Model: %s already registered", mStruct.Type())
 	}
 
-	m.models[value.modelType] = value
-	m.collections[value.collectionType] = value.Type()
+	m.models[mStruct.modelType] = mStruct
+	m.collections[mStruct.collection] = mStruct.Type()
 
 	return nil
 }
@@ -218,8 +217,8 @@ func (m *ModelMap) computeNestedIncludedCount() {
 
 	for _, model := range m.models {
 		modelLimit := limit
-		if model.cfg.IncludedDepthLimit != nil {
-			modelLimit = *model.cfg.IncludedDepthLimit
+		if model.config.IncludedDepthLimit != nil {
+			modelLimit = *model.config.IncludedDepthLimit
 		}
 		model.computeNestedIncludedCount(modelLimit)
 	}
@@ -289,7 +288,7 @@ func (m *ModelMap) setRelationships() error {
 			// relationship gets the relationship between the fields
 			relationship := relField.Relationship()
 
-			// get structfield neuron tags
+			// get struct field neuron tags
 			tags := relField.TagValues(relField.ReflectField().Tag.Get(annotation.Neuron))
 
 			// get proper foreign key field name
@@ -593,41 +592,23 @@ func buildModelStruct(model interface{}, namerFunc namer.Namer) (modelStruct *Mo
 		return nil, err
 	}
 
-	// check and set the interfaces
-	ptrValue := reflect.New(modelType)
 	modelValue := reflect.New(modelType).Elem()
 
 	var collection string
-
-	collectioner, ok := model.(CollectionNamer)
+	// Check if the model implements Collectioner interface
+	collectionNamer, ok := model.(Collectioner)
 	if ok {
-		collection = collectioner.CollectionName()
+		collection = collectionNamer.Collection()
 	} else {
 		collection = namerFunc(inflection.Plural(modelType.Name()))
 	}
 
 	modelStruct = newModelStruct(modelType, collection)
 	modelStruct.namerFunc = namerFunc
-	// Define the function definition
-
 	// map fields
 	if err := modelStruct.mapFields(modelType, modelValue, nil); err != nil {
 		return nil, err
 	}
-
-	if ptrValue.MethodByName("BeforeList").IsValid() {
-		modelStruct.isBeforeLister = true
-	}
-	if ptrValue.MethodByName("AfterList").IsValid() {
-		modelStruct.isAfterLister = true
-	}
-	if ptrValue.MethodByName("BeforeCount").IsValid() {
-		modelStruct.isBeforeCounter = true
-	}
-	if ptrValue.MethodByName("AfterCount").IsValid() {
-		modelStruct.isAfterCounter = true
-	}
-
 	return modelStruct, nil
 }
 

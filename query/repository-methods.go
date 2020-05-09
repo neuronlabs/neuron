@@ -2,8 +2,6 @@ package query
 
 import (
 	"context"
-
-	"github.com/neuronlabs/neuron-core/repository"
 )
 
 // FullRepository is the interface that implements both repository CRUDRepository and the transactioner interfaces.
@@ -15,10 +13,10 @@ type FullRepository interface {
 // CRUDRepository is an interface that implements all possible repository methods interfaces.
 type CRUDRepository interface {
 	Counter
-	Creator
-	Getter
-	Lister
-	Patcher
+	Exister
+	Inserter
+	Finder
+	Updater
 	Deleter
 }
 
@@ -28,29 +26,34 @@ type Counter interface {
 	Count(ctx context.Context, s *Scope) (int64, error)
 }
 
-// Creator is the repository interface that creates the value within the query.Scope.
-type Creator interface {
-	Create(ctx context.Context, s *Scope) error
+// Exister is the interface used to check if given query object exists.
+type Exister interface {
+	Exists(context.Context, *Scope) (bool, error)
 }
 
-// Getter is the repository interface that Gets single query value.
-type Getter interface {
-	Get(ctx context.Context, s *Scope) error
+// Inserter is the repository interface that creates the value within the query.Scope.
+type Inserter interface {
+	Insert(ctx context.Context, s *Scope) error
 }
 
-// Lister is the repository interface that Lists provided query values.
-type Lister interface {
-	List(ctx context.Context, s *Scope) error
+// Finder is the repository interface that Lists provided query values.
+type Finder interface {
+	Find(ctx context.Context, s *Scope) error
 }
 
-// Patcher is the repository interface that patches given query values.
-type Patcher interface {
-	Patch(ctx context.Context, s *Scope) error
+// Updater is the repository interface that Update given query values.
+type Updater interface {
+	Update(ctx context.Context, s *Scope) (int64, error)
+}
+
+// Upserter is the repository interface that upserts given query values.
+type Upserter interface {
+	Upsert(ctx context.Context, s *Scope) error
 }
 
 // Deleter is the interface for the repositories that deletes provided query value.
 type Deleter interface {
-	Delete(ctx context.Context, s *Scope) error
+	Delete(ctx context.Context, s *Scope) (int64, error)
 }
 
 /**
@@ -61,7 +64,7 @@ TRANSACTIONS
 
 // Transactioner is the interface used for the transactions.
 type Transactioner interface {
-	repository.Repository
+	ID() string
 	// Begin the scope's transaction.
 	Begin(ctx context.Context, tx *Tx) error
 	// Commit the scope's transaction.

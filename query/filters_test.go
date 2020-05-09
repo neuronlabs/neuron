@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/controller"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/controller"
 )
 
 type testingModel struct {
@@ -71,7 +71,7 @@ func TestNewUrlStringFilter(t *testing.T) {
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
-		t.Run("Collection", func(t *testing.T) {
+		t.Run("NeuronCollectionName", func(t *testing.T) {
 			_, err := NewURLStringFilter(c, "filter[invalid-collection][field_name][$eq]", 1)
 			require.Error(t, err)
 		})
@@ -125,10 +125,11 @@ func TestNewUrlStringFilter(t *testing.T) {
 	t.Run("Relationship", func(t *testing.T) {
 		filter, err := NewURLStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
 		require.NoError(t, err)
-		attrField, ok := mStruct.FieldByName("Relation")
+
+		relationField, ok := mStruct.RelationByName("Relation")
 		require.True(t, ok)
 
-		assert.Equal(t, attrField, filter.StructField)
+		assert.Equal(t, relationField, filter.StructField)
 		require.Len(t, filter.Nested, 1)
 
 		nested := filter.Nested[0]
@@ -184,11 +185,10 @@ func TestFilterFormatQuery(t *testing.T) {
 	})
 
 	t.Run("WithNested", func(t *testing.T) {
-		rel, ok := mStruct.RelationField("relation")
+		rel, ok := mStruct.RelationByName("relation")
 		require.True(t, ok)
 
 		relFilter := newRelationshipFilter(rel, NewFilterField(rel.ModelStruct().Primary(), OpIn, uint(1), uint64(2)))
-
 		q := relFilter.FormatQuery()
 
 		require.Len(t, q, 1)

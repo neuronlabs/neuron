@@ -3,7 +3,7 @@
 // It's design allows to use the separate repository for each model, with a possibility
 // to have different relationships types between them.
 //
-// Neuron-core consists of following packages:
+// neuron consists of following packages:
 // - neuron - (Neuron Core) the root package that gives easy access to all subpackages. .
 // - controller - is the neuron's core, that registers and stores the models and
 // 	 			  contains configurations required by other packages.

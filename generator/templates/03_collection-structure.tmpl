@@ -1,0 +1,48 @@
+{{define "collection-structure"}}
+
+func init() {
+    _collectionInitializers = append(_collectionInitializers, initialize{{.Collection.VariableName}})
+}
+
+// {{.Collection.VariableName}} is the collection used to query {{.Model.Name}} model.
+var {{.Collection.VariableName}} *{{.Collection.Name}}
+
+type {{.Collection.Name}} struct {
+    Model *mapping.ModelStruct
+}
+
+func initialize{{.Collection.VariableName}}({{if .ExternalController}}c *controller.Controller{{end}}) error {
+    mStruct, err := c.GetModelStruct(&{{.Model.Name}})
+    if err != nil {
+        return err
+    }
+    {{ .Collection.VariableName }} = &{{.Collection.Name}}{Model: mStruct}
+    return nil
+}
+
+// Query creates the query for the {{.Model.Name}}.
+func ({{.Collection.Receiver}} *{{.Collection.Name}}) Query(db query.DB, models ...*{{.Model.Name}}) *{{.Collection.QueryBuilder}} {
+    var queryModels []query.Model
+    if len(models) > 0 {
+        queryModels = make([]query.Model, len(models))
+        for i, model := range models {
+            queryModels[i] = model
+        }
+    }
+    builder := db.Query({{.Collection.Receiver}}.Model, queryModels ...)
+    return &{{.Collection.Name}}QueryBuilder{builder: builder}
+}
+
+// QueryCtx creates the query for the {{.Model.Name}} with provided 'ctx' context.
+func ({{.Collection.Receiver}} *{{.Collection.Name}}) QueryCtx(ctx context.Context, db query.DB, models ...*{{.Model.Name}}) *{{.Collection.QueryBuilder}} {
+    var queryModels []query.Model
+    if len(models) > 0 {
+        queryModels = make([]query.Model, len(models))
+        for i, model := range models {
+            queryModels[i] = model
+        }
+    }
+    builder := db.QueryCtx(ctx, {{.Collection.Receiver}}.Model, queryModels ...)
+    return &{{.Collection.QueryBuilder}}{builder: builder}
+}
+{{end}}

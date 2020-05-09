@@ -8,8 +8,8 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
 )
 
 // PrimaryValues gets the primary values from the provided 'value' reflection.
@@ -96,7 +96,7 @@ func NewReflectValueSingle(m *ModelStruct) reflect.Value {
 	return m.newReflectValueSingle()
 }
 
-// NewReflectValueMany creates the *[]*m.Type reflect.Value.
+// NewReflectValueMany creates the *[]*m.Type reflect.Models.
 func NewReflectValueMany(m *ModelStruct) reflect.Value {
 	return reflect.New(reflect.SliceOf(reflect.PtrTo(m.Type())))
 }
@@ -194,7 +194,7 @@ func setUintField(value string, fieldValue reflect.Value, bitSize int) errors.De
 		return err
 	}
 
-	// Set uint
+	// AddModel uint
 	fieldValue.SetUint(uintValue)
 	return nil
 }
@@ -207,7 +207,7 @@ func setIntField(value string, fieldValue reflect.Value, bitSize int) errors.Det
 		return err
 	}
 
-	// Set value if no error
+	// AddModel value if no error
 	fieldValue.SetInt(intValue)
 	return nil
 }
@@ -335,6 +335,6 @@ func stringValue(val interface{}, values *[]string) {
 			stringValue(s, values)
 		}
 	default:
-		log.Debugf("Filter parse query. Invalid or unsupported value type: %t", v)
+		log.Debugf("Where parse query. Invalid or unsupported value type: %t", v)
 	}
 }

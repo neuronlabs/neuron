@@ -7,7 +7,15 @@ import (
 // MjrInternal is the major internal error classification.
 var MjrInternal errors.Major
 
+var (
+	Internal    errors.Class
+	MnrInternal errors.Minor
+)
+
 func registerInternalClasses() {
+	MnrInternal = errors.MustNewMinor(MjrNeuron)
+	Internal = newIndexClass(MnrInternal)
+
 	MjrInternal = errors.MustNewMajor()
 
 	registerInternalQuery()

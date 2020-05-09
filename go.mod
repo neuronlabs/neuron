@@ -1,4 +1,4 @@
-module github.com/neuronlabs/neuron-core
+module github.com/neuronlabs/neuron
 
 go 1.11
 

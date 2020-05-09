@@ -1,0 +1,79 @@
+{{define "primary" -}}
+{{- $out := . -}}
+// Compile time check if {{.Name}} implements mapping.Model interface.
+var _ mapping.Model = &{{.Name}}{}
+
+// NeuronCollectionName implements mapping.Model interface method.
+// Returns the name of the collection for the '{{.Name}}'.
+func ({{.Receiver}} *{{.Name}}) NeuronCollectionName() string {
+    return "{{.CollectionName}}"
+}
+
+// IsPrimaryKeyZero implements query.Model interface method.
+func ({{.Receiver}} *{{.Name}}) IsPrimaryKeyZero() bool {
+    return {{.Primary.IsZero}}
+}
+
+// GetPrimaryKeyValue implements query.Model interface method.
+func ({{.Receiver}} *{{.Name}}) GetPrimaryKeyValue() interface{} {
+    return {{.Receiver}}.{{.Primary.Name}}
+}
+
+// GetPrimaryKeyZeroValue implements query.Model interface method.
+func ({{.Receiver}} *{{.Name}}) GetPrimaryKeyZeroValue() interface{} {
+    return {{.Primary.GetZero}}
+}
+
+// SetPrimaryKey implements query.Model interface method.
+func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
+    {{if .Primary.IsPointer -}}
+    if value == nil {
+        {{.Receiver}}.{{.Primary.Name}} = nil
+        return nil
+    }
+    {{end -}}
+    if v, ok := value.({{.Primary.Type}}); ok {
+        {{.Receiver}}.{{.Primary.Name}} = v
+        return nil
+    {{if .Primary.IsPointer -}}
+    } else if v, ok := value.({{.Primary.BaseType}}); ok {
+        {{.Receiver}}.{{.Primary.Name}} = &v
+        return nil
+    {{end -}}{{range $wrapped := .Primary.WrappedTypes -}}
+    } else if v, ok := value.({{$wrapped}}); ok {
+        {{.Receiver}}.{{.Primary.Name}} = {{if .Primary.IsPointer}}&{{end}}v
+    {{end -}}
+    }
+    {{if .Primary.AlternateTypes -}}
+    // Check alternate types for given field.
+    {{if eq (len .Primary.AlternateTypes) 1 -}}
+    if v, ok := value.({{index .Primary.AlternateTypes 0}}); ok {
+        {{if $out.Primary.IsPointer -}}
+        temp := {{$out.Primary.BaseType}}(value)
+        {{$out.Receiver}}.{{$out.Primary.Name}} = &temp
+        {{- else -}}
+        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(value)
+        {{- end}}
+        return nil
+    }
+    {{- else -}}
+    switch valueType := value.(type) {
+    {{range $alternate := .Primary.AlternateTypes -}}
+    case {{$alternate}}:
+        {{if $out.Primary.IsPointer -}}
+        temp := {{$out.Primary.BaseType}}(value)
+        {{$out.Receiver}}.{{$out.Primary.Name}} = &temp
+        {{- else -}}
+        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(value)
+        {{- end}}
+        return nil
+    {{end -}}
+    }{{end}}{{end}}
+    {{if .Primary.Scanner -}}
+    return {{.Receiver}}.{{.Primary.Name}}.Scan(value)
+    {{- else -}}
+    return errors.Newf(class.ModelFieldType, "provided invalid value: '%T' for the primary field for model: '%T'",
+        value, {{.Receiver}})
+    {{- end}}
+}
+{{- end -}}

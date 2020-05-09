@@ -7,9 +7,9 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/repository"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // DialAll establish connections for all repositories.
@@ -86,11 +86,11 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<
 	return out, nil
 }
 
-func (c *Controller) dial(ctx context.Context, job dialJob, wg *sync.WaitGroup, errc chan<- error) {
+func (c *Controller) dial(ctx context.Context, job dialJob, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := job.repo.Dial(ctx); err != nil {
-			errc <- err
+			errChan <- err
 			return
 		}
 	}()

@@ -2,16 +2,21 @@ package query
 
 import (
 	"context"
+
+	"github.com/neuronlabs/errors"
+
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
-// TxQuery is the query builder for the transaction.
-type TxQuery struct {
+// txQuery is the query builder for the transaction.
+type txQuery struct {
 	tx    *Tx
 	scope *Scope
 }
 
 // compile time check for the transaction query builder.
-var _ Builder = &TxQuery{}
+var _ Builder = &txQuery{}
 
 /**
  *
@@ -20,17 +25,17 @@ var _ Builder = &TxQuery{}
  */
 
 // Ctx returns query context.
-func (b *TxQuery) Ctx() context.Context {
+func (b *txQuery) Ctx() context.Context {
 	return b.tx.ctx
 }
 
 // Scope returns query scope.
-func (b *TxQuery) Scope() *Scope {
+func (b *txQuery) Scope() *Scope {
 	return b.scope
 }
 
 // Err returns query error.
-func (b *TxQuery) Err() error {
+func (b *txQuery) Err() error {
 	return b.tx.err
 }
 
@@ -41,62 +46,99 @@ func (b *TxQuery) Err() error {
  */
 
 // Count returns the number of the values for the provided query scope.
-func (b *TxQuery) Count() (int64, error) {
+func (b *txQuery) Count() (int64, error) {
 	if b.tx.err != nil {
 		return 0, b.tx.err
 	}
-	cnt, err := b.scope.CountContext(b.tx.ctx)
-	b.tx.err = err
+	cnt, err := b.scope.Count(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+	}
 	return cnt, err
 }
 
-// Create stores the values within the given scope's value repository, by starting
+// Exists returns true or false depending if there are any rows matching the query.
+func (b *txQuery) Exists() (bool, error) {
+	if b.tx.err != nil {
+		return false, b.tx.err
+	}
+	exists, err := b.scope.Exists(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+	}
+	return exists, err
+}
+
+// Insert stores the values within the given scope's value repository, by starting
 // the create process.
-func (b *TxQuery) Create() error {
+func (b *txQuery) Insert() error {
 	if b.tx.err != nil {
 		return b.tx.err
 	}
-	b.tx.err = b.scope.CreateContext(b.tx.ctx)
-	return b.tx.err
+	err := b.scope.Insert(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+	}
+	return err
 }
 
-// Patch updates the scope's attribute and relationship values based on the scope's value and filters.
+// Update updates the scope's attribute and relationship values based on the scope's value and filters.
 // In order to start patch process scope should contain a value with the non-zero primary field, or
 // primary field filters.
-func (b *TxQuery) Patch() error {
+func (b *txQuery) Update() (modelsAffected int64, err error) {
 	if b.tx.err != nil {
-		return b.tx.err
+		return 0, b.tx.err
 	}
-	b.tx.err = b.scope.PatchContext(b.tx.ctx)
-	return b.tx.err
+
+	modelsAffected, err = b.scope.Update(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+	}
+	return modelsAffected, err
 }
 
-// List gets the values from the repository taking with respect to the
+// Find gets the values from the repository taking with respect to the
 // query filters, sorts, pagination and included values.
-func (b *TxQuery) List() error {
+func (b *txQuery) Find() ([]mapping.Model, error) {
 	if b.tx.err != nil {
-		return b.tx.err
+		return nil, b.tx.err
 	}
-	b.tx.err = b.scope.ListContext(b.tx.ctx)
-	return b.tx.err
+	values, err := b.scope.Find(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+		return nil, err
+	}
+	return values, nil
 }
 
 // Get gets single value from the repository taking into account the scope
 // filters and parameters.
-func (b *TxQuery) Get() error {
+func (b *txQuery) Get() (mapping.Model, error) {
 	if b.tx.err != nil {
-		return b.tx.err
+		return nil, b.tx.err
 	}
-	return b.scope.GetContext(b.tx.ctx)
+	result, err := b.scope.Get(b.tx.ctx)
+	if err != nil {
+		b.tx.err = err
+		if classError, ok := err.(errors.ClassError); ok {
+			// TODO: this might be invalid if the error is of class query Value NoResult.
+			if classError.Class() == class.QueryValueNoResult {
+				b.tx.err = err
+			}
+		}
+		return nil, err
+	}
+	return result, nil
 }
 
 // Delete deletes the values provided in the query's scope.
-func (b *TxQuery) Delete() error {
+func (b *txQuery) Delete() (int64, error) {
 	if b.tx.err != nil {
-		return b.tx.err
+		return 0, b.tx.err
 	}
-	b.tx.err = b.scope.DeleteContext(b.tx.ctx)
-	return b.tx.err
+	var modelsAffected int64
+	modelsAffected, b.tx.err = b.scope.Delete(b.tx.ctx)
+	return modelsAffected, b.tx.err
 }
 
 /**
@@ -105,26 +147,26 @@ func (b *TxQuery) Delete() error {
  *
  */
 
-// AddFilterField inserts 'filterField' into the query scope.
-func (b *TxQuery) AddFilterField(filterField *FilterField) Builder {
+// Where inserts 'filterField' into the query scope.
+func (b *txQuery) Filter(filterField *FilterField) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.FilterField(filterField)
+	b.tx.err = b.scope.Filter(filterField)
 	return b
 }
 
-// Filter parses the filter into the filters.FilterField and adds it to the given scope.
-func (b *TxQuery) Filter(filter string, values ...interface{}) Builder {
+// Where parses the filter into the filters.Filter and adds it to the given scope.
+func (b *txQuery) Where(filter string, values ...interface{}) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.Filter(filter, values...)
+	b.tx.err = b.scope.Where(filter, values...)
 	return b
 }
 
 // Include includes provided 'relation' field in the query result with respect to provided 'relationFieldset'.
-func (b *TxQuery) Include(relation string, relationFieldset ...string) Builder {
+func (b *txQuery) Include(relation *mapping.StructField, relationFieldset ...*mapping.StructField) Builder {
 	if b.tx.err != nil {
 		return b
 	}
@@ -132,68 +174,81 @@ func (b *TxQuery) Include(relation string, relationFieldset ...string) Builder {
 	return b
 }
 
-// Limit sets the maximum number of objects returned by the List process,
-func (b *TxQuery) Limit(limit int64) Builder {
+// Limit sets the maximum number of objects returned by the Find process,
+func (b *txQuery) Limit(limit int64) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.Limit(limit)
+	b.scope.Limit(limit)
 	return b
 }
 
 // Offset sets the query result's offset. It says to skip as many object's from the repository
 // before beginning to return the result. 'Offset' 0 is the same as omitting the 'Offset' clause.
-func (b *TxQuery) Offset(offset int64) Builder {
+func (b *txQuery) Offset(offset int64) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.Offset(offset)
+	b.scope.Offset(offset)
 	return b
 }
 
-// PageSize defines pagination page size - maximum amount of returned objects.
-func (b *TxQuery) PageSize(pageSize int64) Builder {
-	if b.tx.err != nil {
-		return b
-	}
-	b.tx.err = b.scope.PageSize(pageSize)
-	return b
-}
-
-// PageNumber defines the pagination page number.
-func (b *TxQuery) PageNumber(pageNumber int64) Builder {
-	if b.tx.err != nil {
-		return b
-	}
-	b.tx.err = b.scope.PageNumber(pageNumber)
-	return b
-}
-
-// Processor sets the query processor. Implements Builder interface.
-func (b *TxQuery) Processor(processor *Processor) Builder {
-	if b.tx.err != nil {
-		return b
-	}
-	b.scope.Processor = processor
-	return b
-}
-
-// Fields adds the fields to the scope's fieldset.
+// Select adds the fields to the scope's fieldset.
 // The fields may be a mapping.StructField as well as field's NeuronName (string) or
 // the StructField Name (string).
-func (b *TxQuery) Fields(fields ...interface{}) Builder {
+func (b *txQuery) Select(fields ...*mapping.StructField) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.SetFields(fields...)
+	b.tx.err = b.scope.Select(fields...)
 	return b
 }
 
-// Sort creates the sort order of the result.
-func (b *TxQuery) Sort(fields ...string) Builder {
+// OrderBy creates the sort order of the result.
+func (b *txQuery) OrderBy(fields ...*SortField) Builder {
 	if b.tx.err != nil {
 		return b
 	}
-	b.tx.err = b.scope.Sort(fields...)
+	b.scope.SortingOrder = fields
 	return b
+}
+
+//
+// Relations
+//
+
+// AddRelations implements Builder interface.
+func (b *txQuery) AddRelations(relationField *mapping.StructField, relations ...mapping.Model) error {
+	if b.tx.err != nil {
+		return b.tx.err
+	}
+	err := b.scope.addRelations(b.tx.ctx, relationField, relations...)
+	if err != nil {
+		b.tx.err = err
+	}
+	return err
+}
+
+// SetRelations implements Builder interface.
+func (b *txQuery) SetRelations(relationField *mapping.StructField, relations ...mapping.Model) error {
+	if b.tx.err != nil {
+		return b.tx.err
+	}
+	err := b.scope.setRelations(b.tx.ctx, relationField, relations...)
+	if err != nil {
+		b.tx.err = err
+	}
+	return err
+}
+
+// RemoveRelations implements Builder interface.
+func (b *txQuery) RemoveRelations(relationField *mapping.StructField) (int64, error) {
+	if b.tx.err != nil {
+		return 0, b.tx.err
+	}
+	modelsAffected, err := b.scope.removeRelations(b.tx.ctx, relationField)
+	if err != nil {
+		b.tx.err = err
+	}
+	return modelsAffected, err
 }

@@ -6,7 +6,7 @@ import (
 
 // ModelConfig defines single model configurations.
 type ModelConfig struct {
-	// Collection is the model's collection name
+	// NeuronCollectionName is the model's collection name
 	Collection string `mapstructure:"collection"`
 	// RepositoryName is the model's repository name, with the name provided in the initialization
 	// process...
@@ -18,7 +18,7 @@ type ModelConfig struct {
 	// AutoMigrate automatically migrates the model into the given repository structuring
 	// I.e. sql creates or updates the table
 	AutoMigrate bool `mapstructure:"automigrate"`
-	// Fields contains the model fields configuration.
+	// Select contains the model fields configuration.
 	Fields map[string]*Field `mapstructure:"fields"`
 	// IncludedDepthLimit is the per model nested include depth limit.
 	IncludedDepthLimit *int `mapstructure:"included_depth_limit"`

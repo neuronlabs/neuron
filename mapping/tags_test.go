@@ -17,7 +17,7 @@ func TestExtractTags(t *testing.T) {
 	first, err := m.GetModelStruct(Model1WithMany2Many{})
 	require.NoError(t, err)
 
-	synced, ok := first.RelationField("Synced")
+	synced, ok := first.RelationByName("Synced")
 	require.True(t, ok)
 
 	extracted := synced.ExtractFieldTags("neuron")

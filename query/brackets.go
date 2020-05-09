@@ -3,8 +3,8 @@ package query
 import (
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
 )
 
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.

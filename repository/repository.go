@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // Repository is the interface that defines the base neuron Repository.

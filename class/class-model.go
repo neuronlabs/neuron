@@ -4,9 +4,6 @@ import (
 	"github.com/neuronlabs/errors"
 )
 
-// MjrModel - major that classifies errors related with the models mapping.
-var MjrModel errors.Major
-
 func registerModelClasses() {
 	MjrModel = errors.MustNewMajor()
 
@@ -15,13 +12,37 @@ func registerModelClasses() {
 	registerModelRelationship()
 	registerModelValues()
 	registerModelMapping()
+	registerModelCommon()
+	registerNewModels()
 }
+
+// New models and fields.
+var (
+	MnrModel          errors.Minor
+	ModelInvalidField errors.Class
+	// ModelNotImplements is the interface used when the model should implement some interface but it doesn't.
+	ModelNotImplements errors.Class
+)
+
+func registerNewModels() {
+	MnrModel = errors.MustNewMinor(MjrNeuron)
+	ModelInvalidField = newIndexClass(MnrModel)
+	ModelNotImplements = newIndexClass(MnrModel)
+}
+
+//
+// Old
+//
+
+// MjrModel - major that classifies errors related with the models mapping.
+var MjrModel errors.Major
 
 /**
 
 Model Field
 
 */
+
 var (
 	// MnrModelField is the 'MjrModel' minor error classification
 	// on the model field's definitions.
@@ -193,4 +214,7 @@ func registerModelMapping() {
 	ModelMappingNoFields = newClass()
 	ModelMappingInvalidType = newClass()
 	ModelNotMapped = newClass()
+}
+
+func registerModelCommon() {
 }

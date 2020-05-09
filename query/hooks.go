@@ -6,66 +6,45 @@ import (
 
 /**
 
-Creator
+Inserter
 
 */
 
-// BeforeCreator is the interface used for hooks before the creation process.
-type BeforeCreator interface {
-	BeforeCreate(context.Context, *Scope) error
+// BeforeInserter is the interface used for hooks before the creation process.
+type BeforeInserter interface {
+	BeforeInsert(context.Context, DB) error
 }
 
-// AfterCreator is the interface that has a method used as a hook after the creation process.
-type AfterCreator interface {
-	AfterCreate(context.Context, *Scope) error
+// AfterInserter is the interface that has a method used as a hook after the creation process.
+type AfterInserter interface {
+	AfterInsert(context.Context, DB) error
 }
 
 /**
 
-Getter
+Finder
 
 */
 
-// BeforeGetter is the interface used as a hook before getting value.
-type BeforeGetter interface {
-	BeforeGet(context.Context, *Scope) error
-}
-
-// AfterGetter is the interface used as a hook after getting the value.
-type AfterGetter interface {
-	AfterGet(context.Context, *Scope) error
+// AfterFinder is the interface used as a after find hook.
+type AfterFinder interface {
+	AfterFind(context.Context, DB) error
 }
 
 /**
 
-Lister
+Updater
 
 */
 
-// BeforeLister is the interface used for before list hook.
-type BeforeLister interface {
-	BeforeList(context.Context, *Scope) error
+// BeforeUpdater is the interface used as a before patch hook.
+type BeforeUpdater interface {
+	BeforeUpdate(context.Context, DB) error
 }
 
-// AfterLister is the interface used as a after list hook.
-type AfterLister interface {
-	AfterList(context.Context, *Scope) error
-}
-
-/**
-
-Patcher
-
-*/
-
-// BeforePatcher is the interface used as a before patch hook.
-type BeforePatcher interface {
-	BeforePatch(ctx context.Context, s *Scope) error
-}
-
-// AfterPatcher is the interface used as a after patch hook.
-type AfterPatcher interface {
-	AfterPatch(ctx context.Context, s *Scope) error
+// AfterUpdater is the interface used as a after patch hook.
+type AfterUpdater interface {
+	AfterUpdate(context.Context, DB) error
 }
 
 /**
@@ -76,26 +55,10 @@ Deleter
 
 // BeforeDeleter is the interface used as a before delete hook.
 type BeforeDeleter interface {
-	BeforeDelete(ctx context.Context, s *Scope) error
+	BeforeDelete(context.Context, DB) error
 }
 
 // AfterDeleter is the interface used as an after delete hook.
 type AfterDeleter interface {
-	AfterDelete(ctx context.Context, s *Scope) error
-}
-
-/**
-
-Counter
-
-*/
-
-// BeforeCounter is the interface used for before count hook.
-type BeforeCounter interface {
-	BeforeCount(ctx context.Context, s *Scope) error
-}
-
-// AfterCounter is the interface used for before count hook.
-type AfterCounter interface {
-	AfterCount(ctx context.Context, s *Scope) error
+	AfterDelete(context.Context, DB) error
 }

@@ -7,10 +7,10 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/annotation"
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron/annotation"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // Filters is the wrapper over the slice of filter fields.
@@ -30,7 +30,7 @@ func (f Filters) String() string {
 // It is based on the mapping.StructField.
 type FilterField struct {
 	StructField *mapping.StructField
-	// Values are the filter values for given attribute FilterField
+	// Models are the filter values for given attribute Filter
 	Values []OperatorValues
 	// Nested are the relationship fields filters.
 	Nested []*FilterField
@@ -41,11 +41,11 @@ func (f *FilterField) Copy() *FilterField {
 	return f.copy()
 }
 
-// FormatQuery formats the filter field into url.Values.
+// FormatQuery formats the filter field into url.Models.
 // If the 'q' optional parameter is set, then the function would add
-// the values into the provided argument 'q' url.Values. Otherwise it
-// creates new url.Values.
-// Returns updated (new) url.Values.
+// the values into the provided argument 'q' url.Models. Otherwise it
+// creates new url.Models.
+// Returns updated (new) url.Models.
 func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 	var query url.Values
 	if len(q) != 0 {
@@ -128,7 +128,7 @@ func (f *FilterField) copy() *FilterField {
 	return cp
 }
 
-// formatQuery parses the into url.Values.
+// formatQuery parses the into url.Models.
 func (f *FilterField) formatQuery(q url.Values, relName ...string) {
 	// parse the internal value
 	for i := range f.Values {
@@ -223,7 +223,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 	if dotIndex != -1 {
 		// the filter must be of relationship type
 		relation, relationField := field[:dotIndex], field[dotIndex+1:]
-		sField, ok := m.RelationField(relation)
+		sField, ok := m.RelationByName(relation)
 		if !ok {
 			return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
 		}
@@ -236,7 +236,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 			Nested:      []*FilterField{subFilter},
 		}, nil
 	}
-	sField, ok := m.Field(field)
+	sField, ok := m.FieldByName(field)
 	if !ok {
 		return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
 	}
@@ -272,7 +272,7 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 	mStruct := c.ModelMap.GetByCollection(params[0])
 	if mStruct == nil {
 		detErr := errors.NewDet(class.QueryFilterUnknownCollection, "provided filter collection not found")
-		detErr.SetDetailsf("Filter model: '%s' not found", params[0])
+		detErr.SetDetailsf("Where model: '%s' not found", params[0])
 		return nil, detErr
 	}
 
@@ -325,7 +325,7 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 			return nil, err
 		}
 
-		if rel, ok := mStruct.RelationField(params[1]); ok {
+		if rel, ok := mStruct.RelationByName(params[1]); ok {
 			f = &FilterField{StructField: rel}
 			relStruct := rel.Relationship().Struct()
 			if params[2] == "id" {

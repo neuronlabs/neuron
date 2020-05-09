@@ -9,15 +9,19 @@ func init() {
 }
 
 func registerClasses() {
+	MjrNeuron = errors.MustNewMajor()
+	registerGeneratorClasses()
 	registerCommonClasses()
 	registerConfigClasses()
 	registerEncodingClasses()
 	registerInternalClasses()
-	registerLanguageClasses()
 	registerModelClasses()
 	registerQueryClasses()
 	registerRepositoryClasses()
 }
+
+// MjrNeuron is the major class for all neuron errors.
+var MjrNeuron errors.Major
 
 // MjrCommon is the common major errors classification.
 var MjrCommon errors.Major

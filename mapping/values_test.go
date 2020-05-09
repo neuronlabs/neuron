@@ -62,7 +62,7 @@ func TestValues(t *testing.T) {
 		mStruct, err := mm.GetModelStruct(Model{})
 		require.NoError(t, err)
 
-		attr, ok := mStruct.Field("Attr")
+		attr, ok := mStruct.FieldByName("Attr")
 		require.True(t, ok)
 
 		v, err := attr.ValueFromString("some")
@@ -70,7 +70,7 @@ func TestValues(t *testing.T) {
 
 		assert.Equal(t, "some", v)
 
-		attr, ok = mStruct.Field("Number")
+		attr, ok = mStruct.FieldByName("Number")
 		require.True(t, ok)
 
 		v, err = attr.ValueFromString("32")
@@ -78,7 +78,7 @@ func TestValues(t *testing.T) {
 
 		assert.Equal(t, 32, v)
 
-		attr, ok = mStruct.Field("Age")
+		attr, ok = mStruct.FieldByName("Age")
 		require.True(t, ok)
 
 		v, err = attr.ValueFromString("65")
@@ -89,7 +89,7 @@ func TestValues(t *testing.T) {
 		_, err = attr.ValueFromString("-12")
 		assert.Error(t, err)
 
-		attr, ok = mStruct.Field("Time")
+		attr, ok = mStruct.FieldByName("Time")
 		require.True(t, ok)
 
 		tm := time.Now()
@@ -97,7 +97,7 @@ func TestValues(t *testing.T) {
 		_, err = attr.ValueFromString(strconv.FormatInt(tm.UnixNano(), 10))
 		assert.Error(t, err)
 
-		attr, ok = mStruct.Field("Flt")
+		attr, ok = mStruct.FieldByName("Flt")
 		require.True(t, ok)
 
 		v, err = attr.ValueFromString("-12.321")
@@ -108,7 +108,7 @@ func TestValues(t *testing.T) {
 		_, err = attr.ValueFromString("invalid")
 		assert.Error(t, err)
 
-		attr, ok = mStruct.Field("Bl")
+		attr, ok = mStruct.FieldByName("Bl")
 		require.True(t, ok)
 
 		v, err = attr.ValueFromString("false")

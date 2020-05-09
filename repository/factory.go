@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/neuronlabs/neuron-core/config"
+	"github.com/neuronlabs/neuron/config"
 )
 
 // Factory is the interface used for creating the repositories.

@@ -3,10 +3,10 @@ package neuron
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/query"
-	"github.com/neuronlabs/neuron-core/repository"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // Neuron is the main structure that stores the controller, create queries, registers models and repositories.
@@ -16,14 +16,14 @@ type Neuron struct {
 
 // New creates new Neuron controller.
 func New(cfg *config.Controller) (*Neuron, error) {
-	c, err := controller.New(cfg)
+	c, err := controller.NewController(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &Neuron{c: c}, nil
 }
 
-// NewC creates new Neuron with the provided 'c' controller.
+// NewScopeC creates new Neuron with the provided 'c' controller.
 func NewC(c *controller.Controller) *Neuron {
 	return &Neuron{c: c}
 }
@@ -89,15 +89,15 @@ func (n *Neuron) RegisterRepository(name string, repo *config.Repository) error 
  *
  */
 
-// Query creates new query for provided 'model'. A model must be registered within given neuron.
+// query creates new query for provided 'model'. A model must be registered within given neuron.
 func (n *Neuron) Query(model interface{}) query.Builder {
-	return query.NewQuery(context.Background(), n.c, model)
+	return query.NewCtx(context.Background(), n.c, model)
 }
 
 // QueryCtx creates new query for provided 'model'. A model must be registered within given neuron.
 // Whole query would be affected by given context 'ctx'.
 func (n *Neuron) QueryCtx(ctx context.Context, model interface{}) query.Builder {
-	return query.NewQuery(ctx, n.c, model)
+	return query.NewCtx(ctx, n.c, model)
 }
 
 /*

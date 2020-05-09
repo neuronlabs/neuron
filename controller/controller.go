@@ -1,16 +1,17 @@
 package controller
 
+import "C"
 import (
 	"strings"
+	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/config"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/mapping"
-	"github.com/neuronlabs/neuron-core/namer"
-	"github.com/neuronlabs/neuron-core/repository"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/config"
+	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/namer"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // Controller is the structure that contains, initialize and control the flow of the application.
@@ -26,9 +27,9 @@ type Controller struct {
 	Repositories map[string]repository.Repository
 }
 
-// MustGetNew creates new controller for given provided 'cfg' config.
+// MustNewController creates new controller for given provided 'cfg' config.
 // Panics on error.
-func MustGetNew(cfg *config.Controller) *Controller {
+func MustNewController(cfg *config.Controller) *Controller {
 	c, err := newController(cfg)
 	if err != nil {
 		panic(err)
@@ -36,8 +37,8 @@ func MustGetNew(cfg *config.Controller) *Controller {
 	return c
 }
 
-// New creates new controller for given config 'cfg'.
-func New(cfg *config.Controller) (*Controller, error) {
+// NewController creates new controller for given config 'cfg'.
+func NewController(cfg *config.Controller) (*Controller, error) {
 	c, err := newController(cfg)
 	if err != nil {
 		return nil, err
@@ -53,7 +54,7 @@ func (c *Controller) GetRepository(model interface{}) (repository.Repository, er
 	}
 	repo, ok := c.Repositories[mStruct.Config().RepositoryName]
 	if !ok {
-		return nil, errors.NewDetf(class.RepositoryNotFound, "no repository found for the model")
+		return nil, errors.Newf(ClassRepositoryNotFound, "repository not found for the model: %s", mStruct)
 	}
 	return repo, nil
 }
@@ -64,7 +65,7 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) (er
 		return err
 	}
 	if _, ok := c.Repositories[name]; ok {
-		return errors.NewDetf(class.RepositoryConfigAlreadyRegistered, "repository: '%s' already exists", name)
+		return errors.Newf(ClassRepositoryNotFound, "repository: '%s' already exists", name)
 	}
 	// check if the repository is already registered
 	if err = c.setRepositoryConfig(name, cfg); err != nil {
@@ -80,28 +81,29 @@ func (c *Controller) RegisterRepository(name string, cfg *config.Repository) (er
 	return nil
 }
 
+// Now gets and returns current timestamp. If the configs specify the function might return UTC timestamp.
+func (c *Controller) Now() time.Time {
+	ts := time.Now()
+	if c.Config.UTCTimestamps {
+		ts = ts.UTC()
+	}
+	return ts
+}
+
 // setConfig sets and validates provided config
 func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	// if there is no controller config provided throw an error.
 	if cfg == nil {
-		return errors.NewDet(class.ConfigValueNil, "provided nil config value")
+		return errors.NewDet(ClassInvalidConfig, "provided nil config value")
 	}
 
 	log.Debug3f("Creating new controller with config: '%#v'", cfg)
 	// set the naming convention
 	cfg.NamingConvention = strings.ToLower(cfg.NamingConvention)
 
-	// map the processor to it's name
-	if err = cfg.MapProcessor(); err != nil {
-		return err
-	}
 	// validate config
 	if err = cfg.Validate(); err != nil {
-		return errors.NewDet(class.ConfigValueInvalid, "validating config failed")
-	}
-	// validate processor functions
-	if err = cfg.Processor.Validate(); err != nil {
-		return err
+		return errors.NewDet(ClassInvalidConfig, "validating config failed")
 	}
 
 	// set naming convention
@@ -115,7 +117,7 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	case "snake":
 		c.NamerFunc = namer.NamingSnake
 	default:
-		return errors.NewDetf(class.ConfigValueInvalid, "unknown naming convention name: %s", cfg.NamingConvention)
+		return errors.NewDetf(ClassInvalidConfig, "unknown naming convention name: %s", cfg.NamingConvention)
 	}
 	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
 	c.Config = cfg
@@ -129,9 +131,9 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	// Map repositories from config.
 	for name, repositoryConfig := range cfg.Repositories {
 		if _, ok := c.Repositories[name]; ok {
-			return errors.NewDetf(class.RepositoryConfigInvalid, "repository: '%s' already registered for the controller", name)
+			return errors.NewDetf(ClassInvalidConfig, "config repository: '%s' already registered for the controller", name)
 		}
-		// Create new repository from factory.
+		// Insert new repository from factory.
 		repo, err := c.newRepository(repositoryConfig)
 		if err != nil {
 			return err
@@ -145,7 +147,7 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 func (c *Controller) setRepositoryConfig(name string, cfg *config.Repository) error {
 	_, ok := c.Config.Repositories[name]
 	if ok {
-		return errors.NewDetf(class.RepositoryConfigAlreadyRegistered, "repository: '%s' already exists", name)
+		return errors.NewDetf(ClassRepositoryAlreadyRegistered, "repository: '%s' already registered", name)
 	}
 	c.Config.Repositories[name] = cfg
 

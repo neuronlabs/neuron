@@ -9,10 +9,10 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/controller"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/mapping"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // Tx is an in-progress transaction. A transaction must end with a call to Commit or Rollback.
@@ -62,14 +62,14 @@ func (t *Tx) State() TxState {
 
 // Query builds up a new query for given 'model'.
 // The query is executed using transaction context.
-func (t *Tx) Query(model interface{}) Builder {
-	return t.query(t.c, model)
+func (t *Tx) Query(model *mapping.ModelStruct, models ...mapping.Model) Builder {
+	return t.query(model, models...)
 }
 
 // QueryCtx builds up a new query for given 'model'.
 // The query is executed using transaction context - provided context is used only for Builder purpose.
-func (t *Tx) QueryCtx(ctx context.Context, model interface{}) Builder {
-	return t.query(t.c, model)
+func (t *Tx) QueryCtx(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) Builder {
+	return t.query(model, models...)
 }
 
 // Commit commits the transaction.
@@ -213,8 +213,8 @@ func (t *Tx) getUniqueTransactions(reverse bool) []*uniqueTx {
 	return txs
 }
 
-func (t *Tx) query(c *controller.Controller, model interface{}) *TxQuery {
-	tb := &TxQuery{tx: t}
+func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery {
+	tb := &txQuery{tx: t}
 	if t.err != nil {
 		return tb
 	}
@@ -222,21 +222,19 @@ func (t *Tx) query(c *controller.Controller, model interface{}) *TxQuery {
 		t.err = errors.NewDetf(class.QueryTxDone, "transaction: '%s' is already done", t.id.String())
 		return tb
 	}
-	// create new scope and add it to the TxQuery.
-	s, err := NewC(c, model)
-	if err != nil {
-		t.err = err
-		return tb
-	}
+	// create new scope and add it to the txQuery.
+	s := newQueryScope(t, model, models...)
 	tb.scope = s
-	s.tx = t
 
 	// get the repository mapped to given model.
 	repo := s.repository()
 	// check if given repository is a transactioner.
 	transactioner, ok := repo.(Transactioner)
 	if ok {
-		if err = t.beginUniqueTransaction(transactioner, s.mStruct); err != nil {
+		// TODO: begin transaction just before executing processes.
+		//		The relation processes shouldn't begin - i.e. AddRelationships - HasMany should begin related scope
+		//		and not the root model's scope.
+		if err := t.beginUniqueTransaction(transactioner, s.mStruct); err != nil {
 			t.err = err
 		}
 	} else {

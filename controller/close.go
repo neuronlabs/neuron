@@ -7,9 +7,9 @@ import (
 
 	"github.com/neuronlabs/errors"
 
-	"github.com/neuronlabs/neuron-core/class"
-	"github.com/neuronlabs/neuron-core/log"
-	"github.com/neuronlabs/neuron-core/repository"
+	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/log"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // CloseAll gently closes repository connections.
@@ -38,7 +38,7 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	waitChan := make(chan struct{})
 	go func() {
 		wg.Wait()
-		waitChan <- struct{}{}
+		close(waitChan)
 	}()
 
 	select {
@@ -74,11 +74,11 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (
 	return out, nil
 }
 
-func (c *Controller) closeRepo(ctx context.Context, repo repository.Repository, wg *sync.WaitGroup, errc chan<- error) {
+func (c *Controller) closeRepo(ctx context.Context, repo repository.Repository, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := repo.Close(ctx); err != nil {
-			errc <- err
+			errChan <- err
 			return
 		}
 	}()
