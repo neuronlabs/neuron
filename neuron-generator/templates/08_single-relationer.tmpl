@@ -11,7 +11,7 @@ func ({{.Receiver}} *{{.Name}}) GetRelationModel(relation *mapping.StructField) 
         return {{if not $relation.IsPointer -}}&{{end}}{{$out.Receiver}}.{{$relation.Name}}, nil
     {{end -}}{{end -}}
     default:
-        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+        return nil, errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
     }
 }
 
@@ -32,10 +32,10 @@ func ({{.Receiver}} *{{.Name}}) SetRelationModel(relation *mapping.StructField, 
             {{$out.Receiver}}.{{$relation.Name}} = {{if not $relation.IsPointer -}}*{{end}}{{$relationName}}
             return nil
         }
-        return errors.Newf(class.InvalidRelation, "provided invalid model type: '%T' for relation {{$relation.Name}}", model)
+        return errors.Newf(mapping.ClassInvalidRelationValue, "provided invalid model value: '%T' for relation {{$relation.Name}}", model)
     {{end -}}{{end -}}
     default:
-        return errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+        return errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
     }
 }
 {{- end}}

@@ -49,10 +49,10 @@ func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
     {{if eq (len .Primary.AlternateTypes) 1 -}}
     if v, ok := value.({{index .Primary.AlternateTypes 0}}); ok {
         {{if $out.Primary.IsPointer -}}
-        temp := {{$out.Primary.BaseType}}(value)
+        temp := {{$out.Primary.BaseType}}(v)
         {{$out.Receiver}}.{{$out.Primary.Name}} = &temp
         {{- else -}}
-        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(value)
+        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(v)
         {{- end}}
         return nil
     }
@@ -61,10 +61,10 @@ func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
     {{range $alternate := .Primary.AlternateTypes -}}
     case {{$alternate}}:
         {{if $out.Primary.IsPointer -}}
-        temp := {{$out.Primary.BaseType}}(value)
+        temp := {{$out.Primary.BaseType}}(valueType)
         {{$out.Receiver}}.{{$out.Primary.Name}} = &temp
         {{- else -}}
-        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(value)
+        {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(valueType)
         {{- end}}
         return nil
     {{end -}}
@@ -72,7 +72,7 @@ func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
     {{if .Primary.Scanner -}}
     return {{.Receiver}}.{{.Primary.Name}}.Scan(value)
     {{- else -}}
-    return errors.Newf(class.ModelFieldType, "provided invalid value: '%T' for the primary field for model: '%T'",
+    return errors.Newf(mapping.ClassInvalidFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
         value, {{.Receiver}})
     {{- end}}
 }

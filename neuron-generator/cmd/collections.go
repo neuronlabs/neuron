@@ -1,3 +1,5 @@
+// +build !codeanalysis
+
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 

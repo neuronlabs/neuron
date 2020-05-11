@@ -8,12 +8,17 @@ var (
 	// MjrMapping is the major error classification for the mapping package.
 	MjrMapping errors.Major
 
-	// MnrValue is the minor error classification related to mapping values.
-	MnrValue errors.Minor
 	// ClassInvalidFieldValue is an invalid field value class.
 	ClassInvalidFieldValue errors.Class
-	// ClassInvalidRelationValue is the error for providing invalid relation value,
+
+	// MnrRepository is the minor error classification related to mapping repositories.
+	MnrRepository errors.Minor
+	// ClassInvalidRelationValue is the error for providing invalid relation value.
 	ClassInvalidRelationValue errors.Class
+	// ClassInvalidRelationField is the error for providing invalid relation field.
+	ClassInvalidRelationField errors.Class
+	// ClassInvalidRelationIndex is the error for providing invalid relation index.
+	ClassInvalidRelationIndex errors.Class
 
 	// MnrModel is the minor error classification related to the models.
 	MnrModel errors.Minor
@@ -35,9 +40,13 @@ func init() {
 	MjrMapping = errors.MustNewMajor()
 
 	// Value
-	MnrValue = errors.MustNewMinor(MjrMapping)
-	ClassInvalidFieldValue = errors.MustNewClassWIndex(MjrMapping, MnrValue)
-	ClassInvalidRelationValue = errors.MustNewClassWIndex(MjrMapping, MnrValue)
+	ClassInvalidFieldValue = errors.MustNewMajorClass(MjrMapping)
+
+	// Repository
+	MnrRepository = errors.MustNewMinor(MjrMapping)
+	ClassInvalidRelationValue = errors.MustNewClassWIndex(MjrMapping, MnrRepository)
+	ClassInvalidRelationIndex = errors.MustNewClassWIndex(MjrMapping, MnrRepository)
+	ClassInvalidRelationField = errors.MustNewClassWIndex(MjrMapping, MnrRepository)
 
 	// Model
 	MnrModel = errors.MustNewMinor(MjrMapping)

@@ -71,7 +71,6 @@ type ModelGenerator struct {
 	Types               []string
 	imports             map[string]string
 	importFields        map[string]map[string][]*ast.Ident
-	importedTypes       map[string]map[string]*ast.TypeSpec
 	models              map[string]*input.Model
 	modelsFiles         map[*input.Model]string
 	modelImportedFields map[*input.Model][]*importField
@@ -314,7 +313,7 @@ func (g *ModelGenerator) extractModel(file *ast.File, structType *ast.StructType
 			continue
 		}
 		fieldPtr := &field
-		g.setModelField(structField, fieldPtr)
+		g.setModelField(structField, fieldPtr, false)
 		// Check if field is a primary key field.
 		if isPrimary(structField) {
 			model.Primary = fieldPtr
@@ -438,7 +437,7 @@ func (g *ModelGenerator) parseImportPackages() error {
 				model.Relations = append(model.Relations, importedField.Field)
 				continue
 			}
-			g.setModelField(importedField.AstField, importedField.Field)
+			g.setModelField(importedField.AstField, importedField.Field, true)
 			if model.Primary != importedField.Field {
 				model.Fields = append(model.Fields, importedField.Field)
 			}
@@ -452,12 +451,12 @@ func (g *ModelGenerator) parseImportPackages() error {
 	return nil
 }
 
-func (g *ModelGenerator) setModelField(astField *ast.Field, inputField *input.Field) {
+func (g *ModelGenerator) setModelField(astField *ast.Field, inputField *input.Field, imported bool) {
 	isBS, isBSWrapped := isByteSliceWrapper(astField.Type)
 	inputField.IsByteSlice = isBS
 	inputField.IsPointer = isPointer(astField)
 	inputField.AlternateTypes = getAlternateTypes(astField.Type)
-	setFieldZeroValue(inputField, astField.Type)
+	setFieldZeroValue(inputField, astField.Type, imported)
 	inputField.Selector = getSelector(astField.Type)
 	if isBSWrapped {
 		inputField.WrappedTypes = []string{"[]byte"}
@@ -581,11 +580,8 @@ func isFieldRelation(field *ast.Field) bool {
 }
 
 func isPointer(field *ast.Field) bool {
-	switch field.Type.(type) {
-	case *ast.StarExpr:
-		return true
-	}
-	return false
+	_, ok := field.Type.(*ast.StarExpr)
+	return ok
 }
 
 func isMany(expr ast.Expr) bool {
@@ -839,10 +835,10 @@ func getSelector(expr ast.Expr) string {
 	}
 }
 
-func setFieldZeroValue(field *input.Field, expr ast.Expr) {
+func setFieldZeroValue(field *input.Field, expr ast.Expr, imported bool) {
 	// Check if given type implements ZeroChecker.
 	// TODO: add check if type implements query.ZeroChecker.
-	field.Zero = getZeroValue(expr)
+	field.Zero = getZeroValue(expr, imported)
 	array, ok := expr.(*ast.ArrayType)
 	if ok && array.Len == nil {
 		field.BeforeZero = "len("
@@ -852,7 +848,7 @@ func setFieldZeroValue(field *input.Field, expr ast.Expr) {
 	}
 }
 
-func getZeroValue(expr ast.Expr) string {
+func getZeroValue(expr ast.Expr, imported bool) string {
 	switch x := expr.(type) {
 	case *ast.Ident:
 		if x.Obj == nil {
@@ -868,6 +864,16 @@ func getZeroValue(expr ast.Expr) string {
 				return "0"
 			case kindPointer:
 				return "nil"
+			}
+		}
+
+		if imported && x.Obj != nil {
+			typeSpec, ok := x.Obj.Decl.(*ast.TypeSpec)
+			if ok {
+				_, isStruct := typeSpec.Type.(*ast.StructType)
+				if !isStruct {
+					return fmt.Sprintf("%s(%s)", fieldTypeName(expr), getZeroValue(typeSpec.Type, imported))
+				}
 			}
 		}
 		return fieldTypeName(expr) + "{}"
@@ -887,7 +893,11 @@ func getZeroValue(expr ast.Expr) string {
 	case *ast.ChanType:
 		return "nil"
 	case *ast.SelectorExpr:
-		return fieldTypeName(expr) + "{}"
+		selector, ok := x.X.(*ast.Ident)
+		if !ok {
+			return fieldTypeName(expr) + "{}"
+		}
+		return selector.Name + "." + getZeroValue(x.Sel, imported)
 	default:
 		return "nil"
 	}

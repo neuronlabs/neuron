@@ -10,7 +10,7 @@ func ({{.Receiver}} *{{.Name}}) AddRelationModel(relation *mapping.StructField, 
     case {{$relation.Index}}: // {{$relation.Name}}
         {{ $relationName := (toLowerCamel $relation.BaseType) -}}{{$relationName}}, ok := model.(*{{$relation.BaseType}})
         if !ok {
-            return errors.Newf(class.ModelFieldInvalidValue, "provided invalid value type: '%T'  for the field: '{{$relation.Name}}'", model)
+            return errors.Newf(mapping.ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: '{{$relation.Name}}'", model)
         }
         {{if $relation.IsPointer -}}
         if {{$out.Receiver}}.{{$relation.Name}} == nil {
@@ -18,10 +18,10 @@ func ({{.Receiver}} *{{.Name}}) AddRelationModel(relation *mapping.StructField, 
             {{$out.Receiver}}.{{$relation.Name}} = &temp
         }
         {{ end -}}
-        {{if $relation.IsPointer }}*{{end}}{{$out.Receiver}}.{{$relation.Name}} = append({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}, {{$relationName}})
+        {{if $relation.IsPointer }}*{{end}}{{$out.Receiver}}.{{$relation.Name}} = append({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}, {{if not $relation.IsElemPointer}}*{{end}}{{$relationName}})
     {{end -}}{{end -}}
     default:
-        return errors.Newf(class.ModelInvalidRelation, "provided invalid relation: '%T' for the model '{{.Name}}'", model)
+        return errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%T' for the model '{{.Name}}'", model)
     }
     return nil
 }
@@ -42,7 +42,7 @@ func ({{.Receiver}} *{{.Name}}) GetRelationModels(relation *mapping.StructField)
         {{- end}}
     {{end -}}{{end -}}
     default:
-        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+        return nil, errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
     }
     return models, nil
 }
@@ -54,16 +54,16 @@ func ({{.Receiver}} *{{.Name}}) GetRelationModelAt(relation *mapping.StructField
     case {{$relation.Index}}: // {{$relation.Name}}
         {{if $relation.IsPointer -}}
         if {{$out.Receiver}}.{{$relation.Name}} == nil {
-            return nil, errors.Newf(class.RelationIndexOutOfRange, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
+            return nil, errors.Newf(mapping.ClassInvalidRelationIndex, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
         }
         {{end -}}
         if index > len({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}) - 1 {
-            return nil, errors.Newf(class.RelationIndexOutOfRange, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
+            return nil, errors.Newf(mapping.ClassInvalidRelationIndex, "index out of possible range. Model: '{{$out.Name}}', Field {{$relation.Name}}")
         }
         return {{if not $relation.IsElemPointer}}&{{end}}{{if $relation.IsPointer}}(*{{end}}{{$out.Receiver}}.{{$relation.Name}}{{if $relation.IsPointer}}){{end}}[index], nil
     {{end -}}{{end -}}
     default:
-        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{$out.Receiver}})
+        return nil, errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, {{$out.Receiver}})
     }
     return models, nil
 }
@@ -81,8 +81,7 @@ func ({{.Receiver}} *{{.Name}}) GetRelationLen(relation *mapping.StructField) (i
         return len({{if $relation.IsPointer}}*{{end}}{{$out.Receiver}}.{{$relation.Name}}), nil
     {{end -}}{{end -}}
     default:
-        return nil, errors.Newf(class.ModelInvalidField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
+        return 0, errors.Newf(mapping.ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, {{.Receiver}})
     }
-    return models, nil
 }
 {{end}}

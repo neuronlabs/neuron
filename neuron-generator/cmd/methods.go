@@ -1,3 +1,5 @@
+// +build !codeanalysis
+
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -16,13 +18,17 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 
-	"github.com/neuronlabs/neuron/neuron-generator/internal/ast"
 	"github.com/neuronlabs/strcase"
 	"github.com/spf13/cobra"
+	"golang.org/x/tools/imports"
+
+	"github.com/neuronlabs/neuron/neuron-generator/internal/ast"
 )
 
 // modelMethodsCmd represents the methods command
@@ -37,7 +43,8 @@ neuron-generator model methods -type=MyModel
 Model methods must exists in the same namespace package. Due to the fact that the generator 
 creates these files in the same directory as input. 
 By default generator takes current working directory as an input.`,
-	Run: generateModelMethods,
+	PreRun: modelsPreRun,
+	Run:    generateModelMethods,
 }
 
 func init() {
@@ -83,20 +90,44 @@ func generateModelMethods(cmd *cobra.Command, args []string) {
 	// Get the directory from the arguments.
 	dir := directory(args)
 
+	buf := &bytes.Buffer{}
 	// Generate model files.
 	for _, model := range g.Models() {
-		// Create new file if not exists.
 		fileName := filepath.Join(dir, "neuron_"+strcase.ToSnake(model.Name)+"_methods.go")
-		modelFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Writing file: %s failed: %v\n", fileName, err)
-			os.Exit(1)
-		}
-		if err = templates.ExecuteTemplate(modelFile, "model", model); err != nil {
-			modelFile.Close()
+
+		if err = templates.ExecuteTemplate(buf, "model", model); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: execute model template failed: %v\n", err)
 			os.Exit(1)
 		}
+		var result []byte
+		switch codeFormatting {
+		case gofmtFormat:
+			result, err = format.Source(buf.Bytes())
+		case goimportsFormat:
+			result, err = imports.Process(fileName, buf.Bytes(), nil)
+		default:
+			result = buf.Bytes()
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: formatting go file failed: %v", err)
+			os.Exit(1)
+		}
+		buf.Reset()
+		// Create new file if not exists.
+		modelFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Open file: %s failed: %v\n", fileName, err)
+			os.Exit(1)
+		}
+		_, err = modelFile.Write(result)
+		if err != nil {
+			modelFile.Close()
+			fmt.Fprintf(os.Stderr, "Error: Writing file: %s failed: %v\n", fileName, err)
+			os.Exit(1)
+		}
 		modelFile.Close()
+
+		if codeFormatting == goimportsFormat {
+		}
 	}
 }

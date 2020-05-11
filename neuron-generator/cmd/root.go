@@ -1,3 +1,5 @@
+// +build !codeanalysis
+
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -30,22 +32,21 @@ import (
 )
 
 var (
-	format    string
-	tags      []string
-	templates *template.Template
+	codeFormatting codeFormat
+	tags           []string
+	templates      *template.Template
 )
 
 // rootCmd represents the base command when called without any sub commands
 var rootCmd = &cobra.Command{
-	Use:    "neuron-generator",
-	Short:  "A code generator for the neuron package.",
-	Long:   `It is a code generator for the Golang github.com/neuronlabs/neuron package.`,
-	PreRun: rootPreRun,
+	Use:   "neuron-generator",
+	Short: "A code generator for the neuron package.",
+	Long:  `It is a code generator for the Golang github.com/neuronlabs/neuron package.`,
 }
 
 func init() {
 	rootCmd.PersistentFlags().StringSlice("tags", []string{}, "comma-separated list of build tags to apply")
-	rootCmd.PersistentFlags().StringP("format", "f", "gofmt", "format of the output files. Possible values: gofmt, goimports")
+	rootCmd.PersistentFlags().StringP("format", "f", "", "optional formatting of the output files. Possible values: gofmt, goimports")
 
 	parseTemplates()
 }
@@ -59,29 +60,38 @@ func Execute() {
 	}
 }
 
-func rootPreRun(cmd *cobra.Command, args []string) {
+type codeFormat int
+
+const (
+	noFormat codeFormat = iota
+	gofmtFormat
+	goimportsFormat
+)
+
+func modelsPreRun(cmd *cobra.Command, args []string) {
 	var err error
-	tags, err = cmd.PersistentFlags().GetStringSlice("tags")
+	tags, err = cmd.Flags().GetStringSlice("tags")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: flag - %v\n", err)
+		cmd.Usage()
+		os.Exit(2)
+	}
+
+	var codeFmt string
+	codeFmt, err = cmd.Flags().GetString("format")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		cmd.Usage()
 		os.Exit(2)
 	}
 
-	format, err = cmd.PersistentFlags().GetString("format")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		cmd.Usage()
-		os.Exit(2)
-	}
-
-	switch format {
+	switch codeFmt {
 	case "gofmt":
+		codeFormatting = gofmtFormat
 	case "goimports":
+		codeFormatting = goimportsFormat
 	default:
-		fmt.Fprintf(os.Stderr, "Error: provided unsupported format: '%v'", format)
-		cmd.Usage()
-		os.Exit(2)
+		codeFormatting = noFormat
 	}
 }
 

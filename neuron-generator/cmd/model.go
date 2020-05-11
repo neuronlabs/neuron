@@ -1,3 +1,5 @@
+// +build !codeanalysis
+
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -38,10 +40,9 @@ func init() {
 func directory(args []string) string {
 	if len(args) == 1 && isDirectory(args[0]) {
 		return args[0]
-	} else {
-		if len(tags) != 0 {
-			log.Fatal("-tags option applies only to directories, not when files are specified")
-		}
-		return filepath.Dir(args[0])
 	}
+	if len(tags) != 0 {
+		log.Fatal("-tags option applies only to directories, not when files are specified")
+	}
+	return filepath.Dir(args[0])
 }
