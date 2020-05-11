@@ -3,9 +3,7 @@
 package query
 
 import (
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
@@ -81,7 +79,7 @@ func (m *HasManyModel) GetRelationModels(relation *mapping.StructField) ([]mappi
 func (m *HasManyModel) GetRelationModelAt(relation *mapping.StructField, index int) (mapping.Model, error) {
 	if index >= len(m.HasMany) {
 		// TODO: change class for this entity
-		return nil, errors.New(class.ModelFieldNotFound, "index out of range")
+		return nil, errors.New(ClassInvalidModels, "index out of range")
 	}
 	return m.HasMany[index], nil
 }
@@ -156,7 +154,7 @@ func (f *ForeignModel) IsFieldZero(field *mapping.StructField) (bool, error) {
 	case "ForeignKey":
 		return f.ForeignKey == 0, nil
 	}
-	return false, errors.New(class.ModelFieldName, "invalid field")
+	return false, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (f *ForeignModel) GetFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -166,7 +164,7 @@ func (f *ForeignModel) GetFieldValue(field *mapping.StructField) (interface{}, e
 	case "ForeignKey":
 		return f.ForeignKey, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (f *ForeignModel) GetFieldZeroValue(field *mapping.StructField) (interface{}, error) {
@@ -176,7 +174,7 @@ func (f *ForeignModel) GetFieldZeroValue(field *mapping.StructField) (interface{
 	case "ForeignKey":
 		return 0, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (f *ForeignModel) SetFieldValue(field *mapping.StructField, value interface{}) error {
@@ -186,7 +184,7 @@ func (f *ForeignModel) SetFieldValue(field *mapping.StructField, value interface
 	case "ForeignKey":
 		f.ForeignKey = value.(int)
 	default:
-		return errors.New(class.ModelFieldName, "invalid field")
+		return errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 	}
 	return nil
 }
@@ -222,7 +220,7 @@ func (m *ManyToManyModel) GetRelationModels(relation *mapping.StructField) ([]ma
 func (m *ManyToManyModel) GetRelationModelAt(relation *mapping.StructField, index int) (mapping.Model, error) {
 	if index >= len(m.Many2Many) {
 		// TODO: change class for this entity
-		return nil, errors.New(class.ModelFieldNotFound, "index out of range")
+		return nil, errors.New(mapping.ClassInvalidFieldValue, "index out of range")
 	}
 	return m.Many2Many[index], nil
 }
@@ -302,7 +300,7 @@ func (m *JoinModel) IsFieldZero(field *mapping.StructField) (bool, error) {
 	case "MtMForeignKey":
 		return m.MtMForeignKey == 0, nil
 	}
-	return false, errors.New(class.ModelFieldName, "invalid field")
+	return false, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *JoinModel) GetFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -314,7 +312,7 @@ func (m *JoinModel) GetFieldValue(field *mapping.StructField) (interface{}, erro
 	case "MtMForeignKey":
 		return m.MtMForeignKey, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *JoinModel) GetFieldZeroValue(field *mapping.StructField) (interface{}, error) {
@@ -326,7 +324,7 @@ func (m *JoinModel) GetFieldZeroValue(field *mapping.StructField) (interface{}, 
 	case "MtMForeignKey":
 		return 0, nil
 	}
-	return false, errors.New(class.ModelFieldName, "invalid field")
+	return false, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *JoinModel) SetFieldValue(field *mapping.StructField, value interface{}) error {
@@ -338,7 +336,7 @@ func (m *JoinModel) SetFieldValue(field *mapping.StructField, value interface{})
 	case "MtMForeignKey":
 		m.MtMForeignKey = value.(int)
 	default:
-		return errors.New(class.ModelFieldName, "invalid field")
+		return errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 	}
 	return nil
 }
@@ -375,7 +373,7 @@ func (m *RelatedModel) IsFieldZero(field *mapping.StructField) (bool, error) {
 	case "FloatField":
 		return m.FloatField == 0, nil
 	}
-	return false, errors.New(class.ModelFieldName, "invalid field")
+	return false, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *RelatedModel) GetFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -385,7 +383,7 @@ func (m *RelatedModel) GetFieldValue(field *mapping.StructField) (interface{}, e
 	case "FloatField":
 		return m.FloatField, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *RelatedModel) GetFieldZeroValue(field *mapping.StructField) (interface{}, error) {
@@ -395,7 +393,7 @@ func (m *RelatedModel) GetFieldZeroValue(field *mapping.StructField) (interface{
 	case "FloatField":
 		return 0.0, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *RelatedModel) SetFieldValue(field *mapping.StructField, value interface{}) error {
@@ -405,7 +403,7 @@ func (m *RelatedModel) SetFieldValue(field *mapping.StructField, value interface
 	case "FloatField":
 		m.FloatField = value.(float64)
 	default:
-		return errors.New(class.ModelFieldName, "invalid field")
+		return errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 	}
 	return nil
 }
@@ -486,7 +484,7 @@ func (m *ForeignWithRelation) IsFieldZero(field *mapping.StructField) (bool, err
 	case "ForeignKey":
 		return m.ForeignKey == 0, nil
 	}
-	return false, errors.New(class.ModelFieldName, "invalid field")
+	return false, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *ForeignWithRelation) GetFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -496,7 +494,7 @@ func (m *ForeignWithRelation) GetFieldValue(field *mapping.StructField) (interfa
 	case "ForeignKey":
 		return m.ForeignKey, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *ForeignWithRelation) GetFieldZeroValue(field *mapping.StructField) (interface{}, error) {
@@ -506,7 +504,7 @@ func (m *ForeignWithRelation) GetFieldZeroValue(field *mapping.StructField) (int
 	case "ForeignKey":
 		return 0, nil
 	}
-	return nil, errors.New(class.ModelFieldName, "invalid field")
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *ForeignWithRelation) SetFieldValue(field *mapping.StructField, value interface{}) error {
@@ -516,7 +514,7 @@ func (m *ForeignWithRelation) SetFieldValue(field *mapping.StructField, value in
 	case "ForeignKey":
 		m.ForeignKey = value.(int)
 	default:
-		return errors.New(class.ModelFieldName, "invalid field")
+		return errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 	}
 	return nil
 }
@@ -550,7 +548,7 @@ func (m *HasManyWithRelation) GetRelationModels(relation *mapping.StructField) (
 
 func (m *HasManyWithRelation) GetRelationModelAt(relation *mapping.StructField, index int) (mapping.Model, error) {
 	if index >= len(m.Relation) {
-		return nil, errors.New(class.ModelFieldNotFound, "index out of range")
+		return nil, errors.New(mapping.ClassInvalidRelationValue, "index out of range")
 	}
 	return m.Relation[index], nil
 }

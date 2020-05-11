@@ -34,6 +34,14 @@ var (
 	ClassFilterFormat errors.Class
 	// ClassFilterCollection is the error classification for the filter collection.
 	ClassFilterCollection errors.Class
+
+	// MnrTransaction is minor error classification for the query transactions.
+	MnrTransaction errors.Minor
+
+	// ClassTxDone is the classification for finished transactions.
+	ClassTxDone errors.Class
+	// ClassTxState is the classification for the transaction state.
+	ClassTxState errors.Class
 )
 
 func init() {
@@ -56,4 +64,10 @@ func init() {
 	ClassFilterField = errors.MustNewClassWIndex(MjrQuery, MnrFilter)
 	ClassFilterFormat = errors.MustNewClassWIndex(MjrQuery, MnrFilter)
 	ClassFilterCollection = errors.MustNewClassWIndex(MjrQuery, MnrFilter)
+
+	// MnrTransaction
+	MnrTransaction = errors.MustNewMinor(MjrQuery)
+
+	ClassTxState = errors.MustNewClassWIndex(MjrQuery, MnrTransaction)
+	ClassTxDone = errors.MustNewClassWIndex(MjrQuery, MnrTransaction)
 }

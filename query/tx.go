@@ -7,10 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
 	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 )
@@ -84,7 +82,7 @@ func (t *Tx) Commit() error {
 		return nil
 	}
 	if t.Transaction.State.Done() {
-		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID.String())
+		return errors.NewDetf(ClassTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID.String())
 	}
 	t.Transaction.State = TxCommit
 
@@ -131,7 +129,7 @@ func (t *Tx) Rollback() error {
 		return nil
 	}
 	if t.Transaction.State.Done() {
-		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID)
+		return errors.NewDetf(ClassTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID)
 	}
 	t.Transaction.State = TxRollback
 
@@ -226,7 +224,7 @@ func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery
 		return tb
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(class.QueryTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.NewDetf(ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return tb
 	}
 	// create new scope and add it to the txQuery.
@@ -357,7 +355,7 @@ func (t *TxState) UnmarshalJSON(data []byte) error {
 		*t = 0
 	default:
 		log.Errorf("Unknown transaction Transaction.State: %s", str)
-		return errors.NewDet(class.QueryTxUnknownState, "unknown transaction Transaction.State")
+		return errors.NewDet(ClassTxState, "unknown transaction Transaction.State")
 	}
 	return nil
 }
@@ -428,7 +426,7 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 		*i = LevelLinearizable
 	default:
 		log.Debugf("Unknown transaction isolation level: %s", string(data))
-		return errors.NewDetf(class.QueryTxUnknownIsolationLevel, "unknown transaction isolation level: %s", string(data))
+		return errors.NewDetf(ClassTxState, "unknown transaction isolation level: %s", string(data))
 	}
 	return nil
 }
