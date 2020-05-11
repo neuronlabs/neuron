@@ -8,9 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
@@ -21,7 +19,7 @@ import (
 // The scope has its unique 'ID', contains predefined model, operational value, fieldset, filters, sorts and pagination.
 // It also contains the mapping of the included scopes.
 type Scope struct {
-	// id is the unique identification of the scope.
+	// TransactionID is the unique identification of the scope.
 	id uuid.UUID
 	// DB defines the database interface for given scope.
 	db DB
@@ -43,6 +41,9 @@ type Scope struct {
 	IncludedRelations []*IncludedRelation
 	// Pagination is the query pagination.
 	Pagination *Pagination
+	// Transaction is current scope's transaction.
+	Transaction *Transaction
+
 	// store stores the scope's related key values
 	store map[interface{}]interface{}
 	// autoSelectedFields is the flag that defines if the query had automatically selected fieldset.
@@ -63,7 +64,7 @@ func (s *Scope) Copy() *Scope {
 func (s *Scope) Count(ctx context.Context) (int64, error) {
 	counter, isCounter := s.repository().(Counter)
 	if !isCounter {
-		return 0, errors.Newf(class.RepositoryNotImplements, "repository for model:'%s' doesn't implement Counter interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "repository for model:'%s' doesn't implement Counter interface", s.mStruct)
 	}
 	s.filterSoftDeleted()
 	return counter.Count(ctx, s)
@@ -78,7 +79,7 @@ func (s *Scope) DB() DB {
 func (s *Scope) Exists(ctx context.Context) (bool, error) {
 	exister, isExister := s.repository().(Exister)
 	if !isExister {
-		return false, errors.Newf(class.RepositoryNotImplements, "repository for model: '%s' doesn't implement Exister interface", s.mStruct)
+		return false, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Exister interface", s.mStruct)
 	}
 	s.filterSoftDeleted()
 	return exister.Exists(ctx, s)
@@ -95,7 +96,7 @@ func (s *Scope) Get(ctx context.Context) (mapping.Model, error) {
 	var err error
 	// Check if the pagination is already set.
 	if s.Pagination != nil {
-		return nil, errors.Newf(class.QueryNotValid, "cannot get single model with custom pagination")
+		return nil, errors.Newf(ClassInvalidField, "cannot get single model with custom pagination")
 	}
 	// Assure that the result would be only a single value.
 	s.Limit(1)
@@ -105,7 +106,7 @@ func (s *Scope) Get(ctx context.Context) (mapping.Model, error) {
 	}
 	// if there is no result return an error of class QueryValueNoResult.
 	if len(results) == 0 {
-		return nil, errors.New(class.QueryValueNoResult, "values not found")
+		return nil, errors.New(ClassNoResult, "values not found")
 	}
 	return results[0], nil
 }
@@ -178,21 +179,6 @@ func (s *Scope) String() string {
 		}
 	}
 	return sb.String()
-}
-
-/**
- *
- * Transactions
- *
- */
-
-// Tx returns the transaction for the given scope if exists.
-func (s *Scope) Tx() *Tx {
-	tx, ok := s.db.(*Tx)
-	if ok {
-		return tx
-	}
-	return nil
 }
 
 /**

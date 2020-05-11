@@ -4,9 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
@@ -49,7 +47,7 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...interface{}) e
 		}
 		migrator, ok := repo.(repository.Migrator)
 		if !ok {
-			return errors.Newf(class.RepositoryNotImplementsMigrator,
+			return errors.Newf(repository.ClassNotImplements,
 				"models: '%s' repository doesn't not allow to Migrate", modelStruct.Type().Name())
 		}
 		migratorModels[migrator] = append(migratorModels[migrator], modelStruct)
@@ -101,7 +99,7 @@ func (c *Controller) mapAndRegisterInRepositories(models ...interface{}) error {
 		}
 		repo, ok := c.Repositories[mStruct.Config().RepositoryName]
 		if !ok {
-			return errors.NewDetf(class.RepositoryNotFound, "repository not found for the model: '%s'", mStruct.String())
+			return errors.NewDetf(ClassRepositoryNotFound, "repository not found for the model: '%s'", mStruct.String())
 		}
 		modelsRepositories[repo] = append(modelsRepositories[repo], mStruct)
 	}
@@ -116,7 +114,7 @@ func (c *Controller) mapAndRegisterInRepositories(models ...interface{}) error {
 
 func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, error) {
 	if model == nil {
-		return nil, errors.NewDet(class.ModelValueNil, "provided nil model value")
+		return nil, errors.NewDet(ClassInvalidModel, "provided nil model value")
 	}
 
 	switch tp := model.(type) {
@@ -125,14 +123,14 @@ func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, er
 	case string:
 		m := c.ModelMap.GetByCollection(tp)
 		if m == nil {
-			return nil, errors.NewDetf(class.ModelNotMapped, "model: '%s' is not found", tp)
+			return nil, errors.NewDetf(mapping.ClassModelNotFound, "model: '%s' is not found", tp)
 		}
 		return m, nil
+	default:
+		mStruct, err := c.ModelMap.GetModelStruct(model)
+		if err != nil {
+			return nil, err
+		}
+		return mStruct, nil
 	}
-
-	mStruct, err := c.ModelMap.GetModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
-	return mStruct, nil
 }

@@ -4,11 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // Update patches all selected values for given scope value.
@@ -20,7 +19,7 @@ func (s *Scope) Update(ctx context.Context) (modelsAffected int64, err error) {
 	if len(s.mStruct.Fields()) == 0 {
 		// A model may don't have any fields - it might be only a primary key or/with relations.
 		log.Debugf(s.logFormat("provided model:'%s' have no fields to update"), s.mStruct)
-		return 0, errors.Newf(class.QueryNothingToDo, "model: '%s' have no fields to update", s.mStruct.String())
+		return 0, errors.Newf(ClassNoModels, "model: '%s' have no fields to update", s.mStruct.String())
 	}
 
 	// If any filter is applied use it as update query.
@@ -45,14 +44,14 @@ func (s *Scope) Update(ctx context.Context) (modelsAffected int64, err error) {
 func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 	if len(s.Models) == 0 {
 		log.Debug(s.logFormat("provided empty models slice to update"))
-		return 0, errors.New(class.QueryNoModelValues, "no values provided to update")
+		return 0, errors.New(ClassNoModels, "no values provided to update")
 	}
 
 	// Get models Updater repository.
 	updater, isUpdater := s.repository().(Updater)
 	if !isUpdater {
 		log.Errorf("Repository for current model: '%s' doesn't support Update method", s.Struct().Type().Name())
-		return 0, errors.NewDetf(class.RepositoryNotImplements, "models: '%s' repository doesn't implement Updater interface", s.mStruct)
+		return 0, errors.NewDetf(repository.ClassNotImplements, "models: '%s' repository doesn't implement Updater interface", s.mStruct)
 	}
 
 	// Execute before update hook if model implements BeforeUpdater.
@@ -82,7 +81,7 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 		for i, model := range s.Models {
 			fielder, ok := model.(mapping.Fielder)
 			if !ok {
-				return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct.String())
+				return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct.String())
 			}
 
 			// Add all non zero fields to the batch fieldset.
@@ -94,7 +93,7 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 				if isZero {
 					switch {
 					case field.IsPrimary():
-						return 0, errors.Newf(class.QueryInvalidModels, "cannot update model at: '%d' index. The primary key field have zero value.", i)
+						return 0, errors.Newf(ClassInvalidModels, "cannot update model at: '%d' index. The primary key field have zero value.", i)
 					case hasUpdatedAt && field == updatedAt:
 						if log.Level().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], setting updated at field to: '%s'"), i, tsNow)
@@ -149,14 +148,14 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 	switch len(s.Models) {
 	case 0:
-		return 0, errors.New(class.QueryNoModelValues, "no values provided to update")
+		return 0, errors.New(ClassNoModels, "no values provided to update")
 	case 1:
 		// Only a single model value is allowed to update with the filters.
 	default:
-		return 0, errors.New(class.QueryNoModelValues, "too many values for the query ")
+		return 0, errors.New(ClassInvalidModels, "too many values for the query ")
 	}
 	if len(s.mStruct.Fields()) == 1 {
-		return 0, errors.New(class.QueryNotValid, "cannot update a model without any fields")
+		return 0, errors.New(ClassInvalidInput, "cannot update a model without any fields")
 	}
 	// The first model would be used to change the values.
 	model := s.Models[0]
@@ -169,7 +168,7 @@ func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 		}
 	}
 	if !model.IsPrimaryKeyZero() || s.Fieldset.Contains(s.mStruct.Primary()) {
-		return 0, errors.New(class.QueryInvalidField, "cannot update filtered models with the primary model in the fieldset")
+		return 0, errors.New(ClassInvalidField, "cannot update filtered models with the primary model in the fieldset")
 	}
 	// If the model implements before or after update hooks we need to find all given models and then update their values.
 	if requireFind {
@@ -180,7 +179,7 @@ func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 		// Check if the model implements Fielder - otherwise the query should be based on the
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
+			return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
 		}
 		// Select all non zero, not primary fields from the 'model'.
 		for _, field := range s.mStruct.Fields() {
@@ -205,7 +204,7 @@ func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct.String())
+			return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct.String())
 		}
 
 		if err := fielder.SetFieldValue(updatedAt, s.DB().Controller().Now()); err != nil {
@@ -214,7 +213,7 @@ func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 	}
 
 	if len(s.Fieldset) == 0 {
-		return 0, errors.New(class.QueryNothingToDo, "nothing to update - only primary key field in the fieldset")
+		return 0, errors.New(ClassNoModels, "nothing to update - only primary key field in the fieldset")
 	}
 	// Reduce relationship filters.
 	if err := s.reduceRelationshipFilters(ctx); err != nil {
@@ -222,7 +221,7 @@ func (s *Scope) updateFiltered(ctx context.Context) (int64, error) {
 	}
 	updater, ok := s.repository().(Updater)
 	if !ok {
-		return 0, errors.Newf(class.RepositoryNotImplements, "models: '%s' repository doesn't implement Updater interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "models: '%s' repository doesn't implement Updater interface", s.mStruct)
 	}
 	return updater.Update(ctx, s)
 }
@@ -232,7 +231,7 @@ func (s *Scope) updateFilteredWithFind(ctx context.Context, model mapping.Model)
 	findFieldset := mapping.FieldSet{s.mStruct.Primary()}
 	fielder, ok := model.(mapping.Fielder)
 	if !ok {
-		return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
+		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
 	}
 
 	if len(s.Fieldset) == 0 {
@@ -256,7 +255,7 @@ func (s *Scope) updateFilteredWithFind(ctx context.Context, model mapping.Model)
 	// Check if there are any field other than primary key in the fieldset.
 	// This would mean which fields were marked to update.
 	if len(findFieldset) == 1 {
-		return 0, errors.Newf(class.QueryNothingToDo, "nothing to update - only primary key field in the fieldset")
+		return 0, errors.Newf(ClassNoModels, "nothing to update - only primary key field in the fieldset")
 	}
 	// Find all models for given query.
 	findQuery := s.DB().QueryCtx(ctx, s.mStruct).Select(findFieldset...)
@@ -297,7 +296,7 @@ func (s *Scope) updateFilteredWithFind(ctx context.Context, model mapping.Model)
 		for i, singleModel := range models {
 			fielder, ok = singleModel.(mapping.Fielder)
 			if !ok {
-				return 0, errors.Newf(class.ModelNotImplements, "singleModel: '%s' doesn't implement Fielder interface", s.mStruct)
+				return 0, errors.Newf(mapping.ClassModelNotImplements, "singleModel: '%s' doesn't implement Fielder interface", s.mStruct)
 			}
 			if log.Level().IsAllowed(log.LevelDebug3) {
 				log.Debug3f(s.logFormat("model[%d], setting updated at field to: '%s'"), i, tsNow)

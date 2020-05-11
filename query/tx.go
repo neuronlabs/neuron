@@ -15,21 +15,26 @@ import (
 	"github.com/neuronlabs/neuron/mapping"
 )
 
-// Tx is an in-progress transaction. A transaction must end with a call to Commit or Rollback.
-// After a call to Commit or Rollback all operations on the transaction fail with an error of class
-type Tx struct {
-	id uuid.UUID
-
-	c     *controller.Controller
-	ctx   context.Context
-	state TxState
-
-	options            *TxOptions
-	err                error
-	uniqueTransactions []*uniqueTx
+// Transaction is the structure that defines the query transaction.
+type Transaction struct {
+	ID      uuid.UUID       `json:"id"`
+	Ctx     context.Context `json:"context"`
+	State   TxState         `json:"state"`
+	Options *TxOptions      `json:"options"`
 }
 
-// Begin startsC new transaction with respect to the 'ctx' context and transaction options 'options' and
+// Tx is an in-progress transaction orm. A transaction must end with a call to Commit or Rollback.
+// After a call to Commit or Rollback all operations on the transaction fail with an error of class
+type Tx struct {
+	c *controller.Controller
+
+	err                error
+	uniqueTransactions []*uniqueTx
+
+	Transaction *Transaction
+}
+
+// Begin startsC new transaction with respect to the 'Transaction.Ctx' context and transaction TransactionOptions 'TransactionOptions' and
 // controller 'c'.
 func Begin(ctx context.Context, c *controller.Controller, options *TxOptions) *Tx {
 	return begin(ctx, c, options)
@@ -37,7 +42,7 @@ func Begin(ctx context.Context, c *controller.Controller, options *TxOptions) *T
 
 // ID gets unique transaction uuid.
 func (t *Tx) ID() uuid.UUID {
-	return t.id
+	return t.Transaction.ID
 }
 
 // Controller returns transaction controller.
@@ -50,14 +55,14 @@ func (t *Tx) Err() error {
 	return t.err
 }
 
-// Options gets transaction options.
+// Options gets transaction TransactionOptions.
 func (t *Tx) Options() TxOptions {
-	return *t.options
+	return *t.Transaction.Options
 }
 
-// State gets current transaction state.
+// State gets current transaction Transaction.State.
 func (t *Tx) State() TxState {
-	return t.state
+	return t.Transaction.State
 }
 
 // Query builds up a new query for given 'model'.
@@ -75,15 +80,15 @@ func (t *Tx) QueryCtx(ctx context.Context, model *mapping.ModelStruct, models ..
 // Commit commits the transaction.
 func (t *Tx) Commit() error {
 	if len(t.uniqueTransactions) == 0 {
-		log.Debugf("Commit transaction: %s, nothing to commit", t.id.String())
+		log.Debugf("Commit transaction: %s, nothing to commit", t.Transaction.ID.String())
 		return nil
 	}
-	if t.state.Done() {
-		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.id.String())
+	if t.Transaction.State.Done() {
+		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID.String())
 	}
-	t.state = TxCommit
+	t.Transaction.State = TxCommit
 
-	ctx, cancelFunc := context.WithCancel(t.ctx)
+	ctx, cancelFunc := context.WithCancel(t.Transaction.Ctx)
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
@@ -93,7 +98,7 @@ func (t *Tx) Commit() error {
 	for tx := range txChan {
 		go func(tx *uniqueTx) {
 			defer wg.Done()
-			log.Debug2f("Commit transaction '%s' for model: %s, %s", t.id, tx.model, tx.id)
+			log.Debug2f("Commit transaction '%s' for model: %s, %s", t.Transaction.ID, tx.model, tx.id)
 			if err := tx.transactioner.Commit(ctx, t); err != nil {
 				errChan <- err
 			}
@@ -101,20 +106,20 @@ func (t *Tx) Commit() error {
 	}
 	waitChan := make(chan struct{}, 1)
 	go func() {
-		log.Debug2f("Transaction: '%s' waiting for commits...", t.id)
+		log.Debug2f("Transaction: '%s' waiting for commits...", t.Transaction.ID)
 		wg.Wait()
 		waitChan <- struct{}{}
 	}()
 
 	select {
 	case <-ctx.Done():
-		log.Debugf("Commit transaction: '%s' canceled by context: %v", t.id.String(), ctx.Err())
+		log.Debugf("Commit transaction: '%s' canceled by context: %v", t.Transaction.ID.String(), ctx.Err())
 		return ctx.Err()
 	case e := <-errChan:
-		log.Debugf("Commit transaction: '%s' failed: %v", t.id.String(), e)
+		log.Debugf("Commit transaction: '%s' failed: %v", t.Transaction.ID.String(), e)
 		return e
 	case <-waitChan:
-		log.Debugf("Commit transaction: '%s' with success", t.id.String())
+		log.Debugf("Commit transaction: '%s' with success", t.Transaction.ID.String())
 	}
 	return nil
 }
@@ -122,15 +127,15 @@ func (t *Tx) Commit() error {
 // Rollback aborts the transaction.
 func (t *Tx) Rollback() error {
 	if len(t.uniqueTransactions) == 0 {
-		log.Debugf("Rollback transaction: %s, nothing to rollback", t.id.String())
+		log.Debugf("Rollback transaction: %s, nothing to rollback", t.Transaction.ID.String())
 		return nil
 	}
-	if t.state.Done() {
-		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.id)
+	if t.Transaction.State.Done() {
+		return errors.NewDetf(class.QueryTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID)
 	}
-	t.state = TxRollback
+	t.Transaction.State = TxRollback
 
-	ctx, cancelFunc := context.WithCancel(t.ctx)
+	ctx, cancelFunc := context.WithCancel(t.Transaction.Ctx)
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
@@ -140,7 +145,7 @@ func (t *Tx) Rollback() error {
 	for tx := range txChan {
 		go func(tx *uniqueTx) {
 			defer wg.Done()
-			log.Debug3f("Rollback transaction: '%s' for model: '%s'", t.id, tx.model)
+			log.Debug3f("Rollback transaction: '%s' for model: '%s'", t.Transaction.ID, tx.model)
 			if err := tx.transactioner.Rollback(ctx, t); err != nil {
 				errChan <- err
 			}
@@ -149,20 +154,20 @@ func (t *Tx) Rollback() error {
 
 	waitChan := make(chan struct{}, 1)
 	go func() {
-		log.Debug3f("Transaction: '%s' waiting for rollbacks...", t.id)
+		log.Debug3f("Transaction: '%s' waiting for rollbacks...", t.Transaction.ID)
 		wg.Wait()
 		waitChan <- struct{}{}
 	}()
 
 	select {
 	case <-ctx.Done():
-		log.Debugf("Rollback transaction: '%s' canceled by context: %v.", t.id.String(), ctx.Err())
+		log.Debugf("Rollback transaction: '%s' canceled by context: %v.", t.Transaction.ID.String(), ctx.Err())
 		return ctx.Err()
 	case e := <-errChan:
-		log.Debugf("Rollback transaction: '%s' failed: %v.", t.id.String(), e)
+		log.Debugf("Rollback transaction: '%s' failed: %v.", t.Transaction.ID.String(), e)
 		return e
 	case <-waitChan:
-		log.Debugf("Rollback transaction: '%s' with success.", t.id.String())
+		log.Debugf("Rollback transaction: '%s' with success.", t.Transaction.ID.String())
 	}
 	return nil
 }
@@ -172,13 +177,15 @@ func begin(ctx context.Context, c *controller.Controller, options *TxOptions) *T
 		options = &TxOptions{}
 	}
 	tx := &Tx{
-		c:       c,
-		id:      uuid.New(),
-		ctx:     ctx,
-		options: options,
-		state:   TxBegin,
+		c: c,
+		Transaction: &Transaction{
+			ID:      uuid.New(),
+			Ctx:     ctx,
+			Options: options,
+			State:   TxBegin,
+		},
 	}
-	log.Debug2f("Begin transaction '%s'", tx.id.String())
+	log.Debug2f("Begin transaction '%s'", tx.Transaction.ID.String())
 	return tx
 }
 
@@ -218,12 +225,13 @@ func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery
 	if t.err != nil {
 		return tb
 	}
-	if t.state.Done() {
-		t.err = errors.NewDetf(class.QueryTxDone, "transaction: '%s' is already done", t.id.String())
+	if t.Transaction.State.Done() {
+		t.err = errors.NewDetf(class.QueryTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return tb
 	}
 	// create new scope and add it to the txQuery.
 	s := newQueryScope(t, model, models...)
+	s.Transaction = t.Transaction
 	tb.scope = s
 
 	// get the repository mapped to given model.
@@ -277,8 +285,8 @@ func (t *Tx) beginUniqueTransaction(transactioner Transactioner, model *mapping.
 	}
 
 	if repoPosition == -1 {
-		log.Debug2f("Begin transaction '%s' for model: '%s'", t.id.String(), model.String())
-		return transactioner.Begin(t.ctx, t)
+		log.Debug2f("Begin transaction '%s' for model: '%s'", t.Transaction.ID.String(), model.String())
+		return transactioner.Begin(t.Transaction.Ctx, t)
 	}
 	return nil
 }
@@ -289,13 +297,13 @@ type uniqueTx struct {
 	model         *mapping.ModelStruct
 }
 
-// TxOptions are the options for the Transaction
+// TxOptions are the TransactionOptions for the Transaction
 type TxOptions struct {
 	Isolation IsolationLevel `json:"isolation"`
 	ReadOnly  bool           `json:"read_only"`
 }
 
-// TxState defines the current transaction state
+// TxState defines the current transaction Transaction.State
 type TxState int
 
 // Done checks if current transaction is already finished.
@@ -303,7 +311,7 @@ func (t TxState) Done() bool {
 	return t == TxRollback || t == TxCommit
 }
 
-// Transaction state enums
+// Transaction Transaction.State enums
 const (
 	TxBegin TxState = iota
 	TxCommit
@@ -328,13 +336,13 @@ func (t TxState) String() string {
 
 var _ fmt.Stringer = TxBegin
 
-// MarshalJSON marshals the state into string value
+// MarshalJSON marshals the Transaction.State into string value
 // Implements the json.Marshaler interface
 func (t *TxState) MarshalJSON() ([]byte, error) {
 	return []byte(t.String()), nil
 }
 
-// UnmarshalJSON unmarshal the state from the json string value
+// UnmarshalJSON unmarshal the Transaction.State from the json string value
 // Implements json.Unmarshaler interface
 func (t *TxState) UnmarshalJSON(data []byte) error {
 	str := string(data)
@@ -348,8 +356,8 @@ func (t *TxState) UnmarshalJSON(data []byte) error {
 	case "unknown":
 		*t = 0
 	default:
-		log.Errorf("Unknown transaction state: %s", str)
-		return errors.NewDet(class.QueryTxUnknownState, "unknown transaction state")
+		log.Errorf("Unknown transaction Transaction.State: %s", str)
+		return errors.NewDet(class.QueryTxUnknownState, "unknown transaction Transaction.State")
 	}
 	return nil
 }

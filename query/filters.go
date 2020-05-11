@@ -5,11 +5,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/neuronlabs/errors"
-
 	"github.com/neuronlabs/neuron/annotation"
-	"github.com/neuronlabs/neuron/class"
 	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
@@ -164,7 +162,7 @@ func NewFilterField(field *mapping.StructField, op *Operator, values ...interfac
 
 // NewFilter creates new filterField for the default controller, 'model', 'filter' query and 'values'.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func NewFilter(model interface{}, filter string, values ...interface{}) (*FilterField, error) {
@@ -173,7 +171,7 @@ func NewFilter(model interface{}, filter string, values ...interface{}) (*Filter
 
 // NewFilterC creates new filterField for the controller 'c', 'model', 'filter' query and 'values'.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func NewFilterC(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
@@ -225,7 +223,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 		relation, relationField := field[:dotIndex], field[dotIndex+1:]
 		sField, ok := m.RelationByName(relation)
 		if !ok {
-			return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
+			return nil, errors.NewDetf(ClassFilterField, "provided unknown field: '%s'", field)
 		}
 		subFilter, err := newModelFilter(sField.Relationship().Struct(), relationField, op, values...)
 		if err != nil {
@@ -238,7 +236,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 	}
 	sField, ok := m.FieldByName(field)
 	if !ok {
-		return nil, errors.NewDetf(class.QueryFilterUnknownField, "provided unknown field: '%s'", field)
+		return nil, errors.NewDetf(ClassFilterField, "provided unknown field: '%s'", field)
 	}
 	return &FilterField{
 		StructField: sField,
@@ -250,12 +248,12 @@ func filterSplitOperator(filter string) (string, *Operator, error) {
 	// divide the query into field and operator
 	spaceIndex := strings.IndexRune(filter, ' ')
 	if spaceIndex == -1 {
-		return "", nil, errors.NewDetf(class.QueryFilterInvalidFormat, "provided invalid filter format: '%s'", filter)
+		return "", nil, errors.NewDetf(ClassFilterFormat, "provided invalid filter format: '%s'", filter)
 	}
 	field, operator := filter[:spaceIndex], filter[spaceIndex+1:]
 	op, ok := FilterOperators.Get(strings.ToLower(operator))
 	if !ok {
-		return "", nil, errors.NewDetf(class.QueryFilterUnknownOperator, "provided unsupported operator: '%s'", operator)
+		return "", nil, errors.NewDetf(ClassFilterFormat, "provided unsupported operator: '%s'", operator)
 	}
 	return field, op, nil
 }
@@ -271,7 +269,7 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 
 	mStruct := c.ModelMap.GetByCollection(params[0])
 	if mStruct == nil {
-		detErr := errors.NewDet(class.QueryFilterUnknownCollection, "provided filter collection not found")
+		detErr := errors.NewDet(ClassFilterCollection, "provided filter collection not found")
 		detErr.SetDetailsf("Where model: '%s' not found", params[0])
 		return nil, detErr
 	}
@@ -285,14 +283,14 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 	findOperator := func(index int) error {
 		op, ok = FilterOperators.Get(params[index])
 		if !ok {
-			detErr := errors.NewDet(class.QueryFilterUnknownOperator, "operator not found")
+			detErr := errors.NewDet(ClassFilterFormat, "operator not found")
 			detErr.SetDetailsf("Unknown filter operator not found: %s", params[index])
 			return detErr
 		}
 		return nil
 	}
 	if len(params) <= 1 || len(params) > 4 {
-		return nil, errors.NewDet(class.QueryFilterInvalidFormat, "invalid filter format")
+		return nil, errors.NewDet(ClassFilterFormat, "invalid filter format")
 	}
 
 	switch len(params) {
@@ -313,7 +311,7 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 				field, ok = mStruct.ForeignKey(params[1])
 			}
 			if !ok {
-				detErr := errors.NewDet(class.QueryFilterUnknownField, "field not found")
+				detErr := errors.NewDet(ClassFilterField, "field not found")
 				detErr.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
 				return nil, detErr
 			}
@@ -328,14 +326,14 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 		if rel, ok := mStruct.RelationByName(params[1]); ok {
 			f = &FilterField{StructField: rel}
 			relStruct := rel.Relationship().Struct()
-			if params[2] == "id" {
+			if params[2] == "TransactionID" {
 				field = relStruct.Primary()
 			} else if field, ok = relStruct.Attribute(params[2]); !ok {
 				if foreignKeyAllowed {
 					field, ok = relStruct.ForeignKey(params[2])
 				}
 				if !ok {
-					detErr := errors.NewDet(class.QueryFilterInvalidField, "field not found")
+					detErr := errors.NewDet(ClassFilterField, "field not found")
 					detErr.SetDetailsf("Field: '%s' not found within the relation ModelStruct: '%s'", params[2], relStruct.Collection())
 					return nil, detErr
 				}
@@ -344,11 +342,11 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 			nested := NewFilterField(field, op, values...)
 			f.Nested = append(f.Nested, nested)
 		} else if attr, ok := mStruct.Attribute(params[1]); ok {
-			detErr := errors.NewDet(class.QueryFilterUnsupportedField, "nested fields filter is not supported")
+			detErr := errors.NewDet(ClassFilterField, "nested fields filter is not supported")
 			detErr.SetDetailsf("Field: '%s' is a composite field. Filtering nested attribute fields is not supported.", attr.NeuronName())
 			return nil, detErr
 		} else {
-			detErr := errors.NewDet(class.QueryFilterUnknownField, "field not found")
+			detErr := errors.NewDet(ClassFilterField, "field not found")
 			detErr.SetDetailsf("Field: '%s' not found for the Model: '%s'", params[1], mStruct.Collection())
 			return nil, detErr
 		}

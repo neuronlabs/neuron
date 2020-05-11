@@ -3,10 +3,9 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // Delete deletes the values provided in the query's scope.
@@ -44,7 +43,7 @@ func (s *Scope) deleteFiltered(ctx context.Context) (int64, error) {
 	// If the model doesn't implement any of the hooks and doesn't use soft delete just Delete given query scope.
 	deleter, isDeleter := s.repository().(Deleter)
 	if !isDeleter {
-		return 0, errors.Newf(class.RepositoryNotImplements, "repository for model: '%s' doesn't implement Deleter interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Deleter interface", s.mStruct)
 	}
 	return deleter.Delete(ctx, s)
 }
@@ -66,7 +65,7 @@ func (s *Scope) deleteFilteredWithHooks(ctx context.Context) (int64, error) {
 
 func (s *Scope) deleteModels(ctx context.Context) (modelsAffected int64, err error) {
 	if len(s.Models) == 0 {
-		return 0, errors.Newf(class.QueryInvalidModels, "no models provided to delete")
+		return 0, errors.Newf(ClassNoModels, "no models provided to delete")
 	}
 
 	// If the model has 'DeletedAt' timestamp - do the soft delete - updates models with the 'DeletedAt' timestamp.
@@ -77,14 +76,14 @@ func (s *Scope) deleteModels(ctx context.Context) (modelsAffected int64, err err
 
 	deleter, isDeleter := s.repository().(Deleter)
 	if !isDeleter {
-		return 0, errors.Newf(class.RepositoryNotImplements, "repository for model: '%s' doesn't implement Deleter interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Deleter interface", s.mStruct)
 	}
 
 	primaries := make([]interface{}, len(s.Models))
 	// Otherwise get all models primary keys and set it as the filter for the Delete method.
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.New(class.QueryInvalidModels, "one of the models have primary key with zero value")
+			return 0, errors.New(ClassInvalidModels, "one of the models have primary key with zero value")
 		}
 		primaries = append(primaries, model.GetPrimaryKeyValue())
 	}
@@ -114,7 +113,7 @@ func (s *Scope) deleteModels(ctx context.Context) (modelsAffected int64, err err
 func (s *Scope) softDeleteFiltered(ctx context.Context) (int64, error) {
 	updater, isUpdater := s.repository().(Updater)
 	if isUpdater {
-		return 0, errors.Newf(class.RepositoryNotImplements, "repository for model: '%s' doesn't implement Updater interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Updater interface", s.mStruct)
 	}
 
 	// Create update model with 'DeletedAt' field set with current timestamp.
@@ -122,7 +121,7 @@ func (s *Scope) softDeleteFiltered(ctx context.Context) (int64, error) {
 	deletedAt, _ := s.mStruct.DeletedAt()
 	fielder, isFielder := updateModel.(mapping.Fielder)
 	if !isFielder {
-		return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement fielder interface", s.mStruct)
+		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.mStruct)
 	}
 	if err := fielder.SetFieldValue(deletedAt, s.db.Controller().Now()); err != nil {
 		return 0, err
@@ -141,7 +140,7 @@ func (s *Scope) softDeleteFiltered(ctx context.Context) (int64, error) {
 func (s *Scope) softDeleteModels(ctx context.Context) (modelsAffected int64, err error) {
 	updater, isUpdater := s.repository().(Updater)
 	if !isUpdater {
-		return 0, errors.Newf(class.RepositoryNotImplements, "repository for model: '%s' doesn't implement Updater interface", s.mStruct)
+		return 0, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Updater interface", s.mStruct)
 	}
 
 	// Soft delete should update only the DeletedAt timestamp field.
@@ -152,7 +151,7 @@ func (s *Scope) softDeleteModels(ctx context.Context) (modelsAffected int64, err
 	primaries := make([]interface{}, len(s.Models))
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.New(class.QueryInvalidModels, "one of the models have primary key with zero value")
+			return 0, errors.New(ClassInvalidModels, "one of the models have primary key with zero value")
 		}
 		primaries = append(primaries, model.GetPrimaryKeyValue())
 	}
@@ -162,7 +161,7 @@ func (s *Scope) softDeleteModels(ctx context.Context) (modelsAffected int64, err
 	updateModel := mapping.NewModel(s.mStruct)
 	fielder, isFielder := updateModel.(mapping.Fielder)
 	if !isFielder {
-		return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
+		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.mStruct)
 	}
 	if err = fielder.SetFieldValue(deletedAt, deletedAtTS); err != nil {
 		return 0, err
@@ -176,7 +175,7 @@ func (s *Scope) softDeleteModels(ctx context.Context) (modelsAffected int64, err
 		for _, model := range s.Models {
 			fielder, ok := model.(mapping.Fielder)
 			if !ok {
-				return 0, errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.mStruct)
+				return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.mStruct)
 			}
 			if err = fielder.SetFieldValue(deletedAt, deletedAtTS); err != nil {
 				return 0, err

@@ -1,26 +1,22 @@
 package log
 
-import (
-	"github.com/neuronlabs/uni-logger"
-)
-
 var modules []*ModuleLogger
 
 // ModuleLogger is the logger used for getting the specific modules.
 type ModuleLogger struct {
 	Name           string
-	logger         unilogger.LeveledLogger
+	logger         LeveledLogger
 	isDebugLeveled bool
 	isLevelSetter  bool
 
-	levelSetter  unilogger.LevelSetter
-	debugLeveled unilogger.DebugLeveledLogger
+	levelSetter  LevelSetter
+	debugLeveled DebugLeveledLogger
 
-	currentLevel unilogger.Level
+	currentLevel Level
 }
 
 // NewModuleLogger creates new module logger for given 'name' of the module and an optional 'logger'.
-func NewModuleLogger(name string, moduleLogger ...unilogger.LeveledLogger) *ModuleLogger {
+func NewModuleLogger(name string, moduleLogger ...LeveledLogger) *ModuleLogger {
 	mLogger := &ModuleLogger{
 		Name: name,
 	}
@@ -28,19 +24,19 @@ func NewModuleLogger(name string, moduleLogger ...unilogger.LeveledLogger) *Modu
 
 	if len(moduleLogger) > 0 {
 		mLogger.logger = moduleLogger[0]
-		mLogger.debugLeveled, mLogger.isDebugLeveled = moduleLogger[0].(unilogger.DebugLeveledLogger)
+		mLogger.debugLeveled, mLogger.isDebugLeveled = moduleLogger[0].(DebugLeveledLogger)
 
 		Debug2f("Module Logger: '%s' set from the argument", name)
 
 		mLogger.initializeLogger()
-		depthGetter, isDepthGetter := mLogger.logger.(unilogger.OutputDepthGetter)
+		depthGetter, isDepthGetter := mLogger.logger.(OutputDepthGetter)
 		if isDepthGetter {
-			depthSetter, isDepthSetter := mLogger.logger.(unilogger.OutputDepthSetter)
+			depthSetter, isDepthSetter := mLogger.logger.(OutputDepthSetter)
 			if isDepthSetter {
 				depthSetter.SetOutputDepth(depthGetter.GetOutputDepth() + 1)
 			}
 		}
-	} else if sub, ok := logger.(unilogger.SubLogger); ok {
+	} else if sub, ok := defaultLogger.(SubLogger); ok {
 		Infof("Module Logger: '%s' created as a SubLogger", name)
 		mLogger.logger = sub.SubLogger()
 		mLogger.initializeLogger()
@@ -57,18 +53,18 @@ func (m *ModuleLogger) initializeLogger() {
 		return
 	}
 
-	m.debugLeveled, m.isDebugLeveled = m.logger.(unilogger.DebugLeveledLogger)
-	lGetter, ok := m.logger.(unilogger.LevelGetter)
+	m.debugLeveled, m.isDebugLeveled = m.logger.(DebugLeveledLogger)
+	lGetter, ok := m.logger.(LevelGetter)
 	if ok {
 		m.currentLevel = lGetter.GetLevel()
 	} else {
 		m.currentLevel = currentLevel
 	}
-	m.levelSetter, m.isLevelSetter = m.logger.(unilogger.LevelSetter)
+	m.levelSetter, m.isLevelSetter = m.logger.(LevelSetter)
 }
 
 // Level gets the module logger level.
-func (m *ModuleLogger) Level() unilogger.Level {
+func (m *ModuleLogger) Level() Level {
 	if m.logger != nil {
 		return m.currentLevel
 	}
@@ -76,7 +72,7 @@ func (m *ModuleLogger) Level() unilogger.Level {
 }
 
 // SetLevel sets the moduleLogger level.
-func (m *ModuleLogger) SetLevel(level unilogger.Level) {
+func (m *ModuleLogger) SetLevel(level Level) {
 	Debugf("Setting Module: '%s' Logger level to: '%s'", m.Name, level)
 	m.currentLevel = level
 	if m.isLevelSetter {
@@ -84,10 +80,10 @@ func (m *ModuleLogger) SetLevel(level unilogger.Level) {
 	}
 }
 
-// Debug3f writes the formated debug3 log.
+// Debug3f writes the formatted debug3 log.
 func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug3 {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -103,10 +99,10 @@ func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 	}
 }
 
-// Debug2f writes the formated debug2 log.
+// Debug2f writes the formatted debug2 log.
 func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug2 {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -122,10 +118,10 @@ func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 	}
 }
 
-// Debugf writes the formated debug log.
+// Debugf writes the formatted debug log.
 func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -137,10 +133,10 @@ func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 	}
 }
 
-// Infof writes the formated info log.
+// Infof writes the formatted info log.
 func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelInfo {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -152,10 +148,10 @@ func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 	}
 }
 
-// Warningf writes the formated warning log.
+// Warningf writes the formatted warning log.
 func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelWarning {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -167,10 +163,10 @@ func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 	}
 }
 
-// Errorf writes the formated error log.
+// Errorf writes the formatted error log.
 func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelError {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -182,10 +178,10 @@ func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 	}
 }
 
-// Fatalf writes the formated fatal log.
+// Fatalf writes the formatted fatal log.
 func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -197,10 +193,10 @@ func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 	}
 }
 
-// Panicf writes the formated panic log.
+// Panicf writes the formatted panic log.
 func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -215,7 +211,7 @@ func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 // Debug3 writes the debug3 level log.
 func (m *ModuleLogger) Debug3(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug3 {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -234,7 +230,7 @@ func (m *ModuleLogger) Debug3(args ...interface{}) {
 // Debug2 writes the debug2 level log.
 func (m *ModuleLogger) Debug2(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug2 {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -253,7 +249,7 @@ func (m *ModuleLogger) Debug2(args ...interface{}) {
 // Debug writes the debug level log.
 func (m *ModuleLogger) Debug(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelDebug {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -268,7 +264,7 @@ func (m *ModuleLogger) Debug(args ...interface{}) {
 // Info writes the info level log.
 func (m *ModuleLogger) Info(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelInfo {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -283,7 +279,7 @@ func (m *ModuleLogger) Info(args ...interface{}) {
 // Warning writes the warning level log.
 func (m *ModuleLogger) Warning(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelWarning {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -298,7 +294,7 @@ func (m *ModuleLogger) Warning(args ...interface{}) {
 // Error writes the error level log.
 func (m *ModuleLogger) Error(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelError {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -313,7 +309,7 @@ func (m *ModuleLogger) Error(args ...interface{}) {
 // Fatal writes the fatal level log.
 func (m *ModuleLogger) Fatal(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -328,7 +324,7 @@ func (m *ModuleLogger) Fatal(args ...interface{}) {
 // Panic writes the panic level log.
 func (m *ModuleLogger) Panic(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != unilogger.UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
 			return
 		}
 	}

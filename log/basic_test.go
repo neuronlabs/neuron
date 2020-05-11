@@ -1,4 +1,4 @@
-package unilogger
+package log
 
 import (
 	"bytes"

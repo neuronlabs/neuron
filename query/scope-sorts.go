@@ -1,9 +1,7 @@
 package query
 
 import (
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
@@ -48,7 +46,7 @@ func (s *Scope) SortField(field interface{}) error {
 	case *SortField:
 		sortField = ft
 	default:
-		return errors.NewDetf(class.QuerySortField, "invalid sort field type: %T", field)
+		return errors.NewDetf(ClassInvalidInput, "invalid sort field type: %T", field)
 	}
 	s.SortingOrder = append(s.SortingOrder, sortField)
 	return nil
@@ -83,7 +81,7 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*Sort
 		fields[sort] = count
 		if count > 1 {
 			if count == 2 {
-				er := errors.NewDet(class.QuerySortField, "duplicated sort field")
+				er := errors.NewDet(ClassInvalidSort, "duplicated sort field")
 				er.SetDetailsf("OrderBy parameter: %v used more than once.", sort)
 				errs = append(errs, er)
 				continue

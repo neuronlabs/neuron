@@ -25,7 +25,7 @@ package query
 // 		s := NewScopeC(c, &SortModel{})
 // 		require.NoError(t, err)
 //
-// 		err = s.SortField("-id")
+// 		err = s.SortField("-TransactionID")
 // 		require.NoError(t, err)
 //
 // 		err = s.Sort("-age")
@@ -39,7 +39,7 @@ package query
 // 		err = s.Sort("age")
 // 		require.NoError(t, err)
 //
-// 		err = s.Sort("-id", "id", "-id")
+// 		err = s.Sort("-TransactionID", "TransactionID", "-TransactionID")
 // 		assert.Error(t, err)
 // 	})
 // }

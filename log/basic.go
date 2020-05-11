@@ -1,4 +1,4 @@
-package unilogger
+package log
 
 import (
 	"fmt"
@@ -29,7 +29,6 @@ const (
 	WARNING
 	ERROR
 	CRITICAL
-	PRINT
 	UNKNOWN
 )
 
@@ -46,7 +45,6 @@ var levelNames = map[Level]string{
 	WARNING:  "WARNING",
 	ERROR:    "ERROR",
 	CRITICAL: "CRITICAL",
-	PRINT:    "INFO",
 }
 
 func (l Level) String() string {
@@ -226,12 +224,12 @@ func (l *BasicLogger) Infof(format string, args ...interface{}) {
 
 // Print logs a message. Arguments are handled in a log.Print manner.
 func (l *BasicLogger) Print(args ...interface{}) {
-	l.log(PRINT, nil, args...)
+	l.log(INFO, nil, args...)
 }
 
 // Printf logs a formatted message. Arguments are handled in a log.Printf manner.
 func (l *BasicLogger) Printf(format string, args ...interface{}) {
-	l.log(PRINT, &format, args...)
+	l.log(INFO, &format, args...)
 }
 
 // Warning logs a message with WARNING level. Arguments are handled in a log.Print manner.

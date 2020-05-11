@@ -5,9 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
 )
@@ -58,7 +56,7 @@ func (c *Controller) HealthCheck(ctx context.Context) (*repository.HealthRespons
 
 func (c *Controller) healthCheckJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Repository, error) {
 	if len(c.Repositories) == 0 {
-		return nil, errors.NewDetf(class.RepositoryNotFound, "no repositories found for the model")
+		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
 	}
 	out := make(chan repository.Repository)
 	go func() {

@@ -3,9 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
@@ -45,7 +43,7 @@ func (c *Controller) Validate() error {
 			}
 		}
 		if !found {
-			return errors.Newf(class.ConfigValueInvalid, "provided invalid naming convention")
+			return errors.Newf(ClassConfigInvalidValue, "provided invalid naming convention")
 		}
 	}
 	return nil
@@ -94,7 +92,7 @@ func (c *Controller) SetDefaultRepository() error {
 	}
 
 	if c.Repositories == nil && c.DefaultRepository == nil {
-		return errors.NewDet(class.ConfigValueNil, "no Repositories map found for the controller config")
+		return errors.NewDet(ClassConfigInvalidValue, "no Repositories map found for the controller config")
 	}
 
 	if c.DefaultRepository != nil {
@@ -103,7 +101,7 @@ func (c *Controller) SetDefaultRepository() error {
 			c.DefaultRepositoryName = c.DefaultRepository.DriverName
 		}
 		if c.DefaultRepositoryName == "" {
-			return errors.NewDetf(class.RepositoryConfigInvalid, "the default repository name and the driver name are not provided: '%T'", c.DefaultRepository)
+			return errors.NewDetf(ClassConfigInvalidValue, "the default repository name and the driver name are not provided: '%T'", c.DefaultRepository)
 		}
 		// check if the repository is already initied
 		if c.Repositories == nil {
@@ -120,7 +118,7 @@ func (c *Controller) SetDefaultRepository() error {
 
 	// if there is no default repository name and no repositories are
 	if c.DefaultRepositoryName == "" && len(c.Repositories) == 0 {
-		return errors.NewDet(class.RepositoryNotFound, "no registered repositories found for the controller")
+		return errors.NewDet(ClassConfigInvalidValue, "no registered repositories found for the controller")
 	}
 	// if no default repository name is set
 	// get first orccurance
@@ -136,5 +134,5 @@ func (c *Controller) SetDefaultRepository() error {
 		c.DefaultRepository = defaultRepo
 		return nil
 	}
-	return errors.NewDetf(class.ConfigValueInvalid, "default repository: '%s' not registered within the controller", c.DefaultRepositoryName)
+	return errors.NewDetf(ClassConfigInvalidValue, "default repository: '%s' not registered within the controller", c.DefaultRepositoryName)
 }

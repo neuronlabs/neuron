@@ -1,4 +1,4 @@
-package unilogger
+package log
 
 import (
 	"fmt"
@@ -72,10 +72,10 @@ func TestNewLoggerWrapper(t *testing.T) {
 	t.Run("NewWrapper", func(t *testing.T) {
 		for _, logger := range loggers {
 			wrapper, err := NewLoggerWrapper(logger)
-			assert.IsType(t, &LoggerWrapper{}, wrapper)
+			assert.IsType(t, &Wrapper{}, wrapper)
 			assert.NoError(t, err)
 			wrapper = MustGetLoggerWrapper(logger)
-			assert.IsType(t, &LoggerWrapper{}, wrapper)
+			assert.IsType(t, &Wrapper{}, wrapper)
 		}
 
 		args := []interface{}{}

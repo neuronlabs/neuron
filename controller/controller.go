@@ -5,12 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/neuron/class"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/namer"
 	"github.com/neuronlabs/neuron/repository"
 )
 
@@ -20,7 +18,7 @@ type Controller struct {
 	// Config is the configuration struct for the controller.
 	Config *config.Controller
 	// NamerFunc defines the function strategy how the model's and it's fields are being named.
-	NamerFunc namer.Namer
+	NamerFunc mapping.Namer
 	// ModelMap is a mapping for the model's structures.
 	ModelMap *mapping.ModelMap
 	// Repositories is the mapping of the repositoryName to the repository.
@@ -109,13 +107,13 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	// set naming convention
 	switch cfg.NamingConvention {
 	case "kebab":
-		c.NamerFunc = namer.NamingKebab
+		c.NamerFunc = mapping.NamingKebab
 	case "camel":
-		c.NamerFunc = namer.NamingCamel
+		c.NamerFunc = mapping.NamingCamel
 	case "lower_camel":
-		c.NamerFunc = namer.NamingLowerCamel
+		c.NamerFunc = mapping.NamingLowerCamel
 	case "snake":
-		c.NamerFunc = namer.NamingSnake
+		c.NamerFunc = mapping.NamingSnake
 	default:
 		return errors.NewDetf(ClassInvalidConfig, "unknown naming convention name: %s", cfg.NamingConvention)
 	}
@@ -165,12 +163,12 @@ func (c *Controller) newRepository(cfg *config.Repository) (repository.Repositor
 	driverName := cfg.DriverName
 	if driverName == "" {
 		log.Errorf("No driver name specified for the repository configuration: %v", cfg)
-		return nil, errors.NewDetf(class.RepositoryConfigInvalid, "no repository driver name found for the repository: %v", cfg)
+		return nil, errors.NewDetf(ClassInvalidConfig, "no repository driver name found for the repository: %v", cfg)
 	}
 	factory := repository.GetFactory(driverName)
 	if factory == nil {
 		log.Errorf("Factory for driver: '%s' is not found", driverName)
-		return nil, errors.NewDetf(class.RepositoryFactoryNotFound, "repository factory: '%s' not found.", driverName)
+		return nil, errors.NewDetf(ClassRepositoryNotFound, "repository factory: '%s' not found.", driverName)
 	}
 	repo, err := factory.New(cfg)
 	if err != nil {

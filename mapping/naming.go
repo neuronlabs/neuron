@@ -1,4 +1,4 @@
-package namer
+package mapping
 
 import (
 	"github.com/neuronlabs/strcase"

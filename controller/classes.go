@@ -4,8 +4,7 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 )
 
-// InitializeClasses initializes the controller classes.
-func InitializeClasses() {
+func init() {
 	MjrController = errors.MustNewMajor()
 	// Repository
 	MnrRepository = errors.MustNewMinor(MjrController)
@@ -14,6 +13,7 @@ func InitializeClasses() {
 	MnrConfig = errors.MustNewMinor(MjrController)
 	ClassInvalidConfig = errors.MustNewClassWIndex(MjrController, MnrConfig)
 
+	ClassInvalidModel = errors.MustNewMajorClass(MjrController)
 }
 
 var (
@@ -30,4 +30,6 @@ var (
 	MnrConfig errors.Minor
 	// ClassInvalidConfig provided invalid or nil config.
 	ClassInvalidConfig errors.Class
+	// ClassInvalidModel is the error classification for the invalid input models.
+	ClassInvalidModel errors.Class
 )

@@ -3,8 +3,7 @@ package query
 import (
 	"sort"
 
-	"github.com/neuronlabs/errors"
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 )
@@ -27,11 +26,11 @@ func (s *Scope) OrderedFieldset() (ordered mapping.OrderedFieldset) {
 // the StructField Name (string).
 func (s *Scope) Select(fields ...*mapping.StructField) error {
 	if len(fields) == 0 {
-		return errors.Newf(class.QueryInvalidField, "provided no fields")
+		return errors.Newf(ClassInvalidField, "provided no fields")
 	}
 	for _, field := range fields {
 		if field.Struct() != s.mStruct {
-			return errors.Newf(class.QueryInvalidField, "provided field: '%s' does not belong to model: '%s'", field, s.mStruct)
+			return errors.Newf(ClassInvalidField, "provided field: '%s' does not belong to model: '%s'", field, s.mStruct)
 		}
 		if s.Fieldset.Contains(field) {
 			log.Debugf("Field: '%s' is already included in the scope's fieldset", field)

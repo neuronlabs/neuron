@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExtractTags tests the ExcractTags function.
+// TestExtractTags tests the ExtractTags function.
 func TestExtractTags(t *testing.T) {
 	m := testingModelMap(t)
 

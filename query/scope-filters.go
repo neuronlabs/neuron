@@ -1,9 +1,7 @@
 package query
 
 import (
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 )
@@ -15,7 +13,7 @@ func (s *Scope) ClearFilters() {
 
 // Where parses the filter into the  and adds it to the given scope.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func (s *Scope) Where(filter string, values ...interface{}) error {
@@ -41,7 +39,7 @@ Private filter methods and functions
 func (s *Scope) addFilterField(filter *FilterField) error {
 	if filter.StructField.Struct() != s.mStruct {
 		log.Debugf("Where's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField.Name(), filter.StructField.Struct().Type().Name())
-		err := errors.NewDet(class.QueryFitlerNonMatched, "provided filter field's model structure doesn't match scope's model")
+		err := errors.NewDet(ClassInvalidField, "provided filter field's model structure doesn't match scope's model")
 		return err
 	}
 	for _, existingFilter := range s.Filters {

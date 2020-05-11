@@ -60,7 +60,7 @@ type Repository struct {
 	mock.Mock
 }
 
-// Begin provides a mock function with given fields: ctx, s
+// Begin provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Begin(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 
@@ -78,7 +78,7 @@ func (_m *Repository) Close(context.Context) error {
 	return nil
 }
 
-// Commit provides a mock function with given fields: ctx, s
+// Commit provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Commit(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 
@@ -92,7 +92,7 @@ func (_m *Repository) Commit(ctx context.Context, tx *Tx) error {
 	return r0
 }
 
-// Count provides a mock function with given fields: ctx, s
+// Count provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Count(ctx context.Context, s *Scope) (int64, error) {
 	ret := _m.Called(ctx, s)
 
@@ -113,7 +113,7 @@ func (_m *Repository) Count(ctx context.Context, s *Scope) (int64, error) {
 	return r0, r1
 }
 
-// Exists provides a mock function with given fields: ctx, s
+// Exists provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Exists(ctx context.Context, s *Scope) (bool, error) {
 	ret := _m.Called(ctx, s)
 
@@ -134,7 +134,7 @@ func (_m *Repository) Exists(ctx context.Context, s *Scope) (bool, error) {
 	return r0, r1
 }
 
-// Insert provides a mock function with given fields: ctx, s
+// Insert provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Insert(ctx context.Context, s *Scope) error {
 	ret := _m.Called(ctx, s)
 
@@ -153,7 +153,7 @@ func (_m *Repository) Dial(context.Context) error {
 	return nil
 }
 
-// Delete provides a mock function with given fields: ctx, s
+// Delete provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Delete(ctx context.Context, s *Scope) (int64, error) {
 	ret := _m.Called(ctx, s)
 
@@ -184,7 +184,7 @@ func (_m *Repository) ID() string {
 	return "mock"
 }
 
-// Find provides a mock function with given fields: ctx, s
+// Find provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Find(ctx context.Context, s *Scope) error {
 	ret := _m.Called(ctx, s)
 
@@ -198,7 +198,7 @@ func (_m *Repository) Find(ctx context.Context, s *Scope) error {
 	return r0
 }
 
-// Update provides a mock function with given fields: ctx, s
+// Update provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Update(ctx context.Context, s *Scope) (int64, error) {
 	ret := _m.Called(ctx, s)
 
@@ -224,7 +224,7 @@ func (_m *Repository) RegisterModels(...*mapping.ModelStruct) error {
 	return nil
 }
 
-// Rollback provides a mock function with given fields: ctx, s
+// Rollback provides a mock function with given fields: TransactionCtx, s
 func (_m *Repository) Rollback(ctx context.Context, tx *Tx) error {
 	ret := _m.Called(ctx, tx)
 

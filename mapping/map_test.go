@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/namer"
 )
 
 const defaultRepo = "repo"
@@ -17,7 +16,7 @@ func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
 	cfg := config.DefaultController()
-	m := NewModelMap(namer.NamingSnake, cfg)
+	m := NewModelMap(NamingSnake, cfg)
 	return m
 }
 

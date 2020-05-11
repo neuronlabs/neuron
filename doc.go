@@ -4,14 +4,14 @@
 // to have different relationships types between them.
 //
 // neuron consists of following packages:
-// - neuron - (Neuron Core) the root package that gives easy access to all subpackages. .
 // - controller - is the neuron's core, that registers and stores the models and
 // 	 			  contains configurations required by other packages.
 // - config - contains the configurations for all packages.
+// - errors - classified errors.
 // - query - used to create queries, filters, sort, pagination on base of mapped models.
 // - mapping - contains the information about the mapped models their fields and settings.
-// - class - contains errors classification system for the neuron packages.
-// - log - is the logging interface for the neuron based applications.
+// - log - is the neuron service log .
+// - logger - is the logging interface structure for the neuron based applications.
 // - repository - is a package used to store and register the repositories.
 //
 //	It is also used to get the repository/factory per model. A modular design

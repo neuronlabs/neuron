@@ -3,9 +3,7 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
@@ -16,7 +14,7 @@ import (
 // addRelations appends relationship 'relField' 'relationModels' to the scope values.
 func (s *Scope) addRelations(ctx context.Context, relField *mapping.StructField, relationModels ...mapping.Model) error {
 	if s.mStruct != relField.Struct() {
-		return errors.Newf(class.QueryInvalidField, "provided relation field: '%s' doesn't belong to the scope's relationModel: '%s'", relField.String(), s.mStruct.String())
+		return errors.Newf(ClassInvalidField, "provided relation field: '%s' doesn't belong to the scope's relationModel: '%s'", relField.String(), s.mStruct.String())
 	}
 	switch relField.Relationship().Kind() {
 	case mapping.RelHasMany:
@@ -28,7 +26,7 @@ func (s *Scope) addRelations(ctx context.Context, relField *mapping.StructField,
 	case mapping.RelBelongsTo:
 		return s.setBelongsToRelation(ctx, relField, relationModels)
 	default:
-		return errors.Newf(class.QueryInvalidField, "provided relation field: '%s' with invalid relationship kind: '%s'", relField.String(), relField.Relationship().Kind().String())
+		return errors.Newf(ClassInvalidField, "provided relation field: '%s' with invalid relationship kind: '%s'", relField.String(), relField.Relationship().Kind().String())
 	}
 }
 
@@ -47,20 +45,20 @@ func (s *Scope) addRelationMany2Many(ctx context.Context, relField *mapping.Stru
 
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return errors.New(class.QueryInvalidModels, "one of provided model's primary key value has zero value")
+			return errors.New(ClassInvalidModels, "one of provided model's primary key value has zero value")
 		}
 
 		// For each related model insert join model instance with the foreign key value from 'model' primary key
 		// and many2many foreign key value from relationModel primary key.
 		for _, relationModel := range relationModels {
 			if relationModel.IsPrimaryKeyZero() {
-				return errors.New(class.QueryInvalidModels, "one of provided relation model's primary key value has zero value")
+				return errors.New(ClassInvalidModels, "one of provided relation model's primary key value has zero value")
 			}
 
 			joinModel := mapping.NewModel(relationship.JoinModel())
 			joinModelFielder, ok := joinModel.(mapping.Fielder)
 			if !ok {
-				return errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement Fielder interface", joinModel.NeuronCollectionName())
+				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", joinModel.NeuronCollectionName())
 			}
 			err = joinModelFielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyValue())
 			if err != nil {
@@ -101,17 +99,17 @@ func (s *Scope) addRelationHasMany(ctx context.Context, relField *mapping.Struct
 	// The nature of the HasMany relationship doesn't allow to set multiple the same
 	// relation models to multiple model values. In the belongs to relation field there must be only a single foreign key.
 	if len(s.Models) > 1 {
-		return errors.Newf(class.QueryInvalidModels, "relation field: '%s' of HasMany kind cannot be added to multiple model values", relField.String())
+		return errors.Newf(ClassInvalidModels, "relation field: '%s' of HasMany kind cannot be added to multiple model values", relField.String())
 	}
 	// Iterate over relationship models and set relationship foreign key value to the
 	// scope's primary key value.
 	model := s.Models[0]
 	if model == nil {
-		return errors.Newf(class.QueryInvalidModels, "provided nil model value")
+		return errors.Newf(ClassInvalidModels, "provided nil model value")
 	}
 	// Check if the model's primary key is non zero.
 	if model.IsPrimaryKeyZero() {
-		return errors.New(class.QueryInvalidInput, "provided model's primary key value has zero value")
+		return errors.New(ClassInvalidInput, "provided model's primary key value has zero value")
 	}
 	relationship := relField.Relationship()
 	updatedAt, hasUpdatedAt := relationship.Struct().UpdatedAt()
@@ -119,7 +117,7 @@ func (s *Scope) addRelationHasMany(ctx context.Context, relField *mapping.Struct
 	// Iterate over all relation models and set relation's foreign key to the primary key of the 'model'.
 	for _, relationModel := range relationModels {
 		if relationModel.IsPrimaryKeyZero() {
-			return errors.Newf(class.QueryInvalidInput, "relation model value has zero primary key value")
+			return errors.Newf(ClassInvalidInput, "relation model value has zero primary key value")
 		}
 		// AddModel the foreign key field to the model's primary key value.
 		fielder, ok := relationModel.(mapping.Fielder)
@@ -148,19 +146,19 @@ func (s *Scope) addRelationHasMany(ctx context.Context, relField *mapping.Struct
 
 func (s *Scope) addRelationHasOne(ctx context.Context, relationField *mapping.StructField, relationModels []mapping.Model) error {
 	if len(relationModels) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set multiple relation models to the models with 'has one' relationship")
+		return errors.New(ClassInvalidInput, "cannot set multiple relation models to the models with 'has one' relationship")
 	}
 	relationModel := relationModels[0]
 	if relationModel.IsPrimaryKeyZero() {
-		return errors.New(class.QueryInvalidInput, "provided relation has zero value primary key")
+		return errors.New(ClassInvalidInput, "provided relation has zero value primary key")
 	}
 	if len(s.Models) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set multiple models with 'has one' relation ship to the single relation field")
+		return errors.New(ClassInvalidInput, "cannot set multiple models with 'has one' relation ship to the single relation field")
 	}
 
 	model := s.Models[0]
 	if model.IsPrimaryKeyZero() {
-		return errors.New(class.QueryInvalidInput, "provide model has zero value primary key")
+		return errors.New(ClassInvalidInput, "provide model has zero value primary key")
 	}
 
 	relationship := relationField.Relationship()
@@ -195,16 +193,16 @@ func (s *Scope) addRelationHasOne(ctx context.Context, relationField *mapping.St
 
 func (s *Scope) removeRelations(ctx context.Context, relField *mapping.StructField) (int64, error) {
 	if s.mStruct != relField.Struct() {
-		return 0, errors.Newf(class.QueryInvalidField, "provided relation field: '%s' doesn't belong to the scope's relationModel: '%s'", relField.String(), s.mStruct.String())
+		return 0, errors.Newf(ClassInvalidField, "provided relation field: '%s' doesn't belong to the scope's relationModel: '%s'", relField.String(), s.mStruct.String())
 	}
 	if !relField.IsRelationship() {
-		return 0, errors.Newf(class.QueryInvalidField, "provided field: '%s' is not a relationship", relField)
+		return 0, errors.Newf(ClassInvalidField, "provided field: '%s' is not a relationship", relField)
 	}
 	if err := s.requireNoFilters(); err != nil {
 		return 0, err
 	}
 	if len(s.Models) == 0 {
-		return 0, errors.Newf(class.QueryNoModelValues, "provided no models to remove the relations")
+		return 0, errors.Newf(ClassNoModels, "provided no models to remove the relations")
 	}
 
 	switch relField.Relationship().Kind() {
@@ -215,7 +213,7 @@ func (s *Scope) removeRelations(ctx context.Context, relField *mapping.StructFie
 	case mapping.RelBelongsTo:
 		return s.removeBelongsToRelation(ctx, relField)
 	default:
-		return 0, errors.Newf(class.Internal, "invalid relationship kind: '%s'", relField.Relationship().Kind())
+		return 0, errors.Newf(ClassInternal, "invalid relationship kind: '%s'", relField.Relationship().Kind())
 	}
 }
 
@@ -224,7 +222,7 @@ func (s *Scope) removeBelongsToRelation(ctx context.Context, relField *mapping.S
 	// field's value to nullable.
 	// TODO @kucjac add IsNullable flag - byte slice might be nullable and it is not a pointer.
 	if !relField.Relationship().ForeignKey().IsPtr() {
-		return 0, errors.Newf(class.QueryInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
+		return 0, errors.Newf(ClassInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	if err := s.requireNoFilters(); err != nil {
 		return 0, err
@@ -232,7 +230,7 @@ func (s *Scope) removeBelongsToRelation(ctx context.Context, relField *mapping.S
 	// Iterate over scope models and set relationship foreign key value to zero - nullable.
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.Newf(class.QueryInvalidModels, "one of the model values has zero primary key value")
+			return 0, errors.Newf(ClassInvalidModels, "one of the model values has zero primary key value")
 		}
 		fielder := model.(mapping.Fielder)
 		if err := fielder.SetFieldZeroValue(relField.Relationship().ForeignKey()); err != nil {
@@ -247,7 +245,7 @@ func (s *Scope) removeBelongsToRelation(ctx context.Context, relField *mapping.S
 func (s *Scope) removeHasRelations(ctx context.Context, relField *mapping.StructField) (int64, error) {
 	// Removing relations from the HasOne relationships involves setting related foreign key value to zero.
 	if !relField.Relationship().ForeignKey().IsPtr() {
-		return 0, errors.Newf(class.QueryInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
+		return 0, errors.Newf(ClassInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	// If the relationship structure implements Update hooks we need to firstly get he
 	// related model. The user might set something in the hooks.
@@ -267,7 +265,7 @@ func (s *Scope) removeHasRelations(ctx context.Context, relField *mapping.Struct
 	primaryKeyValues := []interface{}{}
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.Newf(class.QueryInvalidModels, "one of the model values has zero primary key value")
+			return 0, errors.Newf(ClassInvalidModels, "one of the model values has zero primary key value")
 		}
 		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyValue())
 	}
@@ -299,7 +297,7 @@ func (s *Scope) removeHasRelations(ctx context.Context, relField *mapping.Struct
 func (s *Scope) removeMany2ManyRelations(ctx context.Context, relField *mapping.StructField) (int64, error) {
 	// Removing relations from the HasOne relationships involves setting related foreign key value to zero.
 	if !relField.Relationship().ForeignKey().IsPtr() {
-		return 0, errors.Newf(class.QueryInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
+		return 0, errors.Newf(ClassInvalidField, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	// If the relationship structure implements Update hooks we need to firstly get he
 	// related model. The user might set something in the hooks.
@@ -316,7 +314,7 @@ func (s *Scope) removeMany2ManyRelations(ctx context.Context, relField *mapping.
 	primaryKeyValues := []interface{}{}
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.Newf(class.QueryInvalidModels, "one of the model values has zero primary key value")
+			return 0, errors.Newf(ClassInvalidModels, "one of the model values has zero primary key value")
 		}
 		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyValue())
 	}
@@ -346,13 +344,13 @@ func (s *Scope) removeMany2ManyRelations(ctx context.Context, relField *mapping.
 
 func (s *Scope) setRelations(ctx context.Context, relationField *mapping.StructField, relationModels ...mapping.Model) error {
 	if !relationField.IsRelationship() {
-		return errors.Newf(class.QueryInvalidField, "provided field is not a relation: '%s' in model: '%s'", relationField, s.mStruct)
+		return errors.Newf(ClassInvalidField, "provided field is not a relation: '%s' in model: '%s'", relationField, s.mStruct)
 	}
 	if len(s.Models) == 0 {
-		return errors.New(class.QueryInvalidInput, "no models provided for the query")
+		return errors.New(ClassInvalidInput, "no models provided for the query")
 	}
 	if len(relationModels) == 0 {
-		return errors.New(class.QueryInvalidInput, "no relation models provided for the query")
+		return errors.New(ClassInvalidInput, "no relation models provided for the query")
 	}
 
 	switch relationField.Relationship().Kind() {
@@ -365,7 +363,7 @@ func (s *Scope) setRelations(ctx context.Context, relationField *mapping.StructF
 	case mapping.RelMany2Many:
 		return s.setMany2ManyRelations(ctx, relationField, relationModels)
 	default:
-		return errors.Newf(class.Internal, "invalid relationship kind: '%s'", relationField.Relationship().Kind())
+		return errors.Newf(ClassInternal, "invalid relationship kind: '%s'", relationField.Relationship().Kind())
 	}
 }
 
@@ -378,10 +376,10 @@ func (s *Scope) setMany2ManyRelations(ctx context.Context, relationField *mappin
 
 func (s *Scope) setHasOneRelation(ctx context.Context, relationField *mapping.StructField, relationModels []mapping.Model) (err error) {
 	if len(s.Models) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set many relations to multiple models with hasMany relationship")
+		return errors.New(ClassInvalidInput, "cannot set many relations to multiple models with hasMany relationship")
 	}
 	if len(relationModels) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set multiple relations for single has one model")
+		return errors.New(ClassInvalidInput, "cannot set multiple relations for single has one model")
 	}
 	if _, err = s.removeHasRelations(ctx, relationField); err != nil {
 		return err
@@ -391,7 +389,7 @@ func (s *Scope) setHasOneRelation(ctx context.Context, relationField *mapping.St
 
 func (s *Scope) setHasManyRelations(ctx context.Context, relationField *mapping.StructField, relationModels []mapping.Model) (err error) {
 	if len(s.Models) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set many relations to multiple models with hasMany relationship")
+		return errors.New(ClassInvalidInput, "cannot set many relations to multiple models with hasMany relationship")
 	}
 	if _, err = s.removeHasRelations(ctx, relationField); err != nil {
 		return err
@@ -401,10 +399,10 @@ func (s *Scope) setHasManyRelations(ctx context.Context, relationField *mapping.
 
 func (s *Scope) setBelongsToRelation(ctx context.Context, relationField *mapping.StructField, relationModels []mapping.Model) error {
 	if len(relationModels) > 1 {
-		return errors.New(class.QueryInvalidInput, "cannot set multiple relation models to the models with belongs to relationship")
+		return errors.New(ClassInvalidInput, "cannot set multiple relation models to the models with belongs to relationship")
 	}
 	if relationModels[0].IsPrimaryKeyZero() {
-		return errors.Newf(class.QueryInvalidInput, "provided relation has zero value primary key")
+		return errors.Newf(ClassInvalidInput, "provided relation has zero value primary key")
 	}
 	relationPrimary := relationModels[0].GetPrimaryKeyValue()
 
@@ -415,7 +413,7 @@ func (s *Scope) setBelongsToRelation(ctx context.Context, relationField *mapping
 	// For models in the query scope set foreign key field value to the relation's primary.
 	for i, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return errors.Newf(class.QueryInvalidModels, "model[%d] has zero value primary key", i)
+			return errors.Newf(ClassInvalidModels, "model[%d] has zero value primary key", i)
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
@@ -443,5 +441,5 @@ func (s *Scope) setBelongsToRelation(ctx context.Context, relationField *mapping
 }
 
 func errModelNotImplements(model *mapping.ModelStruct, interfaceName string) errors.ClassError {
-	return errors.Newf(class.ModelNotImplements, "model: '%s' doesn't implement %s interface", model, interfaceName)
+	return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement %s interface", model, interfaceName)
 }

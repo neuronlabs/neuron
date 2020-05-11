@@ -10,12 +10,11 @@ import (
 
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/namer"
 )
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingSnake, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -29,14 +28,14 @@ func TestNewUniques(t *testing.T) {
 	})
 
 	t.Run("Duplicated", func(t *testing.T) {
-		_, err := NewSortFields(mStruct, false, "id", "-id", "id")
+		_, err := NewSortFields(mStruct, false, "TransactionID", "-TransactionID", "TransactionID")
 		require.Error(t, err)
 	})
 
 	t.Run("TooManyPossible", func(t *testing.T) {
 		sorts := []string{}
 		for i := 0; i < 200; i++ {
-			sorts = append(sorts, "id")
+			sorts = append(sorts, "TransactionID")
 		}
 
 		_, err := NewSortFields(mStruct, false, sorts...)
@@ -44,7 +43,7 @@ func TestNewUniques(t *testing.T) {
 	})
 
 	t.Run("Valid", func(t *testing.T) {
-		sorts, err := NewSortFields(mStruct, false, "-id", "title", "posts.id", "current_post_id")
+		sorts, err := NewSortFields(mStruct, false, "-TransactionID", "title", "posts.TransactionID", "current_post_id")
 		require.NoError(t, err)
 
 		assert.Len(t, sorts, 4)
@@ -53,7 +52,7 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingSnake, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingSnake, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -62,14 +61,14 @@ func TestNew(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("NoOrder", func(t *testing.T) {
-		sField, err := NewSort(mStruct, "-id", true)
+		sField, err := NewSort(mStruct, "-TransactionID", true)
 		require.NoError(t, err)
 
 		assert.Equal(t, DescendingOrder, sField.Order)
 	})
 
 	t.Run("WithOrder", func(t *testing.T) {
-		sField, err := NewSort(mStruct, "id", true, DescendingOrder)
+		sField, err := NewSort(mStruct, "TransactionID", true, DescendingOrder)
 		require.NoError(t, err)
 
 		assert.Equal(t, DescendingOrder, sField.Order)
@@ -114,7 +113,7 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sortfield copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingKebab, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -122,7 +121,7 @@ func TestSortField(t *testing.T) {
 	mStruct, err := ms.GetModelStruct(&Blog{})
 	require.NoError(t, err)
 
-	sField, err := NewSort(mStruct, "posts.id", true)
+	sField, err := NewSort(mStruct, "posts.TransactionID", true)
 	require.NoError(t, err)
 
 	t.Run("Copy", func(t *testing.T) {
@@ -141,7 +140,7 @@ func TestSortField(t *testing.T) {
 
 // TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
-	ms := mapping.NewModelMap(namer.NamingKebab, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingKebab, config.DefaultController())
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -160,19 +159,19 @@ func TestSetRelationScopeSort(t *testing.T) {
 	err = sortField.setSubfield([]string{}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"posts", "some", "id"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"posts", "some", "TransactionID"}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "id", "desc"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "TransactionID", "desc"}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "TransactionID"}, AscendingOrder, true)
 	assert.Nil(t, err)
 
 	err = sortField.setSubfield([]string{"comments", "body"}, AscendingOrder, true)
 	assert.Nil(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "TransactionID"}, AscendingOrder, true)
 	assert.Nil(t, err)
 }
 

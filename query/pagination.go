@@ -5,9 +5,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 )
 
 // Pagination defined constants used for formatting the query.
@@ -114,7 +112,7 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 		return nil, err
 	}
 	if total < 0 {
-		return nil, errors.NewDetf(class.QueryPaginationValue, "Total instance value lower than 0: %v", total)
+		return nil, errors.NewDetf(ClassInvalidInput, "Total instance value lower than 0: %v", total)
 	}
 
 	var offset int64
@@ -146,7 +144,7 @@ func (p *Pagination) Next(total int64) (*Pagination, error) {
 		return nil, err
 	}
 	if total < 0 {
-		return nil, errors.NewDetf(class.QueryPaginationValue, "Total instance value lower than 0: %v", total)
+		return nil, errors.NewDetf(ClassInvalidInput, "Total instance value lower than 0: %v", total)
 	}
 
 	// keep the same size but change the offset
@@ -190,13 +188,13 @@ func (p *Pagination) checkValues() error {
 
 func (p *Pagination) checkOffsetBasedValues() error {
 	if p.Limit < 0 {
-		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err := errors.NewDet(ClassInvalidInput, "invalid pagination")
 		err.SetDetails("Pagination limit lower than -1")
 		return err
 	}
 
 	if p.Offset < 0 {
-		err := errors.NewDet(class.QueryPaginationValue, "invalid pagination")
+		err := errors.NewDet(ClassInvalidInput, "invalid pagination")
 		err.SetDetails("Pagination offset lower than 0")
 		return err
 	}

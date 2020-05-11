@@ -5,9 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 )
@@ -44,17 +42,17 @@ func (i *IncludedRelation) setFieldset(fields ...*mapping.StructField) error {
 	for _, field := range fields {
 		// Check if the field belongs to the relationship's model.
 		if field.Struct() != model {
-			return errors.NewDetf(class.QueryInvalidField, "provided field: '%s' doesn't belong to the relationship model: '%s'", field, model)
+			return errors.NewDetf(ClassInvalidField, "provided field: '%s' doesn't belong to the relationship model: '%s'", field, model)
 		}
 		// Check if provided field is not a relationship.
 		if !field.IsField() {
-			return errors.NewDetf(class.QueryFieldsetUnknownField,
+			return errors.NewDetf(ClassInvalidField,
 				"provided invalid field: '%s' in the fieldset of included field: '%s'", field, i.StructField.Name())
 		}
 
 		// Check if given fieldset doesn't contain this field already.
 		if i.Fieldset.Contains(field) {
-			return errors.NewDetf(class.QueryFieldsetDuplicate,
+			return errors.NewDetf(ClassInvalidField,
 				"provided field: '%s' in the fieldset of included field: '%s' is already in the included fieldset",
 				field, i.StructField.Name())
 		}
@@ -66,7 +64,7 @@ func (i *IncludedRelation) setFieldset(fields ...*mapping.StructField) error {
 // Include includes 'relation' field in the scope's query results.
 func (s *Scope) Include(relation *mapping.StructField, relationFieldset ...*mapping.StructField) error {
 	if !relation.IsRelationship() {
-		return errors.NewDetf(class.QueryRelationNotFound,
+		return errors.NewDetf(ClassInvalidField,
 			"included relation: '%s' is not found for the model: '%s'", relation, s.mStruct.String())
 	}
 
@@ -116,7 +114,7 @@ func (s *Scope) findIncludedRelation(ctx context.Context, included *IncludedRela
 	case mapping.RelMany2Many:
 		err = s.findManyToManyRelation(ctx, included)
 	default:
-		return errors.Newf(class.Internal, "invalid relationship: '%s' kind: '%s'", included.StructField, included.StructField.Relationship().Kind())
+		return errors.Newf(ClassInternal, "invalid relationship: '%s' kind: '%s'", included.StructField, included.StructField.Relationship().Kind())
 	}
 	return err
 }

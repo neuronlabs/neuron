@@ -1,4 +1,4 @@
-package unilogger
+package log
 
 // SubLogger interface that creates and returns new sub logger.
 type SubLogger interface {

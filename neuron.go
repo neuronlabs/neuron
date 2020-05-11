@@ -5,7 +5,6 @@ import (
 
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/repository"
 )
 
@@ -81,44 +80,4 @@ func (n *Neuron) HealthCheck(ctx context.Context) (*repository.HealthResponse, e
 // controller's config DisallowDefaultRepository is set to false.
 func (n *Neuron) RegisterRepository(name string, repo *config.Repository) error {
 	return n.c.RegisterRepository(name, repo)
-}
-
-/*
- *
- * Queries
- *
- */
-
-// query creates new query for provided 'model'. A model must be registered within given neuron.
-func (n *Neuron) Query(model interface{}) query.Builder {
-	return query.NewCtx(context.Background(), n.c, model)
-}
-
-// QueryCtx creates new query for provided 'model'. A model must be registered within given neuron.
-// Whole query would be affected by given context 'ctx'.
-func (n *Neuron) QueryCtx(ctx context.Context, model interface{}) query.Builder {
-	return query.NewCtx(ctx, n.c, model)
-}
-
-/*
- *
- * Transactions
- *
- */
-
-// Begin creates new transactions.
-func (n *Neuron) Begin() *query.Tx {
-	return query.Begin(context.Background(), n.c, nil)
-}
-
-// BeginCtx creates new transaction for given context 'cts'.
-// The 'opts' argument is optional, for nil it would take default values.
-func (n *Neuron) BeginCtx(ctx context.Context, opts *query.TxOptions) *query.Tx {
-	return query.Begin(ctx, n.c, opts)
-}
-
-// RunInTransaction runs transaction function 'txFunction' in a single transaction. Commits on exit or
-// rolls back on error.
-func (n *Neuron) RunInTransaction(ctx context.Context, txFunction TxFn) error {
-	return runInTransaction(ctx, n.c, n, nil, txFunction)
 }

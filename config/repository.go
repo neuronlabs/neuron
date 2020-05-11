@@ -7,9 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 )
 
 // Repository defines the repository configuration variables.
@@ -46,7 +44,7 @@ func (r *Repository) Parse(s string) error {
 	for _, pair := range spaceSplit {
 		eqSign := strings.IndexRune(pair, '=')
 		if eqSign == -1 {
-			return errors.NewDetf(class.RepositoryConfigInvalid, "invalid repository config, key value pair: '%s' - equal sign not found", pair)
+			return errors.NewDetf(ClassConfigInvalidValue, "invalid repository config, key value pair: '%s' - equal sign not found", pair)
 		}
 
 		key := pair[:eqSign]
@@ -59,7 +57,7 @@ func (r *Repository) Parse(s string) error {
 		case "port":
 			port, err := strconv.Atoi(value)
 			if err != nil {
-				return errors.NewDetf(class.RepositoryConfigInvalid, "repository port configuration is not an integer: '%s'", value)
+				return errors.NewDetf(ClassConfigInvalidValue, "repository port configuration is not an integer: '%s'", value)
 			}
 			r.Port = port
 		case "protocol":
@@ -73,7 +71,7 @@ func (r *Repository) Parse(s string) error {
 		case "max_timeout":
 			d, err := time.ParseDuration(value)
 			if err != nil {
-				return errors.NewDetf(class.RepositoryConfigInvalid, "repository config max_timeout parse duration failed: '%v'", err)
+				return errors.NewDetf(ClassConfigInvalidValue, "repository config max_timeout parse duration failed: '%v'", err)
 			}
 			r.MaxTimeout = &d
 		case "dbname":
@@ -91,15 +89,15 @@ func (r *Repository) Parse(s string) error {
 // Validate validates the repository config.
 func (r *Repository) Validate() error {
 	if r.DriverName == "" {
-		return errors.New(class.ConfigValueNil, "no repository driver name provided in the config")
+		return errors.New(ClassConfigInvalidValue, "no repository driver name provided in the config")
 	}
 	if r.RawURL != "" {
 		if _, err := url.Parse(r.RawURL); err != nil {
-			return errors.Newf(class.ConfigValueInvalid, "invalid raw url for the repository config: %v", err)
+			return errors.Newf(ClassConfigInvalidValue, "invalid raw url for the repository config: %v", err)
 		}
 	} else {
 		if r.Port < 0 {
-			return errors.Newf(class.ConfigValueNil, "repository port value cannot be < 0")
+			return errors.Newf(ClassConfigInvalidValue, "repository port value cannot be < 0")
 		}
 	}
 	return nil

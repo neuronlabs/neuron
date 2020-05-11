@@ -3,9 +3,7 @@ package query
 import (
 	"context"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
@@ -26,7 +24,7 @@ var _ Builder = &txQuery{}
 
 // Ctx returns query context.
 func (b *txQuery) Ctx() context.Context {
-	return b.tx.ctx
+	return b.tx.Transaction.Ctx
 }
 
 // Scope returns query scope.
@@ -50,7 +48,7 @@ func (b *txQuery) Count() (int64, error) {
 	if b.tx.err != nil {
 		return 0, b.tx.err
 	}
-	cnt, err := b.scope.Count(b.tx.ctx)
+	cnt, err := b.scope.Count(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -62,7 +60,7 @@ func (b *txQuery) Exists() (bool, error) {
 	if b.tx.err != nil {
 		return false, b.tx.err
 	}
-	exists, err := b.scope.Exists(b.tx.ctx)
+	exists, err := b.scope.Exists(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -75,7 +73,7 @@ func (b *txQuery) Insert() error {
 	if b.tx.err != nil {
 		return b.tx.err
 	}
-	err := b.scope.Insert(b.tx.ctx)
+	err := b.scope.Insert(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -90,7 +88,7 @@ func (b *txQuery) Update() (modelsAffected int64, err error) {
 		return 0, b.tx.err
 	}
 
-	modelsAffected, err = b.scope.Update(b.tx.ctx)
+	modelsAffected, err = b.scope.Update(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -103,7 +101,7 @@ func (b *txQuery) Find() ([]mapping.Model, error) {
 	if b.tx.err != nil {
 		return nil, b.tx.err
 	}
-	values, err := b.scope.Find(b.tx.ctx)
+	values, err := b.scope.Find(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 		return nil, err
@@ -117,12 +115,12 @@ func (b *txQuery) Get() (mapping.Model, error) {
 	if b.tx.err != nil {
 		return nil, b.tx.err
 	}
-	result, err := b.scope.Get(b.tx.ctx)
+	result, err := b.scope.Get(b.tx.Transaction.Ctx)
 	if err != nil {
 		b.tx.err = err
 		if classError, ok := err.(errors.ClassError); ok {
 			// TODO: this might be invalid if the error is of class query Value NoResult.
-			if classError.Class() == class.QueryValueNoResult {
+			if classError.Class() == ClassNoResult {
 				b.tx.err = err
 			}
 		}
@@ -137,7 +135,7 @@ func (b *txQuery) Delete() (int64, error) {
 		return 0, b.tx.err
 	}
 	var modelsAffected int64
-	modelsAffected, b.tx.err = b.scope.Delete(b.tx.ctx)
+	modelsAffected, b.tx.err = b.scope.Delete(b.tx.Transaction.Ctx)
 	return modelsAffected, b.tx.err
 }
 
@@ -222,7 +220,7 @@ func (b *txQuery) AddRelations(relationField *mapping.StructField, relations ...
 	if b.tx.err != nil {
 		return b.tx.err
 	}
-	err := b.scope.addRelations(b.tx.ctx, relationField, relations...)
+	err := b.scope.addRelations(b.tx.Transaction.Ctx, relationField, relations...)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -234,7 +232,7 @@ func (b *txQuery) SetRelations(relationField *mapping.StructField, relations ...
 	if b.tx.err != nil {
 		return b.tx.err
 	}
-	err := b.scope.setRelations(b.tx.ctx, relationField, relations...)
+	err := b.scope.setRelations(b.tx.Transaction.Ctx, relationField, relations...)
 	if err != nil {
 		b.tx.err = err
 	}
@@ -246,7 +244,7 @@ func (b *txQuery) RemoveRelations(relationField *mapping.StructField) (int64, er
 	if b.tx.err != nil {
 		return 0, b.tx.err
 	}
-	modelsAffected, err := b.scope.removeRelations(b.tx.ctx, relationField)
+	modelsAffected, err := b.scope.removeRelations(b.tx.Transaction.Ctx, relationField)
 	if err != nil {
 		b.tx.err = err
 	}

@@ -1,27 +1,27 @@
-package unilogger
+package log
 
 import (
 	"errors"
 	"fmt"
 )
 
-// LoggerWrapper is wrapper around any third-party logger that implements any of
+// Wrapper is wrapper around any third-party logger that implements any of
 // the following interfaces:
 //	# ExtendedLeveledLogger
 //	# ShortLeveledLogger
 //	# LeveledLogger
 //	# StdLogger
 // By wrapping the logger it implements ExtendedLeveledLogger.
-// For loggers that implements only StdLogger, LoggerWrapper tries to virtualize
+// For loggers that implements only StdLogger, Wrapper tries to virtualize
 // leveled logger behaviour. It simply adds level name before logging message.
 // If a logger implements LeveledLogger that doesn't have specific log line '****ln()' methods,
 // it uses default non 'ln' functions - i.e. instead 'Infoln' uses 'Info'.
-type LoggerWrapper struct {
+type Wrapper struct {
 	logger        interface{}
 	currentLogger int
 }
 
-// NewLoggerWrapper creates a LoggerWrapper wrapper over provided 'logger' argument
+// NewLoggerWrapper creates a Wrapper wrapper over provided 'logger' argument
 // By default the function checks if provided logger implements logging interfaces
 // in a following hierarchy:
 //	# ExtendedLeveledLogger
@@ -30,11 +30,11 @@ type LoggerWrapper struct {
 //	# StdLogger
 // if logger doesn't implement an interface it tries to check the next in hierarchy.
 // If it doesn't implement any of known logging interfaces the function returns error.
-func NewLoggerWrapper(logger interface{}) (*LoggerWrapper, error) {
+func NewLoggerWrapper(logger interface{}) (*Wrapper, error) {
 	return newLoggerWrapper(logger)
 }
 
-// MustGetLoggerWrapper creates a LoggerWrapper wrapper over provided 'logger' argument.
+// MustGetLoggerWrapper creates a Wrapper wrapper over provided 'logger' argument.
 // By default the function checks if provided logger implements logging interfaces
 // in a following hierarchy:
 //	# ExtendedLeveledLogger
@@ -43,7 +43,7 @@ func NewLoggerWrapper(logger interface{}) (*LoggerWrapper, error) {
 //	# StdLogger
 // if logger doesn't implement an interface it tries to check the next in hierarchy.
 // If it doesn't implement any of known logging interfaces the function panics.
-func MustGetLoggerWrapper(logger interface{}) *LoggerWrapper {
+func MustGetLoggerWrapper(logger interface{}) *Wrapper {
 	wrapper, err := newLoggerWrapper(logger)
 	if err != nil {
 		panic(err)
@@ -51,8 +51,8 @@ func MustGetLoggerWrapper(logger interface{}) *LoggerWrapper {
 	return wrapper
 }
 
-func newLoggerWrapper(logger interface{}) (*LoggerWrapper, error) {
-	wrapper := &LoggerWrapper{}
+func newLoggerWrapper(logger interface{}) (*Wrapper, error) {
+	wrapper := &Wrapper{}
 	var err error
 
 	if l, ok := logger.(ExtendedLeveledLogger); ok {
@@ -86,7 +86,7 @@ func newLoggerWrapper(logger interface{}) (*LoggerWrapper, error) {
 // Print logs a message.
 // Arguments are handled in the manner of log.Print for StdLogger and
 // Extended LeveledLogger as well as log.Info for LeveledLogger
-func (c *LoggerWrapper) Print(args ...interface{}) {
+func (c *Wrapper) Print(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -107,7 +107,7 @@ func (c *LoggerWrapper) Print(args ...interface{}) {
 // Printf logs a formatted message.
 // Arguments are handled in the manner of log.Printf for StdLogger and
 // Extended LeveledLogger as well as log.Infof for LeveledLogger
-func (c *LoggerWrapper) Printf(format string, args ...interface{}) {
+func (c *Wrapper) Printf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -128,7 +128,7 @@ func (c *LoggerWrapper) Printf(format string, args ...interface{}) {
 // Println logs a message.
 // Arguments are handled in the manner of log.Println for StdLogger and
 // Extended LeveledLogger as well as log.Info for LeveledLogger
-func (c *LoggerWrapper) Println(args ...interface{}) {
+func (c *Wrapper) Println(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -150,7 +150,7 @@ func (c *LoggerWrapper) Println(args ...interface{}) {
 // Debug logs a message with DEBUG level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Debug for ExtendedLeveledLogger and LeveledLogger.
-func (c *LoggerWrapper) Debug(args ...interface{}) {
+func (c *Wrapper) Debug(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -172,7 +172,7 @@ func (c *LoggerWrapper) Debug(args ...interface{}) {
 // Debugf logs a formatted message with DEBUG level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Debugf for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
-func (c *LoggerWrapper) Debugf(format string, args ...interface{}) {
+func (c *Wrapper) Debugf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -194,7 +194,7 @@ func (c *LoggerWrapper) Debugf(format string, args ...interface{}) {
 // Debugln logs a message with DEBUG level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Debugln for ExtendedLeveledLogger and log.Debug for LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Debugln(args ...interface{}) {
+func (c *Wrapper) Debugln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -217,7 +217,7 @@ func (c *LoggerWrapper) Debugln(args ...interface{}) {
 // Info logs a message with INFO level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Info for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
-func (c *LoggerWrapper) Info(args ...interface{}) {
+func (c *Wrapper) Info(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -240,7 +240,7 @@ func (c *LoggerWrapper) Info(args ...interface{}) {
 // Infof logs a formatted message with INFO level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Infof for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
-func (c *LoggerWrapper) Infof(format string, args ...interface{}) {
+func (c *Wrapper) Infof(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -262,7 +262,7 @@ func (c *LoggerWrapper) Infof(format string, args ...interface{}) {
 // Infoln logs a message with INFO level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Infoln for ExtendedLeveledLogger and log.Info for LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Infoln(args ...interface{}) {
+func (c *Wrapper) Infoln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -285,7 +285,7 @@ func (c *LoggerWrapper) Infoln(args ...interface{}) {
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Warning for ExtendedLeveledLogger, LeveledLogger and
 // log.Warn for ShortLeveledLogger.
-func (c *LoggerWrapper) Warning(args ...interface{}) {
+func (c *Wrapper) Warning(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -307,7 +307,7 @@ func (c *LoggerWrapper) Warning(args ...interface{}) {
 // Warningf logs a formatted message with WARNING level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Warningf for ExtendedLeveledLogger, LeveledLogger and log.Warnf for ShortLeveledLogger.
-func (c *LoggerWrapper) Warningf(format string, args ...interface{}) {
+func (c *Wrapper) Warningf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -330,7 +330,7 @@ func (c *LoggerWrapper) Warningf(format string, args ...interface{}) {
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Warningln for ExtendedLeveledLogger, log.Warning for LeveledLogger
 // and log.Warn for ShortLeveledLogger.
-func (c *LoggerWrapper) Warningln(args ...interface{}) {
+func (c *Wrapper) Warningln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -352,7 +352,7 @@ func (c *LoggerWrapper) Warningln(args ...interface{}) {
 // Error logs a message with ERROR level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Error for ExtendedLeveledLogger, LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Error(args ...interface{}) {
+func (c *Wrapper) Error(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -374,7 +374,7 @@ func (c *LoggerWrapper) Error(args ...interface{}) {
 // Errorf logs a formatted message with ERROR level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Errorf for ExtendedLeveledLogger, LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Errorf(format string, args ...interface{}) {
+func (c *Wrapper) Errorf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -396,7 +396,7 @@ func (c *LoggerWrapper) Errorf(format string, args ...interface{}) {
 // Errorln logs a message with ERROR level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Debugln for ExtendedLeveledLogger and log.Error for LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Errorln(args ...interface{}) {
+func (c *Wrapper) Errorln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -418,7 +418,7 @@ func (c *LoggerWrapper) Errorln(args ...interface{}) {
 // Fatal logs a message with CRITICAL level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatal for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
-func (c *LoggerWrapper) Fatal(args ...interface{}) {
+func (c *Wrapper) Fatal(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -440,7 +440,7 @@ func (c *LoggerWrapper) Fatal(args ...interface{}) {
 // Fatalf logs a formatted message with CRITICAL level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatalf for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
-func (c *LoggerWrapper) Fatalf(format string, args ...interface{}) {
+func (c *Wrapper) Fatalf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -462,7 +462,7 @@ func (c *LoggerWrapper) Fatalf(format string, args ...interface{}) {
 // Fatalln logs a message with CRITICAL level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatalln for StdLogger and ExtendedLeveldLogger,
 // and log.Fatal for LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Fatalln(args ...interface{}) {
+func (c *Wrapper) Fatalln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -484,7 +484,7 @@ func (c *LoggerWrapper) Fatalln(args ...interface{}) {
 // Panic logs a message with CRITICAL level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panic for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger .
-func (c *LoggerWrapper) Panic(args ...interface{}) {
+func (c *Wrapper) Panic(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -506,7 +506,7 @@ func (c *LoggerWrapper) Panic(args ...interface{}) {
 // Panicf logs a formatted message with CRITICAL level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panicf for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
-func (c *LoggerWrapper) Panicf(format string, args ...interface{}) {
+func (c *Wrapper) Panicf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
@@ -528,7 +528,7 @@ func (c *LoggerWrapper) Panicf(format string, args ...interface{}) {
 // Panicln logs a message with CRITICAL level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panicln for StdLogger and ExtendedLeveledLogger,
 // and log.Panic LeveledLogger and ShortLeveledLogger.
-func (c *LoggerWrapper) Panicln(args ...interface{}) {
+func (c *Wrapper) Panicln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)

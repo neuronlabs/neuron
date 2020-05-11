@@ -2,7 +2,7 @@ package mapping
 
 // Collectioner is the interface used to get the collection name from the provided model.
 type Collectioner interface {
-	Collection() string
+	NeuronCollectionName() string
 }
 
 // RepositoryNamer is the interface used for the repositories to implement

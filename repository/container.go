@@ -1,13 +1,27 @@
 package repository
 
 import (
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
 var ctr = newContainer()
+
+var (
+	// MjrRepository is the major error repository classification.
+	MjrRepository errors.Major
+	// ClassFactoryAlreadyRegistered is the error classification for the factories already registered.
+	ClassFactoryAlreadyRegistered errors.Class
+	// ClassNotImplements is the error classification for the repositories that doesn't implement some interface.
+	ClassNotImplements errors.Class
+)
+
+func init() {
+	// Initialize error classes.
+	MjrRepository = errors.MustNewMajor()
+	ClassFactoryAlreadyRegistered = errors.MustNewMajorClass(MjrRepository)
+	ClassNotImplements = errors.MustNewMajorClass(MjrRepository)
+}
 
 // RegisterFactory registers provided Factory within the container.
 func RegisterFactory(f Factory) error {
@@ -47,7 +61,7 @@ func (c *container) registerFactory(f Factory) error {
 	_, ok := c.factories[repoName]
 	if ok {
 		log.Debugf("Repository already registered: %s", repoName)
-		return errors.NewDetf(class.RepositoryFactoryAlreadyRegistered, "factory: '%s' already registered", repoName)
+		return errors.NewDetf(ClassFactoryAlreadyRegistered, "factory: '%s' already registered", repoName)
 	}
 
 	c.factories[repoName] = f

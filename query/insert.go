@@ -4,11 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/neuronlabs/errors"
-
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // Insert stores the values within the given scope's value repository.
@@ -19,14 +18,14 @@ func (s *Scope) Insert(ctx context.Context) (err error) {
 	}
 	if len(s.Models) == 0 {
 		log.Debug(s.logFormat("provided empty models slice to insert"))
-		return errors.New(class.QueryInvalidModels, "nothing to insert")
+		return errors.New(ClassInvalidModels, "nothing to insert")
 	}
 
 	// Check if models repository implements Inserter interface.
 	inserter, isInserter := s.repository().(Inserter)
 	if !isInserter {
 		log.Error(s.logFormat("model's: '%s' repository doesn't implement Inserter interface"), s.mStruct)
-		return errors.Newf(class.RepositoryNotImplements, "a repository for model: '%s' doesn't implement Inserter interface", s.mStruct)
+		return errors.Newf(repository.ClassNotImplements, "a repository for model: '%s' doesn't implement Inserter interface", s.mStruct)
 	}
 
 	// Execute BeforeInsert hook if model implements BeforeInserter interface.

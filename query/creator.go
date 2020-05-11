@@ -7,8 +7,6 @@ import (
 	"github.com/neuronlabs/neuron/mapping"
 )
 
-// DB is the interface that allows to start new queries.
-
 // Creator is the default query composer that implements DB interface.
 type Creator struct {
 	c *controller.Controller

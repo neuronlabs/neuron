@@ -1,16 +1,14 @@
 package query
 
 import (
-	"github.com/neuronlabs/errors"
-
 	"github.com/neuronlabs/neuron/annotation"
-	"github.com/neuronlabs/neuron/class"
+	"github.com/neuronlabs/neuron/errors"
 )
 
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.
 func SplitBracketParameter(bracketed string) (values []string, err error) {
 	doubleOpen := func() error {
-		err := errors.NewDet(class.CommonParseBrackets, "double open square brackets")
+		err := errors.NewDet(ClassFilterFormat, "double open square brackets")
 		err.SetDetailsf("open square bracket '[' found, without closing ']' in: '%s'", bracketed)
 		return err
 	}
@@ -32,7 +30,7 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {
-				err := errors.NewDet(class.CommonParseBrackets, "no opening bracket found")
+				err := errors.NewDet(ClassFilterFormat, "no opening bracket found")
 				err.SetDetailsf("close square bracket ']' found, without opening '[' in '%s'", bracketed)
 				return nil, err
 			}
