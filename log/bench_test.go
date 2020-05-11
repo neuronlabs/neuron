@@ -6,9 +6,11 @@ import (
 	"testing"
 )
 
+const benchConst = "some pretty long name"
+
 // BenchmarkConcantate benchmarks concantating multiple strings using '+'.
 func BenchmarkConcantate(b *testing.B) {
-	previous := "some pretty long name"
+	previous := benchConst
 	var v string
 	for i := 0; i < b.N; i++ {
 		v = "some" + previous + "some"
@@ -18,7 +20,7 @@ func BenchmarkConcantate(b *testing.B) {
 
 // BenchmarkFmt benchmarks concantating multiple strings using 'fmt.Sprintf'.
 func BenchmarkFmt(b *testing.B) {
-	previous := "some pretty long name"
+	previous := benchConst
 	var v string
 	for i := 0; i < b.N; i++ {
 		v = fmt.Sprintf("some%ssome", previous)
@@ -28,7 +30,7 @@ func BenchmarkFmt(b *testing.B) {
 
 // BenchmarkBuilder benchmarks concantating multiple strings using 'strings.Builder'.
 func BenchmarkBuilder(b *testing.B) {
-	previous := "some pretty long name"
+	previous := benchConst
 	var v string
 	for i := 0; i < b.N; i++ {
 		bldr := strings.Builder{}

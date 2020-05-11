@@ -12,10 +12,9 @@ import (
 //	# LeveledLogger
 //	# StdLogger
 // By wrapping the logger it implements ExtendedLeveledLogger.
-// For loggers that implements only StdLogger, Wrapper tries to virtualize
-// leveled logger behaviour. It simply adds level name before logging message.
-// If a logger implements LeveledLogger that doesn't have specific log line '****ln()' methods,
-// it uses default non 'ln' functions - i.e. instead 'Infoln' uses 'Info'.
+// For loggers that implements only StdLogger, Wrapper tries to virtualize leveled logger behavior.
+// It simply adds level name before logging message. If a logger implements LeveledLogger that doesn't have
+// specific log line '****ln()' methods, it uses default non 'ln' functions - i.e. instead 'Infoln' uses 'Info'.
 type Wrapper struct {
 	logger        interface{}
 	currentLogger int
@@ -79,7 +78,7 @@ func newLoggerWrapper(logger interface{}) (*Wrapper, error) {
 		return wrapper, nil
 	}
 
-	err = errors.New("Provided logger doesn't implement any known interfaces")
+	err = errors.New("provided logger doesn't implement any known interfaces")
 	return nil, err
 }
 
@@ -143,7 +142,6 @@ func (c *Wrapper) Println(args ...interface{}) {
 		log := c.logger.(ExtendedLeveledLogger)
 		log.Println(args...)
 	default:
-
 	}
 }
 
@@ -211,7 +209,6 @@ func (c *Wrapper) Debugln(args ...interface{}) {
 		log.Debugln(args...)
 	default:
 	}
-
 }
 
 // Info logs a message with INFO level.
@@ -234,7 +231,6 @@ func (c *Wrapper) Info(args ...interface{}) {
 		log.Info(args...)
 	default:
 	}
-
 }
 
 // Infof logs a formatted message with INFO level.

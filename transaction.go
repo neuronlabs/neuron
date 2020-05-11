@@ -28,11 +28,10 @@ func RunInTransaction(ctx context.Context, orm query.DB, txFn TxFn) (err error) 
 }
 
 func runInTransaction(ctx context.Context, c *controller.Controller, orm query.DB, txOpts *query.TxOptions, txFn TxFn) (err error) {
-	switch db := orm.(type) {
-	case *query.Tx:
-		// Don't create new transaction if provided 'orm' is a transaction.
+	if db, ok := orm.(*query.Tx); ok {
 		return txFn(db)
 	}
+
 	// In all other cases create a new transaction and execute 'txFn'
 	tx := query.Begin(ctx, c, txOpts)
 	defer func() {

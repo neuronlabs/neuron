@@ -224,7 +224,6 @@ func SetLogger(log LeveledLogger) {
 	if lvlSetter, ok := log.(LevelSetter); ok {
 		lvlSetter.SetLevel(currentLevel)
 	}
-
 	Debug("New logger set with level: %s", currentLevel.String())
 
 	debugLeveled, isDebugLeveled = log.(DebugLeveledLogger)

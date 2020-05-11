@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 )
 
-var logSequenceID = uint64(0)
+var logSequenceID uint64
 
 /**
 
@@ -297,7 +297,7 @@ func (l *BasicLogger) log(level Level, format *string, args ...interface{}) {
 		args:  args,
 	}
 
-	l.stdLogger.Output(l.outputDepth, msg.String())
+	_ = l.stdLogger.Output(l.outputDepth, msg.String())
 }
 
 func (l *BasicLogger) isLevelEnabled(level Level) bool {

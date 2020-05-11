@@ -346,10 +346,6 @@ func (s *StructField) getDeferenceType() reflect.Type {
 	return t
 }
 
-func (s *StructField) getFieldIndex() []int {
-	return s.Index
-}
-
 func (s *StructField) getRelatedModelType() reflect.Type {
 	if s.relationship == nil {
 		return nil

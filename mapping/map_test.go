@@ -10,8 +10,6 @@ import (
 	"github.com/neuronlabs/neuron/config"
 )
 
-const defaultRepo = "repo"
-
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 

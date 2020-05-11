@@ -22,7 +22,7 @@ func New(cfg *config.Controller) (*Neuron, error) {
 	return &Neuron{c: c}, nil
 }
 
-// NewScopeC creates new Neuron with the provided 'c' controller.
+// NewC creates new Neuron service with the provided 'c' controller.
 func NewC(c *controller.Controller) *Neuron {
 	return &Neuron{c: c}
 }

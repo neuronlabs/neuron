@@ -5,17 +5,18 @@ import (
 )
 
 var (
-	MjrClMapping errors.Major
+	// MjrMapping is the major error classification for the mapping package.
+	MjrMapping errors.Major
 
-	// MnrClValue is the minor error classification related to mapping values.
-	MnrClValue errors.Minor
+	// MnrValue is the minor error classification related to mapping values.
+	MnrValue errors.Minor
 	// ClassInvalidFieldValue is an invalid field value class.
 	ClassInvalidFieldValue errors.Class
 	// ClassInvalidRelationValue is the error for providing invalid relation value,
 	ClassInvalidRelationValue errors.Class
 
-	// MnrClModel is the minor error classification related to the models.
-	MnrClModel errors.Minor
+	// MnrModel is the minor error classification related to the models.
+	MnrModel errors.Minor
 
 	// ClassModelContainer is the error classification with models mapping container.
 	ClassModelContainer errors.Class
@@ -26,29 +27,24 @@ var (
 	// ClassModelNotImplements is the error classification when model doesn't implement some interface.
 	ClassModelNotImplements errors.Class
 
-	// ClassConfig is the error classification for the config errors.
-	ClassConfig errors.Class
-
 	// ClassInternal is the error class for internal mapping errors.
 	ClassInternal errors.Class
 )
 
 func init() {
-	MjrClMapping = errors.MustNewMajor()
+	MjrMapping = errors.MustNewMajor()
 
 	// Value
-	MnrClValue = errors.MustNewMinor(MjrClMapping)
-	ClassInvalidFieldValue = errors.MustNewClassWIndex(MjrClMapping, MnrClValue)
-	ClassInvalidRelationValue = errors.MustNewClassWIndex(MjrClMapping, MnrClValue)
+	MnrValue = errors.MustNewMinor(MjrMapping)
+	ClassInvalidFieldValue = errors.MustNewClassWIndex(MjrMapping, MnrValue)
+	ClassInvalidRelationValue = errors.MustNewClassWIndex(MjrMapping, MnrValue)
 
 	// Model
-	MnrClModel = errors.MustNewMinor(MjrClMapping)
-	ClassModelContainer = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
-	ClassModelDefinition = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
-	ClassModelNotFound = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
+	MnrModel = errors.MustNewMinor(MjrMapping)
+	ClassModelContainer = errors.MustNewClassWIndex(MjrMapping, MnrModel)
+	ClassModelDefinition = errors.MustNewClassWIndex(MjrMapping, MnrModel)
+	ClassModelNotFound = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 
-	// Config
-	ClassConfig = errors.MustNewMajorClass(MjrClMapping)
 	// Internal
-	ClassInternal = errors.MustNewMajorClass(MjrClMapping)
+	ClassInternal = errors.MustNewMajorClass(MjrMapping)
 }

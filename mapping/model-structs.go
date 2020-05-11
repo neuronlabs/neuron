@@ -86,7 +86,7 @@ func (m *ModelStruct) Attributes() (attributes []*StructField) {
 	return attributes
 }
 
-// NeuronCollectionName returns model's collection.
+// Collection returns model's collection.
 func (m *ModelStruct) Collection() string {
 	return m.collection
 }
