@@ -45,7 +45,7 @@ func init() {
 	MnrClModel = errors.MustNewMinor(MjrClMapping)
 	ClassModelContainer = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
 	ClassModelDefinition = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
-	ClassModelNotFound = errors.MustNewMajorClass(MjrClMapping, MnrClModel)
+	ClassModelNotFound = errors.MustNewClassWIndex(MjrClMapping, MnrClModel)
 
 	// Config
 	ClassConfig = errors.MustNewMajorClass(MjrClMapping)

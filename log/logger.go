@@ -153,8 +153,8 @@ func Infof(format string, args ...interface{}) {
 	}
 }
 
-// Level returns current logger Level.
-func Level() Level {
+// CurrentLevel returns current logger Level.
+func CurrentLevel() Level {
 	return currentLevel
 }
 

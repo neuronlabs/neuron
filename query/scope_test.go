@@ -124,13 +124,13 @@ func TestFormatQuery(t *testing.T) {
 		s := newScope(db, mStruct)
 		require.NoError(t, err)
 
-		err = s.OrderBy("-TransactionID")
+		err = s.OrderBy("-id")
 		require.NoError(t, err)
 
 		q := s.FormatQuery()
 		require.Len(t, q, 1)
 
-		assert.Equal(t, "-TransactionID", q.Get(ParamSort))
+		assert.Equal(t, "-id", q.Get(ParamSort))
 	})
 
 	t.Run("Fieldset", func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestFormatQuery(t *testing.T) {
 			fields := strings.Split(fieldsString, ",")
 			assert.Len(t, fields, 4)
 
-			assert.Contains(t, fields, "TransactionID")
+			assert.Contains(t, fields, "id")
 			assert.Contains(t, fields, "attr")
 			assert.Contains(t, fields, "fk")
 			assert.Contains(t, fields, "lang")

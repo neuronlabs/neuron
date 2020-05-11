@@ -40,37 +40,6 @@ type OtherNotTaggedModel struct {
 
 // TestRegisterModel tests the register model function.
 func TestRegisterModel(t *testing.T) {
-	t.Run("Embedded", func(t *testing.T) {
-		m := testingModelMap(t)
-		err := m.RegisterModels(&embeddedModel{})
-		require.NoError(t, err)
-
-		ms, err := m.GetModelStruct(&embeddedModel{})
-		require.NoError(t, err)
-
-		// get embedded attribute
-		sa, ok := ms.Attribute("string_attr")
-		if assert.True(t, ok) {
-			assert.Equal(t, []int{0, 1}, sa.Index)
-		}
-
-		// get 'this' attribute
-		ia, ok := ms.Attribute("int_attr")
-		if assert.True(t, ok) {
-			assert.Equal(t, []int{1}, ia.Index)
-		}
-
-		sField, ok := ms.RelationByName("rel_field")
-		if assert.True(t, ok) {
-			assert.Equal(t, []int{0, 2}, sField.getFieldIndex())
-		}
-
-		sField, ok = ms.ForeignKey("rel_field_id")
-		if assert.True(t, ok) {
-			assert.Equal(t, []int{0, 3}, sField.getFieldIndex())
-		}
-	})
-
 	t.Run("Tags", func(t *testing.T) {
 		t.Run("Invalid", func(t *testing.T) {
 			// ModelComma is the model where the type hase more than,' instead of ';'.

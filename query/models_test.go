@@ -116,6 +116,16 @@ type ForeignModel struct {
 	ForeignKey int `neuron:"type=foreign"`
 }
 
+func (f *ForeignModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
+	switch field.Name() {
+	case "ID":
+		return f.ID, nil
+	case "ForeignKey":
+		return f.ForeignKey, nil
+	}
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
+}
+
 func (f *ForeignModel) NeuronCollectionName() string {
 	return "foreign_models"
 }
@@ -258,6 +268,18 @@ type JoinModel struct {
 	MtMForeignKey int `neuron:"type=foreign"`
 }
 
+func (m *JoinModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
+	switch field.Name() {
+	case "ID":
+		return m.ID, nil
+	case "ForeignKey":
+		return m.ForeignKey, nil
+	case "MtMForeignKey":
+		return m.MtMForeignKey, nil
+	}
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
+}
+
 func (m *JoinModel) SetFieldZeroValue(field *mapping.StructField) error {
 	switch field.Name() {
 	case "ID":
@@ -352,6 +374,16 @@ type RelatedModel struct {
 	FloatField float64 `neuron:"type=attr"`
 }
 
+func (m *RelatedModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
+	switch field.Name() {
+	case "ID":
+		return m.ID, nil
+	case "FloatField":
+		return m.FloatField, nil
+	}
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
+}
+
 func (m *RelatedModel) SetFieldZeroValue(field *mapping.StructField) error {
 	switch field.Name() {
 	case "ID":
@@ -435,6 +467,16 @@ type ForeignWithRelation struct {
 	ID         int
 	Relation   *HasManyWithRelation `neuron:"foreign=ForeignKey"`
 	ForeignKey int                  `neuron:"type=foreign"`
+}
+
+func (m *ForeignWithRelation) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
+	switch field.Name() {
+	case "ID":
+		return m.ID, nil
+	case "ForeignKey":
+		return m.ForeignKey, nil
+	}
+	return nil, errors.New(mapping.ClassInvalidFieldValue, "invalid field")
 }
 
 func (m *ForeignWithRelation) SetFieldZeroValue(field *mapping.StructField) error {

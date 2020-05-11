@@ -162,7 +162,7 @@ func NewFilterField(field *mapping.StructField, op *Operator, values ...interfac
 
 // NewFilter creates new filterField for the default controller, 'model', 'filter' query and 'values'.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func NewFilter(model interface{}, filter string, values ...interface{}) (*FilterField, error) {
@@ -171,7 +171,7 @@ func NewFilter(model interface{}, filter string, values ...interface{}) (*Filter
 
 // NewFilterC creates new filterField for the controller 'c', 'model', 'filter' query and 'values'.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func NewFilterC(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
@@ -326,7 +326,7 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 		if rel, ok := mStruct.RelationByName(params[1]); ok {
 			f = &FilterField{StructField: rel}
 			relStruct := rel.Relationship().Struct()
-			if params[2] == "TransactionID" {
+			if params[2] == "id" {
 				field = relStruct.Primary()
 			} else if field, ok = relStruct.Attribute(params[2]); !ok {
 				if foreignKeyAllowed {

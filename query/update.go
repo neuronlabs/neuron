@@ -13,7 +13,7 @@ import (
 // Update patches all selected values for given scope value.
 func (s *Scope) Update(ctx context.Context) (modelsAffected int64, err error) {
 	startTS := s.DB().Controller().Now()
-	if log.Level().IsAllowed(log.LevelDebug2) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(s.logFormat("Update %s begins."), s.mStruct.Collection())
 	}
 	if len(s.mStruct.Fields()) == 0 {
@@ -30,12 +30,12 @@ func (s *Scope) Update(ctx context.Context) (modelsAffected int64, err error) {
 		modelsAffected, err = s.updateModels(ctx)
 	}
 	if err != nil {
-		if log.Level().IsAllowed(log.LevelDebug2) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 			log.Debug2f(s.logFormat("Update %s finished with error: '%v' in: '%s' affecting: '%d' models."), s.mStruct.Collection(), time.Since(startTS), err, modelsAffected)
 		}
 		return modelsAffected, err
 	}
-	if log.Level().IsAllowed(log.LevelDebug2) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(s.logFormat("Update %s finished in: '%s' affecting: '%d' models."), s.mStruct.Collection(), time.Since(startTS), modelsAffected)
 	}
 	return modelsAffected, nil
@@ -59,12 +59,12 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 		beforeUpdater, ok := model.(BeforeUpdater)
 		if !ok {
 			// If one model is not a before updater - break the loop faster.
-			if log.Level().IsAllowed(log.LevelDebug3) {
+			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f("Model: '%s' doesn't implement BeforeUpdater interface.", s.mStruct)
 			}
 			break
 		}
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3f(s.logFormat("Executing model[%d] BeforeUpdate hook"), i)
 		}
 		if err := beforeUpdater.BeforeUpdate(ctx, s.db); err != nil {
@@ -95,20 +95,20 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 					case field.IsPrimary():
 						return 0, errors.Newf(ClassInvalidModels, "cannot update model at: '%d' index. The primary key field have zero value.", i)
 					case hasUpdatedAt && field == updatedAt:
-						if log.Level().IsAllowed(log.LevelDebug3) {
+						if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], setting updated at field to: '%s'"), i, tsNow)
 						}
 						if err = fielder.SetFieldValue(field, tsNow); err != nil {
 							return 0, err
 						}
 					default:
-						if log.Level().IsAllowed(log.LevelDebug3) {
+						if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], field: '%s' has zero value"), i, field)
 						}
 						continue
 					}
 				}
-				if log.Level().IsAllowed(log.LevelDebug3) {
+				if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 					log.Debug3f(s.logFormat("model[%d] adding field: '%s' to fieldset"), i, field)
 				}
 				s.ModelsFieldsets[i] = append(s.ModelsFieldsets[i], field)
@@ -116,7 +116,7 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 		}
 	}
 
-	if log.Level().IsAllowed(log.LevelDebug3) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 		log.Debug3f(s.logFormat("Update: '%d' models"), len(s.Models))
 	}
 	modelsAffected, err := updater.Update(ctx, s)
@@ -130,12 +130,12 @@ func (s *Scope) updateModels(ctx context.Context) (int64, error) {
 		afterUpdater, ok := model.(AfterUpdater)
 		if !ok {
 			// If one model is not a AfterUpdater - break the loop faster.
-			if log.Level().IsAllowed(log.LevelDebug3) {
+			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f("Model: '%s' doesn't implement AfterUpdater interface", s.mStruct)
 			}
 			break
 		}
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3f(s.logFormat("Executing model[%d] AfterUpdate hook"), i)
 		}
 		if err = afterUpdater.AfterUpdate(ctx, s.db); err != nil {
@@ -298,14 +298,14 @@ func (s *Scope) updateFilteredWithFind(ctx context.Context, model mapping.Model)
 			if !ok {
 				return 0, errors.Newf(mapping.ClassModelNotImplements, "singleModel: '%s' doesn't implement Fielder interface", s.mStruct)
 			}
-			if log.Level().IsAllowed(log.LevelDebug3) {
+			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f(s.logFormat("model[%d], setting updated at field to: '%s'"), i, tsNow)
 			}
 			if err = fielder.SetFieldValue(updatedAt, tsNow); err != nil {
 				return 0, err
 			}
 		}
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3f(s.logFormat("adding field: '%s' to the fieldset"), updatedAt)
 		}
 		findFieldset = append(findFieldset, updatedAt)

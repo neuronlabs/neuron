@@ -52,7 +52,7 @@ var defaultOperators = []*Operator{
 
 // Operator is the operator used for filtering the query.
 type Operator struct {
-	// ID is the filter operator TransactionID used for comparing the operator type.
+	// ID is the filter operator id used for comparing the operator type.
 	ID uint16
 	// Models is the operator query value
 	Value string
@@ -126,7 +126,7 @@ func (o OperatorValues) copy() OperatorValues {
 // RegisterOperator registers the operator in the provided container
 func RegisterOperator(o *Operator) error {
 	err := FilterOperators.registerOperator(o)
-	log.Infof("Registered operator: %s with TransactionID: %d", o.ID)
+	log.Infof("Registered operator: %s with id: %d", o.ID)
 	return err
 }
 

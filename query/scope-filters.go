@@ -13,7 +13,7 @@ func (s *Scope) ClearFilters() {
 
 // Where parses the filter into the  and adds it to the given scope.
 // The 'filter' should be of form:
-// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'TransactionID in', 'name contains'
+// 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func (s *Scope) Where(filter string, values ...interface{}) error {

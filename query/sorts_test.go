@@ -28,14 +28,14 @@ func TestNewUniques(t *testing.T) {
 	})
 
 	t.Run("Duplicated", func(t *testing.T) {
-		_, err := NewSortFields(mStruct, false, "TransactionID", "-TransactionID", "TransactionID")
+		_, err := NewSortFields(mStruct, false, "id", "-id", "id")
 		require.Error(t, err)
 	})
 
 	t.Run("TooManyPossible", func(t *testing.T) {
 		sorts := []string{}
 		for i := 0; i < 200; i++ {
-			sorts = append(sorts, "TransactionID")
+			sorts = append(sorts, "id")
 		}
 
 		_, err := NewSortFields(mStruct, false, sorts...)
@@ -43,7 +43,7 @@ func TestNewUniques(t *testing.T) {
 	})
 
 	t.Run("Valid", func(t *testing.T) {
-		sorts, err := NewSortFields(mStruct, false, "-TransactionID", "title", "posts.TransactionID", "current_post_id")
+		sorts, err := NewSortFields(mStruct, false, "-id", "title", "posts.id", "current_post_id")
 		require.NoError(t, err)
 
 		assert.Len(t, sorts, 4)
@@ -61,14 +61,14 @@ func TestNew(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("NoOrder", func(t *testing.T) {
-		sField, err := NewSort(mStruct, "-TransactionID", true)
+		sField, err := NewSort(mStruct, "-id", true)
 		require.NoError(t, err)
 
 		assert.Equal(t, DescendingOrder, sField.Order)
 	})
 
 	t.Run("WithOrder", func(t *testing.T) {
-		sField, err := NewSort(mStruct, "TransactionID", true, DescendingOrder)
+		sField, err := NewSort(mStruct, "id", true, DescendingOrder)
 		require.NoError(t, err)
 
 		assert.Equal(t, DescendingOrder, sField.Order)
@@ -121,7 +121,7 @@ func TestSortField(t *testing.T) {
 	mStruct, err := ms.GetModelStruct(&Blog{})
 	require.NoError(t, err)
 
-	sField, err := NewSort(mStruct, "posts.TransactionID", true)
+	sField, err := NewSort(mStruct, "posts.id", true)
 	require.NoError(t, err)
 
 	t.Run("Copy", func(t *testing.T) {
@@ -159,19 +159,19 @@ func TestSetRelationScopeSort(t *testing.T) {
 	err = sortField.setSubfield([]string{}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"posts", "some", "TransactionID"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"posts", "some", "id"}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "TransactionID", "desc"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "id", "desc"}, AscendingOrder, true)
 	assert.Error(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "TransactionID"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
 	assert.Nil(t, err)
 
 	err = sortField.setSubfield([]string{"comments", "body"}, AscendingOrder, true)
 	assert.Nil(t, err)
 
-	err = sortField.setSubfield([]string{"comments", "TransactionID"}, AscendingOrder, true)
+	err = sortField.setSubfield([]string{"comments", "id"}, AscendingOrder, true)
 	assert.Nil(t, err)
 }
 

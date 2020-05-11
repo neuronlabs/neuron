@@ -19,7 +19,7 @@ import (
 // The scope has its unique 'ID', contains predefined model, operational value, fieldset, filters, sorts and pagination.
 // It also contains the mapping of the included scopes.
 type Scope struct {
-	// TransactionID is the unique identification of the scope.
+	// id is the unique identification of the scope.
 	id uuid.UUID
 	// DB defines the database interface for given scope.
 	db DB
@@ -129,7 +129,7 @@ func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
 
 // StoreSet sets the 'key' and 'value' in the given scope's store.
 func (s *Scope) StoreSet(key, value interface{}) {
-	if log.Level().IsAllowed(log.LevelDebug3) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 		log.Debug3f("SCOPE[%s][%s] Store AddModel key: '%v', value: '%v'", s.ID(), s.mStruct.Collection(), key, value)
 	}
 	s.store[key] = value
@@ -325,7 +325,7 @@ func newScope(db DB, modelStruct *mapping.ModelStruct) *Scope {
 		store:   map[interface{}]interface{}{},
 	}
 
-	if log.Level() <= log.LevelDebug2 {
+	if log.CurrentLevel() <= log.LevelDebug2 {
 		log.Debug2f("[SCOPE][%s][%s] query new scope", s.id.String(), modelStruct.Collection())
 	}
 	return s

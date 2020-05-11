@@ -44,7 +44,7 @@ func TestNewUrlStringFilter(t *testing.T) {
 
 	t.Run("Primary", func(t *testing.T) {
 		t.Run("WithoutOperator", func(t *testing.T) {
-			filter, err := NewURLStringFilter(c, "filter[testing_models][TransactionID]", 521)
+			filter, err := NewURLStringFilter(c, "filter[testing_models][id]", 521)
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField)
@@ -57,7 +57,7 @@ func TestNewUrlStringFilter(t *testing.T) {
 		})
 
 		t.Run("WithoutFilterWord", func(t *testing.T) {
-			filter, err := NewURLStringFilter(c, "[testing_models][TransactionID][$ne]", "some string value")
+			filter, err := NewURLStringFilter(c, "[testing_models][id][$ne]", "some string value")
 			require.NoError(t, err)
 
 			assert.Equal(t, mStruct.Primary(), filter.StructField)
@@ -77,7 +77,7 @@ func TestNewUrlStringFilter(t *testing.T) {
 		})
 
 		t.Run("Operator", func(t *testing.T) {
-			_, err := NewURLStringFilter(c, "filter[testing_models][TransactionID][$unknown]", 1)
+			_, err := NewURLStringFilter(c, "filter[testing_models][id][$unknown]", 1)
 			require.Error(t, err)
 		})
 
@@ -123,7 +123,7 @@ func TestNewUrlStringFilter(t *testing.T) {
 	})
 
 	t.Run("Relationship", func(t *testing.T) {
-		filter, err := NewURLStringFilter(c, "[testing_models][relation][TransactionID][$ne]", "some string value")
+		filter, err := NewURLStringFilter(c, "[testing_models][relation][id][$ne]", "some string value")
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("Relation")

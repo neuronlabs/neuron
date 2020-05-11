@@ -13,7 +13,7 @@ import (
 // Insert stores the values within the given scope's value repository.
 func (s *Scope) Insert(ctx context.Context) (err error) {
 	startTS := s.DB().Controller().Now()
-	if log.Level().IsAllowed(log.LevelDebug2) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(s.logFormat("Insert %s with %d models begins."), s.mStruct.Collection(), len(s.Models))
 	}
 	if len(s.Models) == 0 {
@@ -32,12 +32,12 @@ func (s *Scope) Insert(ctx context.Context) (err error) {
 	for i, model := range s.Models {
 		beforeInserter, ok := model.(BeforeInserter)
 		if !ok {
-			if log.Level().IsAllowed(log.LevelDebug3) {
+			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f("Model: '%s' doesn't implement BeforeInserter interface.", s.mStruct)
 			}
 			break
 		}
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3f(s.logFormat("Executing model[%d] BeforeInsert hook"), i)
 		}
 		if err = beforeInserter.BeforeInsert(ctx, s.db); err != nil {
@@ -62,7 +62,7 @@ func (s *Scope) Insert(ctx context.Context) (err error) {
 			if !ok {
 				// If the model is not a fielder let's check if a primary is not zero.
 				if !model.IsPrimaryKeyZero() {
-					if log.Level().IsAllowed(log.LevelDebug3) {
+					if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 						log.Debug3f(s.logFormat("model[%d] adding primary field to fieldset"), i)
 					}
 					s.ModelsFieldsets[i] = append(s.ModelsFieldsets[i], s.mStruct.Primary())
@@ -80,27 +80,27 @@ func (s *Scope) Insert(ctx context.Context) (err error) {
 					// If the field is a 'created at' or 'updated at' timestamps set their zero value to current timestamp.
 					switch {
 					case hasCreatedAt && field == createdAt:
-						if log.Level().IsAllowed(log.LevelDebug3) {
+						if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], setting created at field to: '%s'"), i, startTS)
 						}
 						if err = fielder.SetFieldValue(createdAt, startTS); err != nil {
 							return err
 						}
 					case hasUpdatedAt && field == updatedAt:
-						if log.Level().IsAllowed(log.LevelDebug3) {
+						if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], setting updated at field to: '%s'"), i, startTS)
 						}
 						if err = fielder.SetFieldValue(updatedAt, startTS); err != nil {
 							return err
 						}
 					default:
-						if log.Level().IsAllowed(log.LevelDebug3) {
+						if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 							log.Debug3f(s.logFormat("model[%d], field: '%s' has zero value"), i, field)
 						}
 						continue
 					}
 				}
-				if log.Level().IsAllowed(log.LevelDebug3) {
+				if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 					log.Debug3f(s.logFormat("model[%d] adding field: '%s' to fieldset"), i, field)
 				}
 				s.ModelsFieldsets[i] = append(s.ModelsFieldsets[i], field)
@@ -119,19 +119,19 @@ func (s *Scope) Insert(ctx context.Context) (err error) {
 	for i, model := range s.Models {
 		afterInserter, ok := model.(AfterInserter)
 		if !ok {
-			if log.Level().IsAllowed(log.LevelDebug3) {
+			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f("Model: '%s' doesn't implement After inserter interface", s.mStruct)
 			}
 			return nil
 		}
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3f(s.logFormat("Executing model[%d] AfterInsert hook"), i)
 		}
 		if err = afterInserter.AfterInsert(ctx, s.db); err != nil {
 			return err
 		}
 	}
-	if log.Level().IsAllowed(log.LevelDebug2) {
+	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(s.logFormat("Insert of %s with %d models finished in '%s'."), s.mStruct.Collection(), len(s.Models), time.Since(startTS))
 	}
 	return nil

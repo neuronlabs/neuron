@@ -80,7 +80,7 @@ func (s *Scope) Include(relation *mapping.StructField, relationFieldset ...*mapp
 
 func (s *Scope) findIncludedRelations(ctx context.Context) (err error) {
 	if len(s.IncludedRelations) == 0 {
-		if log.Level().IsAllowed(log.LevelDebug3) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 			log.Debug3(s.logFormat("no included fields found"))
 		}
 		return nil
@@ -156,7 +156,7 @@ func (s *Scope) findIncludedRelationsAsynchronous(ctx context.Context) (err erro
 		log.Debugf("Find include error: %v", e)
 		return e
 	case <-waitChan:
-		if log.Level().IsAllowed(log.LevelDebug2) {
+		if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 			log.Debug2f(s.logFormat("Finished finding asynchronous included relations"))
 		}
 	}
