@@ -20,6 +20,3 @@ import "github.com/neuronlabs/neuron/neuron-generator/cmd"
 func main() {
 	cmd.Execute()
 }
-
-//go:generate go-bindata -o bintemplates/bindata.go -pkg bintemplates ./templates
-//go:generate go install

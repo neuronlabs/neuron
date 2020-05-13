@@ -19,9 +19,23 @@ func ({{.Receiver}} *{{.Name}}) GetPrimaryKeyValue() interface{} {
     return {{.Receiver}}.{{.Primary.Name}}
 }
 
+// GetPrimaryKeyHashableValue implements query.Model interface method.
+func ({{.Receiver}} *{{.Name}}) GetPrimaryKeyHashableValue() interface{} {
+    {{if .Primary.IsPointer -}}
+    if {{.Receiver}}.{{.Primary.Name}} == nil {
+        return {{.Receiver}}.{{.Primary.Name}}
+    }
+    {{end -}}
+    {{if .Primary.IsByteSlice -}}
+    return string({{if .Primary.IsPointer}}*{{end}}{{.Receiver}}.{{.Primary.Name}})
+    {{else -}}
+    return {{if .Primary.IsPointer}}*{{end}}{{.Receiver}}.{{.Primary.Name}}
+    {{end -}}
+}
+
 // GetPrimaryKeyZeroValue implements query.Model interface method.
 func ({{.Receiver}} *{{.Name}}) GetPrimaryKeyZeroValue() interface{} {
-    return {{.Primary.GetZero}}
+    return {{if eq .Primary.Zero "nil"}}{{if .Primary.IsPointer}}({{end}}{{.Primary.Type}}{{if .Primary.IsPointer}}){{end}}({{end}}{{.Primary.GetZero}}{{if eq .Primary.Zero "nil"}}){{end}}
 }
 
 // SetPrimaryKey implements query.Model interface method.
@@ -35,28 +49,39 @@ func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
     if v, ok := value.({{.Primary.Type}}); ok {
         {{.Receiver}}.{{.Primary.Name}} = v
         return nil
-    {{if .Primary.IsPointer -}}
+    {{if and (not .Primary.IsSlice) .Primary.IsPointer -}}
     } else if v, ok := value.({{.Primary.BaseType}}); ok {
         {{.Receiver}}.{{.Primary.Name}} = &v
         return nil
     {{end -}}{{range $wrapped := .Primary.WrappedTypes -}}
     } else if v, ok := value.({{$wrapped}}); ok {
-        {{.Receiver}}.{{.Primary.Name}} = {{if .Primary.IsPointer}}&{{end}}v
+        {{if .Primary.IsPointer -}}
+        temp := {{slice .Primary.Type 1}}(v)
+        {{$out.Receiver}}.{{.Primary.Name}} = &temp
+        {{else -}}
+        {{$out.Receiver}}.{{.Primary.Name}} = {{.Primary.BaseType}}(v)
+        {{end -}}
     {{end -}}
     }
-    {{if .Primary.AlternateTypes -}}
+    {{if le (len .Primary.AlternateTypes) 1 -}}
+    {{- if eq (len .Primary.AlternateTypes) 1 -}}
     // Check alternate types for given field.
-    {{if eq (len .Primary.AlternateTypes) 1 -}}
     if v, ok := value.({{index .Primary.AlternateTypes 0}}); ok {
         {{if $out.Primary.IsPointer -}}
-        temp := {{$out.Primary.BaseType}}(v)
+        temp := {{slice $out.Primary.Type 1}}(v)
         {{$out.Receiver}}.{{$out.Primary.Name}} = &temp
         {{- else -}}
         {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(v)
         {{- end}}
         return nil
     }
+    {{end -}}{{if .Primary.Scanner -}}
+        return {{.Receiver}}.{{.Primary.Name}}.Scan(value)
+    {{else -}}
+        return errors.Newf(mapping.ClassInvalidFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
+        value, {{.Receiver}}){{end}}
     {{- else -}}
+    // Check alternate types for given field.
     switch valueType := value.(type) {
     {{range $alternate := .Primary.AlternateTypes -}}
     case {{$alternate}}:
@@ -66,14 +91,8 @@ func ({{.Receiver}} *{{.Name}}) SetPrimaryKeyValue(value interface{}) error {
         {{- else -}}
         {{$out.Receiver}}.{{$out.Primary.Name}} = {{$out.Primary.Type}}(valueType)
         {{- end}}
-        return nil
-    {{end -}}
-    }{{end}}{{end}}
-    {{if .Primary.Scanner -}}
-    return {{.Receiver}}.{{.Primary.Name}}.Scan(value)
-    {{- else -}}
-    return errors.Newf(mapping.ClassInvalidFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
-        value, {{.Receiver}})
-    {{- end}}
-}
-{{- end -}}
+    {{end -}}default:
+        return errors.Newf(mapping.ClassInvalidFieldValue, "provided invalid value: '%T' for the primary field for model: '{{.Name}}'", value)
+    }
+    return nil{{end}}
+}{{end}}

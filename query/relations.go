@@ -60,11 +60,11 @@ func (s *Scope) addRelationMany2Many(ctx context.Context, relField *mapping.Stru
 			if !ok {
 				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", joinModel.NeuronCollectionName())
 			}
-			err = joinModelFielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyValue())
+			err = joinModelFielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyHashableValue())
 			if err != nil {
 				return err
 			}
-			err = joinModelFielder.SetFieldValue(relationship.ManyToManyForeignKey(), relationModel.GetPrimaryKeyValue())
+			err = joinModelFielder.SetFieldValue(relationship.ManyToManyForeignKey(), relationModel.GetPrimaryKeyHashableValue())
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func (s *Scope) addRelationHasMany(ctx context.Context, relField *mapping.Struct
 		if !ok {
 			return errModelNotImplements(relationship.Struct(), "Fielder")
 		}
-		err := fielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyValue())
+		err := fielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyHashableValue())
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func (s *Scope) addRelationHasOne(ctx context.Context, relationField *mapping.St
 	if !ok {
 		return errModelNotImplements(relationship.Struct(), "Fielder")
 	}
-	if err := fielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyValue()); err != nil {
+	if err := fielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyHashableValue()); err != nil {
 		return err
 	}
 
@@ -267,7 +267,7 @@ func (s *Scope) removeHasRelations(ctx context.Context, relField *mapping.Struct
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.Newf(ClassInvalidModels, "one of the model values has zero primary key value")
 		}
-		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyValue())
+		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyHashableValue())
 	}
 	relationModelStruct := relField.Relationship().Struct()
 	if gettingRelationRequired {
@@ -316,7 +316,7 @@ func (s *Scope) removeMany2ManyRelations(ctx context.Context, relField *mapping.
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.Newf(ClassInvalidModels, "one of the model values has zero primary key value")
 		}
-		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyValue())
+		primaryKeyValues = append(primaryKeyValues, model.GetPrimaryKeyHashableValue())
 	}
 	if gettingRelationRequired {
 		joinModels, err := s.DB().QueryCtx(ctx, joinModelStruct).
@@ -404,7 +404,7 @@ func (s *Scope) setBelongsToRelation(ctx context.Context, relationField *mapping
 	if relationModels[0].IsPrimaryKeyZero() {
 		return errors.Newf(ClassInvalidInput, "provided relation has zero value primary key")
 	}
-	relationPrimary := relationModels[0].GetPrimaryKeyValue()
+	relationPrimary := relationModels[0].GetPrimaryKeyHashableValue()
 
 	// If the model has UpdatedAt timestamp set it manually.
 	updatedAt, hasUpdated := s.mStruct.UpdatedAt()

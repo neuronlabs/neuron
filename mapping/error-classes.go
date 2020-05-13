@@ -31,6 +31,8 @@ var (
 	ClassModelNotFound errors.Class
 	// ClassModelNotImplements is the error classification when model doesn't implement some interface.
 	ClassModelNotImplements errors.Class
+	// ClassInvalidModelField is the error classification for invalid model field.
+	ClassInvalidModelField errors.Class
 
 	// ClassInternal is the error class for internal mapping errors.
 	ClassInternal errors.Class
@@ -53,6 +55,7 @@ func init() {
 	ClassModelContainer = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelDefinition = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelNotFound = errors.MustNewClassWIndex(MjrMapping, MnrModel)
+	ClassInvalidModelField = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 
 	// Internal
 	ClassInternal = errors.MustNewMajorClass(MjrMapping)

@@ -2,6 +2,11 @@ module github.com/neuronlabs/neuron/neuron-generator
 
 go 1.13
 
+replace (
+	github.com/neuronlabs/neuron => ./../
+	github.com/neuronlabs/neuron/errors => ./../errors
+)
+
 require (
 	github.com/neuronlabs/inflection v1.0.1
 	github.com/neuronlabs/neuron v0.15.0

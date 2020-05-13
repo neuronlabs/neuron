@@ -1,5 +1,3 @@
-// +build !codeanalysis
-
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -19,10 +17,15 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"fmt"
+	"go/format"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/tools/imports"
 )
 
 // modelsCmd represents the models command
@@ -45,4 +48,43 @@ func directory(args []string) string {
 		log.Fatal("-tags option applies only to directories, not when files are specified")
 	}
 	return filepath.Dir(args[0])
+}
+
+func generateFile(fileName, templateName string, buf *bytes.Buffer, templateValue interface{}) {
+	var err error
+	if err = templates.ExecuteTemplate(buf, templateName, templateValue); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: execute model template failed: %v\n", err)
+		os.Exit(1)
+	}
+	var result []byte
+	switch codeFormatting {
+	case gofmtFormat:
+		result, err = format.Source(buf.Bytes())
+	case goimportsFormat:
+		err = os.Remove(fileName)
+		if err != nil && !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Error: deleting file failed: %v", err)
+			os.Exit(1)
+		}
+		result, err = imports.Process(fileName, buf.Bytes(), nil)
+	default:
+		result = buf.Bytes()
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: formatting go file failed: %v", err)
+		os.Exit(1)
+	}
+	buf.Reset()
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Writing file: %s failed: %v\n", fileName, err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	_, err = file.Write(result)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Writing file: '%s' failed. %v\n", fileName, err)
+		os.Exit(1)
+	}
 }

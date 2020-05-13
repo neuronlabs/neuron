@@ -137,7 +137,7 @@ func (s *Scope) findBelongsToRelation(ctx context.Context, included *IncludedRel
 	}
 
 	for _, relModel := range relatedModels {
-		indexes := foreignKeyToIndexes[relModel.GetPrimaryKeyValue()]
+		indexes := foreignKeyToIndexes[relModel.GetPrimaryKeyHashableValue()]
 
 		for _, index := range indexes {
 			relationer, ok := s.Models[index].(mapping.SingleRelationer)
@@ -206,8 +206,8 @@ func (s *Scope) findHasRelation(ctx context.Context, included *IncludedRelation)
 			continue
 		}
 
-		primaryKeyToIndex[model.GetPrimaryKeyValue()] = i
-		filterValues = append(filterValues, model.GetPrimaryKeyValue())
+		primaryKeyToIndex[model.GetPrimaryKeyHashableValue()] = i
+		filterValues = append(filterValues, model.GetPrimaryKeyHashableValue())
 	}
 
 	fieldSet := included.Fieldset
@@ -275,8 +275,8 @@ func (s *Scope) findManyToManyRelation(ctx context.Context, included *IncludedRe
 		if model.IsPrimaryKeyZero() {
 			continue
 		}
-		primariesToIndex[model.GetPrimaryKeyValue()] = index
-		filterValues = append(filterValues, model.GetPrimaryKeyValue())
+		primariesToIndex[model.GetPrimaryKeyHashableValue()] = index
+		filterValues = append(filterValues, model.GetPrimaryKeyHashableValue())
 	}
 
 	// Get the back reference foreign key - a field that relates to the root models primary key field in the join table.
@@ -347,7 +347,7 @@ func (s *Scope) findManyToManyRelation(ctx context.Context, included *IncludedRe
 		if model.IsPrimaryKeyZero() {
 			continue
 		}
-		primaryKeyValue := model.GetPrimaryKeyValue()
+		primaryKeyValue := model.GetPrimaryKeyHashableValue()
 		indexes := relationPrimariesToIndexes[primaryKeyValue]
 		for _, index := range indexes {
 			relationer, ok := s.Models[index].(mapping.MultiRelationer)

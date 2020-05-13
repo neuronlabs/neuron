@@ -39,6 +39,10 @@ func (m *HasOneModel) IsPrimaryKeyZero() bool {
 	return m.ID == 0
 }
 
+func (m *HasOneModel) GetPrimaryKeyHashableValue() interface{} {
+	return m.ID
+}
+
 func (m *HasOneModel) GetPrimaryKeyValue() interface{} {
 	return m.ID
 }
@@ -57,6 +61,10 @@ var (
 type HasManyModel struct {
 	ID      int             `neuron:"type=primary"`
 	HasMany []*ForeignModel `neuron:"type=relation;foreign=ForeignKey"`
+}
+
+func (m *HasManyModel) GetPrimaryKeyValue() interface{} {
+	return m.ID
 }
 
 func (m *HasManyModel) NeuronCollectionName() string {
@@ -96,7 +104,7 @@ func (m *HasManyModel) IsPrimaryKeyZero() bool {
 	return m.ID == 0
 }
 
-func (m *HasManyModel) GetPrimaryKeyValue() interface{} {
+func (m *HasManyModel) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 
@@ -114,6 +122,10 @@ var (
 type ForeignModel struct {
 	ID         int `neuron:"type=primary"`
 	ForeignKey int `neuron:"type=foreign"`
+}
+
+func (f *ForeignModel) GetPrimaryKeyValue() interface{} {
+	return f.ID
 }
 
 func (f *ForeignModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -144,7 +156,7 @@ func (f *ForeignModel) IsPrimaryKeyZero() bool {
 	return f.ID == 0
 }
 
-func (f *ForeignModel) GetPrimaryKeyValue() interface{} {
+func (f *ForeignModel) GetPrimaryKeyHashableValue() interface{} {
 	return f.ID
 }
 
@@ -210,6 +222,10 @@ type ManyToManyModel struct {
 	Many2Many []*RelatedModel `neuron:"type=relation;many2many=JoinModel;foreign=ForeignKey,MtMForeignKey"`
 }
 
+func (m *ManyToManyModel) GetPrimaryKeyValue() interface{} {
+	return m.ID
+}
+
 func (m *ManyToManyModel) NeuronCollectionName() string {
 	return "many_to_many_models"
 }
@@ -247,7 +263,7 @@ func (m *ManyToManyModel) IsPrimaryKeyZero() bool {
 	return m.ID == 0
 }
 
-func (m *ManyToManyModel) GetPrimaryKeyValue() interface{} {
+func (m *ManyToManyModel) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 
@@ -266,6 +282,10 @@ type JoinModel struct {
 	ID            int `neuron:"type=primary"`
 	ForeignKey    int `neuron:"type=foreign"`
 	MtMForeignKey int `neuron:"type=foreign"`
+}
+
+func (m *JoinModel) GetPrimaryKeyValue() interface{} {
+	return m.ID
 }
 
 func (m *JoinModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -300,7 +320,7 @@ func (m *JoinModel) IsPrimaryKeyZero() bool {
 	return m.ID == 0
 }
 
-func (m *JoinModel) GetPrimaryKeyValue() interface{} {
+func (m *JoinModel) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 
@@ -374,6 +394,10 @@ type RelatedModel struct {
 	FloatField float64 `neuron:"type=attr"`
 }
 
+func (m *RelatedModel) GetPrimaryKeyValue() interface{} {
+	return m.ID
+}
+
 func (m *RelatedModel) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
 	switch field.Name() {
 	case "ID":
@@ -444,7 +468,7 @@ func (m *RelatedModel) IsPrimaryKeyZero() bool {
 	return m.ID == 0
 }
 
-func (m *RelatedModel) GetPrimaryKeyValue() interface{} {
+func (m *RelatedModel) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 
@@ -467,6 +491,10 @@ type ForeignWithRelation struct {
 	ID         int
 	Relation   *HasManyWithRelation `neuron:"foreign=ForeignKey"`
 	ForeignKey int                  `neuron:"type=foreign"`
+}
+
+func (m *ForeignWithRelation) GetPrimaryKeyValue() interface{} {
+	return m.ID
 }
 
 func (m *ForeignWithRelation) GetHashableFieldValue(field *mapping.StructField) (interface{}, error) {
@@ -510,7 +538,7 @@ func (m *ForeignWithRelation) GetPrimaryKeyZeroValue() interface{} {
 	return 0
 }
 
-func (m *ForeignWithRelation) GetPrimaryKeyValue() interface{} {
+func (m *ForeignWithRelation) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 
@@ -571,6 +599,10 @@ type HasManyWithRelation struct {
 	Relation []*ForeignWithRelation `neuron:"foreign=ForeignKey"`
 }
 
+func (m *HasManyWithRelation) GetPrimaryKeyValue() interface{} {
+	return m.ID
+}
+
 func (m *HasManyWithRelation) NeuronCollectionName() string {
 	return "has_many_with_relations"
 }
@@ -607,7 +639,7 @@ func (m *HasManyWithRelation) GetPrimaryKeyZeroValue() interface{} {
 	return 0
 }
 
-func (m *HasManyWithRelation) GetPrimaryKeyValue() interface{} {
+func (m *HasManyWithRelation) GetPrimaryKeyHashableValue() interface{} {
 	return m.ID
 }
 

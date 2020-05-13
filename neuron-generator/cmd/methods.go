@@ -1,5 +1,3 @@
-// +build !codeanalysis
-
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -20,13 +18,12 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"go/format"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/neuronlabs/strcase"
 	"github.com/spf13/cobra"
-	"golang.org/x/tools/imports"
 
 	"github.com/neuronlabs/neuron/neuron-generator/internal/ast"
 )
@@ -91,43 +88,13 @@ func generateModelMethods(cmd *cobra.Command, args []string) {
 	dir := directory(args)
 
 	buf := &bytes.Buffer{}
+
 	// Generate model files.
+	var modelNames []string
 	for _, model := range g.Models() {
-		fileName := filepath.Join(dir, "neuron_"+strcase.ToSnake(model.Name)+"_methods.go")
-
-		if err = templates.ExecuteTemplate(buf, "model", model); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: execute model template failed: %v\n", err)
-			os.Exit(1)
-		}
-		var result []byte
-		switch codeFormatting {
-		case gofmtFormat:
-			result, err = format.Source(buf.Bytes())
-		case goimportsFormat:
-			result, err = imports.Process(fileName, buf.Bytes(), nil)
-		default:
-			result = buf.Bytes()
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: formatting go file failed: %v", err)
-			os.Exit(1)
-		}
-		buf.Reset()
-		// Create new file if not exists.
-		modelFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Open file: %s failed: %v\n", fileName, err)
-			os.Exit(1)
-		}
-		_, err = modelFile.Write(result)
-		if err != nil {
-			modelFile.Close()
-			fmt.Fprintf(os.Stderr, "Error: Writing file: %s failed: %v\n", fileName, err)
-			os.Exit(1)
-		}
-		modelFile.Close()
-
-		if codeFormatting == goimportsFormat {
-		}
+		fileName := filepath.Join(dir, strcase.ToSnake(model.Name)+"_methods.neuron.go")
+		generateFile(fileName, "model", buf, model)
+		modelNames = append(modelNames, model.Name)
 	}
+	fmt.Fprintf(os.Stdout, "Success. Generated methods for: %s models.\n", strings.Join(modelNames, ","))
 }

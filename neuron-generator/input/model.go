@@ -28,13 +28,33 @@ func (m *Model) AddImport(imp string) {
 	m.Imports.Add(imp)
 }
 
-// NeuronCollectionName returns model's collection.
+// Collection returns model's collection.
 func (m *Model) Collection() *Collection {
 	return &Collection{
 		Name:         strcase.ToLowerCamel(inflection.Plural(m.Name)),
 		VariableName: strcase.ToCamel(inflection.Plural(m.Name)),
 		QueryBuilder: strcase.ToLowerCamel(inflection.Plural(m.Name) + "QueryBuilder"),
 	}
+}
+
+// CollectionInput returns template collection input for given model.
+func (m *Model) CollectionInput(packageName string) *CollectionInput {
+	c := &CollectionInput{
+		PackageName: packageName,
+		Imports: []string{
+			"context",
+			"github.com/neuronlabs/neuron/controller",
+			"github.com/neuronlabs/neuron/errors",
+			"github.com/neuronlabs/neuron/mapping",
+			"github.com/neuronlabs/neuron/query",
+		},
+		Model:      m,
+		Collection: m.Collection(),
+	}
+	if c.PackageName == "" {
+		c.PackageName = m.PackageName
+	}
+	return c
 }
 
 // SortFields sorts the fields in the model.

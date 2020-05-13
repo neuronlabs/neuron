@@ -186,6 +186,20 @@ func (m *ModelStruct) PrivateFields() []*StructField {
 	return m.privateFields
 }
 
+// RelationByIndex gets the relation by provided 'index'.
+func (m *ModelStruct) RelationByIndex(index int) (*StructField, error) {
+	if index > len(m.structFields)-1 {
+		return nil, errors.Newf(ClassInvalidRelationIndex, "index out of range: '%d'", index)
+	}
+	structField := m.structFields[index]
+	switch structField.kind {
+	case KindRelationshipSingle, KindRelationshipMultiple:
+		return structField, nil
+	default:
+		return nil, errors.Newf(ClassInvalidRelationIndex, "field with index: '%d' is not a relationship", index)
+	}
+}
+
 // RelationByName gets the relationship field for the provided string
 // The 'rel' relationship field name may be a Neuron or Golang StructField name.
 // If the relationship field doesn't exists returns nil and false
@@ -195,18 +209,7 @@ func (m *ModelStruct) RelationByName(field string) (*StructField, bool) {
 
 // RelationFields gets all model's relationship fields.
 func (m *ModelStruct) RelationFields() (relations []*StructField) {
-	if len(m.relationships) == 0 {
-		return []*StructField{}
-	}
-
-	for _, rel := range m.structFields {
-		switch rel.kind {
-		case KindRelationshipSingle, KindRelationshipMultiple:
-			log.Debug2f("Adding relation: '%s'", rel.NeuronName())
-			relations = append(relations, rel)
-		}
-	}
-	return relations
+	return m.relationships
 }
 
 // SortScopeCount returns the count of the sort fields.
@@ -382,7 +385,7 @@ func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel in
 }
 
 func (m *ModelStruct) initComputeSortedFields() {
-	for _, sField := range m.structFields {
+	for _, sField := range m.fields {
 		if sField != nil && sField.canBeSorted() {
 			m.sortScopeCount++
 		}
@@ -395,6 +398,9 @@ func (m *ModelStruct) initComputeThisIncludedCount() {
 
 func (m *ModelStruct) initCheckFieldTypes() (err error) {
 	for _, field := range m.structFields {
+		if field.kind == KindUnknown {
+			continue
+		}
 		if err = field.initCheckFieldType(); err != nil {
 			return err
 		}
@@ -414,6 +420,9 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			return errors.Newf(ClassModelDefinition, "unsupported embedded field: '%s' in model: '%s'", tField.Name, modelType.String())
 		}
 		structField := newStructField(tField, m)
+		m.structFields = append(m.structFields, structField)
+		structField.Index = make([]int, len(fieldIndex))
+		copy(structField.Index, fieldIndex)
 
 		// Check if field is private.
 		if !modelValue.Field(i).CanSet() {
@@ -429,14 +438,8 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			m.privateFields = append(m.privateFields, structField)
 			continue
 		}
-
-		m.structFields = append(m.structFields, structField)
-		structField.Index = make([]int, len(fieldIndex))
 		tagValues := structField.TagValues(tag)
-
-		copy(structField.Index, fieldIndex)
 		log.Debug2f("[%s] - Field: %s with tags: %s ", m.Type().Name(), tField.Name, tagValues)
-
 		m.increaseAssignedFields()
 
 		// Check if the field had it's neuron name defined.

@@ -11,7 +11,7 @@ import (
 // TestOrderedFields tests the ordered fields methods.
 func TestOrderedFields(t *testing.T) {
 	type Model struct {
-		ID     int
+		ID     [16]byte
 		Name   string
 		First  string
 		Second int

@@ -5,5 +5,5 @@ type Int int
 
 // Model is testing external model.
 type Model struct {
-	ID int
+	ID int `neuron:"-"`
 }

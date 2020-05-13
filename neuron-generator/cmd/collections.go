@@ -1,5 +1,3 @@
-// +build !codeanalysis
-
 /*
 Copyright © 2020 Jacek Kucharczyk kucjac@gmail.com
 
@@ -19,9 +17,11 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/neuronlabs/strcase"
 	"github.com/spf13/cobra"
@@ -38,23 +38,41 @@ The collection is a struct that allows to create and execute type safe queries f
 A model type is provided with flag '-type' i.e.:
 
 neuron-generator models collections -type MyModel -o ./collections`,
-	Run: generateCollections,
+	PreRun: modelsPreRun,
+	Run:    generateCollections,
 }
 
 func init() {
 	modelsCmd.AddCommand(collectionsCmd)
 
-	collectionsCmd.PersistentFlags().StringP("output", "o", "", "defines the output directory where the generated files should be located")
+	// Here you will define your flags and configuration settings.
+	collectionsCmd.Flags().StringP("naming-convention", "n", "snake", `set the naming convention for the output models. 
+Possible values: 'snake', 'kebab', 'lower_camel', 'camel'`)
 }
 
 func generateCollections(cmd *cobra.Command, args []string) {
-	typeNames, err := cmd.Flags().GetStringSlice("type")
+	namingConvention, err := cmd.Flags().GetString("naming-convention")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		cmd.Usage()
 		os.Exit(2)
 	}
 
-	g := ast.NewModelGenerator("snake", typeNames, tags)
+	switch namingConvention {
+	case "kebab", "snake", "lower_camel", "camel":
+	default:
+		fmt.Fprintf(os.Stderr, "Error: provided unsupported naming convention: '%v'", namingConvention)
+		cmd.Usage()
+		os.Exit(2)
+	}
+	// Get the optional type names flag.
+	typeNames, err := cmd.Flags().GetStringSlice("type")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: loading flags failed: '%v\n", err)
+		os.Exit(2)
+	}
+
+	g := ast.NewModelGenerator(namingConvention, typeNames, tags)
 	if len(args) == 0 {
 		args = []string{"."}
 	}
@@ -72,19 +90,18 @@ func generateCollections(cmd *cobra.Command, args []string) {
 	dir := directory(args)
 
 	// generate collection files.
-	for _, collection := range g.Collections() {
-		// Create new file if not exists.
-		fileName := filepath.Join(dir, strcase.ToSnake(collection.Model.Name)+"_neuron_collection.go")
-		modelFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Writing file: %s failed: %v\n", fileName, err)
-			os.Exit(1)
-		}
-		if err = templates.ExecuteTemplate(modelFile, "collection", collection); err != nil {
-			modelFile.Close()
-			fmt.Fprintf(os.Stderr, "Error: execute model template failed: %v\n", err)
-			os.Exit(1)
-		}
-		modelFile.Close()
+	buf := &bytes.Buffer{}
+	if !g.HasCollectionInitializer() {
+		fileName := filepath.Join(dir, "initialize_collections.neuron.go")
+		generateFile(fileName, "initialize_collections", buf, g.CollectionInitializer(false))
 	}
+
+	var modelNames []string
+	for _, collection := range g.Collections("") {
+		// Create new file if not exists.
+		fileName := filepath.Join(dir, strcase.ToSnake(collection.Model.Name)+"_collection.neuron.go")
+		generateFile(fileName, "collection", buf, collection)
+		modelNames = append(modelNames, collection.Model.Name)
+	}
+	fmt.Fprintf(os.Stdout, "Success. Generated collections for: %s models.\n", strings.Join(modelNames, ","))
 }

@@ -79,7 +79,7 @@ func (s *Scope) reduceBelongsToRelationshipFilter(ctx context.Context, filter *F
 	// Get primary key values and set as the scope's foreign key field filters.
 	primaries := make([]interface{}, len(models))
 	for i, model := range models {
-		primaries[i] = model.GetPrimaryKeyValue()
+		primaries[i] = model.GetPrimaryKeyHashableValue()
 	}
 	filterField := s.getOrCreateFieldFilter(filter.StructField.Relationship().ForeignKey())
 	filterField.Values = append(filterField.Values, OperatorValues{Operator: OpIn, Values: primaries})
@@ -240,7 +240,7 @@ func (s *Scope) reduceMany2ManyRelationshipFilter(ctx context.Context, filter *F
 	}
 	var primaries []interface{}
 	for _, model := range relatedModels {
-		primaries = append(primaries, model.GetPrimaryKeyValue())
+		primaries = append(primaries, model.GetPrimaryKeyHashableValue())
 	}
 
 	joinModels, err := s.DB().QueryCtx(ctx, joinModel).

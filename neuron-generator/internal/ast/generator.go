@@ -37,6 +37,7 @@ const (
 	kindBool    = "bool"
 	kindUintptr = "uintptr"
 	kindPointer = "Pointer"
+	kindNil     = "nil"
 )
 
 // NewModelGenerator creates new model generator.
@@ -76,30 +77,43 @@ type ModelGenerator struct {
 	modelImportedFields map[*input.Model][]*importField
 }
 
-// ParsePackages analyzes the single package constructed from the patterns and Tags.
-// ParsePackages exits if there is an error.
-func (g *ModelGenerator) ParsePackages(patterns []string) {
-	cfg := &packages.Config{
-		Mode:  packages.NeedSyntax | packages.NeedImports | packages.NeedDeps | packages.NeedFiles | packages.NeedName,
-		Tests: true,
+// Collections return generator collections.
+func (g *ModelGenerator) Collections(packageName string) (collections []*input.CollectionInput) {
+	for _, model := range g.Models() {
+		collections = append(collections, model.CollectionInput(packageName))
 	}
-	if len(g.Tags) > 0 {
-		cfg.BuildFlags = []string{fmt.Sprintf("-Tags=%s", strings.Join(g.Tags, " "))}
+	return collections
+}
+
+// HasCollectionInitializer checks if the package contains collection initializer.
+func (g *ModelGenerator) HasCollectionInitializer() bool {
+	var rootPkg string
+	for _, model := range g.Models() {
+		rootPkg = model.PackageName
 	}
 
-	pkgs, err := packages.Load(cfg, patterns...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	for _, pkg := range g.pkgs {
+		if rootPkg != pkg.Name {
+			continue
+		}
+		for _, file := range pkg.CompiledGoFiles {
+			fmt.Printf("File: %s\n", file)
+			if file == "initialize_collections.neuron.go" {
+				return true
+			}
+		}
 	}
-	if packages.PrintErrors(pkgs) > 0 {
-		os.Exit(1)
+	return false
+}
+
+// CollectionInitializer gets collection initializer.
+func (g *ModelGenerator) CollectionInitializer(externalController bool) *input.Collections {
+	model := g.Models()[0]
+	col := &input.Collections{PackageName: model.PackageName, ExternalController: externalController}
+	if externalController {
+		col.Imports.Add("github.com/neuronlabs/neuron/controller")
 	}
-	if len(pkgs) == 0 {
-		fmt.Fprintf(os.Stderr, "Error: No packages found:\n")
-		os.Exit(1)
-	}
-	g.pkgs = pkgs
+	return col
 }
 
 // ExtractPackageModels extracts all models for provided in the packages.
@@ -153,10 +167,10 @@ func (g *ModelGenerator) ExtractPackageModels() error {
 	for _, model := range g.models {
 		model.SortFields()
 	}
-
 	return nil
 }
 
+// Models returns generator models.
 func (g *ModelGenerator) Models() (models []*input.Model) {
 	for model := range g.modelsFiles {
 		models = append(models, model)
@@ -164,30 +178,30 @@ func (g *ModelGenerator) Models() (models []*input.Model) {
 	return models
 }
 
-func (g *ModelGenerator) Collections() (collections []*input.CollectionInput) {
-	return collections
-}
-
-// parseImportPackage get package import path via source file
-func (g *ModelGenerator) parsePackageImport(source, srcDir string) (string, error) {
+// ParsePackages analyzes the single package constructed from the patterns and Tags.
+// ParsePackages exits if there is an error.
+func (g *ModelGenerator) ParsePackages(patterns []string) {
 	cfg := &packages.Config{
-		Mode:  packages.NeedName | packages.NeedSyntax,
+		Mode:  packages.NeedSyntax | packages.NeedImports | packages.NeedDeps | packages.NeedFiles | packages.NeedName,
 		Tests: true,
-		Dir:   srcDir,
 	}
-	pkgs, err := packages.Load(cfg, "file="+source)
+	if len(g.Tags) > 0 {
+		cfg.BuildFlags = []string{fmt.Sprintf("-Tags=%s", strings.Join(g.Tags, " "))}
+	}
+
+	pkgs, err := packages.Load(cfg, patterns...)
 	if err != nil {
-		return "", err
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
-	if packages.PrintErrors(pkgs) > 0 || len(pkgs) == 0 {
-		return "", errors.New("loading package failed")
+	if packages.PrintErrors(pkgs) > 0 {
+		os.Exit(1)
 	}
-
-	packageImport := pkgs[0].PkgPath
-
-	// It is illegal to import a _test package.
-	packageImport = strings.TrimSuffix(packageImport, "_test")
-	return packageImport, nil
+	if len(pkgs) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: No packages found:\n")
+		os.Exit(1)
+	}
+	g.pkgs = pkgs
 }
 
 func (g *ModelGenerator) setReceiver(model *input.Model) {
@@ -290,11 +304,17 @@ func (g *ModelGenerator) extractModel(file *ast.File, structType *ast.StructType
 		if !isExported(structField) {
 			continue
 		}
-		field := input.Field{Index: i, Name: name.String(), Type: fieldTypeName(structField.Type), Model: model}
+		field := input.Field{Index: i, Name: name.String(), NeuronName: g.namerFunc(name.String()), Type: fieldTypeName(structField.Type), Model: model}
 
 		// Set the Tags for given field.
 		if structField.Tag != nil {
 			field.Tags = structField.Tag.Value
+			tags := extractTags(field.Tags, "neuron", ";", ",")
+			for _, tag := range tags {
+				if tag.key == "-" {
+					continue
+				}
+			}
 		}
 
 		if isFieldRelation(structField) {
@@ -454,6 +474,8 @@ func (g *ModelGenerator) parseImportPackages() error {
 func (g *ModelGenerator) setModelField(astField *ast.Field, inputField *input.Field, imported bool) {
 	isBS, isBSWrapped := isByteSliceWrapper(astField.Type)
 	inputField.IsByteSlice = isBS
+	inputField.Sortable = isSortable(astField)
+	inputField.IsSlice = isMany(astField.Type)
 	inputField.IsPointer = isPointer(astField)
 	inputField.AlternateTypes = getAlternateTypes(astField.Type)
 	setFieldZeroValue(inputField, astField.Type, imported)
@@ -483,6 +505,20 @@ func isByteSlice(arr *ast.ArrayType) bool {
 		return false
 	}
 	return ident.Name == "byte"
+}
+
+func isSortable(arr *ast.Field) bool {
+	if arr.Tag == nil {
+		return true
+	}
+	tags := extractTags(arr.Tag.Value, "neuron", ";", ",")
+	for _, tag := range tags {
+		switch tag.key {
+		case "nosort", "no_sort":
+			return false
+		}
+	}
+	return true
 }
 
 func isByteSliceWrapper(expr ast.Expr) (isTypeByteSlice bool, isWrapper bool) {
@@ -556,8 +592,12 @@ func isPrimary(field *ast.Field) bool {
 	// Find a neuron primary tag.
 	if field.Tag != nil {
 		tags := extractTags(field.Tag.Value, "neuron", ";", ",")
+
 		for _, tag := range tags {
-			if strings.ToLower(tag.key) == "type" {
+			if tag.key == "-" {
+				return false
+			}
+			if strings.EqualFold(tag.key, "type") {
 				for _, value := range tag.values {
 					switch value {
 					case "pk", "primary", "id":
@@ -569,7 +609,7 @@ func isPrimary(field *ast.Field) bool {
 		}
 	}
 	// Check if the name suggests it is the "ID" field.
-	if strings.ToUpper(field.Names[0].Name) == "ID" {
+	if strings.EqualFold(field.Names[0].Name, "ID") {
 		return true
 	}
 	return false
@@ -694,13 +734,11 @@ func fieldTypeName(expr ast.Expr) string {
 }
 
 func extractTags(structTag string, tagName string, tagSeparator, valueSeparator string) []*fieldTag {
+	structTag = strings.TrimPrefix(structTag, "`")
+	structTag = strings.TrimSuffix(structTag, "`")
 	tag, ok := reflect.StructTag(structTag).Lookup(tagName)
 	if !ok {
 		return nil
-	}
-	// omit the field with the '-' tag
-	if tag == "-" {
-		return []*fieldTag{}
 	}
 
 	var (
@@ -749,7 +787,6 @@ func extractTags(structTag string, tagName string, tagSeparator, valueSeparator 
 				}
 			}
 		}
-
 		fTag := &fieldTag{}
 		if equalIndex != 0 {
 			// The left part is the key.
@@ -863,7 +900,7 @@ func getZeroValue(expr ast.Expr, imported bool) string {
 			case kindUintptr:
 				return "0"
 			case kindPointer:
-				return "nil"
+				return kindNil
 			}
 		}
 
@@ -878,20 +915,20 @@ func getZeroValue(expr ast.Expr, imported bool) string {
 		}
 		return fieldTypeName(expr) + "{}"
 	case *ast.StarExpr:
-		return "nil"
+		return kindNil
 	case *ast.ArrayType:
 		if x.Len == nil {
 			// A slice can be nil
-			return "nil"
+			return kindNil
 		}
 		// The array must be defined to zero values.
 		return fieldTypeName(expr) + "{}"
 	case *ast.MapType:
-		return "nil"
+		return kindNil
 	case *ast.StructType:
 		return fieldTypeName(expr) + "{}"
 	case *ast.ChanType:
-		return "nil"
+		return kindNil
 	case *ast.SelectorExpr:
 		selector, ok := x.X.(*ast.Ident)
 		if !ok {
@@ -899,7 +936,7 @@ func getZeroValue(expr ast.Expr, imported bool) string {
 		}
 		return selector.Name + "." + getZeroValue(x.Sel, imported)
 	default:
-		return "nil"
+		return kindNil
 	}
 }
 

@@ -4,8 +4,8 @@ import "strings"
 
 // Field is a structure used to insert into model field template.
 type Field struct {
-	Index int
-	Name  string
+	Index            int
+	Name, NeuronName string
 	// Type is current field Type for given model.
 	Type                                           string
 	BeforeZero, AfterZero, Zero                    string

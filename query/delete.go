@@ -85,7 +85,7 @@ func (s *Scope) deleteModels(ctx context.Context) (modelsAffected int64, err err
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.New(ClassInvalidModels, "one of the models have primary key with zero value")
 		}
-		primaries = append(primaries, model.GetPrimaryKeyValue())
+		primaries = append(primaries, model.GetPrimaryKeyHashableValue())
 	}
 	// AddModel primary key filter that matches all primaries from the models
 	s.Filters = append(s.Filters, NewFilterField(s.mStruct.Primary(), OpIn, primaries...))
@@ -153,7 +153,7 @@ func (s *Scope) softDeleteModels(ctx context.Context) (modelsAffected int64, err
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.New(ClassInvalidModels, "one of the models have primary key with zero value")
 		}
-		primaries = append(primaries, model.GetPrimaryKeyValue())
+		primaries = append(primaries, model.GetPrimaryKeyHashableValue())
 	}
 	s.Filters = append(s.Filters, NewFilterField(s.mStruct.Primary(), OpIn, primaries...))
 

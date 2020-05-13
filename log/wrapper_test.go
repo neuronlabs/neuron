@@ -123,7 +123,7 @@ func TestNewLoggerWrapper(t *testing.T) {
 
 // TestBuildLeveled tests the buildLeveled function.
 func TestBuildLeveled(t *testing.T) {
-	level := DEBUG
+	level := LevelDebug
 	format := "some format"
 	arguments := []interface{}{"First", "Second"}
 

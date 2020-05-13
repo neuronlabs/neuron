@@ -5,6 +5,8 @@ type Model interface {
 	NeuronCollectionName() string
 	// GetPrimaryKeyValue returns the primary key field value.
 	GetPrimaryKeyValue() interface{}
+	// GetPrimaryKeyHashableValue returns the primary key field value.
+	GetPrimaryKeyHashableValue() interface{}
 	// GetPrimaryKeyZeroValue gets the primary key zero (non set) value.
 	GetPrimaryKeyZeroValue() interface{}
 	// IsPrimaryKeyZero checks if the primary key value is zero.

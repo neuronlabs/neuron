@@ -326,7 +326,7 @@ func (s *StructField) fieldSetRelatedType() error {
 		return err
 	}
 
-	if s.kind == UnknownType {
+	if s.kind == KindUnknown {
 		s.kind = KindRelationshipSingle
 	}
 	if s.relationship == nil {
@@ -388,6 +388,11 @@ func (s *StructField) initCheckFieldType() error {
 		case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 			reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 			reflect.Uint32, reflect.Uint64:
+		case reflect.Array, reflect.Slice:
+			fieldType = fieldType.Elem()
+			if fieldType.Kind() != reflect.Uint8 {
+				return errors.NewDetf(ClassModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
+			}
 		default:
 			return errors.NewDetf(ClassModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 		}
@@ -633,8 +638,8 @@ func newStructField(refField reflect.StructField, mStruct *ModelStruct) *StructF
 type FieldKind int
 
 const (
-	// UnknownType is the undefined field kind.
-	UnknownType FieldKind = iota
+	// KindUnknown is the undefined field kind.
+	KindUnknown FieldKind = iota
 	// KindPrimary is a 'primary' field.
 	KindPrimary
 	// KindAttribute is an 'attribute' field.

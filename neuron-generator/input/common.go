@@ -26,7 +26,7 @@ func (i *Imports) Sort() {
 type Collections struct {
 	PackageName        string
 	Imports            Imports
-	ExportedController bool
+	ExternalController bool
 }
 
 // CollectionInput creates a collection input.
@@ -38,26 +38,7 @@ type CollectionInput struct {
 	ExternalController bool
 }
 
-// CollectionInput returns template collection input for given model.
-func (m *Model) CollectionInput(packageName string) *CollectionInput {
-	c := &CollectionInput{
-		PackageName: packageName,
-		Model:       m,
-		Imports: []string{
-			"github.com/neuronlabs/neuron/controller",
-			"github.com/neuronlabs/neuron/query",
-			"github.com/neuronlabs/neuron/mapping",
-		},
-	}
-	for _, field := range m.Fields {
-		if field.Selector != "" {
-
-		}
-	}
-	return c
-}
-
-// NeuronCollectionName is a structure used to insert into collection definition.
+// Collection is a structure used to insert into collection definition.
 type Collection struct {
 	// Name is the lowerCamelCase plural name of the model.
 	Name string

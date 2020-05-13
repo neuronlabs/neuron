@@ -145,14 +145,14 @@ func (c *Wrapper) Println(args ...interface{}) {
 	}
 }
 
-// Debug logs a message with DEBUG level.
+// Debug logs a message with LevelDebug level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Debug for ExtendedLeveledLogger and LeveledLogger.
 func (c *Wrapper) Debug(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(DEBUG, nil, args...)
+		args = buildLeveled(LevelDebug, nil, args...)
 		log.Print(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -167,14 +167,14 @@ func (c *Wrapper) Debug(args ...interface{}) {
 	}
 }
 
-// Debugf logs a formatted message with DEBUG level.
+// Debugf logs a formatted message with LevelDebug level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Debugf for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
 func (c *Wrapper) Debugf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(DEBUG, &format, args...)
+		args = buildLeveled(LevelDebug, &format, args...)
 		log.Printf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -189,14 +189,14 @@ func (c *Wrapper) Debugf(format string, args ...interface{}) {
 	}
 }
 
-// Debugln logs a message with DEBUG level.
+// Debugln logs a message with LevelDebug level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Debugln for ExtendedLeveledLogger and log.Debug for LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Debugln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(DEBUG, nil, args...)
+		args = buildLeveled(LevelDebug, nil, args...)
 		log.Println(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -211,14 +211,14 @@ func (c *Wrapper) Debugln(args ...interface{}) {
 	}
 }
 
-// Info logs a message with INFO level.
+// Info logs a message with LevelInfo level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Info for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
 func (c *Wrapper) Info(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(INFO, nil, args...)
+		args = buildLeveled(LevelInfo, nil, args...)
 		log.Print(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -233,14 +233,14 @@ func (c *Wrapper) Info(args ...interface{}) {
 	}
 }
 
-// Infof logs a formatted message with INFO level.
+// Infof logs a formatted message with LevelInfo level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Infof for ExtendedLeveledLogger, ShortLeveledLogger and LeveledLogger.
 func (c *Wrapper) Infof(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(INFO, &format, args...)
+		args = buildLeveled(LevelInfo, &format, args...)
 		log.Printf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -255,14 +255,14 @@ func (c *Wrapper) Infof(format string, args ...interface{}) {
 	}
 }
 
-// Infoln logs a message with INFO level.
+// Infoln logs a message with LevelInfo level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Infoln for ExtendedLeveledLogger and log.Info for LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Infoln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(INFO, nil, args...)
+		args = buildLeveled(LevelInfo, nil, args...)
 		log.Println(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -277,7 +277,7 @@ func (c *Wrapper) Infoln(args ...interface{}) {
 	}
 }
 
-// Warning logs a message with WARNING level.
+// Warning logs a message with LevelWarning level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Warning for ExtendedLeveledLogger, LeveledLogger and
 // log.Warn for ShortLeveledLogger.
@@ -285,7 +285,7 @@ func (c *Wrapper) Warning(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(WARNING, nil, args...)
+		args = buildLeveled(LevelWarning, nil, args...)
 		log.Print(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -300,14 +300,14 @@ func (c *Wrapper) Warning(args ...interface{}) {
 	}
 }
 
-// Warningf logs a formatted message with WARNING level.
+// Warningf logs a formatted message with LevelWarning level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Warningf for ExtendedLeveledLogger, LeveledLogger and log.Warnf for ShortLeveledLogger.
 func (c *Wrapper) Warningf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(WARNING, &format, args...)
+		args = buildLeveled(LevelWarning, &format, args...)
 		log.Printf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -322,7 +322,7 @@ func (c *Wrapper) Warningf(format string, args ...interface{}) {
 	}
 }
 
-// Warningln logs a message with WARNING level.
+// Warningln logs a message with LevelWarning level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Warningln for ExtendedLeveledLogger, log.Warning for LeveledLogger
 // and log.Warn for ShortLeveledLogger.
@@ -330,7 +330,7 @@ func (c *Wrapper) Warningln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(WARNING, nil, args...)
+		args = buildLeveled(LevelWarning, nil, args...)
 		log.Println(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -345,14 +345,14 @@ func (c *Wrapper) Warningln(args ...interface{}) {
 	}
 }
 
-// Error logs a message with ERROR level.
+// Error logs a message with LevelError level.
 // Arguments are handled in the manner of log.Print for StdLogger,
 // log.Error for ExtendedLeveledLogger, LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Error(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(ERROR, nil, args...)
+		args = buildLeveled(LevelError, nil, args...)
 		log.Print(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -367,14 +367,14 @@ func (c *Wrapper) Error(args ...interface{}) {
 	}
 }
 
-// Errorf logs a formatted message with ERROR level.
+// Errorf logs a formatted message with LevelError level.
 // Arguments are handled in the manner of log.Printf for StdLogger,
 // log.Errorf for ExtendedLeveledLogger, LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Errorf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(ERROR, &format, args...)
+		args = buildLeveled(LevelError, &format, args...)
 		log.Printf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -389,14 +389,14 @@ func (c *Wrapper) Errorf(format string, args ...interface{}) {
 	}
 }
 
-// Errorln logs a message with ERROR level.
+// Errorln logs a message with LevelError level.
 // Arguments are handled in the manner of log.Println for StdLogger,
 // log.Debugln for ExtendedLeveledLogger and log.Error for LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Errorln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(ERROR, nil, args...)
+		args = buildLeveled(LevelError, nil, args...)
 		log.Println(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -411,14 +411,14 @@ func (c *Wrapper) Errorln(args ...interface{}) {
 	}
 }
 
-// Fatal logs a message with CRITICAL level. Afterwards it should excute os.Exit(1).
+// Fatal logs a message with LevelCritical level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatal for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
 func (c *Wrapper) Fatal(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, nil, args...)
+		args = buildLeveled(LevelCritical, nil, args...)
 		log.Fatal(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -433,14 +433,14 @@ func (c *Wrapper) Fatal(args ...interface{}) {
 	}
 }
 
-// Fatalf logs a formatted message with CRITICAL level. Afterwards it should excute os.Exit(1).
+// Fatalf logs a formatted message with LevelCritical level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatalf for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
 func (c *Wrapper) Fatalf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, &format, args...)
+		args = buildLeveled(LevelCritical, &format, args...)
 		log.Fatalf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -455,14 +455,14 @@ func (c *Wrapper) Fatalf(format string, args ...interface{}) {
 	}
 }
 
-// Fatalln logs a message with CRITICAL level. Afterwards it should excute os.Exit(1).
+// Fatalln logs a message with LevelCritical level. Afterwards it should excute os.Exit(1).
 // Arguments are handled in the manner of log.Fatalln for StdLogger and ExtendedLeveldLogger,
 // and log.Fatal for LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Fatalln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, nil, args...)
+		args = buildLeveled(LevelCritical, nil, args...)
 		log.Fatalln(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -477,14 +477,14 @@ func (c *Wrapper) Fatalln(args ...interface{}) {
 	}
 }
 
-// Panic logs a message with CRITICAL level. Afterwards it should panic.
+// Panic logs a message with LevelCritical level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panic for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger .
 func (c *Wrapper) Panic(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, nil, args...)
+		args = buildLeveled(LevelCritical, nil, args...)
 		log.Panic(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -499,14 +499,14 @@ func (c *Wrapper) Panic(args ...interface{}) {
 	}
 }
 
-// Panicf logs a formatted message with CRITICAL level. Afterwards it should panic.
+// Panicf logs a formatted message with LevelCritical level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panicf for StdLogger, LeveledLogger,
 // ShortLeveledLogger and ExtendedLeveledLogger.
 func (c *Wrapper) Panicf(format string, args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, &format, args...)
+		args = buildLeveled(LevelCritical, &format, args...)
 		log.Panicf(format, args...)
 	case 2:
 		log := c.logger.(LeveledLogger)
@@ -521,14 +521,14 @@ func (c *Wrapper) Panicf(format string, args ...interface{}) {
 	}
 }
 
-// Panicln logs a message with CRITICAL level. Afterwards it should panic.
+// Panicln logs a message with LevelCritical level. Afterwards it should panic.
 // Arguments are handled in the manner of log.Panicln for StdLogger and ExtendedLeveledLogger,
 // and log.Panic LeveledLogger and ShortLeveledLogger.
 func (c *Wrapper) Panicln(args ...interface{}) {
 	switch c.currentLogger {
 	case 1:
 		log := c.logger.(StdLogger)
-		args = buildLeveled(CRITICAL, nil, args...)
+		args = buildLeveled(LevelCritical, nil, args...)
 		log.Panicln(args...)
 	case 2:
 		log := c.logger.(LeveledLogger)

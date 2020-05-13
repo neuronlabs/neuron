@@ -83,7 +83,7 @@ func (m *ModuleLogger) SetLevel(level Level) {
 // Debug3f writes the formatted debug3 log.
 func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug3 {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -102,7 +102,7 @@ func (m *ModuleLogger) Debug3f(format string, args ...interface{}) {
 // Debug2f writes the formatted debug2 log.
 func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug2 {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -121,7 +121,7 @@ func (m *ModuleLogger) Debug2f(format string, args ...interface{}) {
 // Debugf writes the formatted debug log.
 func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -136,7 +136,7 @@ func (m *ModuleLogger) Debugf(format string, args ...interface{}) {
 // Infof writes the formatted info log.
 func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelInfo {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -151,7 +151,7 @@ func (m *ModuleLogger) Infof(format string, args ...interface{}) {
 // Warningf writes the formatted warning log.
 func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelWarning {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -166,7 +166,7 @@ func (m *ModuleLogger) Warningf(format string, args ...interface{}) {
 // Errorf writes the formatted error log.
 func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelError {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -181,7 +181,7 @@ func (m *ModuleLogger) Errorf(format string, args ...interface{}) {
 // Fatalf writes the formatted fatal log.
 func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -196,7 +196,7 @@ func (m *ModuleLogger) Fatalf(format string, args ...interface{}) {
 // Panicf writes the formatted panic log.
 func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -211,7 +211,7 @@ func (m *ModuleLogger) Panicf(format string, args ...interface{}) {
 // Debug3 writes the debug3 level log.
 func (m *ModuleLogger) Debug3(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug3 {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug3 {
 			return
 		}
 	}
@@ -230,7 +230,7 @@ func (m *ModuleLogger) Debug3(args ...interface{}) {
 // Debug2 writes the debug2 level log.
 func (m *ModuleLogger) Debug2(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug2 {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug2 {
 			return
 		}
 	}
@@ -249,7 +249,7 @@ func (m *ModuleLogger) Debug2(args ...interface{}) {
 // Debug writes the debug level log.
 func (m *ModuleLogger) Debug(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelDebug {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelDebug {
 			return
 		}
 	}
@@ -264,7 +264,7 @@ func (m *ModuleLogger) Debug(args ...interface{}) {
 // Info writes the info level log.
 func (m *ModuleLogger) Info(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelInfo {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelInfo {
 			return
 		}
 	}
@@ -279,7 +279,7 @@ func (m *ModuleLogger) Info(args ...interface{}) {
 // Warning writes the warning level log.
 func (m *ModuleLogger) Warning(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelWarning {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelWarning {
 			return
 		}
 	}
@@ -294,7 +294,7 @@ func (m *ModuleLogger) Warning(args ...interface{}) {
 // Error writes the error level log.
 func (m *ModuleLogger) Error(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelError {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelError {
 			return
 		}
 	}
@@ -309,7 +309,7 @@ func (m *ModuleLogger) Error(args ...interface{}) {
 // Fatal writes the fatal level log.
 func (m *ModuleLogger) Fatal(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelCritical {
 			return
 		}
 	}
@@ -324,7 +324,7 @@ func (m *ModuleLogger) Fatal(args ...interface{}) {
 // Panic writes the panic level log.
 func (m *ModuleLogger) Panic(args ...interface{}) {
 	if !m.isLevelSetter {
-		if m.currentLevel != UNKNOWN && m.currentLevel > LevelCritical {
+		if m.currentLevel != LevelUnknown && m.currentLevel > LevelCritical {
 			return
 		}
 	}

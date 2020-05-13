@@ -518,7 +518,6 @@ func (m *ModelMap) setRelationships() error {
 			}
 		}
 	}
-
 	return nil
 }
 
