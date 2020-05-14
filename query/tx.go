@@ -24,12 +24,10 @@ type Transaction struct {
 // Tx is an in-progress transaction orm. A transaction must end with a call to Commit or Rollback.
 // After a call to Commit or Rollback all operations on the transaction fail with an error of class
 type Tx struct {
-	c *controller.Controller
-
+	Transaction        *Transaction
+	c                  *controller.Controller
 	err                error
 	uniqueTransactions []*uniqueTx
-
-	Transaction *Transaction
 }
 
 // Begin startsC new transaction with respect to the 'Transaction.Ctx' context and transaction TransactionOptions 'TransactionOptions' and

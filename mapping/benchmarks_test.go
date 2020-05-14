@@ -2,11 +2,8 @@ package mapping
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron/config"
 )
 
 func BenchmarkField(b *testing.B) {
@@ -40,23 +37,13 @@ func BenchmarkAttribute(b *testing.B) {
 }
 
 func BenchmarkMapping(b *testing.B) {
-	type Model struct {
-		ID          int
-		CreatedTime time.Time  `neuron:"flags=created_at"`
-		UpdatedTime *time.Time `neuron:"flags=updated_at"`
-		DeletedTime *time.Time `neuron:"flags=deleted_at"`
-		Number      int
-		String      string
-	}
-
 	b.Run("Simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.DefaultController()
-			m := NewModelMap(NamingSnake, cfg)
+			m := NewModelMap(NamingSnake)
 			b.StartTimer()
 
-			err := m.RegisterModels(Model{})
+			err := m.RegisterModels(&TModel{})
 			require.NoError(b, err)
 		}
 	})
@@ -64,11 +51,10 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Relationship", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			cfg := config.DefaultController()
-			m := NewModelMap(NamingSnake, cfg)
+			m := NewModelMap(NamingSnake)
 			b.StartTimer()
 
-			err := m.RegisterModels(Model1WithMany2Many{}, Model2WithMany2Many{}, joinModel{}, First{}, Second{}, FirstSeconds{})
+			err := m.RegisterModels(&Model1WithMany2Many{}, &Model2WithMany2Many{}, &JoinModel{}, &First{}, &Second{}, &FirstSeconds{})
 			require.NoError(b, err)
 		}
 	})
@@ -76,20 +62,13 @@ func BenchmarkMapping(b *testing.B) {
 
 func prepareBench(b *testing.B) *ModelStruct {
 	b.Helper()
-	type Model struct {
-		ID     int
-		Name   string
-		First  string
-		Second int
-		Third  string
-	}
 
 	mm := testingModelMap(b)
-	err := mm.RegisterModels(Model{})
+	err := mm.RegisterModels(&BenchModel{})
 	require.NoError(b, err)
 
-	mStruct, err := mm.GetModelStruct(Model{})
-	require.NoError(b, err)
+	mStruct, ok := mm.GetModelStruct(&BenchModel{})
+	require.True(b, ok)
 
 	return mStruct
 }

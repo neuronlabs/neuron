@@ -7,17 +7,5 @@ package {{.PackageName}}
 {{if .Imports }}
 {{template "imports" . }}
 {{end}}
-type _collectionInitializer func({{if .ExternalController}}c *controller.Controller{{end}}) error
-
-var _collectionInitializers []_collectionInitializer
-
-// Neuron_InitializeCollections collections for provided controller.
-func Neuron_InitializeCollections({{if .ExternalController}}c *controller.Controller{{end}}) (err error) {
-    for _, initializer := range _collectionInitializers {
-        if err = initializer({{if .ExternalController}}c{{end}}); err != nil {
-            return err
-        }
-    }
-    return nil
-}
+{{template "collection-initializer-function" .}}
 {{ end }}

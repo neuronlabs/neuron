@@ -9,17 +9,13 @@ import (
 
 	"github.com/neuronlabs/inflection"
 
-	"github.com/neuronlabs/neuron/annotation"
-	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
 // ModelMap contains mapped models ( as reflect.Type ) to its ModelStruct representation.
 type ModelMap struct {
-	models      map[reflect.Type]*ModelStruct
-	collections map[string]reflect.Type
-	Configs     map[string]*config.ModelConfig
+	collections map[string]*ModelStruct
 
 	DefaultRepository string
 	NamerFunc         Namer
@@ -28,51 +24,29 @@ type ModelMap struct {
 }
 
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
-func NewModelMap(namerFunc Namer, c *config.Controller) *ModelMap {
-	if c.Models == nil {
-		c.Models = make(map[string]*config.ModelConfig)
-	}
+func NewModelMap(namerFunc Namer) *ModelMap {
 	return &ModelMap{
-		models:            make(map[reflect.Type]*ModelStruct),
-		collections:       make(map[string]reflect.Type),
-		DefaultRepository: c.DefaultRepositoryName,
-		NamerFunc:         namerFunc,
-		Configs:           c.Models,
+		collections: make(map[string]*ModelStruct),
+		NamerFunc:   namerFunc,
 	}
-}
-
-// Get gets the *ModelStruct for the provided 'model'.
-func (m *ModelMap) Get(model reflect.Type) *ModelStruct {
-	return m.models[m.getType(model)]
 }
 
 // GetByCollection gets *ModelStruct by the 'collection'.
-func (m *ModelMap) GetByCollection(collection string) *ModelStruct {
-	t, ok := m.collections[collection]
-	if !ok || t == nil {
-		return nil
-	}
-	return m.models[t]
+func (m *ModelMap) GetByCollection(collection string) (*ModelStruct, bool) {
+	model, ok := m.collections[collection]
+	return model, ok
 }
 
 // GetModelStruct gets the model from the model map.
-func (m *ModelMap) GetModelStruct(model interface{}) (*ModelStruct, error) {
-	mStruct, ok := model.(*ModelStruct)
-	if ok {
-		return mStruct, nil
-	}
-	t := reflect.TypeOf(model)
-	mStruct = m.Get(t)
-	if mStruct == nil {
-		return nil, errors.NewDetf(ClassModelNotFound, "model: '%s' is not found in the model map", t.Name())
-	}
-	return mStruct, nil
+func (m *ModelMap) GetModelStruct(model Model) (*ModelStruct, bool) {
+	mStruct, ok := m.collections[model.NeuronCollectionName()]
+	return mStruct, ok
 }
 
 // Models returns all models set within given model map.
 func (m *ModelMap) Models() []*ModelStruct {
 	var models []*ModelStruct
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		models = append(models, model)
 	}
 	return models
@@ -80,7 +54,7 @@ func (m *ModelMap) Models() []*ModelStruct {
 
 // ModelByName gets the model by it's struct name.
 func (m *ModelMap) ModelByName(name string) *ModelStruct {
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		if model.Type().Name() == name {
 			return model
 		}
@@ -89,44 +63,31 @@ func (m *ModelMap) ModelByName(name string) *ModelStruct {
 }
 
 // RegisterModels registers the model within the model map container.
-func (m *ModelMap) RegisterModels(models ...interface{}) error {
+func (m *ModelMap) RegisterModels(models ...Model) error {
 	// iterate over models and register one by one
 	var thisModels []*ModelStruct
 	for _, model := range models {
 		log.Debug3f("Registering Model: '%T'", model)
+		// check if the model wasn't already registered within the ModelMap 'm'.
+		if m.collections[model.NeuronCollectionName()] != nil {
+			return errors.Newf(ClassModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
+		}
 		// build the model's structure and set into model map.
 		mStruct, err := buildModelStruct(model, m.NamerFunc)
 		if err != nil {
 			return err
 		}
 
-		// check if the model wasn't already registered within the ModelMap 'm'.
-		if m.models[mStruct.Type()] != nil {
-			return errors.Newf(ClassModelContainer, "model: '%s' was already registered.", mStruct.Collection())
-		}
-
-		if err = m.AddModel(mStruct); err != nil {
+		if err = m.addModel(mStruct); err != nil {
 			return err
 		}
 		thisModels = append(thisModels, mStruct)
 
-		modelConfig, ok := m.Configs[mStruct.collection]
-		if !ok {
-			modelConfig = &config.ModelConfig{}
-			m.Configs[mStruct.collection] = modelConfig
-		}
-		modelConfig.Collection = mStruct.Collection()
-
-		if err = mStruct.setConfig(modelConfig); err != nil {
-			log.Errorf("Setting config for model: '%s' failed.", mStruct.Collection())
-			return err
-		}
-
-		if modelConfig.RepositoryName == "" {
+		if mStruct.RepositoryName == "" {
 			// if the model implements repository Name
 			repositoryNamer, ok := model.(RepositoryNamer)
 			if ok {
-				modelConfig.RepositoryName = repositoryNamer.RepositoryName()
+				mStruct.RepositoryName = repositoryNamer.RepositoryName()
 			}
 		}
 		mStruct.namerFunc = m.NamerFunc
@@ -148,12 +109,9 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 			err = errors.NewDetf(ClassModelDefinition, "model: '%s' have no primary field type defined", modelStruct.Type().Name())
 			return err
 		}
-		if err = modelStruct.setFieldsConfigs(); err != nil {
-			return err
-		}
 	}
 
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		if err = m.setModelRelationships(model); err != nil {
 			return err
 		}
@@ -181,70 +139,51 @@ func (m *ModelMap) RegisterModels(models ...interface{}) error {
 	return nil
 }
 
-// AddModel sets the *ModelStruct for given map.
+// addModel sets the *ModelStruct for given map.
 // If the model already exists the function returns an error.
-func (m *ModelMap) AddModel(mStruct *ModelStruct) error {
-	_, ok := m.models[mStruct.modelType]
+func (m *ModelMap) addModel(mStruct *ModelStruct) error {
+	// Check if collection with given name already exists.
+	_, ok := m.collections[mStruct.collection]
 	if ok {
 		return errors.NewDetf(ClassModelContainer, "Model: %s already registered", mStruct.Type())
 	}
-
-	_, ok = m.collections[mStruct.collection]
-	if ok {
-		return errors.NewDetf(ClassModelContainer, "Model: %s already registered", mStruct.Type())
-	}
-
-	m.models[mStruct.modelType] = mStruct
-	m.collections[mStruct.collection] = mStruct.Type()
-
+	m.collections[mStruct.collection] = mStruct
 	return nil
 }
 
 // setByCollection sets the model by it's collection.
 func (m *ModelMap) setByCollection(ms *ModelStruct) {
-	m.collections[ms.Collection()] = ms.Type()
+	m.collections[ms.Collection()] = ms
 }
 
 // computeNestedIncludedCount computes the limits for the nested included count for each model.
 func (m *ModelMap) computeNestedIncludedCount() {
 	limit := m.nestedIncludedLimit
 
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		model.initComputeThisIncludedCount()
 	}
 
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		modelLimit := limit
-		if model.config.IncludedDepthLimit != nil {
-			modelLimit = *model.config.IncludedDepthLimit
-		}
 		model.computeNestedIncludedCount(modelLimit)
 	}
-}
-
-func (m *ModelMap) getType(t reflect.Type) reflect.Type {
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	if t.Kind() == reflect.Slice {
-		t = t.Elem()
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
-		}
-	}
-	return t
 }
 
 func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 	for _, relField := range model.RelationFields() {
 		relType := relField.getRelatedModelType()
-
-		val := m.Get(relType)
-		if val == nil {
+		relationModel, ok := reflect.New(relType).Interface().(Model)
+		if !ok {
+			return errors.Newf(ClassModelDefinition, "relation field: '%s' for model: '%s' type doesn't implement Model interface", relField.Name(), model.Type().Name())
+		}
+		relatedModelStruct, ok := m.GetModelStruct(relationModel)
+		if !ok {
+			fmt.Printf("RelationModel: %T\n", relationModel)
 			return errors.NewDetf(ClassInternal, "model: %v, not defined but is used in relationships for: %v field in %v model", relType, relField.Name(), model.Type().Name())
 		}
 
-		relField.setRelatedModel(val)
+		relField.setRelatedModel(relatedModelStruct)
 
 		// if the field was typed as many2many search for it's join model
 		if relField.relationship.Kind() == RelMany2Many {
@@ -257,7 +196,7 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 				name2 = rel.modelType.Name() + inflection.Plural(model.modelType.Name())
 			}
 
-			for _, other := range m.models {
+			for _, other := range m.collections {
 				switch other.Type().Name() {
 				case name1:
 					rel.joinModel = other
@@ -281,16 +220,16 @@ func (m *ModelMap) setModelRelationships(model *ModelStruct) error {
 }
 
 func (m *ModelMap) setRelationships() error {
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		for _, relField := range model.RelationFields() {
 			// relationship gets the relationship between the fields
 			relationship := relField.Relationship()
 
 			// get struct field neuron tags
-			tags := relField.TagValues(relField.ReflectField().Tag.Get(annotation.Neuron))
+			tags := relField.TagValues(relField.ReflectField().Tag.Get(AnnotationNeuron))
 
 			// get proper foreign key field name
-			foreignKeyFieldNames := tags[annotation.ForeignKey]
+			foreignKeyFieldNames := tags[AnnotationForeignKey]
 			log.Debugf("Relationship field: %s, foreign key name: %s", relField.Name(), foreignKeyFieldNames)
 			// check field type
 			var (
@@ -510,7 +449,7 @@ func (m *ModelMap) setRelationships() error {
 		}
 	}
 
-	for _, model := range m.models {
+	for _, model := range m.collections {
 		for _, relField := range model.relationships {
 			if relField.Relationship().kind != RelBelongsTo {
 				model.hasForeignRelationships = true
@@ -539,8 +478,8 @@ func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
 		}
 
 		// if strings.ToLower(field.Name())
-		otherModel := m.Get(field.BaseType())
-		if otherModel != nil {
+		_, ok := reflect.New(field.BaseType()).Interface().(Model)
+		if ok {
 			// set them as the relationships
 			err = model.setRelationshipField(field)
 			if err != nil {
@@ -551,8 +490,8 @@ func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
 
 		if strings.HasSuffix(field.Name(), "ID") {
 			var isForeignKey bool
-			for otherType := range m.models {
-				if strings.HasPrefix(field.Name(), otherType.Name()) {
+			for _, other := range m.collections {
+				if strings.HasPrefix(field.Name(), other.Type().Name()) {
 					isForeignKey = true
 					break
 				}
@@ -643,14 +582,14 @@ func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc Namer) (*
 			tagValues := nestedField.structField.TagValues(tag)
 			for tKey, tValue := range tagValues {
 				switch tKey {
-				case annotation.Name:
+				case AnnotationName:
 					nestedField.structField.neuronName = tValue[0]
-				case annotation.FieldType:
-					if tValue[0] != annotation.NestedField {
+				case AnnotationFieldType:
+					if tValue[0] != AnnotationNestedField {
 						log.Debugf("Invalid annotation.NestedField value: '%s' for field: %s", tValue[0], nestedField.structField.Name())
 						return nil, errors.NewDetf(ClassModelDefinition, "provided field type: '%s' is not allowed for the nested struct field: '%s'", nestedField.structField.reflectField.Type, nestedField.structField.Name())
 					}
-				case annotation.Flags:
+				case AnnotationFlags:
 					if err := nestedField.structField.setFlags(tValue...); err != nil {
 						return nil, err
 					}

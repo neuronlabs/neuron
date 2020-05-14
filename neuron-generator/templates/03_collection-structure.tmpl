@@ -1,7 +1,4 @@
 {{define "collection-structure" -}}
-func init() {
-    _collectionInitializers = append(_collectionInitializers, initialize{{.Collection.VariableName}})
-}
 
 // {{.Collection.VariableName}} is the collection used to query {{.Model.Name}} model.
 var {{.Collection.VariableName}} *{{.Collection.Name}}

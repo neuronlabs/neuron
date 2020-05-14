@@ -9,6 +9,9 @@ func init() {
 	// Repository
 	MnrRepository = errors.MustNewMinor(MjrController)
 	ClassRepositoryNotFound = errors.MustNewClassWIndex(MjrController, MnrRepository)
+	ClassRepositoryNotMatched = errors.MustNewClassWIndex(MjrController, MnrRepository)
+	ClassRepositoryAlreadyRegistered = errors.MustNewClassWIndex(MjrController, MnrRepository)
+
 	// Config
 	MnrConfig = errors.MustNewMinor(MjrController)
 	ClassInvalidConfig = errors.MustNewClassWIndex(MjrController, MnrConfig)
@@ -23,6 +26,8 @@ var (
 	MnrRepository errors.Minor
 	// ClassRepositoryNotFound defines error classification.
 	ClassRepositoryNotFound errors.Class
+	// ClassRepositoryNotMatched defines errors classification when model doesn't have repository defined.
+	ClassRepositoryNotMatched errors.Class
 	// ClassRepositoryAlreadyRegistered class of errors when repository is already registered.
 	ClassRepositoryAlreadyRegistered errors.Class
 

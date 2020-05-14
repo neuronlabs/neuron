@@ -214,7 +214,7 @@ func (c *operatorContainer) registerOperator(op *Operator) error {
 	}
 
 	c.operators[op.Value] = op
-	// AddModel any possible alias for given operator.
+	// addModel any possible alias for given operator.
 	if op.URLAlias != "" {
 		c.operators[op.URLAlias] = op
 	}

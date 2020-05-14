@@ -1,8 +1,8 @@
 package query
 
 import (
-	"github.com/neuronlabs/neuron/annotation"
 	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/mapping"
 )
 
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.
@@ -20,13 +20,13 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 	for i := 0; i < len(bracketed); i++ {
 		c := bracketed[i]
 		switch c {
-		case annotation.OpenedBracket:
+		case mapping.AnnotationOpenedBracket:
 			if startIndex > endIndex {
 				err = doubleOpen()
 				return nil, err
 			}
 			startIndex = i
-		case annotation.ClosedBracket:
+		case mapping.AnnotationClosedBracket:
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {

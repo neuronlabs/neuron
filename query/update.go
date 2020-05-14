@@ -276,7 +276,7 @@ func (s *Scope) updateFilteredWithFind(ctx context.Context, model mapping.Model)
 	}
 	// Get update fieldset that without first primary key value.
 	updateFields := findFieldset[1:]
-	// AddModel all fieldset fields from the 'model' to each result model.
+	// addModel all fieldset fields from the 'model' to each result model.
 	for _, resultModel := range models {
 		findModelFielder := resultModel.(mapping.Fielder)
 		for _, field := range updateFields {

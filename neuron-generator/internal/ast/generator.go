@@ -41,11 +41,12 @@ const (
 )
 
 // NewModelGenerator creates new model generator.
-func NewModelGenerator(namingConvention string, types, tags []string) *ModelGenerator {
+func NewModelGenerator(namingConvention string, types, tags, exclude []string) *ModelGenerator {
 	gen := &ModelGenerator{
 		models:              map[string]*input.Model{},
 		modelsFiles:         map[*input.Model]string{},
 		Types:               types,
+		Exclude:             exclude,
 		Tags:                tags,
 		importFields:        map[string]map[string][]*ast.Ident{},
 		imports:             map[string]string{},
@@ -70,6 +71,7 @@ type ModelGenerator struct {
 	pkgs                []*packages.Package
 	Tags                []string
 	Types               []string
+	Exclude             []string
 	imports             map[string]string
 	importFields        map[string]map[string][]*ast.Ident
 	models              map[string]*input.Model
@@ -127,6 +129,10 @@ func (g *ModelGenerator) ExtractPackageModels() error {
 					for _, model := range g.extractFileModels(d, file) {
 						g.modelsFiles[model] = filepath.Join(pkg.PkgPath, file.Name.Name)
 						model.PackageName = pkg.Name
+						// Check if this is a test package.
+						if strings.HasSuffix(pkg.ID, ".test]") {
+							model.TestFile = true
+						}
 					}
 				}
 			}
@@ -271,7 +277,19 @@ func (g *ModelGenerator) extractFileModels(d *ast.GenDecl, file *ast.File) (mode
 				if matchedModel == "" {
 					continue
 				}
+			} else if len(g.Exclude) != 0 {
+				var matchedModel string
+				for _, tp := range g.Exclude {
+					if tp == st.Name.Name {
+						matchedModel = tp
+						break
+					}
+				}
+				if matchedModel != "" {
+					continue
+				}
 			}
+
 			if model := g.extractModel(file, structType, modelName); model != nil {
 				models = append(models, model)
 			}
@@ -524,6 +542,9 @@ func isSortable(arr *ast.Field) bool {
 func isByteSliceWrapper(expr ast.Expr) (isTypeByteSlice bool, isWrapper bool) {
 	switch tp := expr.(type) {
 	case *ast.ArrayType:
+		if tp.Len != nil {
+			return false, false
+		}
 		return isByteSlice(tp), false
 	case *ast.Ident:
 		if tp.Obj == nil {

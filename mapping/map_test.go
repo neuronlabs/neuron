@@ -2,61 +2,28 @@ package mapping
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron/config"
 )
 
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	cfg := config.DefaultController()
-	m := NewModelMap(NamingSnake, cfg)
+	m := NewModelMap(NamingSnake)
 	return m
-}
-
-// NotTaggedModel is the model used for testing that has no tagged fields.
-type NotTaggedModel struct {
-	ID                    int
-	Name                  string
-	Age                   int
-	Created               time.Time
-	OtherNotTaggedModelID int
-	Related               *OtherNotTaggedModel
-	ManyRelationID        int `neuron:"type=foreign"`
-}
-
-// OtherNotTaggedModel is the testing model with no neuron tags, related to the NotTaggedModel.
-type OtherNotTaggedModel struct {
-	ID            int
-	SingleRelated *NotTaggedModel
-	ManyRelation  []*NotTaggedModel
 }
 
 // TestRegisterModel tests the register model function.
 func TestRegisterModel(t *testing.T) {
 	t.Run("Tags", func(t *testing.T) {
-		t.Run("Invalid", func(t *testing.T) {
-			// ModelComma is the model where the type hase more than,' instead of ';'.
-			type ModelComma struct {
-				ID string `neuron:"type=primary,flags=client-id"`
-			}
-
-			m := testingModelMap(t)
-			err := m.RegisterModels(&ModelComma{})
-			assert.Error(t, err)
-		})
-
 		t.Run("Empty", func(t *testing.T) {
 			m := testingModelMap(t)
-			err := m.RegisterModels(NotTaggedModel{}, OtherNotTaggedModel{})
+			err := m.RegisterModels(&NotTaggedModel{}, &OtherNotTaggedModel{})
 			require.NoError(t, err)
 
-			model, err := m.GetModelStruct(NotTaggedModel{})
-			require.NoError(t, err)
+			model, ok := m.GetModelStruct(&NotTaggedModel{})
+			require.True(t, ok)
 
 			assert.Equal(t, "not_tagged_models", model.Collection())
 
@@ -86,8 +53,8 @@ func TestRegisterModel(t *testing.T) {
 				}
 			}
 
-			otherModel, err := m.GetModelStruct(OtherNotTaggedModel{})
-			require.NoError(t, err)
+			otherModel, ok := m.GetModelStruct(&OtherNotTaggedModel{})
+			require.True(t, ok)
 
 			sField, ok = otherModel.RelationByName("ManyRelation")
 			if assert.True(t, ok) {
@@ -105,54 +72,15 @@ func TestRegisterModel(t *testing.T) {
 				}
 			}
 		})
-
-		t.Run("NoType", func(t *testing.T) {
-			// ModelNoFlags is the model where the flags are not written due to lack of type:
-			type ModelNoFlags struct {
-				ID string `neuron:"flags=client-id"`
-			}
-
-			mm := testingModelMap(t)
-			err := mm.RegisterModels(&ModelNoFlags{})
-			require.NoError(t, err)
-
-			m, err := mm.GetModelStruct(&ModelNoFlags{})
-			require.NoError(t, err)
-
-			primary := m.Primary()
-			require.NotNil(t, primary)
-
-			assert.True(t, primary.allowClientID())
-		})
 	})
 
 	t.Run("Relationship", func(t *testing.T) {
-		// CarBrand is the included testing model.
-		type CarBrand struct {
-			ID int
-		}
-
-		// Car is the included testing model.
-		type Car struct {
-			ID     int
-			UserID int
-
-			Brand   *CarBrand
-			BrandID int
-		}
-
-		// User is the include testing model.
-		type User struct {
-			ID   int
-			Cars []*Car
-		}
-
 		mm := testingModelMap(t)
-		err := mm.RegisterModels(User{}, Car{}, CarBrand{})
+		err := mm.RegisterModels(&User{}, &Car{}, &CarBrand{}, &Job{}, &Comment{})
 		require.NoError(t, err)
 
-		car, err := mm.GetModelStruct(Car{})
-		require.NoError(t, err)
+		car, ok := mm.GetModelStruct(&Car{})
+		require.True(t, ok)
 
 		brandID, ok := car.ForeignKey("BrandID")
 		assert.True(t, ok)
@@ -168,8 +96,8 @@ func TestRegisterModel(t *testing.T) {
 		userID, ok := car.ForeignKey("UserID")
 		assert.True(t, ok)
 
-		user, err := mm.GetModelStruct(User{})
-		require.NoError(t, err)
+		user, ok := mm.GetModelStruct(&User{})
+		require.True(t, ok)
 
 		rel, ok := user.RelationByName("Cars")
 		require.True(t, ok)
@@ -182,20 +110,13 @@ func TestRegisterModel(t *testing.T) {
 func TestTimeRelatedField(t *testing.T) {
 	t.Run("WithDefaultNames", func(t *testing.T) {
 		t.Run("Valid", func(t *testing.T) {
-			type timer struct {
-				ID        int
-				CreatedAt time.Time
-				UpdatedAt *time.Time
-				DeletedAt *time.Time
-			}
-
 			mm := testingModelMap(t)
 
-			err := mm.RegisterModels(timer{})
+			err := mm.RegisterModels(&Timer{})
 			require.NoError(t, err)
 
-			m, err := mm.GetModelStruct(timer{})
-			require.NoError(t, err)
+			m, ok := mm.GetModelStruct(&Timer{})
+			require.True(t, ok)
 
 			createdAtField, ok := m.Attribute("CreatedAt")
 			require.True(t, ok)
@@ -221,38 +142,23 @@ func TestTimeRelatedField(t *testing.T) {
 
 		t.Run("Invalid", func(t *testing.T) {
 			t.Run("CreatedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					CreatedAt string
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidCreatedAt{})
 				require.Error(t, err)
 			})
 
 			t.Run("DeletedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					DeletedAt time.Time
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidDeletedAt{})
 				require.Error(t, err)
 			})
 
 			t.Run("UpdatedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					UpdatedAt int
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidUpdatedAt{})
 				require.Error(t, err)
 			})
 		})
@@ -260,22 +166,15 @@ func TestTimeRelatedField(t *testing.T) {
 
 	t.Run("WithFlags", func(t *testing.T) {
 		t.Run("Valid", func(t *testing.T) {
-			type timer struct {
-				ID          int
-				CreatedTime time.Time  `neuron:"flags=created_at"`
-				UpdatedTime *time.Time `neuron:"flags=updated_at"`
-				DeletedTime *time.Time `neuron:"flags=deleted_at"`
-			}
-
 			mm := testingModelMap(t)
 
-			err := mm.RegisterModels(timer{})
+			err := mm.RegisterModels(&Timer{})
 			require.NoError(t, err)
 
-			m, err := mm.GetModelStruct(timer{})
-			require.NoError(t, err)
+			m, ok := mm.GetModelStruct(&Timer{})
+			require.True(t, ok)
 
-			createdAtField, ok := m.Attribute("CreatedTime")
+			createdAtField, ok := m.Attribute("CreatedAt")
 			require.True(t, ok)
 
 			assert.True(t, createdAtField.IsTime())
@@ -301,38 +200,23 @@ func TestTimeRelatedField(t *testing.T) {
 
 		t.Run("Invalid", func(t *testing.T) {
 			t.Run("CreatedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					CreatedAt string `neuron:"flags=created_at"`
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidCreatedAt{})
 				require.Error(t, err)
 			})
 
 			t.Run("DeletedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					DeletedAt time.Time `neuron:"flags=deleted_at"`
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidDeletedAt{})
 				require.Error(t, err)
 			})
 
 			t.Run("UpdatedAt", func(t *testing.T) {
-				type timer struct {
-					ID        int
-					UpdatedAt int `neuron:"flags=updated_at"`
-				}
-
 				mm := testingModelMap(t)
 
-				err := mm.RegisterModels(timer{})
+				err := mm.RegisterModels(&InvalidUpdatedAt{})
 				require.Error(t, err)
 			})
 		})

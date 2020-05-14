@@ -145,6 +145,7 @@ func NewBasicLogger(out io.Writer, prefix string, flags int) *BasicLogger {
 	return logger
 }
 
+// Compile time check for the BasicLogger to implements SubLogger interface.
 var _ SubLogger = &BasicLogger{}
 
 // SubLogger creates new sub-logger for given logger.
@@ -152,7 +153,7 @@ func (l *BasicLogger) SubLogger() LeveledLogger {
 	sub := &BasicLogger{
 		stdLogger:   l.stdLogger,
 		level:       l.level,
-		outputDepth: 4,
+		outputDepth: l.outputDepth + 1,
 	}
 	return sub
 }

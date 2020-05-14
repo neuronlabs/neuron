@@ -13,18 +13,6 @@ import (
 	"github.com/neuronlabs/neuron/mapping"
 )
 
-type formatter struct {
-	ID   int                `neuron:"type=primary"`
-	Attr string             `neuron:"type=attr"`
-	Rel  *formatterRelation `neuron:"type=relation;foreign=FK"`
-	FK   int                `neuron:"type=foreign"`
-	Lang string             `neuron:"type=attr;flags=lang"`
-}
-
-type formatterRelation struct {
-	ID int `neuron:"type=primary"`
-}
-
 func newController(t *testing.T) *controller.Controller {
 	c := controller.NewDefault()
 	err := c.RegisterRepository(repoName, &config.Repository{
@@ -38,10 +26,10 @@ func newController(t *testing.T) *controller.Controller {
 func TestFormatQuery(t *testing.T) {
 	c := newController(t)
 
-	err := c.RegisterModels(&formatter{}, &formatterRelation{})
+	err := c.RegisterModels(&Formatter{}, &FormatterRelation{})
 	require.NoError(t, err)
 
-	mStruct, err := c.ModelStruct(&formatter{})
+	mStruct, err := c.ModelStruct(&Formatter{})
 	require.NoError(t, err)
 
 	db := NewComposer(c)

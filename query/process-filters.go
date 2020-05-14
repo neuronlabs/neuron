@@ -92,7 +92,7 @@ func (s *Scope) reduceBelongsToRelationshipFilter(ctx context.Context, filter *F
 // the values of the related model's foreign key results
 func (s *Scope) reduceHasManyRelationshipFilter(ctx context.Context, filter *FilterField) error {
 	if log.CurrentLevel() == log.LevelDebug3 {
-		log.Debug3f("[SCOPE][%s] reduceHasManyRelationshipFilter field: '%s'", s.ID(), filter.StructField.Name())
+		log.Debug3f("[SCOPE][%s] reduceHasManyRelationshipFilter field: '%s'", s.ID, filter.StructField.Name())
 	}
 	// Check if all the nested filter fields are the foreign key of this relationship. These filters might be
 	// primary field filters for the main scope.

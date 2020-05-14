@@ -8,38 +8,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type subNested struct {
-	InceptionFirst  int
-	InceptionSecond float64 `neuron:"name=second;flags=omitempty"`
-}
-
-type nestedAttribute struct {
-	Float     float64
-	Int       int
-	String    string
-	Slice     []int
-	Inception subNested
-
-	FloatTagged float64 `neuron:"name=float-tag"`
-	IntTagged   int     `neuron:"name=int-tag"`
-}
-
-type modelWithNested struct {
-	ID          int              `neuron:"type=primary"`
-	PtrComposed *nestedAttribute `neuron:"type=attr;name=ptr-composed"`
-}
-
 // TestNestedFields tests the nested field's definitions
 func TestNestedFields(t *testing.T) {
 	ms := testingModelMap(t)
 
-	err := ms.RegisterModels(modelWithNested{})
+	err := ms.RegisterModels(&ModelWithNested{})
 	require.NoError(t, err)
 
-	m, err := ms.GetModelStruct(modelWithNested{})
-	require.NoError(t, err)
-	// if assert.NoError(t, c.PrecomputeModels(&ModelWithNested{})) {
-	// m := s .Get(reflect.TypeOf(ModelWithNested{}))
+	m, ok := ms.GetModelStruct(&ModelWithNested{})
+	require.True(t, ok)
 	require.NotNil(t, m)
 
 	t.Run("ptr-composed", func(t *testing.T) {
@@ -57,7 +34,7 @@ func TestNestedFields(t *testing.T) {
 
 		nested := ptrField.nested
 
-		assert.Equal(t, nested.modelType, reflect.TypeOf(nestedAttribute{}))
+		assert.Equal(t, nested.modelType, reflect.TypeOf(NestedAttribute{}))
 
 		assert.Len(t, nested.fields, 7)
 

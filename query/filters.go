@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/neuronlabs/neuron/annotation"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
@@ -63,7 +62,7 @@ func (f *FilterField) FormatQuery(q ...url.Values) url.Values {
 		if k[0] == '[' {
 			k = fmt.Sprintf("filter[%s]%s", collection, k)
 		}
-		query.Add(k, strings.Join(val, annotation.Separator))
+		query.Add(k, strings.Join(val, mapping.AnnotationSeparator))
 	}
 	return query
 }
@@ -165,8 +164,8 @@ func NewFilterField(field *mapping.StructField, op *Operator, values ...interfac
 // 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
-func NewFilter(model interface{}, filter string, values ...interface{}) (*FilterField, error) {
-	return newFilter(controller.Default(), model, filter, values...)
+func NewFilter(model *mapping.ModelStruct, filter string, values ...interface{}) (*FilterField, error) {
+	return newFilter(model, filter, values...)
 }
 
 // NewFilterC creates new filterField for the controller 'c', 'model', 'filter' query and 'values'.
@@ -174,8 +173,8 @@ func NewFilter(model interface{}, filter string, values ...interface{}) (*Filter
 // 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
-func NewFilterC(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
-	return newFilter(c, model, filter, values...)
+func NewFilterC(model *mapping.ModelStruct, filter string, values ...interface{}) (*FilterField, error) {
+	return newFilter(model, filter, values...)
 }
 
 // NewURLStringFilter creates the filter field based on the provided 'filter' and 'values' in the 'url' format.
@@ -203,11 +202,7 @@ func NewStringFilterWithForeignKey(c *controller.Controller, filter string, valu
 	return newURLStringFilter(c, filter, true, values...)
 }
 
-func newFilter(c *controller.Controller, model interface{}, filter string, values ...interface{}) (*FilterField, error) {
-	mStruct, err := c.ModelStruct(model)
-	if err != nil {
-		return nil, err
-	}
+func newFilter(mStruct *mapping.ModelStruct, filter string, values ...interface{}) (*FilterField, error) {
 	field, op, err := filterSplitOperator(filter)
 	if err != nil {
 		return nil, err
@@ -267,8 +262,8 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 		return nil, err
 	}
 
-	mStruct := c.ModelMap.GetByCollection(params[0])
-	if mStruct == nil {
+	mStruct, ok := c.ModelMap.GetByCollection(params[0])
+	if !ok {
 		detErr := errors.NewDet(ClassFilterCollection, "provided filter collection not found")
 		detErr.SetDetailsf("Where model: '%s' not found", params[0])
 		return nil, detErr
@@ -277,7 +272,6 @@ func newURLStringFilter(c *controller.Controller, filter string, foreignKeyAllow
 	var (
 		f     *FilterField
 		op    *Operator
-		ok    bool
 		field *mapping.StructField
 	)
 	findOperator := func(index int) error {

@@ -87,7 +87,7 @@ func (s *Scope) deleteModels(ctx context.Context) (modelsAffected int64, err err
 		}
 		primaries = append(primaries, model.GetPrimaryKeyHashableValue())
 	}
-	// AddModel primary key filter that matches all primaries from the models
+	// addModel primary key filter that matches all primaries from the models
 	s.Filters = append(s.Filters, NewFilterField(s.mStruct.Primary(), OpIn, primaries...))
 
 	// Execute BeforeDelete hook if the model implements BeforeDeleter interface.

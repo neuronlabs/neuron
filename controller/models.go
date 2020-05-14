@@ -16,13 +16,13 @@ func (c *Controller) ListModels() []*mapping.ModelStruct {
 }
 
 // ModelStruct gets the model struct on the base of the provided model
-func (c *Controller) ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+func (c *Controller) ModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {
 	return c.getModelStruct(model)
 }
 
 // MustModelStruct gets the model struct from the cached model Map.
 // Panics if the model does not exists in the map.
-func (c *Controller) MustModelStruct(model interface{}) *mapping.ModelStruct {
+func (c *Controller) MustModelStruct(model mapping.Model) *mapping.ModelStruct {
 	mStruct, err := c.getModelStruct(model)
 	if err != nil {
 		panic(err)
@@ -33,7 +33,7 @@ func (c *Controller) MustModelStruct(model interface{}) *mapping.ModelStruct {
 // MigrateModels updates or creates provided models representation in their related repositories.
 // A representation of model might be a database table, collection etc.
 // Model's repository must implement repository.Migrator.
-func (c *Controller) MigrateModels(ctx context.Context, models ...interface{}) error {
+func (c *Controller) MigrateModels(ctx context.Context, models ...mapping.Model) error {
 	migratorModels := map[repository.Migrator][]*mapping.ModelStruct{}
 	// map models to their repositories.
 	for _, model := range models {
@@ -41,7 +41,7 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...interface{}) e
 		if err != nil {
 			return err
 		}
-		repo, err := c.GetRepository(modelStruct)
+		repo, err := c.GetRepository(model)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...interface{}) e
 
 // RegisterModels registers provided models within the context of the provided Controller.
 // All repositories must be registered up to this moment.
-func (c *Controller) RegisterModels(models ...interface{}) (err error) {
+func (c *Controller) RegisterModels(models ...mapping.Model) (err error) {
 	log.Debug2f("Registering '%d' models", len(models))
 	start := time.Now()
 	// register models
@@ -84,12 +84,7 @@ func (c *Controller) RegisterModels(models ...interface{}) (err error) {
 	return nil
 }
 
-func (c *Controller) mapAndRegisterInRepositories(models ...interface{}) error {
-	// map models to their repositories in the config
-	if err := c.Config.MapModelsRepositories(); err != nil {
-		return err
-	}
-
+func (c *Controller) mapAndRegisterInRepositories(models ...mapping.Model) error {
 	// match models to their repository instances.
 	modelsRepositories := make(map[repository.Repository][]*mapping.ModelStruct)
 	for _, model := range models {
@@ -97,7 +92,15 @@ func (c *Controller) mapAndRegisterInRepositories(models ...interface{}) error {
 		if err != nil {
 			return err
 		}
-		repo, ok := c.Repositories[mStruct.Config().RepositoryName]
+		if mStruct.RepositoryName == "" {
+			if c.Config.DisallowDefaultRepository {
+				return errors.Newf(ClassRepositoryNotMatched, "no repository set for model: '%s'", mStruct.String())
+			} else {
+				modelsRepositories[c.DefaultRepository] = append(modelsRepositories[c.DefaultRepository], mStruct)
+				continue
+			}
+		}
+		repo, ok := c.Repositories[mStruct.RepositoryName]
 		if !ok {
 			return errors.NewDetf(ClassRepositoryNotFound, "repository not found for the model: '%s'", mStruct.String())
 		}
@@ -112,25 +115,13 @@ func (c *Controller) mapAndRegisterInRepositories(models ...interface{}) error {
 	return nil
 }
 
-func (c *Controller) getModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+func (c *Controller) getModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {
 	if model == nil {
 		return nil, errors.NewDet(ClassInvalidModel, "provided nil model value")
 	}
-
-	switch tp := model.(type) {
-	case *mapping.ModelStruct:
-		return tp, nil
-	case string:
-		m := c.ModelMap.GetByCollection(tp)
-		if m == nil {
-			return nil, errors.NewDetf(mapping.ClassModelNotFound, "model: '%s' is not found", tp)
-		}
-		return m, nil
-	default:
-		mStruct, err := c.ModelMap.GetModelStruct(model)
-		if err != nil {
-			return nil, err
-		}
-		return mStruct, nil
+	mStruct, ok := c.ModelMap.GetModelStruct(model)
+	if !ok {
+		return nil, errors.Newf(mapping.ClassModelNotFound, "provided model: '%T' is not found within given controller", model)
 	}
+	return mStruct, nil
 }

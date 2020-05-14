@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Compile time check for dummyLogger to implement ExtendedLeveledLogger.
 var _ ExtendedLeveledLogger = dummyLogger{}
 
 type dummyLogger struct{}

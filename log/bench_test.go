@@ -8,8 +8,8 @@ import (
 
 const benchConst = "some pretty long name"
 
-// BenchmarkConcantate benchmarks concantating multiple strings using '+'.
-func BenchmarkConcantate(b *testing.B) {
+// BenchmarkConcatenate benchmarks concatenating multiple strings using '+'.
+func BenchmarkConcatenate(b *testing.B) {
 	previous := benchConst
 	var v string
 	for i := 0; i < b.N; i++ {
@@ -18,7 +18,7 @@ func BenchmarkConcantate(b *testing.B) {
 	b.Log(v)
 }
 
-// BenchmarkFmt benchmarks concantating multiple strings using 'fmt.Sprintf'.
+// BenchmarkFmt benchmarks concatenating multiple strings using 'fmt.Sprintf'.
 func BenchmarkFmt(b *testing.B) {
 	previous := benchConst
 	var v string
@@ -28,7 +28,7 @@ func BenchmarkFmt(b *testing.B) {
 	b.Log(v)
 }
 
-// BenchmarkBuilder benchmarks concantating multiple strings using 'strings.Builder'.
+// BenchmarkBuilder benchmarks concatenating multiple strings using 'strings.Builder'.
 func BenchmarkBuilder(b *testing.B) {
 	previous := benchConst
 	var v string

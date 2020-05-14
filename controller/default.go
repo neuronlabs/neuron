@@ -59,7 +59,7 @@ func DialAll(ctx context.Context) error {
 }
 
 // GetRepository gets 'model' repository.
-func GetRepository(model interface{}) (repository.Repository, error) {
+func GetRepository(model mapping.Model) (repository.Repository, error) {
 	return Default().GetRepository(model)
 }
 
@@ -71,18 +71,18 @@ func HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
 // MigrateModels updates or creates provided models representation in their related repositories.
 // A representation of model might be a database table, collection etc.
 // Model's repository must implement repository.Migrator.
-func MigrateModels(ctx context.Context, models ...interface{}) error {
+func MigrateModels(ctx context.Context, models ...mapping.Model) error {
 	return Default().MigrateModels(ctx, models...)
 }
 
 // ModelStruct gets the model struct on the base of the provided model
-func ModelStruct(model interface{}) (*mapping.ModelStruct, error) {
+func ModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {
 	return Default().getModelStruct(model)
 }
 
 // MustModelStruct gets the model struct from the cached model Map.
 // Panics if the model does not exists in the map.
-func MustModelStruct(model interface{}) *mapping.ModelStruct {
+func MustModelStruct(model mapping.Model) *mapping.ModelStruct {
 	return Default().MustModelStruct(model)
 }
 
@@ -97,7 +97,7 @@ func Now() time.Time {
 
 // RegisterModels registers provided models within the context of the provided Controller.
 // All repositories must be registered up to this moment.
-func RegisterModels(models ...interface{}) (err error) {
+func RegisterModels(models ...mapping.Model) (err error) {
 	return Default().RegisterModels(models...)
 }
 

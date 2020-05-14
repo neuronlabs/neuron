@@ -10,24 +10,15 @@ import (
 
 // TestOrderedFields tests the ordered fields methods.
 func TestOrderedFields(t *testing.T) {
-	type Model struct {
-		ID     [16]byte
-		Name   string
-		First  string
-		Second int
-		Third  string
-	}
 	mm := testingModelMap(t)
 
-	err := mm.RegisterModels(Model{})
+	err := mm.RegisterModels(&OrderModel{})
 	require.NoError(t, err)
 
-	m, err := mm.GetModelStruct(Model{})
-	require.NoError(t, err)
+	m, ok := mm.GetModelStruct(&OrderModel{})
+	require.True(t, ok)
 
 	fields := m.Fields()
-
-	// unsort the slice
 	fields[0], fields[3], fields[2], fields[4] = fields[3], fields[0], fields[4], fields[2]
 
 	// Remove the 'Name' field at index [1]

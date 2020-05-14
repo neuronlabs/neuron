@@ -69,7 +69,7 @@ func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Find() ([]*{{.Mode
 // If the model is not found the function returns error of class.QueryValueNoResult.
 func ({{.Collection.Receiver}} *{{.Collection.QueryBuilder}}) Get() (*{{.Model.Name}}, error) {
     if {{.Collection.Receiver}}.err != nil {
-        return {{.Collection.Receiver}}
+        return nil, {{.Collection.Receiver}}.err
     }
     model, err := {{$out.Collection.Receiver}}.builder.Get()
     if err != nil {

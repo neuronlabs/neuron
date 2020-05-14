@@ -9,26 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/annotation"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/mapping"
 )
-
-type testingModel struct {
-	ID         int                  `neuron:"type=primary"`
-	Attr       string               `neuron:"type=attr"`
-	Relation   *filterRelationModel `neuron:"type=relation;foreign=ForeignKey"`
-	ForeignKey int                  `neuron:"type=foreign"`
-	Nested     *filterNestedModel   `neuron:"type=attr"`
-}
-
-type filterRelationModel struct {
-	ID int `neuron:"type=primary"`
-}
-
-type filterNestedModel struct {
-	Field string
-}
 
 // TestNewStringFilter tests the NewURLStringFilter function.
 func TestNewUrlStringFilter(t *testing.T) {
@@ -37,9 +21,9 @@ func TestNewUrlStringFilter(t *testing.T) {
 	err := c.RegisterRepository(repoName, &config.Repository{DriverName: repoName})
 	require.NoError(t, err)
 
-	require.NoError(t, c.RegisterModels(&testingModel{}, &filterRelationModel{}))
+	require.NoError(t, c.RegisterModels(&TestingModel{}, &FilterRelationModel{}))
 
-	mStruct, err := c.ModelStruct(&testingModel{})
+	mStruct, err := c.ModelStruct(&TestingModel{})
 	require.NoError(t, err)
 
 	t.Run("Primary", func(t *testing.T) {
@@ -150,9 +134,9 @@ func TestFilterFormatQuery(t *testing.T) {
 	err := c.RegisterRepository(repoName, &config.Repository{DriverName: repoName})
 	require.NoError(t, err)
 
-	require.NoError(t, c.RegisterModels(&testingModel{}, &filterRelationModel{}))
+	require.NoError(t, c.RegisterModels(&TestingModel{}, &FilterRelationModel{}))
 
-	mStruct, err := c.ModelStruct(&testingModel{})
+	mStruct, err := c.ModelStruct(&TestingModel{})
 	require.NoError(t, err)
 
 	t.Run("MultipleValue", func(t *testing.T) {
@@ -171,7 +155,7 @@ func TestFilterFormatQuery(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s]", mStruct.Collection(), mStruct.Primary().NeuronName(), OpIn.URLAlias), k)
 
 		if assert.Len(t, v, 1) {
-			v = strings.Split(v[0], annotation.Separator)
+			v = strings.Split(v[0], mapping.AnnotationSeparator)
 			assert.Equal(t, "1", v[0])
 			assert.Contains(t, v[1], "2.01")
 			assert.Equal(t, "30", v[2])
@@ -201,7 +185,7 @@ func TestFilterFormatQuery(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("filter[%s][%s][%s][%s]", mStruct.Collection(), relFilter.StructField.NeuronName(), relFilter.StructField.Relationship().Struct().Primary().NeuronName(), OpIn.URLAlias), k)
 		if assert.Len(t, v, 1) {
 			assert.NotNil(t, v)
-			v = strings.Split(v[0], annotation.Separator)
+			v = strings.Split(v[0], mapping.AnnotationSeparator)
 
 			assert.Equal(t, "1", v[0])
 			assert.Equal(t, "2", v[1])

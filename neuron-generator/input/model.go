@@ -7,8 +7,16 @@ import (
 	"github.com/neuronlabs/strcase"
 )
 
+// MultiModel is a input for the multi model templates.
+type MultiModel struct {
+	PackageName string
+	Imports     Imports
+	Models      []*Model
+}
+
 // Model is a structure used to insert model into template.
 type Model struct {
+	TestFile                                   bool
 	FileName                                   string
 	PackageName                                string
 	Imports                                    Imports

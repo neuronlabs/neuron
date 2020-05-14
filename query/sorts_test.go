@@ -8,19 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingSnake, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingSnake)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, err := ms.GetModelStruct(&Blog{})
-	require.NoError(t, err)
+	mStruct, ok := ms.GetModelStruct(&Blog{})
+	require.True(t, ok)
 
 	t.Run("DisallowFK", func(t *testing.T) {
 		_, err := NewSortFields(mStruct, true, "current_post_id")
@@ -52,13 +51,13 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingSnake, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingSnake)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, err := ms.GetModelStruct(&Blog{})
-	require.NoError(t, err)
+	mStruct, ok := ms.GetModelStruct(&Blog{})
+	require.True(t, ok)
 
 	t.Run("NoOrder", func(t *testing.T) {
 		sField, err := NewSort(mStruct, "-id", true)
@@ -113,13 +112,13 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sortfield copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingKebab, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingKebab)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, err := ms.GetModelStruct(&Blog{})
-	require.NoError(t, err)
+	mStruct, ok := ms.GetModelStruct(&Blog{})
+	require.True(t, ok)
 
 	sField, err := NewSort(mStruct, "posts.id", true)
 	require.NoError(t, err)
@@ -140,13 +139,13 @@ func TestSortField(t *testing.T) {
 
 // TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingKebab, config.DefaultController())
+	ms := mapping.NewModelMap(mapping.NamingKebab)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, err := ms.GetModelStruct(&Blog{})
-	require.NoError(t, err)
+	mStruct, ok := ms.GetModelStruct(&Blog{})
+	require.True(t, ok)
 
 	sortField := &SortField{StructField: mStruct.Primary()}
 	err = sortField.setSubfield([]string{}, AscendingOrder, true)

@@ -21,5 +21,5 @@ func (s *Scope) requireNoFilters() error {
 }
 
 func (s *Scope) logFormat(format string) string {
-	return "SCOPE[" + s.id.String() + "]" + format
+	return "SCOPE[" + s.ID.String() + "]" + format
 }

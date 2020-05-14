@@ -8,6 +8,6 @@ import (
 type Factory interface {
 	// DriverName gets the driver name for given factory.
 	DriverName() string
-	// New creates new instance of the Repository for given 'model'.
+	// New creates new Input of the Repository for given 'model'.
 	New(config *config.Repository) (Repository, error)
 }

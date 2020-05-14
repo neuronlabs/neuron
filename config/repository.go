@@ -10,12 +10,11 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 )
 
-// Repository defines the repository configuration variables.
-type Repository struct {
-	// DriverName defines the name for the repository driver
-	DriverName string `mapstructure:"driver_name" validate:"required"`
+// Connection is the configuration for non local schemas credentials.
+// The connection config can be set by providing raw_url or with host,path,protocol.
+type Connection struct {
 	// Host defines the access hostname or the ip address
-	Host string `mapstructure:"host" validate:"isdefault|hostname|ip"`
+	Host string `mapstructure:"host" validate:"hostname|ip"`
 	// Port is the connection port
 	Port int `mapstructure:"port"`
 	// Protocol is the protocol used in the connection
@@ -31,10 +30,17 @@ type Repository struct {
 	Options map[string]interface{} `mapstructure:"options"`
 	// MaxTimeout defines the maximum timeout for the given repository connection
 	MaxTimeout *time.Duration `mapstructure:"max_timeout"`
-	// DBName gets the database name
-	DBName string `mapstructure:"dbname"`
 	// TLS defines the tls configuration for given repository.
 	TLS *tls.Config
+}
+
+// Repository defines the repository configuration variables.
+type Repository struct {
+	Connection
+	// DriverName defines the name for the repository driver
+	DriverName string `mapstructure:"driver_name" validate:"required"`
+	// DBName gets the database name
+	DBName string `mapstructure:"dbname"`
 }
 
 // Parse parses the repository configuration from the whitespace separated key value string.

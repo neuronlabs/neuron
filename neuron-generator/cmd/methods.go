@@ -25,6 +25,7 @@ import (
 	"github.com/neuronlabs/strcase"
 	"github.com/spf13/cobra"
 
+	"github.com/neuronlabs/neuron/neuron-generator/input"
 	"github.com/neuronlabs/neuron/neuron-generator/internal/ast"
 )
 
@@ -50,10 +51,18 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	modelMethodsCmd.Flags().StringP("naming-convention", "n", "snake", `set the naming convention for the output models. 
 Possible values: 'snake', 'kebab', 'lower_camel', 'camel'`)
+	modelMethodsCmd.Flags().BoolP("single-file", "s", false, "creates the methods within single file")
 }
 
 func generateModelMethods(cmd *cobra.Command, args []string) {
 	namingConvention, err := cmd.Flags().GetString("naming-convention")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		cmd.Usage()
+		os.Exit(2)
+	}
+
+	singleFile, err := cmd.Flags().GetBool("single-file")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		cmd.Usage()
@@ -73,7 +82,15 @@ func generateModelMethods(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Error: loading flags failed: '%v\n", err)
 		os.Exit(2)
 	}
-	g := ast.NewModelGenerator(namingConvention, typeNames, tags)
+
+	// Get the optional type names flag.
+	excludeTypes, err := cmd.Flags().GetStringSlice("exclude")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: loading flags failed: '%v\n", err)
+		os.Exit(2)
+	}
+
+	g := ast.NewModelGenerator(namingConvention, typeNames, tags, excludeTypes)
 
 	// Parse provided argument packages.
 	g.ParsePackages([]string{"."})
@@ -91,10 +108,53 @@ func generateModelMethods(cmd *cobra.Command, args []string) {
 
 	// Generate model files.
 	var modelNames []string
-	for _, model := range g.Models() {
-		fileName := filepath.Join(dir, strcase.ToSnake(model.Name)+"_methods.neuron.go")
-		generateFile(fileName, "model", buf, model)
-		modelNames = append(modelNames, model.Name)
+	if !singleFile {
+		for _, model := range g.Models() {
+			fileName := filepath.Join(dir, strcase.ToSnake(model.Name)+"_methods.neuron")
+			if model.TestFile {
+				fileName += "_test"
+			}
+			fileName += ".go"
+			generateFile(fileName, "model", buf, model)
+			modelNames = append(modelNames, model.Name)
+		}
+	} else {
+		var testModels, models []*input.Model
+		for _, model := range g.Models() {
+			modelNames = append(modelNames, model.Name)
+			if model.TestFile {
+				testModels = append(testModels, model)
+			} else {
+				models = append(models, model)
+			}
+		}
+		if len(models) > 0 {
+			generateSingleFileMethods(models, dir, false, buf)
+		}
+		if len(testModels) > 0 {
+			generateSingleFileMethods(testModels, dir, true, buf)
+		}
 	}
 	fmt.Fprintf(os.Stdout, "Success. Generated methods for: %s models.\n", strings.Join(modelNames, ","))
+}
+
+func generateSingleFileMethods(models []*input.Model, dir string, isTesting bool, buf *bytes.Buffer) {
+	multiModels := &input.MultiModel{}
+	imports := map[string]struct{}{}
+	for _, model := range models {
+		for _, imp := range model.Imports {
+			imports[imp] = struct{}{}
+		}
+		multiModels.PackageName = model.PackageName
+		multiModels.Models = append(multiModels.Models, model)
+	}
+	for imp := range imports {
+		multiModels.Imports = append(multiModels.Imports, imp)
+	}
+	fileName := filepath.Join(dir, "models_methods.neuron")
+	if isTesting {
+		fileName += "_test"
+	}
+	fileName += ".go"
+	generateFile(fileName, "single-file-models", buf, multiModels)
 }

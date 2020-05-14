@@ -38,6 +38,14 @@ type CollectionInput struct {
 	ExternalController bool
 }
 
+// MultiCollectionInput is the input for multiple collections.
+type MultiCollectionInput struct {
+	PackageName        string
+	Imports            Imports
+	Collections        []*CollectionInput
+	ExternalController bool
+}
+
 // Collection is a structure used to insert into collection definition.
 type Collection struct {
 	// Name is the lowerCamelCase plural name of the model.

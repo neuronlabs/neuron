@@ -54,7 +54,7 @@ func ({{.Receiver}} *{{.Name}}) GetHashableFieldValue(field *mapping.StructField
             return {{if $field.IsPointer}}*{{end}}{{$out.Receiver}}.{{$field.Name}}, nil
         {{- end}}
     {{end -}}}
-    return nil, errors.Newf(mapping.ClassInvalidModelField, "provided invalid field: '%s' for given model: '%s'", field.Name(), {{.Receiver}})
+    return nil, errors.Newf(mapping.ClassInvalidModelField, "provided invalid field: '%s' for given model: '{{.Name}}'", field.Name())
 }
 
 // GetFieldValue implements mapping.Fielder interface.
@@ -64,7 +64,7 @@ func ({{.Receiver}} *{{.Name}}) GetFieldValue(field *mapping.StructField) (inter
     case {{$field.Index}}: // {{$field.Name}}
         return {{$out.Receiver}}.{{$field.Name}}, nil
     {{end -}}}
-    return nil, errors.Newf(mapping.ClassInvalidModelField, "provided invalid field: '%s' for given model: '%s'", field.Name(), {{.Receiver}})
+    return nil, errors.Newf(mapping.ClassInvalidModelField, "provided invalid field: '%s' for given model: {{.Name}}'", field.Name())
 }
 
 // SetFieldValue implements mapping.Fielder interface.

@@ -6,12 +6,12 @@ import (
 	"github.com/neuronlabs/neuron/neuron-generator/internal/tests/external"
 )
 
-//go:generate neuron-generator models methods --format=goimports .
-//go:generate neuron-generator models collections --format=goimports .
+//go:generate neuron-generator models methods --format=goimports --single-file .
+//go:generate neuron-generator models collections --format=goimports --single-file .
 
 // User is testing model.
 type User struct {
-	ID          uint64
+	ID          [16]byte
 	CreatedAt   time.Time
 	DeletedAt   *time.Time
 	Name        *string

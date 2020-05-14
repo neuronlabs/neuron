@@ -20,7 +20,7 @@ import (
 // It also contains the mapping of the included scopes.
 type Scope struct {
 	// id is the unique identification of the scope.
-	id uuid.UUID
+	ID uuid.UUID
 	// DB defines the database interface for given scope.
 	db DB
 	// mStruct is a modelStruct this scope is based on.
@@ -111,11 +111,6 @@ func (s *Scope) Get(ctx context.Context) (mapping.Model, error) {
 	return results[0], nil
 }
 
-// ID returns the scope's identity number stored as the UUID.
-func (s *Scope) ID() uuid.UUID {
-	return s.id
-}
-
 // Struct returns scope's model's structure - *mapping.ModelStruct.
 func (s *Scope) Struct() *mapping.ModelStruct {
 	return s.mStruct
@@ -130,7 +125,7 @@ func (s *Scope) StoreGet(key interface{}) (value interface{}, ok bool) {
 // StoreSet sets the 'key' and 'value' in the given scope's store.
 func (s *Scope) StoreSet(key, value interface{}) {
 	if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
-		log.Debug3f("SCOPE[%s][%s] Store AddModel key: '%v', value: '%v'", s.ID(), s.mStruct.Collection(), key, value)
+		log.Debug3f("SCOPE[%s][%s] Store addModel key: '%v', value: '%v'", s.ID, s.mStruct.Collection(), key, value)
 	}
 	s.store[key] = value
 }
@@ -140,7 +135,7 @@ func (s *Scope) String() string {
 	sb := &strings.Builder{}
 
 	// Scope ID
-	sb.WriteString("SCOPE[" + s.ID().String() + "][" + s.Struct().Collection() + "]")
+	sb.WriteString("SCOPE[" + s.ID.String() + "][" + s.Struct().Collection() + "]")
 
 	// Fieldset
 	sb.WriteString(" Fieldset")
@@ -189,7 +184,7 @@ Private scope methods
 
 func (s *Scope) copy() *Scope {
 	copiedScope := &Scope{
-		id:      uuid.New(),
+		ID:      uuid.New(),
 		db:      s.db,
 		mStruct: s.mStruct,
 		store:   map[interface{}]interface{}{},
@@ -303,7 +298,7 @@ func (s *Scope) formatQueryIncludes(q url.Values) {
 }
 
 func (s *Scope) repository() repository.Repository {
-	repo, err := s.DB().Controller().GetRepository(s.mStruct)
+	repo, err := s.DB().Controller().GetRepositoryByStruct(s.mStruct)
 	if err != nil {
 		log.Panicf("Can't find repository for model: %s", s.mStruct.String())
 	}
@@ -319,14 +314,14 @@ func newQueryScope(db DB, model *mapping.ModelStruct, models ...mapping.Model) *
 // initialize new scope with added primary field to fieldset
 func newScope(db DB, modelStruct *mapping.ModelStruct) *Scope {
 	s := &Scope{
-		id:      uuid.New(),
+		ID:      uuid.New(),
 		db:      db,
 		mStruct: modelStruct,
 		store:   map[interface{}]interface{}{},
 	}
 
 	if log.CurrentLevel() <= log.LevelDebug2 {
-		log.Debug2f("[SCOPE][%s][%s] query new scope", s.id.String(), modelStruct.Collection())
+		log.Debug2f("[SCOPE][%s][%s] query new scope", s.ID.String(), modelStruct.Collection())
 	}
 	return s
 }

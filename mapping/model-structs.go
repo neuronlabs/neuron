@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/neuronlabs/neuron/annotation"
-	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
@@ -14,6 +12,8 @@ import (
 // ModelStruct is the structure definition for the imported models.
 // It contains all the collection name, fields, config, store and a model type.
 type ModelStruct struct {
+	// RepositoryName is the model's repository name.
+	RepositoryName string
 	// modelType contain a reflect.Type information about given model
 	modelType reflect.Type
 	// collection is the name for the models collection.
@@ -48,7 +48,6 @@ type ModelStruct struct {
 
 	namerFunc Namer
 
-	config           *config.ModelConfig
 	store            map[interface{}]interface{}
 	structFieldCount int
 }
@@ -89,11 +88,6 @@ func (m *ModelStruct) Attributes() (attributes []*StructField) {
 // Collection returns model's collection.
 func (m *ModelStruct) Collection() string {
 	return m.collection
-}
-
-// Config gets the model's defined configuration.
-func (m *ModelStruct) Config() *config.ModelConfig {
-	return m.config
 }
 
 // CreatedAt gets the 'CreatedAt' field for the model struct.
@@ -232,7 +226,7 @@ func (m *ModelStruct) StoreGet(key interface{}) (interface{}, bool) {
 
 // StoreSet sets into the store the value 'value' for given 'key'.
 func (m *ModelStruct) StoreSet(key interface{}, value interface{}) {
-	log.Debug3f("[STORE][%s] AddModel Key: %s, Models: %v", m.collection, key, value)
+	log.Debug3f("[STORE][%s] addModel Key: %s, Models: %v", m.collection, key, value)
 	m.store[key] = value
 }
 
@@ -336,8 +330,8 @@ func (m *ModelStruct) findTimeRelatedFields() error {
 
 func (m *ModelStruct) findUntypedInvalidAttribute(fieldName string) (*StructField, bool) {
 	for _, attr := range m.attributes {
-		tv := attr.TagValues(annotation.Neuron)
-		_, ok := tv[annotation.FieldType]
+		tv := attr.TagValues(AnnotationNeuron)
+		_, ok := tv[AnnotationFieldType]
 		if ok {
 			continue
 		}
@@ -385,8 +379,8 @@ func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel in
 }
 
 func (m *ModelStruct) initComputeSortedFields() {
-	for _, sField := range m.fields {
-		if sField != nil && sField.canBeSorted() {
+	for _, sField := range m.structFields {
+		if sField.canBeSorted() {
 			m.sortScopeCount++
 		}
 	}
@@ -432,7 +426,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		}
 
 		// Get the field tag and check if it is not marked to omit - '-'.
-		tag, hasTag := tField.Tag.Lookup(annotation.Neuron)
+		tag, hasTag := tField.Tag.Lookup(AnnotationNeuron)
 		if strings.TrimSpace(tag) == "-" {
 			log.Debugf("Field: '%s' has '-' tag - adding to private fields.")
 			m.privateFields = append(m.privateFields, structField)
@@ -443,7 +437,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		m.increaseAssignedFields()
 
 		// Check if the field had it's neuron name defined.
-		neuronName := tagValues.Get(annotation.Name)
+		neuronName := tagValues.Get(AnnotationName)
 		if neuronName == "" {
 			neuronName = m.namerFunc(tField.Name)
 		}
@@ -454,7 +448,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			continue
 		}
 
-		values := tagValues[annotation.FieldType]
+		values := tagValues[AnnotationFieldType]
 		switch len(values) {
 		case 0:
 			m.addUntaggedField(structField)
@@ -464,25 +458,25 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			return errors.NewDetf(ClassModelDefinition, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
 		}
 
-		// AddModel field type
+		// addModel field type
 		value := values[0]
 		switch value {
-		case annotation.Primary, annotation.ID, annotation.PrimaryFull, annotation.PrimaryFullS, annotation.PrimaryShort:
+		case AnnotationPrimary, AnnotationID, AnnotationPrimaryFull, AnnotationPrimaryFullS, AnnotationPrimaryShort:
 			err = m.setPrimaryField(structField)
 			if err != nil {
 				return err
 			}
-		case annotation.Relation, annotation.RelationFull:
+		case AnnotationRelation, AnnotationRelationFull:
 			err = m.setRelationshipField(structField)
 			if err != nil {
 				return err
 			}
-		case annotation.Attribute, annotation.AttributeFull:
+		case AnnotationAttribute, AnnotationAttributeFull:
 			err = m.setAttribute(structField)
 			if err != nil {
 				return err
 			}
-		case annotation.ForeignKey, annotation.ForeignKeyFull, annotation.ForeignKeyFullS, annotation.ForeignKeyShort:
+		case AnnotationForeignKey, AnnotationForeignKeyFull, AnnotationForeignKeyFullS, AnnotationForeignKeyShort:
 			if err = m.setForeignKeyField(structField); err != nil {
 				return err
 			}
@@ -660,53 +654,6 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	m.attributes[structField.neuronName] = structField
 	m.attributes[structField.fieldName()] = structField
 	m.fields = append(m.fields, structField)
-	return nil
-}
-
-// SetConfig sets the config for given ModelStruct
-func (m *ModelStruct) setConfig(cfg *config.ModelConfig) error {
-	log.Debugf("Setting Config for model: %s", m.Collection())
-	m.config = cfg
-
-	if m.store == nil {
-		m.store = make(map[interface{}]interface{})
-	}
-
-	// copy the key value from the config
-	for k, v := range m.config.Store {
-		m.store[k] = v
-	}
-	return nil
-}
-
-func (m *ModelStruct) setFieldsConfigs() error {
-	structFields := m.StructFields()
-	for field, cfg := range m.Config().Fields {
-		if cfg == nil {
-			continue
-		}
-
-		for _, sField := range structFields {
-			if field != sField.NeuronName() && field != sField.Name() {
-				continue
-			}
-			if err := sField.setFlags(cfg.Flags...); err != nil {
-				return err
-			}
-
-			// check if the field is a relationship
-			if !sField.isRelationship() {
-				break
-			}
-
-			rel := sField.relationship
-			if rel == nil {
-				rel = &Relationship{}
-				sField.relationship = rel
-			}
-			break
-		}
-	}
 	return nil
 }
 

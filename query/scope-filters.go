@@ -17,7 +17,7 @@ func (s *Scope) ClearFilters() {
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func (s *Scope) Where(filter string, values ...interface{}) error {
-	filterField, err := newFilter(s.DB().Controller(), s.mStruct, filter, values...)
+	filterField, err := newFilter(s.mStruct, filter, values...)
 	if err != nil {
 		log.Debugf("SCOPE[%s] Where '%s' with values: %v failed %v", filter, values, err)
 		return err

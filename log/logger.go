@@ -15,13 +15,6 @@ var (
 	isDebugLeveled bool
 )
 
-func init() {
-	basic := NewBasicLogger(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile)
-	basic.SetOutputDepth(4)
-	basic.SetLevel(LevelInfo)
-	SetLogger(basic)
-}
-
 // Debug writes the LevelDebug level log.
 func Debug(args ...interface{}) {
 	defaultLogger.Debug(args...)
@@ -191,6 +184,14 @@ func SetModulesLevel(level Level) error {
 func New(out io.Writer, prefix string, flags int) {
 	basic := NewBasicLogger(out, prefix, flags)
 	basic.SetOutputDepth(4)
+	SetLogger(basic)
+}
+
+// NewDefault creates new basic logger without prefix with standard flags.
+func NewDefault() {
+	basic := NewBasicLogger(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile)
+	basic.SetOutputDepth(4)
+	basic.SetLevel(LevelInfo)
 	SetLogger(basic)
 }
 

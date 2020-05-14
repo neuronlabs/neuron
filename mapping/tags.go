@@ -2,8 +2,6 @@ package mapping
 
 import (
 	"strings"
-
-	"github.com/neuronlabs/neuron/annotation"
 )
 
 // FieldTag is the key: values pair for the given field struct's tag.
@@ -15,7 +13,7 @@ type FieldTag struct {
 // ExtractFieldTags extracts the []*mapping.FieldTag from the given *mapping.StructField
 // for given StructField reflect tag.
 func (s *StructField) ExtractFieldTags(fieldTag string) []*FieldTag {
-	return s.extractFieldTags(fieldTag, annotation.TagSeparator, annotation.Separator)
+	return s.extractFieldTags(fieldTag, AnnotationTagSeparator, AnnotationSeparator)
 }
 
 // ExtractCustomFieldTags extracts field tags from given struct field for provided 'fieldTag'.

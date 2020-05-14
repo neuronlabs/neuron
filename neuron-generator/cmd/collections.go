@@ -26,6 +26,7 @@ import (
 	"github.com/neuronlabs/strcase"
 	"github.com/spf13/cobra"
 
+	"github.com/neuronlabs/neuron/neuron-generator/input"
 	"github.com/neuronlabs/neuron/neuron-generator/internal/ast"
 )
 
@@ -48,10 +49,17 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	collectionsCmd.Flags().StringP("naming-convention", "n", "snake", `set the naming convention for the output models. 
 Possible values: 'snake', 'kebab', 'lower_camel', 'camel'`)
+	collectionsCmd.Flags().BoolP("single-file", "s", false, "stores all collections within single file")
 }
 
 func generateCollections(cmd *cobra.Command, args []string) {
 	namingConvention, err := cmd.Flags().GetString("naming-convention")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		cmd.Usage()
+		os.Exit(2)
+	}
+	singleFile, err := cmd.Flags().GetBool("single-file")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		cmd.Usage()
@@ -72,7 +80,14 @@ func generateCollections(cmd *cobra.Command, args []string) {
 		os.Exit(2)
 	}
 
-	g := ast.NewModelGenerator(namingConvention, typeNames, tags)
+	// Get the excluded types.
+	excludeTypes, err := cmd.Flags().GetStringSlice("exclude")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: loading flags failed: '%v\n", err)
+		os.Exit(2)
+	}
+
+	g := ast.NewModelGenerator(namingConvention, typeNames, tags, excludeTypes)
 	if len(args) == 0 {
 		args = []string{"."}
 	}
@@ -89,19 +104,64 @@ func generateCollections(cmd *cobra.Command, args []string) {
 	// Extract the directory name from the arguments.
 	dir := directory(args)
 
-	// generate collection files.
+	// Generate collection files.
 	buf := &bytes.Buffer{}
-	if !g.HasCollectionInitializer() {
-		fileName := filepath.Join(dir, "initialize_collections.neuron.go")
-		generateFile(fileName, "initialize_collections", buf, g.CollectionInitializer(false))
-	}
 
 	var modelNames []string
-	for _, collection := range g.Collections("") {
-		// Create new file if not exists.
-		fileName := filepath.Join(dir, strcase.ToSnake(collection.Model.Name)+"_collection.neuron.go")
-		generateFile(fileName, "collection", buf, collection)
-		modelNames = append(modelNames, collection.Model.Name)
+	if !singleFile {
+		if !g.HasCollectionInitializer() {
+			fileName := filepath.Join(dir, "initialize_collections.neuron.go")
+			generateFile(fileName, "initialize_collections", buf, g.CollectionInitializer(false))
+		}
+
+		for _, collection := range g.Collections("") {
+			// Create new file if not exists.
+			fileName := filepath.Join(dir, strcase.ToSnake(collection.Model.Name)+"_collection.neuron")
+			if collection.Model.TestFile {
+				fileName += "_test"
+			}
+			fileName += ".go"
+			generateFile(fileName, "collection", buf, collection)
+			modelNames = append(modelNames, collection.Model.Name)
+		}
+	} else {
+		var testCollections, collections []*input.CollectionInput
+		for _, collection := range g.Collections("") {
+			modelNames = append(modelNames, collection.Model.Name)
+			if collection.Model.TestFile {
+				testCollections = append(testCollections, collection)
+			} else {
+				collections = append(collections, collection)
+			}
+		}
+		if len(testCollections) > 0 {
+			generateSingleFileCollections(testCollections, dir, true, buf)
+		}
+		if len(collections) > 0 {
+			generateSingleFileCollections(collections, dir, false, buf)
+		}
 	}
 	fmt.Fprintf(os.Stdout, "Success. Generated collections for: %s models.\n", strings.Join(modelNames, ","))
+}
+
+func generateSingleFileCollections(collections []*input.CollectionInput, dir string, isTesting bool, buf *bytes.Buffer) {
+	multiCollections := &input.MultiCollectionInput{}
+	imports := map[string]struct{}{}
+	for _, collection := range collections {
+		for _, imp := range collection.Imports {
+			imports[imp] = struct{}{}
+		}
+		multiCollections.PackageName = collection.PackageName
+		multiCollections.ExternalController = collection.ExternalController
+		multiCollections.Collections = append(multiCollections.Collections, collection)
+	}
+	for imp := range imports {
+		multiCollections.Imports = append(multiCollections.Imports, imp)
+	}
+	fileName := filepath.Join(dir, "models_collections.neuron")
+	if isTesting {
+		fileName += "_test"
+	}
+	fileName += ".go"
+	generateFile(fileName, "single-file-collections", buf, multiCollections)
 }

@@ -38,6 +38,7 @@ func init() {
 	rootCmd.AddCommand(modelsCmd)
 
 	modelsCmd.PersistentFlags().StringSliceP("type", "t", nil, "Specify the models type name (comma separated types)")
+	modelsCmd.PersistentFlags().StringSliceP("exclude", "x", nil, "Define the types to exclude from the generator")
 }
 
 func directory(args []string) string {

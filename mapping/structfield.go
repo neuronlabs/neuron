@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/neuronlabs/neuron/annotation"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
@@ -256,7 +255,7 @@ func (s *StructField) StoreSet(key string, value interface{}) {
 		s.store = make(map[string]interface{})
 	}
 	s.store[key] = value
-	log.Debug2f("[STORE][%s][%s] AddModel Key: %s, Models: %v", s.mStruct.collection, s.NeuronName(), key, value)
+	log.Debug2f("[STORE][%s][%s] addModel Key: %s, Models: %v", s.mStruct.collection, s.NeuronName(), key, value)
 }
 
 // Struct returns fields Model Structure.
@@ -359,9 +358,9 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		return mp
 	}
 
-	separated := strings.Split(tag, annotation.TagSeparator)
+	separated := strings.Split(tag, AnnotationTagSeparator)
 	for _, option := range separated {
-		i := strings.IndexRune(option, annotation.TagEqual)
+		i := strings.IndexRune(option, AnnotationTagEqual)
 		var values []string
 		if i == -1 {
 			mp[option] = values
@@ -369,7 +368,7 @@ func (s *StructField) getTagValues(tag string) url.Values {
 		}
 		key := option[:i]
 		if i != len(option)-1 {
-			values = strings.Split(option[i+1:], annotation.Separator)
+			values = strings.Split(option[i+1:], AnnotationSeparator)
 		}
 
 		mp[key] = values
@@ -513,7 +512,7 @@ func (s *StructField) Self() *StructField {
 }
 
 func (s *StructField) setTagValues() error {
-	tag, hasTag := s.reflectField.Tag.Lookup(annotation.Neuron)
+	tag, hasTag := s.reflectField.Tag.Lookup(AnnotationNeuron)
 	if !hasTag {
 		return nil
 	}
@@ -524,9 +523,9 @@ func (s *StructField) setTagValues() error {
 	// iterate over structfield additional tags
 	for key, values := range tagValues {
 		switch key {
-		case annotation.FieldType, annotation.Name, annotation.ForeignKey, annotation.Relation:
+		case AnnotationFieldType, AnnotationName, AnnotationForeignKey, AnnotationRelation:
 			continue
-		case annotation.Flags:
+		case AnnotationFlags:
 			if err := s.setFlags(values...); err != nil {
 				return err
 			}
@@ -534,7 +533,7 @@ func (s *StructField) setTagValues() error {
 		}
 
 		if !s.isRelationship() {
-			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, annotation.ManyToMany)
+			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, AnnotationManyToMany)
 			return errors.NewDetf(ClassModelDefinition, "%s tag on non relationship field", key)
 		}
 
@@ -544,7 +543,7 @@ func (s *StructField) setTagValues() error {
 			s.relationship = r
 		}
 
-		if key == annotation.ManyToMany {
+		if key == AnnotationManyToMany {
 			r.kind = RelMany2Many
 			// first value is join model
 			// the second is the backreference field
@@ -586,25 +585,25 @@ func (s *StructField) setFlags(flags ...string) error {
 	var err error
 	for _, single := range flags {
 		switch single {
-		case annotation.ClientID:
+		case AnnotationClientID:
 			s.setFlag(fClientID)
-		case annotation.NoFilter:
+		case AnnotationNoFilter:
 			s.setFlag(fNoFilter)
-		case annotation.Hidden:
+		case AnnotationHidden:
 			s.setFlag(fHidden)
-		case annotation.NotSortable:
+		case AnnotationNotSortable:
 			s.setFlag(fSortable)
-		case annotation.ISO8601:
+		case AnnotationISO8601:
 			s.setFlag(fISO8601)
-		case annotation.OmitEmpty:
+		case AnnotationOmitEmpty:
 			s.setFlag(fOmitempty)
-		case annotation.I18n:
+		case AnnotationI18n:
 			s.setFlag(fI18n)
-		case annotation.DeletedAt:
+		case AnnotationDeletedAt:
 			err = s.mStruct.setTimeRelatedField(s, fDeletedAt)
-		case annotation.CreatedAt:
+		case AnnotationCreatedAt:
 			err = s.mStruct.setTimeRelatedField(s, fCreatedAt)
-		case annotation.UpdatedAt:
+		case AnnotationUpdatedAt:
 			err = s.mStruct.setTimeRelatedField(s, fUpdatedAt)
 		default:
 			log.Debugf("Unknown field's: '%s' flag tag: '%s'", s.Name(), single)

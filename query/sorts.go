@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/neuronlabs/neuron/annotation"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -173,12 +172,12 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder, di
 		err       errors.DetailedError
 	)
 
-	split := strings.Split(sort, annotation.NestedSeparator)
+	split := strings.Split(sort, mapping.AnnotationNestedSeparator)
 	l := len(split)
 	switch {
 	case l == 1:
 		// for length == 1 the sort must be an attribute, primary or a foreign key field
-		if sort == annotation.ID {
+		if sort == mapping.AnnotationID {
 			sField = m.Primary()
 
 			sortField = newSortField(sField, order)
@@ -263,7 +262,7 @@ func (s *SortField) setSubfield(sortSplit []string, order SortOrder, disallowFK 
 		relatedModel := s.StructField.Relationship().Struct()
 		sort := sortSplit[0]
 
-		if sort == annotation.ID {
+		if sort == mapping.AnnotationID {
 			sField = relatedModel.Primary()
 
 			s.SubFields = append(s.SubFields, &SortField{StructField: sField, Order: order})

@@ -1,0 +1,12 @@
+{{- define "model-definition" -}}
+{{ template "primary" . }}
+{{if .Fielder }}
+{{ template "fielder" . }}
+{{- end}}
+{{if .SingleRelationer }}
+{{ template "single-relationer" . }}
+{{- end}}
+{{if .MultiRelationer }}
+{{ template "multi-relationer" . }}
+{{- end}}
+{{- end}}

@@ -119,7 +119,7 @@ func (s *Scope) addRelationHasMany(ctx context.Context, relField *mapping.Struct
 		if relationModel.IsPrimaryKeyZero() {
 			return errors.Newf(ClassInvalidInput, "relation model value has zero primary key value")
 		}
-		// AddModel the foreign key field to the model's primary key value.
+		// addModel the foreign key field to the model's primary key value.
 		fielder, ok := relationModel.(mapping.Fielder)
 		if !ok {
 			return errModelNotImplements(relationship.Struct(), "Fielder")
@@ -237,7 +237,7 @@ func (s *Scope) removeBelongsToRelation(ctx context.Context, relField *mapping.S
 			return 0, err
 		}
 	}
-	// AddModel only two fields in the fieldset.
+	// addModel only two fields in the fieldset.
 	s.Fieldset = fieldSetWithUpdatedAt(s.mStruct, s.mStruct.Primary(), relField.Relationship().ForeignKey())
 	return s.Update(ctx)
 }
@@ -339,7 +339,7 @@ func (s *Scope) removeMany2ManyRelations(ctx context.Context, relField *mapping.
 }
 
 //
-// AddModel relations
+// addModel relations
 //
 
 func (s *Scope) setRelations(ctx context.Context, relationField *mapping.StructField, relationModels ...mapping.Model) error {
