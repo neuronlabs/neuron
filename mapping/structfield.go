@@ -33,6 +33,52 @@ func (f FieldSet) ContainsFieldName(fieldName string) bool {
 	return false
 }
 
+// Copy creates a copy of the fieldset.
+func (f FieldSet) Copy() FieldSet {
+	cp := make(FieldSet, len(f))
+	copy(cp, f)
+	return cp
+}
+
+// Hash returns the map entry
+func (f FieldSet) Hash() (hash string) {
+	for _, field := range f {
+		hash += field.neuronName
+	}
+	return hash
+}
+
+// Sort sorts given fieldset by fields indices.
+func (f FieldSet) Sort() {
+	sort.Sort(f)
+}
+
+// Len implements sort.Interface interface.
+func (f FieldSet) Len() int {
+	return len(f)
+}
+
+// Less implements sort.Interface interface.
+func (f FieldSet) Less(i, j int) bool {
+	return f.less(f[i], f[j])
+}
+
+// Swap implements sort.Interface interface.
+func (f FieldSet) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
+func (f FieldSet) less(first, second *StructField) bool {
+	var result bool
+	for k := 0; k < len(first.Index); k++ {
+		if first.Index[k] != second.Index[k] {
+			result = first.Index[k] < second.Index[k]
+			break
+		}
+	}
+	return result
+}
+
 // StructField represents a field structure with its json api parameters.
 // and model relationships.
 type StructField struct {
@@ -565,7 +611,7 @@ func (s *StructField) setTagValues() error {
 		for _, value := range values {
 			i := strings.IndexRune(value, '=')
 			if i == -1 {
-				err := errors.NewDetf(ClassModelDefinition, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.Struct().Type().Name(), s.Name(), key, value)
+				err := errors.NewDetf(ClassModelDefinition, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.mStruct.Type().Name(), s.Name(), key, value)
 				multiError = append(multiError, err)
 				continue
 			}

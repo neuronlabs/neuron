@@ -3,16 +3,22 @@ package mapping
 // Model is the interface used for getting and setting model primary values.
 type Model interface {
 	NeuronCollectionName() string
+	// GetPrimaryKeyStringValue gets the primary key string value.
+	GetPrimaryKeyStringValue() (string, error)
 	// GetPrimaryKeyValue returns the primary key field value.
 	GetPrimaryKeyValue() interface{}
 	// GetPrimaryKeyHashableValue returns the primary key field value.
 	GetPrimaryKeyHashableValue() interface{}
 	// GetPrimaryKeyZeroValue gets the primary key zero (non set) value.
 	GetPrimaryKeyZeroValue() interface{}
+	// GetPrimaryKeyAddress
+	GetPrimaryKeyAddress() interface{}
 	// IsPrimaryKeyZero checks if the primary key value is zero.
 	IsPrimaryKeyZero() bool
 	// SetPrimaryKeyValue sets the primary key field value to 'src'.
 	SetPrimaryKeyValue(src interface{}) error
+	// SetPrimaryKeyStringValue sets the primary key field value from the string 'src'.
+	SetPrimaryKeyStringValue(src string) error
 }
 
 // Fielder is the interface used to get and set model field values.
@@ -26,10 +32,14 @@ type Fielder interface {
 	// GetHashableFieldValue returns hashable field value - if the function is nil - returns nil
 	// If the field is []byte it would be converted to the string.
 	GetHashableFieldValue(field *StructField) (interface{}, error)
+	// GetFieldStringValue gets field's string value.
+	GetFieldStringValue(field *StructField) (string, error)
 	// GetFieldValue returns 'field' value.
 	GetFieldValue(field *StructField) (interface{}, error)
 	// SetFieldValue sets the 'field''s 'value'. In order to set
 	SetFieldValue(field *StructField, value interface{}) error
+	// GetFieldsAddress gets field's address.
+	GetFieldsAddress(field *StructField) (interface{}, error)
 }
 
 // SingleRelationer is the interface used by the model with single relationship - HasOne or BelongsTo.

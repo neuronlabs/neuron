@@ -24,7 +24,7 @@ func (s *Scope) OrderBy(fields ...string) error {
 		s.SortingOrder = append(s.SortingOrder, sortFields...)
 		return nil
 	}
-	sortFields, err := newUniqueSortFields(s.Struct(), false, fields...)
+	sortFields, err := newUniqueSortFields(s.ModelStruct, false, fields...)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*Sort
 			}
 		}
 
-		sortField, err := newStringSortField(s.mStruct, sort, order, disallowFK)
+		sortField, err := newStringSortField(s.ModelStruct, sort, order, disallowFK)
 		if err != nil {
 			return nil, err
 		}

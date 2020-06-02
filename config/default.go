@@ -8,6 +8,6 @@ func DefaultController() *Controller {
 func defaultConfig() *Controller {
 	return &Controller{
 		NamingConvention: "snake",
-		Repositories:     map[string]*Repository{},
+		Services:         map[string]*Service{},
 	}
 }

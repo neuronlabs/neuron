@@ -13,14 +13,14 @@ type Controller struct {
 	// - snake
 	// - kebab
 	NamingConvention string `mapstructure:"naming_convention"`
-	// Repositories contains the connection configs for the given repository instance name
-	Repositories map[string]*Repository `mapstructure:"repositories"`
+	// Services contains the connection configs for the given service name.
+	Services map[string]*Service `mapstructure:"repositories"`
 	// DefaultRepositoryName defines default repository name
 	DefaultRepositoryName string `mapstructure:"default_repository_name"`
 	// DisallowDefaultRepository determines if the default repository are allowed.
 	DisallowDefaultRepository bool `mapstructure:"disallow_default_repository"`
-	// AsynchronousIncludes defines if the query relation includes would be taken concurrently.
-	AsynchronousIncludes bool `mapstructure:"asynchronous_includes"`
+	// SynchronousConnections defines if the query relation includes would be taken concurrently.
+	SynchronousConnections bool `mapstructure:"synchronous_connections"`
 	// UTCTimestamps is the flag that defines the format of the timestamps.
 	UTCTimestamps bool `mapstructure:"utc_timestamps"`
 }

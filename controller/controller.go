@@ -10,6 +10,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron/service"
 )
 
 // Controller is the structure that contains, initialize and control the flow of the application.
@@ -17,14 +18,16 @@ import (
 type Controller struct {
 	// Config is the configuration struct for the controller.
 	Config *config.Controller
-	// NamerFunc defines the function strategy how the model's and it's fields are being named.
-	NamerFunc mapping.Namer
+	// NamingConvention defines the function strategy how the model's and it's fields are being named.
+	NamingConvention mapping.NamingConvention
 	// ModelMap is a mapping for the model's structures.
 	ModelMap *mapping.ModelMap
-	// Repositories is the mapping of the repositoryName to the repository.
+	// Services is the mapping of the service name to the given service.
+	Services     map[string]service.Service
 	Repositories map[string]repository.Repository
-	// DefaultRepository is the default repository or given controller.
+	// DefaultService is the default service or given controller.
 	DefaultRepository repository.Repository
+	defaultRepository string
 }
 
 // NewController creates new controller for given config 'cfg'.
@@ -42,38 +45,46 @@ func (c *Controller) GetRepository(model mapping.Model) (repository.Repository, 
 	if err != nil {
 		return nil, err
 	}
-	repo, ok := c.Repositories[mStruct.RepositoryName]
+	svc, ok := c.Services[mStruct.RepositoryName]
 	if !ok {
-		return nil, errors.Newf(ClassRepositoryNotFound, "repository not found for the model: %s", mStruct)
+		return nil, errors.Newf(ClassRepositoryNotFound, "service not found for the model: %s", mStruct)
+	}
+	repo, ok := svc.(repository.Repository)
+	if !ok {
+		return nil, errors.New(ClassRepositoryNotMatched, "provided service is not a repository")
 	}
 	return repo, nil
 }
 
-// GetRepositoryByStruct gets the repository by model struct.
-func (c *Controller) GetRepositoryByStruct(model *mapping.ModelStruct) (repository.Repository, error) {
-	repo, ok := c.Repositories[model.RepositoryName]
+// GetRepositoryByModelStruct gets the service by model struct.
+func (c *Controller) GetRepositoryByModelStruct(model *mapping.ModelStruct) (repository.Repository, error) {
+	svc, ok := c.Services[model.RepositoryName]
 	if !ok {
-		return nil, errors.Newf(ClassRepositoryNotFound, "repository not found for the model: %s", model)
+		return nil, errors.Newf(ClassRepositoryNotFound, "service not found for the model: %s", model)
+	}
+	repo, ok := svc.(repository.Repository)
+	if !ok {
+		return nil, errors.New(ClassRepositoryNotMatched, "provided service is not a repository")
 	}
 	return repo, nil
 }
 
-// RegisterRepository registers provided repository for given 'name' and with with given 'cfg' config.
-func (c *Controller) RegisterRepository(name string, cfg *config.Repository) (err error) {
+// RegisterService registers provided service for given 'name' and with with given 'cfg' config.
+func (c *Controller) RegisterService(name string, cfg *config.Service) (err error) {
 	if err = cfg.Validate(); err != nil {
 		return err
 	}
-	if _, ok := c.Repositories[name]; ok {
-		return errors.Newf(ClassRepositoryNotFound, "repository: '%s' already exists", name)
+	if _, ok := c.Services[name]; ok {
+		return errors.Newf(ClassRepositoryNotFound, "service: '%s' already exists", name)
 	}
-	// check if the repository is already registered
-	_, ok := c.Config.Repositories[name]
+	// Check if the service is already registered.
+	_, ok := c.Config.Services[name]
 	if ok {
-		return errors.NewDetf(ClassRepositoryAlreadyRegistered, "repository: '%s' already registered", name)
+		return errors.NewDetf(ClassRepositoryAlreadyRegistered, "service: '%s' already registered", name)
 	}
-	c.Config.Repositories[name] = cfg
-	// create new repository from factory.
-	if err = c.newRepository(name, cfg); err != nil {
+	c.Config.Services[name] = cfg
+	// Create new service from factory.
+	if err = c.newService(name, cfg); err != nil {
 		return err
 	}
 	return nil
@@ -104,29 +115,19 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 		return errors.NewDet(ClassInvalidConfig, "validating config failed")
 	}
 
-	// set naming convention
-	switch cfg.NamingConvention {
-	case "kebab":
-		c.NamerFunc = mapping.NamingKebab
-	case "camel":
-		c.NamerFunc = mapping.NamingCamel
-	case "lower_camel":
-		c.NamerFunc = mapping.NamingLowerCamel
-	case "snake":
-		c.NamerFunc = mapping.NamingSnake
-	default:
-		return errors.NewDetf(ClassInvalidConfig, "unknown naming convention name: %s", cfg.NamingConvention)
+	if err = c.NamingConvention.Parse(cfg.NamingConvention); err != nil {
+		return err
 	}
 	log.Debugf("Naming Convention used in schemas: %s", cfg.NamingConvention)
 	c.Config = cfg
 
 	// Map repositories from config.
-	for name, repositoryConfig := range cfg.Repositories {
-		if _, ok := c.Repositories[name]; ok {
-			return errors.NewDetf(ClassInvalidConfig, "config repository: '%s' already registered for the controller", name)
+	for name, serviceConfig := range cfg.Services {
+		if _, ok := c.Services[name]; ok {
+			return errors.NewDetf(ClassInvalidConfig, "config service: '%s' already registered for the controller", name)
 		}
-		// Insert new repository from factory.
-		err := c.newRepository("", repositoryConfig)
+		// Insert new service from factory.
+		err := c.newService("", serviceConfig)
 		if err != nil {
 			return err
 		}
@@ -134,36 +135,45 @@ func (c *Controller) setConfig(cfg *config.Controller) (err error) {
 	return nil
 }
 
-func (c *Controller) newRepository(name string, cfg *config.Repository) error {
+func (c *Controller) newService(name string, cfg *config.Service) error {
 	driverName := cfg.DriverName
 	if driverName == "" {
-		log.Errorf("No driver name specified for the repository configuration: %v", cfg)
-		return errors.NewDetf(ClassInvalidConfig, "no repository driver name found for the repository: %v", cfg)
+		log.Errorf("No driver name specified for the service configuration: %v", cfg)
+		return errors.NewDetf(ClassInvalidConfig, "no service driver name found for the service: %v", cfg)
 	}
-	factory := repository.GetFactory(driverName)
+	factory := service.GetFactory(driverName)
 	if factory == nil {
 		log.Errorf("Factory for driver: '%s' is not found", driverName)
-		return errors.NewDetf(ClassRepositoryNotFound, "repository factory: '%s' not found.", driverName)
+		return errors.NewDetf(ClassRepositoryNotFound, "service factory: '%s' not found.", driverName)
 	}
-	repo, err := factory.New(cfg)
+	svc, err := factory.New(cfg)
 	if err != nil {
 		return err
 	}
-	c.Repositories[name] = repo
+	c.Services[name] = svc
+	repo, ok := svc.(repository.Repository)
+	if !ok {
+		return nil
+	}
+	if c.DefaultRepository == nil {
+		c.DefaultRepository = repo
+		c.defaultRepository = name
+	}
 
 	if c.Config.DefaultRepositoryName == name {
 		c.DefaultRepository = repo
+		c.defaultRepository = name
 	}
 	return nil
 }
 
 func newController(cfg *config.Controller) (*Controller, error) {
 	var err error
-	c := &Controller{Repositories: make(map[string]repository.Repository)}
+	c := &Controller{Services: make(map[string]service.Service)}
 	if err = c.setConfig(cfg); err != nil {
 		return nil, err
 	}
 
-	c.ModelMap = mapping.NewModelMap(c.NamerFunc)
+	c.ModelMap = mapping.NewModelMap(c.NamingConvention)
 	return c, nil
 }

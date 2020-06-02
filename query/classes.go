@@ -23,8 +23,14 @@ var (
 	ClassInvalidModels errors.Class
 	// ClassInvalidField is the error classification for the invalid field input
 	ClassInvalidField errors.Class
+	// ClassInvalidFieldSet is the error classification for the invalid fieldset input
+	ClassInvalidFieldSet errors.Class
+	// ClassInvalidFieldValue is the error classification for the invalid field input
+	ClassInvalidFieldValue errors.Class
 	// ClassNoModels is the error classification when there is models provided in the input.
 	ClassNoModels errors.Class
+	// ClassNoFieldsInFieldset is the error classification when no fields are present in the fieldset.
+	ClassNoFieldsInFieldSet errors.Class
 
 	// MnrFilter is the minor error classification related to the filters.
 	MnrFilter errors.Minor
@@ -34,6 +40,8 @@ var (
 	ClassFilterFormat errors.Class
 	// ClassFilterCollection is the error classification for the filter collection.
 	ClassFilterCollection errors.Class
+	// ClassFilterValues is the error classification for the filter values.
+	ClassFilterValues errors.Class
 
 	// MnrTransaction is minor error classification for the query transactions.
 	MnrTransaction errors.Minor
@@ -42,6 +50,25 @@ var (
 	ClassTxDone errors.Class
 	// ClassTxState is the classification for the transaction state.
 	ClassTxState errors.Class
+	// ClassTxInvalid is the classification for the invalid transaction.
+	ClassTxInvalid errors.Class
+
+	// MnrViolation is the minor error classification when query violates some restrictions.
+	MnrViolation errors.Minor
+	// ClassViolationIntegrityConstraint is the violation error classification.
+	ClassViolationIntegrityConstraint errors.Class
+	// ClassViolationRestrict is the violation error classification.
+	ClassViolationRestrict errors.Class
+	// ClassViolationNotNull is the violation error classification.
+	ClassViolationNotNull errors.Class
+	// ClassViolationForeignKey is the violation error classification.
+	ClassViolationForeignKey errors.Class
+	// ClassViolationUnique is the violation error classification.
+	ClassViolationUnique errors.Class
+	// ClassViolationCheck is the violation error classification.
+	ClassViolationCheck errors.Class
+	// ClassViolationDataType is the violation error classification.
+	ClassViolationDataType errors.Class
 )
 
 func init() {
@@ -55,9 +82,12 @@ func init() {
 	MnrInput = errors.MustNewMinor(MjrQuery)
 	ClassInvalidInput = errors.MustNewClassWIndex(MjrQuery, MnrInput)
 	ClassInvalidField = errors.MustNewClassWIndex(MjrQuery, MnrInput)
+	ClassInvalidFieldSet = errors.MustNewClassWIndex(MjrQuery, MnrInput)
+	ClassInvalidFieldValue = errors.MustNewClassWIndex(MjrQuery, MnrInput)
 	ClassInvalidSort = errors.MustNewClassWIndex(MjrQuery, MnrInput)
 	ClassInvalidModels = errors.MustNewClassWIndex(MjrQuery, MnrInput)
 	ClassNoModels = errors.MustNewClassWIndex(MjrQuery, MnrInput)
+	ClassNoFieldsInFieldSet = errors.MustNewClassWIndex(MjrQuery, MnrInput)
 
 	// Filter
 	MnrFilter = errors.MustNewMinor(MjrQuery)
@@ -70,4 +100,16 @@ func init() {
 
 	ClassTxState = errors.MustNewClassWIndex(MjrQuery, MnrTransaction)
 	ClassTxDone = errors.MustNewClassWIndex(MjrQuery, MnrTransaction)
+	ClassTxInvalid = errors.MustNewClassWIndex(MjrQuery, MnrTransaction)
+
+	// Violation
+	MnrViolation = errors.MustNewMinor(MjrQuery)
+	ClassViolationIntegrityConstraint = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationIntegrityConstraint = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationRestrict = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationNotNull = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationForeignKey = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationUnique = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationCheck = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
+	ClassViolationDataType = errors.MustNewClassWIndex(MjrQuery, MnrViolation)
 }

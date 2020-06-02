@@ -7,7 +7,7 @@ import (
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron/service"
 )
 
 // DialAll establish connections for all repositories.
@@ -56,22 +56,26 @@ func (c *Controller) DialAll(ctx context.Context) error {
 
 // dialJob is very simple structure that matches repository with its name.
 type dialJob struct {
-	name string
-	repo repository.Repository
+	name   string
+	dialer service.Dialer
 }
 
 func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan dialJob, error) {
-	if len(c.Repositories) == 0 {
+	if len(c.Services) == 0 {
 		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
 	}
 	out := make(chan dialJob)
 	go func() {
 		defer close(out)
 
-		for name, repo := range c.Repositories {
+		for name, repo := range c.Services {
+			dialer, isDialer := repo.(service.Dialer)
+			if !isDialer {
+				continue
+			}
 			job := dialJob{
-				name: name,
-				repo: repo,
+				name:   name,
+				dialer: dialer,
 			}
 			wg.Add(1)
 			select {
@@ -87,7 +91,7 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<
 func (c *Controller) dial(ctx context.Context, job dialJob, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
-		if err := job.repo.Dial(ctx); err != nil {
+		if err := job.dialer.Dial(ctx); err != nil {
 			errChan <- err
 			return
 		}

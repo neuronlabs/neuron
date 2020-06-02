@@ -6,7 +6,7 @@ import (
 
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron/service"
 )
 
 // defaultController is the DefaultController controller used if no 'controller' is provided for operations
@@ -59,12 +59,12 @@ func DialAll(ctx context.Context) error {
 }
 
 // GetRepository gets 'model' repository.
-func GetRepository(model mapping.Model) (repository.Repository, error) {
+func GetRepository(model mapping.Model) (service.Service, error) {
 	return Default().GetRepository(model)
 }
 
 // HealthCheck checks all repositories health.
-func HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
+func HealthCheck(ctx context.Context) (*service.HealthResponse, error) {
 	return Default().HealthCheck(ctx)
 }
 
@@ -101,9 +101,9 @@ func RegisterModels(models ...mapping.Model) (err error) {
 	return Default().RegisterModels(models...)
 }
 
-// RegisterRepository registers provided repository for given 'name' and with with given 'cfg' config.
-func RegisterRepository(name string, cfg *config.Repository) (err error) {
-	return Default().RegisterRepository(name, cfg)
+// RegisterService registers provided repository for given 'name' and with with given 'cfg' config.
+func RegisterRepository(name string, cfg *config.Service) (err error) {
+	return Default().RegisterService(name, cfg)
 }
 
 func newDefault() *Controller {

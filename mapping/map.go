@@ -18,16 +18,16 @@ type ModelMap struct {
 	collections map[string]*ModelStruct
 
 	DefaultRepository string
-	NamerFunc         Namer
+	NameConvention    NamingConvention
 
 	nestedIncludedLimit int
 }
 
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
-func NewModelMap(namerFunc Namer) *ModelMap {
+func NewModelMap(namer NamingConvention) *ModelMap {
 	return &ModelMap{
-		collections: make(map[string]*ModelStruct),
-		NamerFunc:   namerFunc,
+		collections:    make(map[string]*ModelStruct),
+		NameConvention: namer,
 	}
 }
 
@@ -73,7 +73,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return errors.Newf(ClassModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
 		}
 		// build the model's structure and set into model map.
-		mStruct, err := buildModelStruct(model, m.NamerFunc)
+		mStruct, err := buildModelStruct(model, m.NameConvention)
 		if err != nil {
 			return err
 		}
@@ -90,7 +90,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 				mStruct.RepositoryName = repositoryNamer.RepositoryName()
 			}
 		}
-		mStruct.namerFunc = m.NamerFunc
+		mStruct.namer = m.NameConvention
 	}
 
 	var err error
@@ -271,8 +271,8 @@ func (m *ModelMap) setRelationships() error {
 					// get the foreign keys from the join model
 					modelWithFK := relationship.joinModel
 
-					// get the name from the NamerFunc.
-					foreignKeyName := m.NamerFunc(foreignKey)
+					// get the name from the NamingConvention.
+					foreignKeyName := m.NameConvention.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
@@ -292,8 +292,8 @@ func (m *ModelMap) setRelationships() error {
 						m2mForeignKey = relationship.modelType.Name() + "ID"
 					}
 
-					// get the name from the NamerFunc.
-					m2mForeignKeyName := m.NamerFunc(m2mForeignKey)
+					// get the name from the NamingConvention.
+					m2mForeignKeyName := m.NameConvention.Namer(m2mForeignKey)
 
 					// check if given FK exists in the model's definitions.
 					m2mFK, ok := modelWithFK.ForeignKey(m2mForeignKeyName)
@@ -318,14 +318,14 @@ func (m *ModelMap) setRelationships() error {
 					}
 
 					modelWithFK := relationship.mStruct
-					// get the name from the NamerFunc.
-					foreignKeyName := m.NamerFunc(foreignKey)
+					// get the name from the NamingConvention.
+					foreignKeyName := m.NameConvention.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
 					if !ok {
 						foreignKey = model.modelType.Name() + "ID"
-						fk, ok = modelWithFK.ForeignKey(m.NamerFunc(foreignKey))
+						fk, ok = modelWithFK.ForeignKey(m.NameConvention.Namer(foreignKey))
 						if !ok {
 							log.Errorf("Foreign key: '%s' not found within Model: '%s'", foreignKeyName, modelWithFK.Type().Name())
 							return errors.NewDetf(ClassModelDefinition, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKeyName, relField.Name(), model.Type().Name())
@@ -346,7 +346,7 @@ func (m *ModelMap) setRelationships() error {
 					foreignKey = relField.ReflectField().Name + "ID"
 				}
 				// Use the namer func to get the field's name
-				foreignKeyName := m.NamerFunc(foreignKey)
+				foreignKeyName := m.NameConvention.Namer(foreignKey)
 
 				// Search for the foreign key within the given model
 				fk, ok := model.ForeignKey(foreignKeyName)
@@ -361,7 +361,7 @@ func (m *ModelMap) setRelationships() error {
 					// check if the model might have a name of belong's to
 					modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
 					// check if the foreign key would be the name of the related structure
-					relatedTypeName := m.NamerFunc(modelsForeign)
+					relatedTypeName := m.NameConvention.Namer(modelsForeign)
 					fk, ok = model.ForeignKey(relatedTypeName)
 					if !ok {
 						fk, ok = model.findUntypedInvalidAttribute(relatedTypeName)
@@ -397,7 +397,7 @@ func (m *ModelMap) setRelationships() error {
 					continue
 				}
 
-				modelsForeign := m.NamerFunc(relField.mStruct.Type().Name() + "ID")
+				modelsForeign := m.NameConvention.Namer(relField.mStruct.Type().Name() + "ID")
 
 				fk, ok = relationship.mStruct.ForeignKey(modelsForeign)
 				if ok {
@@ -518,7 +518,7 @@ func (m *ModelMap) setUntaggedFields(model *ModelStruct) (err error) {
 }
 
 // buildModelStruct builds the model struct for the provided model with the given namer function
-func buildModelStruct(model interface{}, namerFunc Namer) (modelStruct *ModelStruct, err error) {
+func buildModelStruct(model interface{}, namer NamingConvention) (modelStruct *ModelStruct, err error) {
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
@@ -536,11 +536,11 @@ func buildModelStruct(model interface{}, namerFunc Namer) (modelStruct *ModelStr
 	if ok {
 		collection = collectionNamer.NeuronCollectionName()
 	} else {
-		collection = namerFunc(inflection.Plural(modelType.Name()))
+		collection = namer.Namer(inflection.Plural(modelType.Name()))
 	}
 
 	modelStruct = newModelStruct(modelType, collection)
-	modelStruct.namerFunc = namerFunc
+	modelStruct.namer = namer
 	// map fields
 	if err := modelStruct.mapFields(modelType, modelValue, nil); err != nil {
 		return nil, err
@@ -548,7 +548,7 @@ func buildModelStruct(model interface{}, namerFunc Namer) (modelStruct *ModelStr
 	return modelStruct, nil
 }
 
-func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc Namer) (*NestedStruct, error) {
+func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc NamingConvention) (*NestedStruct, error) {
 	nestedStruct := newNestedStruct(t, sFielder)
 	v := reflect.New(t).Elem()
 	var marshalFields []reflect.StructField
@@ -598,7 +598,7 @@ func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc Namer) (*
 		}
 
 		if nestedField.structField.NeuronName() == "" {
-			nestedField.structField.neuronName = namerFunc(nField.Name)
+			nestedField.structField.neuronName = namerFunc.Namer(nField.Name)
 		}
 
 		switch nestedField.structField.NeuronName() {

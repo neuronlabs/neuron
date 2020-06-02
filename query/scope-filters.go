@@ -8,7 +8,19 @@ import (
 
 // ClearFilters clears all scope filters.
 func (s *Scope) ClearFilters() {
-	s.clearFilters()
+	s.Filters = Filters{}
+}
+
+// GetOrCreateFileldFilter gets or creates new filter field for given structField within the scope filters.
+func (s *Scope) GetOrCreateFieldFilter(structField *mapping.StructField) *FilterField {
+	for _, filter := range s.Filters {
+		if filter.StructField == structField {
+			return filter
+		}
+	}
+	filter := &FilterField{StructField: structField}
+	s.Filters = append(s.Filters, filter)
+	return filter
 }
 
 // Where parses the filter into the  and adds it to the given scope.
@@ -17,7 +29,7 @@ func (s *Scope) ClearFilters() {
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
 func (s *Scope) Where(filter string, values ...interface{}) error {
-	filterField, err := newFilter(s.mStruct, filter, values...)
+	filterField, err := newFilter(s.ModelStruct, filter, values...)
 	if err != nil {
 		log.Debugf("SCOPE[%s] Where '%s' with values: %v failed %v", filter, values, err)
 		return err
@@ -37,8 +49,8 @@ Private filter methods and functions
 */
 
 func (s *Scope) addFilterField(filter *FilterField) error {
-	if filter.StructField.Struct() != s.mStruct {
-		log.Debugf("Where's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.mStruct.Type().Name(), filter.StructField.Name(), filter.StructField.Struct().Type().Name())
+	if filter.StructField.Struct() != s.ModelStruct {
+		log.Debugf("Where's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.ModelStruct.Type().Name(), filter.StructField.Name(), filter.StructField.Struct().Type().Name())
 		err := errors.NewDet(ClassInvalidField, "provided filter field's model structure doesn't match scope's model")
 		return err
 	}
@@ -51,19 +63,4 @@ func (s *Scope) addFilterField(filter *FilterField) error {
 	}
 	s.Filters = append(s.Filters, filter)
 	return nil
-}
-
-func (s *Scope) clearFilters() {
-	s.Filters = Filters{}
-}
-
-func (s *Scope) getOrCreateFieldFilter(structField *mapping.StructField) *FilterField {
-	for _, filter := range s.Filters {
-		if filter.StructField == structField {
-			return filter
-		}
-	}
-	filter := &FilterField{StructField: structField}
-	s.Filters = append(s.Filters, filter)
-	return filter
 }

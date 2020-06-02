@@ -44,10 +44,10 @@ func TestDetailedError(t *testing.T) {
 	second.WrapDetailsf("Wrapped %dnd.", 2)
 	assert.Equal(t, "Wrapped 2nd. This is 2nd detail.", second.Details())
 
-	sd, ok := second.(*detailedError)
+	sd, ok := second.(*DetailedError)
 	require.True(t, ok)
 
-	sd.details = ""
+	sd.Details = ""
 	second.WrapDetails("Should be stored.")
 
 	assert.Equal(t, "Should be stored.", sd.Details())

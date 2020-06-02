@@ -7,7 +7,7 @@ import (
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron/service"
 )
 
 // CloseAll gently closes repository connections.
@@ -52,18 +52,22 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Repository, error) {
-	if len(c.Repositories) == 0 {
+func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan service.Closer, error) {
+	if len(c.Services) == 0 {
 		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
 	}
-	out := make(chan repository.Repository)
+	out := make(chan service.Closer)
 	go func() {
 		defer close(out)
 
-		for _, repo := range c.Repositories {
+		for _, repo := range c.Services {
+			closer, isCloser := repo.(service.Closer)
+			if !isCloser {
+				continue
+			}
 			wg.Add(1)
 			select {
-			case out <- repo:
+			case out <- closer:
 			case <-ctx.Done():
 				return
 			}
@@ -72,7 +76,7 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (
 	return out, nil
 }
 
-func (c *Controller) closeRepo(ctx context.Context, repo repository.Repository, wg *sync.WaitGroup, errChan chan<- error) {
+func (c *Controller) closeRepo(ctx context.Context, repo service.Closer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := repo.Close(ctx); err != nil {

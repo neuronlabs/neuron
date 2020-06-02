@@ -8,35 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/config"
-	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/mapping"
 )
 
-func newController(t *testing.T) *controller.Controller {
-	c := controller.NewDefault()
-	err := c.RegisterRepository(repoName, &config.Repository{
-		DriverName: repoName,
-	})
-	require.NoError(t, err)
-	return c
-}
-
 // TestFormatQuery tests the format query methods
 func TestFormatQuery(t *testing.T) {
-	c := newController(t)
+	mp := mapping.NewModelMap(mapping.SnakeCase)
 
-	err := c.RegisterModels(&Formatter{}, &FormatterRelation{})
+	err := mp.RegisterModels(&Formatter{}, &FormatterRelation{})
 	require.NoError(t, err)
 
-	mStruct, err := c.ModelStruct(&Formatter{})
-	require.NoError(t, err)
-
-	db := NewComposer(c)
+	mStruct, ok := mp.GetModelStruct(&Formatter{})
+	require.True(t, ok)
 
 	t.Run("Filters", func(t *testing.T) {
 		t.Run("Primary", func(t *testing.T) {
-			s := newScope(db, mStruct)
+			s := newScope(mStruct)
 
 			err = s.Filter(NewFilterField(mStruct.Primary(), OpEqual, 1))
 			require.NoError(t, err)
@@ -48,7 +35,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Foreign", func(t *testing.T) {
-			s := newScope(db, mStruct)
+			s := newScope(mStruct)
 
 			field, ok := mStruct.ForeignKey("fk")
 			require.True(t, ok)
@@ -63,7 +50,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Attribute", func(t *testing.T) {
-			s := newScope(db, mStruct)
+			s := newScope(mStruct)
 			require.NoError(t, err)
 
 			field, ok := mStruct.Attribute("attr")
@@ -79,7 +66,7 @@ func TestFormatQuery(t *testing.T) {
 		})
 
 		t.Run("Relationship", func(t *testing.T) {
-			s := newScope(db, mStruct)
+			s := newScope(mStruct)
 			require.NoError(t, err)
 
 			field, ok := mStruct.RelationByName("rel")
@@ -98,7 +85,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Pagination", func(t *testing.T) {
-		s := newScope(db, mStruct)
+		s := newScope(mStruct)
 		require.NoError(t, err)
 
 		s.Limit(12)
@@ -109,7 +96,7 @@ func TestFormatQuery(t *testing.T) {
 	})
 
 	t.Run("Sorts", func(t *testing.T) {
-		s := newScope(db, mStruct)
+		s := newScope(mStruct)
 		require.NoError(t, err)
 
 		err = s.OrderBy("-id")
@@ -123,15 +110,15 @@ func TestFormatQuery(t *testing.T) {
 
 	t.Run("Fieldset", func(t *testing.T) {
 		t.Run("DefaultController", func(t *testing.T) {
-			s := newScope(db, mStruct)
+			s := newScope(mStruct)
 			require.NoError(t, err)
 
-			s.Fieldset = append(mapping.FieldSet{}, mStruct.Fields()...)
+			s.FieldSet = append(mapping.FieldSet{}, mStruct.Fields()...)
 
 			q := s.FormatQuery()
 			require.Len(t, q, 1)
 
-			fieldsString := q.Get(fmt.Sprintf("fields[%s]", s.Struct().Collection()))
+			fieldsString := q.Get(fmt.Sprintf("fields[%s]", s.ModelStruct.Collection()))
 			fields := strings.Split(fieldsString, ",")
 			assert.Len(t, fields, 4)
 

@@ -1,6 +1,6 @@
 package query
 
-//go:generate neuron-generator models methods --single-file --exclude=Transaction,Operator .
+//go:generate neuron-generator models methods --single-file --exclude=Transaction,Operator,Scope .
 
 // Formatter is the test model for the query tests.
 type Formatter struct {

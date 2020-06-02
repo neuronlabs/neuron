@@ -46,7 +46,7 @@ type ModelStruct struct {
 	updatedAt *StructField
 	deletedAt *StructField
 
-	namerFunc Namer
+	namer NamingConvention
 
 	store            map[interface{}]interface{}
 	structFieldCount int
@@ -110,6 +110,16 @@ func (m *ModelStruct) FieldByName(name string) (*StructField, bool) {
 	return nil, false
 }
 
+// MustFieldByName returns structField by it's 'name'. It matches both reflect.StructField.Name and NeuronName. If the field is not found returns nil value.
+func (m *ModelStruct) MustFieldByName(name string) *StructField {
+	for _, field := range m.fields {
+		if field.neuronName == name || field.Name() == name {
+			return field
+		}
+	}
+	return nil
+}
+
 // Fields gets the model's primary, attribute and foreign key fields.
 func (m *ModelStruct) Fields() (fields []*StructField) {
 	return m.fields
@@ -165,9 +175,9 @@ func (m *ModelStruct) MaxIncludedDepth() int {
 	return ic.(int)
 }
 
-// NamerFunc returns namer func for the given Model.
-func (m *ModelStruct) NamerFunc() Namer {
-	return m.namerFunc
+// NamingConvention returns namer func for the given Model.
+func (m *ModelStruct) NamingConvention() NamingConvention {
+	return m.namer
 }
 
 // Primary returns model's primary field StructField.
@@ -291,12 +301,12 @@ func (m *ModelStruct) computeNestedIncludedCount(limit int) {
 }
 
 func (m *ModelStruct) findTimeRelatedFields() error {
-	namerFunc := m.NamerFunc()
+	namerFunc := m.NamingConvention()
 	var err error
 	_, ok := m.CreatedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultCreatedAt := namerFunc("CreatedAt")
+		defaultCreatedAt := namerFunc.Namer("CreatedAt")
 		if createdAtField, ok := m.Attribute(defaultCreatedAt); ok {
 			if err = m.setTimeRelatedField(createdAtField, fCreatedAt); err != nil {
 				return err
@@ -307,7 +317,7 @@ func (m *ModelStruct) findTimeRelatedFields() error {
 	_, ok = m.DeletedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultDeletedAt := namerFunc("DeletedAt")
+		defaultDeletedAt := namerFunc.Namer("DeletedAt")
 		if deletedAtField, ok := m.Attribute(defaultDeletedAt); ok {
 			if err = m.setTimeRelatedField(deletedAtField, fDeletedAt); err != nil {
 				return err
@@ -318,7 +328,7 @@ func (m *ModelStruct) findTimeRelatedFields() error {
 	_, ok = m.UpdatedAt()
 	if !ok {
 		// try to find attribute with default created at name.
-		defaultUpdatedAt := namerFunc("UpdatedAt")
+		defaultUpdatedAt := namerFunc.Namer("UpdatedAt")
 		if updatedAtField, ok := m.Attribute(defaultUpdatedAt); ok {
 			if err = m.setTimeRelatedField(updatedAtField, fUpdatedAt); err != nil {
 				return err
@@ -439,7 +449,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 		// Check if the field had it's neuron name defined.
 		neuronName := tagValues.Get(AnnotationName)
 		if neuronName == "" {
-			neuronName = m.namerFunc(tField.Name)
+			neuronName = m.namer.Namer(tField.Name)
 		}
 		structField.neuronName = neuronName
 
@@ -518,7 +528,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 			// this case it must be a nested struct field
 			structField.setFlag(fNestedStruct)
 
-			nStruct, err := getNestedStruct(t, structField, m.NamerFunc())
+			nStruct, err := getNestedStruct(t, structField, m.NamingConvention())
 			if err != nil {
 				log.Debugf("structField: %v getNestedStruct failed. %v", structField.fieldName(), err)
 				return err
@@ -554,7 +564,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 			} else {
 				structField.setFlag(fNestedStruct)
 
-				nStruct, err := getNestedStruct(mapElem, structField, m.NamerFunc())
+				nStruct, err := getNestedStruct(mapElem, structField, m.NamingConvention())
 				if err != nil {
 					log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
 					return err
@@ -586,7 +596,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 					// otherwise it must be a nested struct
 				} else {
 					structField.setFlag(fNestedStruct)
-					nStruct, err := getNestedStruct(mapElem, structField, m.NamerFunc())
+					nStruct, err := getNestedStruct(mapElem, structField, m.NamingConvention())
 					if err != nil {
 						log.Debugf("structField: %v Map field getNestedStruct failed. %v", structField.fieldName(), err)
 						return err
@@ -631,7 +641,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 			} else {
 				// this should be the nested struct
 				structField.setFlag(fNestedStruct)
-				nStruct, err := getNestedStruct(sliceElem, structField, m.NamerFunc())
+				nStruct, err := getNestedStruct(sliceElem, structField, m.NamingConvention())
 				if err != nil {
 					log.Debugf("structField: %v getNestedStruct failed. %v", structField.Name(), err)
 					return err

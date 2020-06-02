@@ -81,7 +81,7 @@ Created by the `New` and `Newf` functions.
 
 **Example:**
 ```go
-import "github.com/neuronlabs/errors"
+import "github.com/neuronlabs/neuron/errors"
 // let's assume we have some ClassInvalidRequest already defined.
 var ClassInvalidInput errors.Class
 
@@ -117,7 +117,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/neuronlabs/errors"
+    "github.com/neuronlabs/neuron/errors"
 )
 
 var (

@@ -40,7 +40,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			m := NewModelMap(NamingSnake)
+			m := NewModelMap(SnakeCase)
 			b.StartTimer()
 
 			err := m.RegisterModels(&TModel{})
@@ -51,7 +51,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Relationship", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			m := NewModelMap(NamingSnake)
+			m := NewModelMap(SnakeCase)
 			b.StartTimer()
 
 			err := m.RegisterModels(&Model1WithMany2Many{}, &Model2WithMany2Many{}, &JoinModel{}, &First{}, &Second{}, &FirstSeconds{})

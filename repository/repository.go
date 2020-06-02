@@ -3,26 +3,35 @@ package repository
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query"
 )
 
-// Repository is the interface that defines the base neuron Repository.
+// Repository is the interface used to execute the queries.
 type Repository interface {
-	// ID gets the repository unique identification.
-	ID() string
-	// Dial establish all possible repository connections.
-	Dial(ctx context.Context) error
-	// FactoryName returns the factory name for given repository.
-	FactoryName() string
-	// RegisterModels registers provided 'models' into Repository specific mappings.
-	RegisterModels(models ...*mapping.ModelStruct) error
-	// HealthCheck defines the health status of the repository.
-	HealthCheck(ctx context.Context) (*HealthResponse, error)
-	// Close closes the connection for given repository.
-	Close(ctx context.Context) error
+	Count(ctx context.Context, s *query.Scope) (int64, error)
+	Insert(ctx context.Context, s *query.Scope) error
+	Find(ctx context.Context, s *query.Scope) error
+	Update(ctx context.Context, s *query.Scope) (int64, error)
+	Delete(ctx context.Context, s *query.Scope) (int64, error)
 }
 
-// Migrator migrates the models into the repository.
-type Migrator interface {
-	MigrateModels(ctx context.Context, models ...*mapping.ModelStruct) error
+// Exister is the interface used to check if given query object exists.
+type Exister interface {
+	Exists(context.Context, *query.Scope) (bool, error)
+}
+
+// Upserter is the repository interface that upserts given query values.
+type Upserter interface {
+	Upsert(ctx context.Context, s *query.Scope) error
+}
+
+// Transactioner is the interface used for the transactions.
+type Transactioner interface {
+	ID() string
+	// Begin the scope's transaction.
+	Begin(ctx context.Context, tx *query.Transaction) error
+	// Commit the scope's transaction.
+	Commit(ctx context.Context, tx *query.Transaction) error
+	// Rollback the scope's transaction.
+	Rollback(ctx context.Context, tx *query.Transaction) error
 }

@@ -13,7 +13,7 @@ import (
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingSnake)
+	ms := mapping.NewModelMap(mapping.SnakeCase)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingSnake)
+	ms := mapping.NewModelMap(mapping.SnakeCase)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -112,7 +112,7 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sortfield copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingKebab)
+	ms := mapping.NewModelMap(mapping.KebabCase)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestSortField(t *testing.T) {
 
 // TestSetRelationScopeSort sets the relation scope sort field.
 func TestSetRelationScopeSort(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.NamingKebab)
+	ms := mapping.NewModelMap(mapping.KebabCase)
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)

@@ -36,6 +36,8 @@ var (
 
 	// ClassInternal is the error class for internal mapping errors.
 	ClassInternal errors.Class
+
+	ClassNamingConvention errors.Class
 )
 
 func init() {
@@ -59,4 +61,6 @@ func init() {
 
 	// Internal
 	ClassInternal = errors.MustNewMajorClass(MjrMapping)
+
+	ClassNamingConvention = errors.MustNewMajorClass(MjrMapping)
 }

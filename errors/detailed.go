@@ -9,119 +9,64 @@ import (
 	"github.com/google/uuid"
 )
 
-// compile time check for detailedError interfaces.
+// compile time check for DetailedError interfaces.
 var (
-	_ ClassError    = &detailedError{}
-	_ Detailer      = &detailedError{}
-	_ Operationer   = &detailedError{}
-	_ Indexer       = &detailedError{}
-	_ DetailedError = &detailedError{}
+	_ ClassError = &DetailedError{}
 )
 
-// detailedError is the class based error definition.
+// DetailedError is the class based error definition.
 // Each instance has it's own trackable ID. It's chainable
 // It contains also a Class variable that might be comparable in logic.
-type detailedError struct {
+type DetailedError struct {
 	// ID is a unique error instance identification number.
-	id uuid.UUID
-	// class defines the error classification.
-	class Class
+	ID uuid.UUID
+	// Classification defines the error classification.
+	Classification Class
 	// details contains the detailed information.
-	details string
+	Details string
 	// message is a message used as a string for the
 	// golang error interface implementation.
-	message string
+	Message string
 	// Opertaion is the operation name when the error occurred.
-	operation string
+	Operation string
 }
 
 // NewDet creates DetailedError with given 'class' and message 'message'.
-func NewDet(c Class, message string) DetailedError {
+func NewDet(c Class, message string) *DetailedError {
 	err := newDetailed(c)
-	err.message = message
+	err.Message = message
 	return err
 }
 
 // NewDetf creates DetailedError instance with provided 'class' with formatted message.
 // DetailedError implements ClassError interface.
-func NewDetf(c Class, format string, args ...interface{}) DetailedError {
+func NewDetf(c Class, format string, args ...interface{}) *DetailedError {
 	err := newDetailed(c)
-	err.message = fmt.Sprintf(format, args...)
+	err.Message = fmt.Sprintf(format, args...)
 	return err
 }
 
-// Class implements ClassError interface.
-func (e *detailedError) Class() Class {
-	return e.class
-}
-
-// Details implements DetailedError interface.
-func (e *detailedError) Details() string {
-	return e.details
+// Class implements ClassError.
+func (e *DetailedError) Class() Class {
+	return e.Classification
 }
 
 // DetailedError implements error interface.
-func (e *detailedError) Error() string {
-	return e.message
+func (e *DetailedError) Error() string {
+	return e.Message
 }
 
-// ID implements IndexedError interface.
-func (e *detailedError) ID() uuid.UUID {
-	return e.id
-}
-
-// Operation implements OperationError interface.
-func (e *detailedError) Operation() string {
-	return e.operation
-}
-
-// SetDetails sets the error 'detail' and returns itself.
-func (e *detailedError) SetDetails(detail string) {
-	e.details = detail
-}
-
-// SetDetailsf sets the error's formatted detail with provided and returns itself.
-func (e *detailedError) SetDetailsf(format string, args ...interface{}) {
-	e.details = fmt.Sprintf(format, args...)
-}
-
-// WrapDetail wraps the 'detail' for given error. Wrapping appends the new detail
-// to the front of error detail message.
-func (e *detailedError) WrapDetails(detail string) {
-	e.wrapDetail(detail)
-}
-
-// WrapDetailf wraps the detail with provided formatting for given error.
-// Wrapping appends the new detail to the front of error detail message.
-func (e *detailedError) WrapDetailsf(format string, args ...interface{}) {
-	e.wrapDetail(fmt.Sprintf(format, args...))
-}
-
-// AppendOperation wraps the 'operation' by concantinating 'e' Operation
-// to its value. It create a chain of operation call.
-func (e *detailedError) AppendOperation(operation string) {
-	e.operation += "|" + operation
-}
-
-func (e *detailedError) wrapDetail(detail string) {
-	if e.details == "" {
-		e.details = detail
-	} else {
-		e.details = detail + " " + e.details
-	}
-}
-
-func newDetailed(c Class) *detailedError {
-	err := &detailedError{
-		id:    uuid.New(),
-		class: c,
+func newDetailed(c Class) *DetailedError {
+	err := &DetailedError{
+		ID:             uuid.New(),
+		Classification: c,
 	}
 	pc, _, _, ok := runtime.Caller(2)
 	details := runtime.FuncForPC(pc)
 	if ok && details != nil {
 		file, line := details.FileLine(pc)
 		_, singleFile := filepath.Split(file)
-		err.operation = details.Name() + "#" + singleFile + ":" + strconv.Itoa(line)
+		err.Operation = details.Name() + "#" + singleFile + ":" + strconv.Itoa(line)
 	}
 	return err
 }

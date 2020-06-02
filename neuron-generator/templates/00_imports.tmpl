@@ -1,7 +1,0 @@
-{{define "imports" -}}
-{{- if .Imports -}}
-import (
-{{range $import := .Imports }}    "{{$import}}"
-{{end -}})
-{{- end -}}
-{{- end}}
