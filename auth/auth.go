@@ -2,68 +2,47 @@ package auth
 
 import (
 	"context"
-
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/log"
+	"time"
 )
 
-// Authorizator is the interface used to authorize resources.
-type Authorizator interface {
-	// Init initialize the authorizator. This function should set all options for the authorizator.
-	Init(options ...Options) error
+// Authorizer is the interface used to authorize resources.
+type Authorizer interface {
 	// Verify if the 'accountID' is allowed to access the resource. The resourceID is a unique resource identifier.
-	Verify(accountID, resourceID string) error
+	Verify(ctx context.Context, accountID, resource interface{}) error
 }
 
 // Authenticator is the interface used to authenticate the username and password.
 type Authenticator interface {
-	Initialize(options ...Option) error
-	Authenticate(username, password string) (accountID string, err error)
-}
-
-// Accounter is the interface used for account operations.
-type Accounter interface {
-	CreateAccount(account Account) error
-	DeleteAccount(accountID string) error
-	ChangeSecret(accountID string, secret string) error
-}
-
-// Account is the interface used to define the service account.
-type Account interface {
-	AccountID() string
-	AccountUsername() string
-	AccountSecret() string
+	Authenticate(ctx context.Context, username, password string) (accountID interface{}, err error)
 }
 
 // Options are the authorization service options.
 type Options struct {
-	// Controller used for the service.
-	Controller *controller.Controller
+	PasswordCost int
 	// Secret is the authorization secret.
 	Secret string
 	// PublicKey is used for decoding the token public key.
 	PublicKey string
 	// PrivateKey is used for encoding the token private key.
 	PrivateKey string
-	// RepositoryName is the authorization service repository name.
-	RepositoryName string
+	// TokenExpiration is the default token expiration time.
+	TokenExpiration time.Duration
+	// RefreshTokenExpiration is the default refresh token expiration time.
+	RefreshTokenExpiration time.Duration
 }
 
+// Option is a function used to set authentication options.
 type Option func(o *Options)
 
 type accountKey struct{}
 
 // CtxWithAccountID stores account id in the context.
-func CtxWithAccountID(ctx context.Context, accountID string) context.Context {
+func CtxWithAccountID(ctx context.Context, accountID interface{}) context.Context {
 	return context.WithValue(ctx, accountKey{}, accountID)
 }
 
 // CtxAccountID gets the account id from the context 'ctx'. If the context doesn't contain account id the
 // function returns empty string.
-func CtxAccountID(ctx context.Context) string {
-	accID, ok := ctx.Value(accountKey{}).(string)
-	if !ok {
-		log.Debug("No account id found in the context 'ctx'.")
-	}
-	return accID
+func CtxAccountID(ctx context.Context) interface{} {
+	return ctx.Value(accountKey{})
 }

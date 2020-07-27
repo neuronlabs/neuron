@@ -72,7 +72,7 @@ import (
     "context"
     // blank imported repository registers it's factory
     // and the driver.
-    _ "github.com/neuronlabs/neuron-plugins/repository/postgres"
+    _ "github.com/neuronlabs/neuron-extensions/repository/postgres"
 
     "github.com/neuronlabs/neuron"
     "github.com/neuronlabs/neuron/config"
