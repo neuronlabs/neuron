@@ -15,23 +15,21 @@ func (s *Scope) Select(fields ...*mapping.StructField) error {
 	}
 
 	currentFieldset, hasCommon := s.CommonFieldSet()
-	if !hasCommon {
-		if len(s.FieldSets) != 0 {
-			return errors.NewDetf(ClassInvalidFieldSet, "cannot select fields for multiple field sets")
-		}
-		currentFieldset = make(mapping.FieldSet, len(fields))
-		s.FieldSets = append(s.FieldSets, currentFieldset)
+	if hasCommon || len(s.FieldSets) > 1 {
+		return errors.NewDetf(ClassInvalidFieldSet, "cannot select fields for multiple field sets")
 	}
+
 	for _, field := range fields {
 		if field.Struct() != s.ModelStruct {
 			return errors.Newf(ClassInvalidField, "provided field: '%s' does not belong to model: '%s'", field, s.ModelStruct)
 		}
-		if hasCommon && currentFieldset.Contains(field) {
+		if currentFieldset.Contains(field) {
 			log.Debugf("Field: '%s' is already included in the scope's fieldset", field)
 			continue
 		}
 		currentFieldset = append(currentFieldset, field)
 	}
+	s.FieldSets = append(s.FieldSets, currentFieldset)
 	return nil
 }
 

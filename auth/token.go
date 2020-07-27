@@ -10,8 +10,8 @@ type Tokener interface {
 	// InspectToken extracts claims from the token.
 	InspectToken(token string) (claims interface{}, err error)
 	// Token creates the token for provided options.
-	Token(ctx context.Context, options ...TokenOption) (*Token, error)
-	RefreshToken(ctx context.Context, refreshToken string) (*Token, error)
+	Token(ctx context.Context, options ...TokenOption) (Token, error)
+	RefreshToken(ctx context.Context, refreshToken string) (Token, error)
 }
 
 // Token is the authorization token structure.
