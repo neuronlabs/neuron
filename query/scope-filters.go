@@ -4,23 +4,24 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/filter"
 )
 
 // ClearFilters clears all scope filters.
 func (s *Scope) ClearFilters() {
-	s.Filters = Filters{}
+	s.Filters = filter.Filters{}
 }
 
-// GetOrCreateFileldFilter gets or creates new filter field for given structField within the scope filters.
-func (s *Scope) GetOrCreateFieldFilter(structField *mapping.StructField) *FilterField {
-	for _, filter := range s.Filters {
-		if filter.StructField == structField {
-			return filter
+// GetOrCreateRelationFilter gets or creates new filter field for given structField within the scope filters.
+func (s *Scope) GetOrCreateRelationFilter(structField *mapping.StructField) filter.Relation {
+	for _, f := range s.Filters {
+		if relation, ok := f.(filter.Relation); ok && relation.StructField == structField {
+			return relation
 		}
 	}
-	filter := &FilterField{StructField: structField}
-	s.Filters = append(s.Filters, filter)
-	return filter
+	f := filter.Relation{StructField: structField}
+	s.Filters = append(s.Filters, f)
+	return f
 }
 
 // Where parses the filter into the  and adds it to the given scope.
@@ -28,39 +29,27 @@ func (s *Scope) GetOrCreateFieldFilter(structField *mapping.StructField) *Filter
 // 	- Field Operator 					'ID IN', 'Name CONTAINS', 'id in', 'name contains'
 //	- Relationship.Field Operator		'Car.UserID IN', 'Car.Doors ==', 'car.user_id >=",
 // The field might be a Golang model field name or the neuron name.
-func (s *Scope) Where(filter string, values ...interface{}) error {
-	filterField, err := newFilter(s.ModelStruct, filter, values...)
+func (s *Scope) Where(where string, values ...interface{}) error {
+	f, err := filter.NewFilter(s.ModelStruct, where, values...)
 	if err != nil {
-		log.Debugf("SCOPE[%s] Where '%s' with values: %v failed %v", filter, values, err)
+		log.Debug2f("SCOPE[%s] Where '%s' with values: %v failed %v", where, values, err)
 		return err
 	}
-	return s.addFilterField(filterField)
+	s.Filters = append(s.Filters, f)
+	return nil
 }
 
 // Filter adds the filter field to the given query.
-func (s *Scope) Filter(filter *FilterField) error {
-	return s.addFilterField(filter)
+func (s *Scope) Filter(f filter.Filter) {
+	s.Filters = append(s.Filters, f)
 }
 
-/**
-
-Private filter methods and functions
-
-*/
-
-func (s *Scope) addFilterField(filter *FilterField) error {
-	if filter.StructField.Struct() != s.ModelStruct {
-		log.Debugf("Where's ModelStruct does not match scope's model. Scope's Model: %v, filterField: %v, filterModel: %v", s.ModelStruct.Type().Name(), filter.StructField.Name(), filter.StructField.Struct().Type().Name())
-		err := errors.NewDet(ClassInvalidField, "provided filter field's model structure doesn't match scope's model")
-		return err
-	}
-	for _, existingFilter := range s.Filters {
-		if existingFilter.StructField == filter.StructField {
-			existingFilter.Values = append(existingFilter.Values, filter.Values...)
-			existingFilter.Nested = append(existingFilter.Nested, filter.Nested...)
-			return nil
+func (s *Scope) WhereOr(filters ...filter.Simple) error {
+	for i := range filters {
+		if filters[i].StructField.ModelStruct() != s.ModelStruct {
+			return errors.New(filter.ClassFilterCollection, "Or filter elements have different root model")
 		}
 	}
-	s.Filters = append(s.Filters, filter)
+	s.Filters = append(s.Filters, filter.OrGroup(filters))
 	return nil
 }

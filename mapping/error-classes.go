@@ -8,8 +8,8 @@ var (
 	// MjrMapping is the major error classification for the mapping package.
 	MjrMapping errors.Major
 
-	// ClassInvalidFieldValue is an invalid field value class.
-	ClassInvalidFieldValue errors.Class
+	// ClassFieldValue is an invalid field value class.
+	ClassFieldValue errors.Class
 
 	// MnrRepository is the minor error classification related to mapping repositories.
 	MnrRepository errors.Minor
@@ -33,6 +33,8 @@ var (
 	ClassModelNotImplements errors.Class
 	// ClassInvalidModelField is the error classification for invalid model field.
 	ClassInvalidModelField errors.Class
+	// ClassFieldNotParser is the error classification when the field is not a string parser.
+	ClassFieldNotParser errors.Class
 
 	// ClassInternal is the error class for internal mapping errors.
 	ClassInternal errors.Class
@@ -44,7 +46,7 @@ func init() {
 	MjrMapping = errors.MustNewMajor()
 
 	// Value
-	ClassInvalidFieldValue = errors.MustNewMajorClass(MjrMapping)
+	ClassFieldValue = errors.MustNewMajorClass(MjrMapping)
 
 	// Repository
 	MnrRepository = errors.MustNewMinor(MjrMapping)
@@ -58,6 +60,7 @@ func init() {
 	ClassModelDefinition = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelNotFound = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassInvalidModelField = errors.MustNewClassWIndex(MjrMapping, MnrModel)
+	ClassFieldNotParser = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 
 	// Internal
 	ClassInternal = errors.MustNewMajorClass(MjrMapping)

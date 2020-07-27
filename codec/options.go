@@ -1,8 +1,12 @@
 package codec
 
 import (
+	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 )
+
+// ISO8601TimeFormat is the time formatting for the ISO 8601.
+const ISO8601TimeFormat = "2006-01-02T15:04:05Z"
 
 // LinkType is the link type used for marshaling.
 type LinkType int
@@ -32,39 +36,60 @@ type PaginationLinks struct {
 type LinkOptions struct {
 	// Type defines link type.
 	Type LinkType
-
 	// BaseURL should be the common base url for all the links.
 	BaseURL string
 	// Collection is the link root collection name.
 	Collection string
 	// RootID is the root collection primary value.
 	RootID string
-
 	// RelatedField is the related field name used in the relationship link type.
-	RelatedField string
-
-	// PaginationLinks contains the query values for the pagination links like:
-	// 'first', 'prev', 'next', 'last'. The values should be only the query values
-	// without the '?' sign.
-	PaginationLinks *PaginationLinks
+	RelationField string
 }
 
 type MarshalOptions struct {
-	Link LinkOptions
-
-	// RelationQueries
-	RelationQueries []*query.Scope
-
-	// ManyResults defines if the marshaled value should be a slice.
-	ManyResults    bool
-	RootCollection string
-	RootID         string
-	RelatedField   string
-
-	Meta             map[string]interface{}
-	RelationshipMeta map[string]Meta
+	Link         LinkOptions
+	SingleResult bool
 }
 
 // Meta is used to represent a `meta` object.
 // http://jsonapi.org/format/#document-meta
 type Meta map[string]interface{}
+
+// UnmarshalOptions is the structure that contains unmarshal options.
+type UnmarshalOptions struct {
+	StrictUnmarshal   bool
+	IncludedRelations []*query.IncludedRelation
+	ModelStruct       *mapping.ModelStruct
+}
+
+// FieldAnnotations is structure that is extracted from the given sField codec specific annotation.
+type FieldAnnotations struct {
+	Name        string
+	IsHidden    bool
+	IsOmitEmpty bool
+	Custom      []*mapping.FieldTag
+}
+
+// ExtractFieldAnnotations extracts codec specific tags.
+func ExtractFieldAnnotations(sField *mapping.StructField, tag string) FieldAnnotations {
+	tags := sField.ExtractCustomFieldTags(tag, ",", " ")
+	if len(tags) == 0 {
+		return FieldAnnotations{}
+	}
+	annotations := FieldAnnotations{}
+	// The first tag would always be a
+	annotations.Name = tags[0].Key
+	if len(tags) > 1 {
+		for _, tag := range tags[1:] {
+			switch tag.Key {
+			case "-":
+				annotations.IsHidden = true
+			case "omitempty":
+				annotations.IsOmitEmpty = true
+			default:
+				annotations.Custom = append(annotations.Custom, tag)
+			}
+		}
+	}
+	return annotations
+}

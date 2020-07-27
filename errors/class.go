@@ -24,6 +24,9 @@ func initClasses() {
 
 	invalidIndex, _ := container.newMinor(internalMajor)
 	ClInvalidIndex = MustNewMinorClass(internalMajor, invalidIndex)
+
+	MjrInternal = MustNewMajor()
+	ClassInternal = MustNewMajorClass(MjrInternal)
 }
 
 var (
@@ -33,6 +36,10 @@ var (
 	ClInvalidMinor Class
 	// ClInvalidIndex defines the invalid index error classification.
 	ClInvalidIndex Class
+	// MjrInternal is the major internal error class.
+	MjrInternal Major
+	// ClassInternal is the general internal error.
+	ClassInternal Class
 )
 
 // Class is the  error classification model.

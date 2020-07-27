@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/neuronlabs/neuron/auth"
+	"github.com/neuronlabs/neuron/codec"
 	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/db"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/orm"
 	"github.com/neuronlabs/neuron/server"
 )
 
@@ -31,16 +32,16 @@ func init() {
 
 // Service is the neuron service struct definition.
 type Service struct {
-	// Context is the
 	Context context.Context
 	Options *Options
 
 	// Controller controls service model definitions, repositories and configuration.
 	Controller *controller.Controller
 	// Server serves defined models.
-	Server server.Server
-	DB     orm.DB
-	Auth   auth.Authorizator
+	Server        server.Server
+	DB            db.DB
+	Authorizer    auth.Authorizer
+	Authenticator auth.Authenticator
 }
 
 // New creates new service for provided controller config.
@@ -53,17 +54,13 @@ func New(options ...Option) *Service {
 	if err != nil {
 		panic(err)
 	}
-	if svc.Options.ExternalController {
-		if svc.Controller, err = controller.NewController(cfg); err != nil {
-			panic(err)
-		}
-	} else {
-		if err = controller.New(cfg); err != nil {
-			panic(err)
-		}
-		svc.Controller = controller.Default()
+
+	if err = controller.New(cfg); err != nil {
+		panic(err)
 	}
-	svc.DB = orm.New(svc.Controller)
+	svc.Controller = controller.Default()
+
+	svc.DB = db.New(svc.Controller)
 	svc.Context = svc.Options.Context
 	if svc.Server == nil {
 		panic(errors.Newf(ClassInvalidOptions, "no server defined for the service"))
@@ -137,6 +134,14 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	}
 	defer cancelFunc()
 
+	for _, c := range codec.ListCodecs() {
+		if initializer, ok := c.(Initializer); ok {
+			if err = initializer.Initialize(s.Controller); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Establish connection with all repositories.
 	if err = s.Controller.DialAll(ctx); err != nil {
 		return err
@@ -171,6 +176,25 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	// Migrate defined models.
 	if len(s.Options.MigrateModels) > 0 {
 		if err = s.Controller.MigrateModels(ctx, s.Options.MigrateModels...); err != nil {
+			return err
+		}
+	}
+
+	// Initialize all collections.
+	for _, collection := range s.Options.Collections {
+		if err = collection.InitializeCollection(s.Controller); err != nil {
+			return err
+		}
+	}
+
+	if s.Server != nil {
+		o := server.Options{
+			Authorizer:    s.Authorizer,
+			Authenticator: s.Authenticator,
+			Controller:    s.Controller,
+			DB:            s.DB,
+		}
+		if err = s.Server.Initialize(o); err != nil {
 			return err
 		}
 	}

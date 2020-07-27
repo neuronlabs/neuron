@@ -2,12 +2,29 @@ package mapping
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/neuronlabs/neuron/log"
 )
+
+const (
+	MaxUint = ^uint(0)
+	MaxInt  = int(MaxUint >> 1)
+)
+
+// IntegerBitSize is the integer bit size for given machine.
+var IntegerBitSize int
+
+func init() {
+	if MaxInt == math.MaxInt32 {
+		IntegerBitSize = 32
+	} else {
+		IntegerBitSize = 64
+	}
+}
 
 // NewValueSingle creates and returns new value for the given model type.
 func NewValueSingle(m *ModelStruct) interface{} {

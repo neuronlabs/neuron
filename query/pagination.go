@@ -188,15 +188,12 @@ func (p *Pagination) checkValues() error {
 
 func (p *Pagination) checkOffsetBasedValues() error {
 	if p.Limit < 0 {
-		err := errors.NewDet(ClassInvalidInput, "invalid pagination")
-		err.SetDetails("Pagination limit lower than -1")
-		return err
+		return errors.NewDet(ClassInvalidInput, "invalid pagination").
+			WithDetail("Pagination limit lower than -1")
 	}
 
 	if p.Offset < 0 {
-		err := errors.NewDet(ClassInvalidInput, "invalid pagination")
-		err.SetDetails("Pagination offset lower than 0")
-		return err
+		return errors.NewDet(ClassInvalidInput, "invalid pagination").WithDetail("Pagination offset lower than 0")
 	}
 	return nil
 }

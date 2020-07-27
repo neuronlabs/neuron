@@ -15,11 +15,7 @@ func init() {
 	// Config
 	MnrConfig = errors.MustNewMinor(MjrController)
 	ClassInvalidConfig = errors.MustNewClassWIndex(MjrController, MnrConfig)
-
 	ClassInvalidModel = errors.MustNewMajorClass(MjrController)
-
-	MjrInternal = errors.MustNewMajor()
-	ClassInternal = errors.MustNewMajorClass(MjrInternal)
 }
 
 var (
@@ -40,9 +36,4 @@ var (
 	ClassInvalidConfig errors.Class
 	// ClassInvalidModel is the error classification for the invalid input models.
 	ClassInvalidModel errors.Class
-
-	// MjrInternal is the major internal error class.
-	MjrInternal errors.Major
-	// ClassInternal is the general internal error.
-	ClassInternal errors.Class
 )

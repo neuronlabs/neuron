@@ -17,38 +17,18 @@ func (s *Scope) OrderBy(fields ...string) error {
 		return nil
 	}
 	if len(s.SortingOrder) > 0 {
-		sortFields, err := s.createSortFields(false, fields...)
+		sortFields, err := s.createSortFields(fields...)
 		if err != nil {
 			return err
 		}
 		s.SortingOrder = append(s.SortingOrder, sortFields...)
 		return nil
 	}
-	sortFields, err := newUniqueSortFields(s.ModelStruct, false, fields...)
+	sortFields, err := newUniqueSortFields(s.ModelStruct, fields...)
 	if err != nil {
 		return err
 	}
 	s.SortingOrder = append(s.SortingOrder, sortFields...)
-	return nil
-}
-
-// SortField adds the sort 'field' to the scope.
-func (s *Scope) SortField(field interface{}) error {
-	var sortField *SortField
-
-	switch ft := field.(type) {
-	case string:
-		sf, err := s.createSortFields(false, ft)
-		if err != nil {
-			return err
-		}
-		sortField = sf[0]
-	case *SortField:
-		sortField = ft
-	default:
-		return errors.NewDetf(ClassInvalidInput, "invalid sort field type: %T", field)
-	}
-	s.SortingOrder = append(s.SortingOrder, sortField)
 	return nil
 }
 
@@ -58,12 +38,11 @@ Private scope sort methods
 
 */
 
-func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*SortField, error) {
+func (s *Scope) createSortFields(sortFields ...string) ([]Sort, error) {
 	var (
 		order            SortOrder
 		fields           = make(map[string]int)
-		errs             errors.MultiError
-		sortStructFields []*SortField
+		sortStructFields []Sort
 	)
 
 	for _, sort := range sortFields {
@@ -80,26 +59,15 @@ func (s *Scope) createSortFields(disallowFK bool, sortFields ...string) ([]*Sort
 
 		fields[sort] = count
 		if count > 1 {
-			if count == 2 {
-				er := errors.NewDet(ClassInvalidSort, "duplicated sort field")
-				er.SetDetailsf("OrderBy parameter: %v used more than once.", sort)
-				errs = append(errs, er)
-				continue
-			} else if count > 2 {
-				break
-			}
+			return nil, errors.NewDet(ClassInvalidSort, "duplicated sort field").
+				WithDetailf("OrderBy parameter: %v used more than once.", sort)
 		}
 
-		sortField, err := newStringSortField(s.ModelStruct, sort, order, disallowFK)
+		sortField, err := newStringSortField(s.ModelStruct, sort, order)
 		if err != nil {
 			return nil, err
 		}
 		sortStructFields = append(sortStructFields, sortField)
 	}
-
-	if len(errs) > 0 {
-		return nil, errs
-	}
-
 	return sortStructFields, nil
 }

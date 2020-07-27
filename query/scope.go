@@ -9,6 +9,7 @@ import (
 
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/query/filter"
 )
 
 // Scope is the query's structure that contains information required
@@ -23,14 +24,11 @@ type Scope struct {
 	// Models are the models values used within the context of this query.
 	Models []mapping.Model
 	// Fieldset represents fieldset defined for the whole scope of this query.
-	FieldSet mapping.FieldSet
-	// BulkFieldSet are the fieldsets stored for the batch processes. This values are set only when the
-	// main fieldset is not defined for the query.
-	BulkFieldSets *BulkFieldSet
+	FieldSets []mapping.FieldSet
 	// Filters contains all filters for given query.
-	Filters Filters
+	Filters filter.Filters
 	// SortingOrder are the query sort fields.
-	SortingOrder []*SortField
+	SortingOrder []Sort
 	// IncludedRelations contain fields to include. If the included field is a relationship type, then
 	// specific included field contains information about it
 	IncludedRelations []*IncludedRelation
@@ -81,17 +79,19 @@ func (s *Scope) String() string {
 
 	// Fieldset
 	sb.WriteString(" Fieldset")
-	if len(s.FieldSet) == len(s.ModelStruct.Fields()) {
-		sb.WriteString("(default)")
-	}
 	sb.WriteString(": [")
-	var i int
-	for _, field := range s.FieldSet {
-		sb.WriteString(field.NeuronName())
-		if i != len(s.FieldSet)-1 {
+	for i, fieldSet := range s.FieldSets {
+		sb.WriteRune('[')
+		for j, field := range fieldSet {
+			sb.WriteString(field.NeuronName())
+			if j != len(fieldSet)-1 {
+				sb.WriteRune(',')
+			}
+		}
+		sb.WriteRune(']')
+		if i != len(s.FieldSets)-1 {
 			sb.WriteRune(',')
 		}
-		i++
 	}
 	sb.WriteRune(']')
 
@@ -109,7 +109,7 @@ func (s *Scope) String() string {
 	if len(s.SortingOrder) > 0 {
 		sb.WriteString(" SortingOrder: ")
 		for j, field := range s.SortingOrder {
-			sb.WriteString(field.StructField.NeuronName())
+			sb.WriteString(field.Field().NeuronName())
 			if j != len(s.SortingOrder)-1 {
 				sb.WriteRune(',')
 			}
@@ -133,34 +133,21 @@ func (s *Scope) copy() *Scope {
 
 	copiedScope.Models = s.Models
 
-	if s.FieldSet != nil {
-		copiedScope.FieldSet = make([]*mapping.StructField, len(s.FieldSet))
-		for k, v := range s.FieldSet {
-			copiedScope.FieldSet[k] = v
+	if len(s.FieldSets) != 0 {
+		copiedScope.FieldSets = make([]mapping.FieldSet, len(s.FieldSets))
+		for i, fieldSet := range s.FieldSets {
+			copiedScope.FieldSets[i] = fieldSet.Copy()
 		}
 	}
-	if s.BulkFieldSets != nil {
-		copiedScope.BulkFieldSets = &BulkFieldSet{
-			FieldSets: make([]mapping.FieldSet, len(s.BulkFieldSets.FieldSets)),
-			Indices:   map[string][]int{},
-		}
-		for i, fieldset := range s.BulkFieldSets.FieldSets {
-			copiedScope.BulkFieldSets.FieldSets[i] = fieldset
-		}
-		for k, v := range s.BulkFieldSets.Indices {
-			copiedScope.BulkFieldSets.Indices[k] = v
-		}
-	}
-
 	if s.Filters != nil {
-		copiedScope.Filters = make([]*FilterField, len(s.Filters))
+		copiedScope.Filters = make([]filter.Filter, len(s.Filters))
 		for i, v := range s.Filters {
 			copiedScope.Filters[i] = v.Copy()
 		}
 	}
 
 	if s.SortingOrder != nil {
-		copiedScope.SortingOrder = make([]*SortField, len(s.SortingOrder))
+		copiedScope.SortingOrder = make([]Sort, len(s.SortingOrder))
 		for i, v := range s.SortingOrder {
 			copiedScope.SortingOrder[i] = v.Copy()
 		}
@@ -178,18 +165,10 @@ func (s *Scope) copy() *Scope {
 
 func (s *Scope) formatQuery() url.Values {
 	q := url.Values{}
-	s.formatQueryFilters(q)
-	s.formatQuerySorts(q)
 	s.formatQueryPagination(q)
 	s.formatQueryFieldset(q)
 	s.formatQueryIncludes(q)
 	return q
-}
-
-func (s *Scope) formatQuerySorts(q url.Values) {
-	for _, sort := range s.SortingOrder {
-		sort.FormatQuery(q)
-	}
 }
 
 func (s *Scope) formatQueryPagination(q url.Values) {
@@ -198,25 +177,26 @@ func (s *Scope) formatQueryPagination(q url.Values) {
 	}
 }
 
-func (s *Scope) formatQueryFilters(q url.Values) {
-	for _, filter := range s.Filters {
-		filter.FormatQuery(q)
-	}
-}
-
 func (s *Scope) formatQueryFieldset(q url.Values) {
-	if s.FieldSet != nil {
+	if len(s.FieldSets) > 0 {
 		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, s.ModelStruct.Collection())
-		var values string
-		var i int
-		for _, field := range s.FieldSet {
-			values += field.NeuronName()
-			if i != len(s.FieldSet)-1 {
-				values += ","
+		sb := strings.Builder{}
+		sb.WriteRune('[')
+		for j, fieldSet := range s.FieldSets {
+			sb.WriteRune('[')
+			for i, field := range fieldSet {
+				sb.WriteString(field.NeuronName())
+				if i != len(fieldSet)-1 {
+					sb.WriteRune(',')
+				}
 			}
-			i++
+			sb.WriteRune(']')
+			if j != len(s.FieldSets)-1 {
+				sb.WriteRune(',')
+			}
 		}
-		q.Add(fieldsKey, values)
+		sb.WriteRune(']')
+		q.Add(fieldsKey, sb.String())
 	}
 }
 
@@ -229,7 +209,7 @@ func (s *Scope) formatQueryIncludes(q url.Values) {
 		var i int
 		for _, field := range included.Fieldset {
 			values += field.NeuronName()
-			if i != len(s.FieldSet)-1 {
+			if i != len(included.Fieldset)-1 {
 				values += ","
 			}
 			i++

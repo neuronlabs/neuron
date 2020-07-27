@@ -127,7 +127,7 @@ func TestMappedRelationships(t *testing.T) {
 				err := m.RegisterModels(&First{}, &Second{})
 				require.Error(t, err)
 
-				e, ok := err.(errors.DetailedError)
+				e, ok := err.(*errors.DetailedError)
 				require.True(t, ok)
 				assert.Equal(t, ClassModelDefinition, e.Class())
 			})

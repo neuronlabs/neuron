@@ -27,7 +27,7 @@ type Options struct {
 	PrivateKey string
 	// TokenExpiration is the default token expiration time.
 	TokenExpiration time.Duration
-	// RefreshTokenExpiration is the default refresh token expiration time.
+	// RefreshTokenExpiration is the default refresh token expiration time,.
 	RefreshTokenExpiration time.Duration
 }
 

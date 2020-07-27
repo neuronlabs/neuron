@@ -2,9 +2,7 @@ module github.com/neuronlabs/neuron
 
 go 1.11
 
-replace (
-    github.com/neuronlabs/neuron/errors => ./errors
-)
+replace github.com/neuronlabs/neuron/errors => ./errors
 
 require (
 	github.com/google/uuid v1.1.1

@@ -31,6 +31,18 @@ type DetailedError struct {
 	Operation string
 }
 
+// WithDetail sets error detail.
+func (e *DetailedError) WithDetail(detail string) *DetailedError {
+	e.Details = detail
+	return e
+}
+
+// WithDetailf sets error detail.
+func (e *DetailedError) WithDetailf(format string, values ...interface{}) *DetailedError {
+	e.Details = fmt.Sprintf(format, values...)
+	return e
+}
+
 // NewDet creates DetailedError with given 'class' and message 'message'.
 func NewDet(c Class, message string) *DetailedError {
 	err := newDetailed(c)

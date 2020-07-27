@@ -164,12 +164,13 @@ func (c *Controller) newService(name string, cfg *config.Service) error {
 		c.DefaultRepository = repo
 		c.defaultRepository = name
 	}
+	c.Repositories[name] = repo
 	return nil
 }
 
 func newController(cfg *config.Controller) (*Controller, error) {
 	var err error
-	c := &Controller{Services: make(map[string]service.Service)}
+	c := &Controller{Services: make(map[string]service.Service), Repositories: make(map[string]repository.Repository)}
 	if err = c.setConfig(cfg); err != nil {
 		return nil, err
 	}

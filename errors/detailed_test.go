@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestDetailedError tests detailed error functions.
@@ -19,36 +18,24 @@ func TestDetailedError(t *testing.T) {
 	assert.Equal(t, "formatted: '2'", second.Error())
 
 	// check operations
-	firstOperation := "github.com/neuronlabs/errors.TestDetailedError#detailed_test.go:14"
-	secondOperation := "github.com/neuronlabs/errors.TestDetailedError#detailed_test.go:15"
-	assert.Equal(t, firstOperation, first.Operation())
-	assert.Equal(t, secondOperation, second.Operation())
+	firstOperation := "github.com/neuronlabs/neuron/errors.TestDetailedError#detailed_test.go:14"
+	secondOperation := "github.com/neuronlabs/neuron/errors.TestDetailedError#detailed_test.go:15"
+	assert.Equal(t, firstOperation, first.Operation)
+	assert.Equal(t, secondOperation, second.Operation)
 
-	second.AppendOperation(first.Operation())
-	assert.Equal(t, secondOperation+"|"+firstOperation, second.Operation())
-
-	assert.NotEqual(t, first.ID(), second.ID())
+	assert.NotEqual(t, first.ID, second.ID)
 
 	assert.Equal(t, ClInvalidIndex, first.Class())
 
 	detail := "This is detail."
-	first.SetDetails(detail)
+	first.WithDetail(detail)
+	assert.Equal(t, detail, first.Details)
 
-	assert.Equal(t, detail, first.Details())
-	first.WrapDetails("Wrapped.")
-	assert.Equal(t, "Wrapped. This is detail.", first.Details())
+	second.WithDetailf("This is %dnd detail.", 2)
+	assert.Equal(t, "This is 2nd detail.", second.Details)
 
-	second.SetDetailsf("This is %dnd detail.", 2)
-	assert.Equal(t, "This is 2nd detail.", second.Details())
+	second.Details = ""
+	second.WithDetail("Should be stored.")
 
-	second.WrapDetailsf("Wrapped %dnd.", 2)
-	assert.Equal(t, "Wrapped 2nd. This is 2nd detail.", second.Details())
-
-	sd, ok := second.(*DetailedError)
-	require.True(t, ok)
-
-	sd.Details = ""
-	second.WrapDetails("Should be stored.")
-
-	assert.Equal(t, "Should be stored.", sd.Details())
+	assert.Equal(t, "Should be stored.", second.Details)
 }

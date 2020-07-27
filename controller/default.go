@@ -6,6 +6,7 @@ import (
 
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 	"github.com/neuronlabs/neuron/service"
 )
 
@@ -59,7 +60,7 @@ func DialAll(ctx context.Context) error {
 }
 
 // GetRepository gets 'model' repository.
-func GetRepository(model mapping.Model) (service.Service, error) {
+func GetRepository(model mapping.Model) (repository.Repository, error) {
 	return Default().GetRepository(model)
 }
 

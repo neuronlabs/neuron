@@ -2,6 +2,8 @@ package mapping
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 //go:generate neuron-generator models methods --single-file --format=goimports .
@@ -179,7 +181,7 @@ type ModelWithNested struct {
 
 // OrderModel is a model used to test order of fields.
 type OrderModel struct {
-	ID     [16]byte
+	ID     uuid.UUID
 	Name   string
 	First  string
 	Second int

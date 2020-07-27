@@ -1,25 +1,42 @@
 package codec
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/log"
 )
 
 var (
-	MjrCodec errors.Major
+	MjrCodec     errors.Major
+	MnrMarshal   errors.Minor
+	MnrUnmarshal errors.Minor
 
-	ClassMarshal   errors.Class
-	ClassUnmarshal errors.Class
-	ClassNoModels  errors.Class
+	ClassMarshal           errors.Class
+	ClassUnmarshal         errors.Class
+	ClassUnmarshalDocument errors.Class
+	ClassNoModels          errors.Class
+	ClassNullDataInput     errors.Class
+
+	ClassInternal       errors.Class
+	ClassMarshalPayload errors.Class
 )
 
 func init() {
 	MjrCodec = errors.MustNewMajor()
+	MnrMarshal = errors.MustNewMinor(MjrCodec)
+	MnrUnmarshal = errors.MustNewMinor(MjrCodec)
 
-	ClassMarshal = errors.MustNewMajorClass(MjrCodec)
-	ClassUnmarshal = errors.MustNewMajorClass(MjrCodec)
+	ClassMarshal = errors.MustNewMinorClass(MjrCodec, MnrMarshal)
+	ClassMarshalPayload = errors.MustNewMinorClass(MjrCodec, MnrMarshal)
+
+	ClassUnmarshal = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
+	ClassUnmarshalDocument = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
+	ClassNullDataInput = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
+
 	ClassNoModels = errors.MustNewMajorClass(MjrCodec)
+	ClassInternal = errors.MustNewMajorClass(errors.MjrInternal)
 }
 
 // Error is the error structure used for used for codec processes.
@@ -36,7 +53,7 @@ type Error struct {
 	// Code is an application-specific error code, expressed as a string value.
 	Code string `json:"code,omitempty"`
 	// Meta is an object containing non-standard meta-information about the error.
-	Meta map[string]interface{} `json:"meta,omitempty"`
+	Meta Meta `json:"meta,omitempty"`
 }
 
 func (e *Error) Error() string {
@@ -81,4 +98,26 @@ func (m MultiError) Error() string {
 		}
 	}
 	return sb.String()
+}
+
+// Status gets the most significant api error status.
+func (m MultiError) Status() int {
+	var highestStatus int
+	for _, err := range m {
+		status, er := strconv.Atoi(err.Status)
+		if er != nil {
+			log.Warningf("Error: '%v' contains non integer status value", err)
+			continue
+		}
+		if err.Status == "500" {
+			return 500
+		}
+		if status > highestStatus {
+			highestStatus = status
+		}
+	}
+	if highestStatus == 0 {
+		highestStatus = 500
+	}
+	return highestStatus
 }

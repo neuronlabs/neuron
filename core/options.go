@@ -6,6 +6,7 @@ import (
 	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/config"
 	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/db"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/server"
@@ -16,18 +17,19 @@ type Options struct {
 	Name                      string
 	NamingConvention          mapping.NamingConvention
 	Repositories              []Repository
+	Collections               []db.Collection
 	Models                    []mapping.Model
 	MigrateModels             []mapping.Model
 	NonRepositoryModels       []mapping.Model
 	Server                    server.Server
-	Auth                      auth.Authorizator
+	Authorizer                auth.Authorizer
+	Authenticator             auth.Authenticator
 	HandleSignals             bool
 	Context                   context.Context
 	DefaultRepositoryName     string
 	SynchronousORM            bool
 	DisallowDefaultRepository bool
 	UTCTimestamps             bool
-	ExternalController        bool
 }
 
 func (o *Options) config() (*config.Controller, error) {

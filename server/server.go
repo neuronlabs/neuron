@@ -5,13 +5,13 @@ import (
 
 	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/orm"
+	"github.com/neuronlabs/neuron/db"
 )
 
 // Server is the interface used
 type Server interface {
 	// Initialize apply controller and initialize given server.
-	Initialize(options *Options) error
+	Initialize(options Options) error
 	// ListenAndServe starts listen and serve the requests.
 	Serve() error
 	// Shutdown defines gentle shutdown of the server and all it's connections.
@@ -21,7 +21,8 @@ type Server interface {
 
 // Options are the server initialization options.
 type Options struct {
-	Auth       auth.Authorizator
-	Controller *controller.Controller
-	DB         orm.DB
+	Authorizer    auth.Authorizer
+	Authenticator auth.Authenticator
+	Controller    *controller.Controller
+	DB            db.DB
 }

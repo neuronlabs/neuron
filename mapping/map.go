@@ -43,6 +43,15 @@ func (m *ModelMap) GetModelStruct(model Model) (*ModelStruct, bool) {
 	return mStruct, ok
 }
 
+// MustModelStruct gets the model from the model map.
+func (m *ModelMap) MustModelStruct(model Model) *ModelStruct {
+	mStruct, ok := m.collections[model.NeuronCollectionName()]
+	if !ok {
+		panic("model not found")
+	}
+	return mStruct
+}
+
 // Models returns all models set within given model map.
 func (m *ModelMap) Models() []*ModelStruct {
 	var models []*ModelStruct
