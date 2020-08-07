@@ -1,8 +1,8 @@
-// Package errors provides leightweight error handling and classification primitives.
+// Package errors provides lightweight error handling and classification primitives.
 //
-// The package defines blazingly fast classification system.
-// A class is composed of the major, minor and index subclassifications.
-// Each subclassifaction has different bitwise length with total of 32 bits.
+// The package defines blazing fast classification system.
+// A class is composed of the major, minor and index sub classifications.
+// Each sub classification has different bitwise length with total of 32 bits.
 // Thus a Class is a wrapper over uint32.
 // A major is composed of 8, minor 10 and index of 14 bits.
 //

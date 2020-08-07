@@ -7,11 +7,11 @@ import (
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/service"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // HealthCheck checks all repositories health.
-func (c *Controller) HealthCheck(ctx context.Context) (*service.HealthResponse, error) {
+func (c *Controller) HealthCheck(ctx context.Context) (*repository.HealthResponse, error) {
 	var cancelFunc context.CancelFunc
 	if _, deadlineSet := ctx.Deadline(); !deadlineSet {
 		// if no default timeout is already set - try with 30 second timeout.
@@ -28,7 +28,7 @@ func (c *Controller) HealthCheck(ctx context.Context) (*service.HealthResponse, 
 		return nil, err
 	}
 
-	hc := make(chan *service.HealthResponse)
+	hc := make(chan *repository.HealthResponse)
 	errChan := make(chan error)
 	for job := range jobs {
 		c.healthCheckRepo(ctx, job, wg, errChan, hc)
@@ -54,16 +54,16 @@ func (c *Controller) HealthCheck(ctx context.Context) (*service.HealthResponse, 
 	}
 }
 
-func (c *Controller) healthCheckJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan service.HealthChecker, error) {
-	if len(c.Services) == 0 {
+func (c *Controller) healthCheckJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.HealthChecker, error) {
+	if len(c.Repositories) == 0 {
 		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
 	}
-	out := make(chan service.HealthChecker)
+	out := make(chan repository.HealthChecker)
 	go func() {
 		defer close(out)
 
-		for _, repo := range c.Services {
-			healthChecker, isHealthChecker := repo.(service.HealthChecker)
+		for _, repo := range c.Repositories {
+			healthChecker, isHealthChecker := repo.(repository.HealthChecker)
 			if !isHealthChecker {
 				continue
 			}
@@ -78,9 +78,9 @@ func (c *Controller) healthCheckJobsCreator(ctx context.Context, wg *sync.WaitGr
 	return out, nil
 }
 
-func (c *Controller) healthCheckAll(ctx context.Context, hc <-chan *service.HealthResponse) *service.HealthResponse {
-	commonHealthCheck := &service.HealthResponse{
-		Status: service.StatusPass,
+func (c *Controller) healthCheckAll(ctx context.Context, hc <-chan *repository.HealthResponse) *repository.HealthResponse {
+	commonHealthCheck := &repository.HealthResponse{
+		Status: repository.StatusPass,
 	}
 	for healthCheck := range hc {
 		if healthCheck.Status > commonHealthCheck.Status {
@@ -104,12 +104,12 @@ func (c *Controller) healthCheckAll(ctx context.Context, hc <-chan *service.Heal
 	return commonHealthCheck
 }
 
-func (c *Controller) healthCheckRepo(ctx context.Context, repo service.HealthChecker, wg *sync.WaitGroup, errc chan<- error, hc chan<- *service.HealthResponse) {
+func (c *Controller) healthCheckRepo(ctx context.Context, repo repository.HealthChecker, wg *sync.WaitGroup, errChan chan<- error, hc chan<- *repository.HealthResponse) {
 	go func() {
 		defer wg.Done()
 		resp, err := repo.HealthCheck(ctx)
 		if err != nil {
-			errc <- err
+			errChan <- err
 			return
 		}
 		hc <- resp

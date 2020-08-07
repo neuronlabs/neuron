@@ -56,7 +56,7 @@ type Relationship struct {
 	// kind is a relationship kind
 	kind RelationshipKind
 
-	// foreignKey represtents the foreign key field
+	// foreignKey represents the foreign key field
 	foreignKey *StructField
 	// mtmRelatedForeignKey is the foreign key of the many2many related model.
 	// The field is only used on the many2many relationships
@@ -108,7 +108,7 @@ func (r *Relationship) ManyToManyForeignKey() *StructField {
 }
 
 // Struct returns relationship model *ModelStruct.
-func (r *Relationship) Struct() *ModelStruct {
+func (r *Relationship) RelatedModelStruct() *ModelStruct {
 	return r.mStruct
 }
 
@@ -132,7 +132,7 @@ func (r *Relationship) isMany2Many() bool {
 	return r.kind == RelMany2Many
 }
 
-// setForeignKey sets foreign key structfield.
+// setForeignKey sets foreign key struct field.
 func (r *Relationship) setForeignKey(s *StructField) {
 	r.foreignKey = s
 }

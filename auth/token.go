@@ -11,6 +11,7 @@ type Tokener interface {
 	InspectToken(token string) (claims interface{}, err error)
 	// Token creates the token for provided options.
 	Token(ctx context.Context, options ...TokenOption) (Token, error)
+	// RefreshToken creates the token based on provided 'refreshToken'.
 	RefreshToken(ctx context.Context, refreshToken string) (Token, error)
 }
 

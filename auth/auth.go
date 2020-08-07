@@ -7,8 +7,8 @@ import (
 
 // Authorizer is the interface used to authorize resources.
 type Authorizer interface {
-	// Verify if the 'accountID' is allowed to access the resource. The resourceID is a unique resource identifier.
-	Verify(ctx context.Context, accountID, resource interface{}) error
+	// Authorize if the 'accountID' is allowed to access the resource. The resourceID is a unique resource identifier.
+	Authorize(ctx context.Context, accountID interface{}, scopes ...string) error
 }
 
 // Authenticator is the interface used to authenticate the username and password.

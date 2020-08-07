@@ -9,59 +9,59 @@ import (
 
 type stdlogger struct{}
 
-func (s *stdlogger) Print(args ...interface{})                 {}
-func (s *stdlogger) Printf(format string, args ...interface{}) {}
-func (s *stdlogger) Println(args ...interface{})               {}
-func (s *stdlogger) Panic(args ...interface{})                 {}
-func (s *stdlogger) Panicf(format string, args ...interface{}) {}
-func (s *stdlogger) Panicln(args ...interface{})               {}
-func (s *stdlogger) Fatal(args ...interface{})                 {}
-func (s *stdlogger) Fatalf(format string, args ...interface{}) {}
-func (s *stdlogger) Fatalln(args ...interface{})               {}
+func (s *stdlogger) Print(...interface{})          {}
+func (s *stdlogger) Printf(string, ...interface{}) {}
+func (s *stdlogger) Println(...interface{})        {}
+func (s *stdlogger) Panic(...interface{})          {}
+func (s *stdlogger) Panicf(string, ...interface{}) {}
+func (s *stdlogger) Panicln(...interface{})        {}
+func (s *stdlogger) Fatal(...interface{})          {}
+func (s *stdlogger) Fatalf(string, ...interface{}) {}
+func (s *stdlogger) Fatalln(...interface{})        {}
 
 type leveledLogger struct{}
 
-func (l *leveledLogger) Debugf(format string, args ...interface{})   {}
-func (l *leveledLogger) Infof(format string, args ...interface{})    {}
-func (l *leveledLogger) Warningf(format string, args ...interface{}) {}
-func (l *leveledLogger) Errorf(format string, args ...interface{})   {}
-func (l *leveledLogger) Fatalf(format string, args ...interface{})   {}
-func (l *leveledLogger) Panicf(format string, args ...interface{})   {}
-func (l *leveledLogger) Debug(args ...interface{})                   {}
-func (l *leveledLogger) Info(args ...interface{})                    {}
-func (l *leveledLogger) Warning(args ...interface{})                 {}
-func (l *leveledLogger) Error(args ...interface{})                   {}
-func (l *leveledLogger) Fatal(args ...interface{})                   {}
-func (l *leveledLogger) Panic(args ...interface{})                   {}
+func (l *leveledLogger) Debugf(string, ...interface{})   {}
+func (l *leveledLogger) Infof(string, ...interface{})    {}
+func (l *leveledLogger) Warningf(string, ...interface{}) {}
+func (l *leveledLogger) Errorf(string, ...interface{})   {}
+func (l *leveledLogger) Fatalf(string, ...interface{})   {}
+func (l *leveledLogger) Panicf(string, ...interface{})   {}
+func (l *leveledLogger) Debug(...interface{})            {}
+func (l *leveledLogger) Info(...interface{})             {}
+func (l *leveledLogger) Warning(...interface{})          {}
+func (l *leveledLogger) Error(...interface{})            {}
+func (l *leveledLogger) Fatal(...interface{})            {}
+func (l *leveledLogger) Panic(...interface{})            {}
 
 type shortLeveledLogger struct{}
 
-func (c *shortLeveledLogger) Debugf(format string, args ...interface{}) {}
-func (c *shortLeveledLogger) Infof(format string, args ...interface{})  {}
-func (c *shortLeveledLogger) Warnf(format string, args ...interface{})  {}
-func (c *shortLeveledLogger) Errorf(format string, args ...interface{}) {}
-func (c *shortLeveledLogger) Fatalf(format string, args ...interface{}) {}
-func (c *shortLeveledLogger) Panicf(format string, args ...interface{}) {}
-func (c *shortLeveledLogger) Debug(args ...interface{})                 {}
-func (c *shortLeveledLogger) Info(args ...interface{})                  {}
-func (c *shortLeveledLogger) Warn(args ...interface{})                  {}
-func (c *shortLeveledLogger) Error(args ...interface{})                 {}
-func (c *shortLeveledLogger) Fatal(args ...interface{})                 {}
-func (c *shortLeveledLogger) Panic(args ...interface{})                 {}
+func (c *shortLeveledLogger) Debugf(string, ...interface{}) {}
+func (c *shortLeveledLogger) Infof(string, ...interface{})  {}
+func (c *shortLeveledLogger) Warnf(string, ...interface{})  {}
+func (c *shortLeveledLogger) Errorf(string, ...interface{}) {}
+func (c *shortLeveledLogger) Fatalf(string, ...interface{}) {}
+func (c *shortLeveledLogger) Panicf(string, ...interface{}) {}
+func (c *shortLeveledLogger) Debug(...interface{})          {}
+func (c *shortLeveledLogger) Info(...interface{})           {}
+func (c *shortLeveledLogger) Warn(...interface{})           {}
+func (c *shortLeveledLogger) Error(...interface{})          {}
+func (c *shortLeveledLogger) Fatal(...interface{})          {}
+func (c *shortLeveledLogger) Panic(...interface{})          {}
 
 type extendedLogger struct {
 	leveledLogger
 }
 
-func (e *extendedLogger) Print(args ...interface{})                 {}
-func (e *extendedLogger) Printf(format string, args ...interface{}) {}
-func (e *extendedLogger) Println(args ...interface{})               {}
-func (e *extendedLogger) Debugln(args ...interface{})               {}
-func (e *extendedLogger) Infoln(args ...interface{})                {}
-func (e *extendedLogger) Warningln(args ...interface{})             {}
-func (e *extendedLogger) Errorln(args ...interface{})               {}
-func (e *extendedLogger) Fatalln(args ...interface{})               {}
-func (e *extendedLogger) Panicln(args ...interface{})               {}
+func (e *extendedLogger) Print(...interface{})          {}
+func (e *extendedLogger) Printf(string, ...interface{}) {}
+func (e *extendedLogger) Println(...interface{})        {}
+func (e *extendedLogger) Debugln(...interface{})        {}
+func (e *extendedLogger) Infoln(...interface{})         {}
+func (e *extendedLogger) Warningln(...interface{})      {}
+func (e *extendedLogger) Errorln(...interface{})        {}
+func (e *extendedLogger) Fatalln(...interface{})        {}
+func (e *extendedLogger) Panicln(...interface{})        {}
 
 type nonLogger struct{}
 
@@ -78,7 +78,7 @@ func TestNewLoggerWrapper(t *testing.T) {
 			assert.IsType(t, &Wrapper{}, wrapper)
 		}
 
-		args := []interface{}{}
+		var args []interface{}
 		format := "some format"
 		for _, logger := range loggers {
 			wrapper := MustGetLoggerWrapper(logger)

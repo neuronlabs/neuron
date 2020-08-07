@@ -1,6 +1,6 @@
 package errors
 
-// Major is the highest level subclassification.
+// Major is the highest level sub classification.
 // It is of maximum 8 bit size, which gives 2^8 - 256 combinations.
 type Major uint8
 
@@ -25,7 +25,7 @@ func MustNewMajor() Major {
 	return mjr
 }
 
-// Minor is mid level error subclassification.
+// Minor is mid level error sub classification.
 // It is a 10 bit long value, which give 2^10 - 1024 - combinations
 // for each major.
 type Minor uint16

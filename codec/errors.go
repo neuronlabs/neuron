@@ -16,8 +16,6 @@ var (
 	ClassMarshal           errors.Class
 	ClassUnmarshal         errors.Class
 	ClassUnmarshalDocument errors.Class
-	ClassNoModels          errors.Class
-	ClassNullDataInput     errors.Class
 
 	ClassInternal       errors.Class
 	ClassMarshalPayload errors.Class
@@ -33,9 +31,6 @@ func init() {
 
 	ClassUnmarshal = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
 	ClassUnmarshalDocument = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
-	ClassNullDataInput = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
-
-	ClassNoModels = errors.MustNewMajorClass(MjrCodec)
 	ClassInternal = errors.MustNewMajorClass(errors.MjrInternal)
 }
 

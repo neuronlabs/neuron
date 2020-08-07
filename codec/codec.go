@@ -4,38 +4,12 @@ import (
 	"io"
 
 	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 )
 
-var codecs = map[string]Codec{}
-
 // StructTag is a constant used as a tag that defines models codecs.
 const StructTag = "codec"
-
-// RegisterCodec registers provided codec for given mime type.
-func RegisterCodec(mime string, codec Codec) {
-	_, ok := codecs[mime]
-	if ok {
-		log.Panicf("Codec for mime type '%s' is already registered", mime)
-	}
-	codecs[mime] = codec
-}
-
-// ListCodecs lists all registered codecs.
-func ListCodecs() (codecList []Codec) {
-	for _, c := range codecs {
-		codecList = append(codecList, c)
-	}
-	return codecList
-}
-
-// GetCodec gets the codec by it's mime type.
-func GetCodec(mime string) (Codec, bool) {
-	c, ok := codecs[mime]
-	return c, ok
-}
 
 type Codec interface {
 	// MarshalErrors marshals given errors.
@@ -56,7 +30,7 @@ type ModelMarshaler interface {
 // Model Unmarshaler is an interface that allows to unmarshal provided models of given model struct.
 type ModelUnmarshaler interface {
 	// UnmarshalModels unmarshals provided data into mapping.Model slice. The data should simply be only encoded models.
-	UnmarshalModels(data []byte, options *UnmarshalOptions) ([]mapping.Model, error)
+	UnmarshalModels(data []byte, options UnmarshalOptions) ([]mapping.Model, error)
 }
 
 // ParameterParser is an interface that parses parameters in given codec format.

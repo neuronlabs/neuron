@@ -204,7 +204,7 @@ func (s *Scope) formatQueryIncludes(q url.Values) {
 	var includes []string
 	for _, included := range s.IncludedRelations {
 		includes = append(includes, included.StructField.NeuronName())
-		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, included.StructField.Relationship().Struct().Collection())
+		fieldsKey := fmt.Sprintf("%s[%s]", ParamFields, included.StructField.Relationship().RelatedModelStruct().Collection())
 		var values string
 		var i int
 		for _, field := range included.Fieldset {

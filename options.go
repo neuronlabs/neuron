@@ -1,48 +1,39 @@
 package neuron
 
 import (
-	"context"
-
 	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/core"
-	"github.com/neuronlabs/neuron/db"
+	"github.com/neuronlabs/neuron/database"
 	"github.com/neuronlabs/neuron/mapping"
+	"github.com/neuronlabs/neuron/repository"
 	"github.com/neuronlabs/neuron/server"
 )
 
-// SynchronousConnections defines if the service should query repositories synchronously.
-func SynchronousConnections(sync bool) core.Option {
+// Authorizer sets the authorizer for the service.
+func Authorizer(authorizer auth.Authorizer) core.Option {
 	return func(o *core.Options) {
-		o.SynchronousORM = sync
+		o.Authorizer = authorizer
 	}
 }
 
-// Collections adds the collections options.
-func Collections(collections ...db.Collection) core.Option {
+// Authenticator sets the authenticator option.
+func Authenticator(authenticator auth.Authenticator) core.Option {
+	return func(o *core.Options) {
+		o.Authenticator = authenticator
+	}
+}
+
+// Collections adds the collections to the initialization process.
+func Collections(collections ...database.Collection) core.Option {
 	return func(o *core.Options) {
 		o.Collections = append(o.Collections, collections...)
 	}
 }
 
-// Context sets the context for the service to
-func Context(ctx context.Context) core.Option {
+// DefaultRepository sets the default repository for all models without specified repository.
+func DefaultRepository(r repository.Repository) core.Option {
 	return func(o *core.Options) {
-		o.Context = ctx
-	}
-}
-
-// DefaultRepositoryName sets default repository name for the service. All the models without repository name defined
-// would be assigned to this repository.
-func DefaultRepositoryName(name string) core.Option {
-	return func(o *core.Options) {
-		o.DefaultRepositoryName = name
-	}
-}
-
-// DisallowDefaultRepository marks if the service should disallow default repository.
-func DisallowDefaultRepository(disallow bool) core.Option {
-	return func(o *core.Options) {
-		o.DisallowDefaultRepository = disallow
+		o.DefaultRepository = r
 	}
 }
 
@@ -75,44 +66,16 @@ func Name(name string) core.Option {
 }
 
 // NamingConvention sets the naming convention option.
-func NamingConvention(naming string) core.Option {
+func NamingConvention(convention mapping.NamingConvention) core.Option {
 	return func(o *core.Options) {
-		if err := o.NamingConvention.Parse(naming); err != nil {
-			panic(err)
-		}
+		o.NamingConvention = convention
 	}
 }
 
-// Repositories is the option that sets given repositories.
-func Repositories(repositories ...core.Repository) core.Option {
+// RepositoryModel maps the repository 'r' to the 'model'.
+func RepositoryModels(r repository.Repository, models ...mapping.Model) core.Option {
 	return func(o *core.Options) {
-		o.Repositories = append(o.Repositories, repositories...)
-	}
-}
-
-// UTCTimestamps would set the timestamps of the service to UTC time zoned.
-func UTCTimestamps(utcTimestamps bool) core.Option {
-	return func(o *core.Options) {
-		o.UTCTimestamps = utcTimestamps
-	}
-}
-
-func NonRepositoryModels(models ...mapping.Model) core.Option {
-	return func(o *core.Options) {
-		o.NonRepositoryModels = append(o.NonRepositoryModels, models...)
-	}
-}
-
-func Authorizer(authorizer auth.Authorizer) core.Option {
-	return func(o *core.Options) {
-		o.Authorizer = authorizer
-	}
-}
-
-// Authenticator sets the authenticator option.
-func Authenticator(authenticator auth.Authenticator) core.Option {
-	return func(o *core.Options) {
-		o.Authenticator = authenticator
+		o.RepositoryModels[r] = append(o.RepositoryModels[r], models...)
 	}
 }
 
@@ -120,5 +83,19 @@ func Authenticator(authenticator auth.Authenticator) core.Option {
 func Server(s server.Server) core.Option {
 	return func(o *core.Options) {
 		o.Server = s
+	}
+}
+
+// SynchronousConnections defines if the service should query repositories synchronously.
+func SynchronousConnections(sync bool) core.Option {
+	return func(o *core.Options) {
+		o.SynchronousORM = sync
+	}
+}
+
+// UTCTimestamps would set the timestamps of the service to UTC time zoned.
+func UTCTimestamps(utcTimestamps bool) core.Option {
+	return func(o *core.Options) {
+		o.UTCTimestamps = utcTimestamps
 	}
 }

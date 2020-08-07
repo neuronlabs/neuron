@@ -10,12 +10,10 @@ import (
 
 // Pagination defined constants used for formatting the query.
 const (
-	// ParamPage is a JSON API query parameter used as for pagination.
-	ParamPage = "page"
-	// ParamPageOffset is a JSON API query parameter used in an offset based
+	// ParamPageOffset is a query parameter used in an offset based
 	// pagination strategy in conjunction with ParamPageLimit.
 	ParamPageOffset = "page[offset]"
-	// ParamPageLimit is a JSON API query parameter used in an offset based
+	// ParamPageLimit is a query parameter used in an offset based
 	// pagination strategy in conjunction with ParamPageOffset.
 	ParamPageLimit = "page[limit]"
 )

@@ -7,7 +7,7 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/service"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // ListModels returns a list of registered models for given controller.
@@ -34,7 +34,7 @@ func (c *Controller) MustModelStruct(model mapping.Model) *mapping.ModelStruct {
 // A representation of model might be a database table, collection etc.
 // Model's repository must implement repository.Migrator.
 func (c *Controller) MigrateModels(ctx context.Context, models ...mapping.Model) error {
-	migratorModels := map[service.Migrator][]*mapping.ModelStruct{}
+	migratorModels := map[repository.Migrator][]*mapping.ModelStruct{}
 	// map models to their repositories.
 	for _, model := range models {
 		modelStruct, err := c.ModelStruct(model)
@@ -45,9 +45,9 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...mapping.Model)
 		if err != nil {
 			return err
 		}
-		migrator, ok := repo.(service.Migrator)
+		migrator, ok := repo.(repository.Migrator)
 		if !ok {
-			return errors.Newf(service.ClassNotImplements,
+			return errors.Newf(repository.ClassNotImplements,
 				"models: '%s' repository doesn't not allow to Migrate", modelStruct.Type().Name())
 		}
 		migratorModels[migrator] = append(migratorModels[migrator], modelStruct)
@@ -69,51 +69,29 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...mapping.Model)
 
 // RegisterModels registers provided models within the context of the provided Controller.
 func (c *Controller) RegisterModels(models ...mapping.Model) (err error) {
-	log.Debug2f("Registering '%d' models", len(models))
+	log.Debug3f("Registering '%d' models", len(models))
 	start := time.Now()
 	// Register models.
 	if err = c.ModelMap.RegisterModels(models...); err != nil {
 		return err
 	}
 
-	log.Debug2f("Models registered in: %s", time.Since(start))
+	log.Debug3f("Models registered in: %s", time.Since(start))
 	return nil
 }
 
 // MapModelsRepositories maps models to their repositories. If the model doesn't have repository name mapped
 // then the controller would match default repository.
-func (c *Controller) MapModelsRepositories(models ...mapping.Model) (err error) {
-	// match models to their repository instances.
-	modelsRepositories := make(map[string][]*mapping.ModelStruct)
+func (c *Controller) MapRepositoryModels(r repository.Repository, models ...mapping.Model) (err error) {
+	if _, ok := c.Repositories[r.ID()]; !ok {
+		c.Repositories[r.ID()] = r
+	}
 	for _, model := range models {
 		mStruct, err := c.getModelStruct(model)
 		if err != nil {
 			return err
 		}
-		if mStruct.RepositoryName == "" {
-			if c.Config.DisallowDefaultRepository {
-				return errors.Newf(ClassRepositoryNotMatched, "no repository set for model: '%s'", mStruct.String())
-			}
-			mStruct.RepositoryName = c.defaultRepository
-			modelsRepositories[c.defaultRepository] = append(modelsRepositories[c.defaultRepository], mStruct)
-			continue
-		}
-		_, ok := c.Services[mStruct.RepositoryName]
-		if !ok {
-			return errors.NewDetf(ClassRepositoryNotFound, "repository not found for the model: '%s'", mStruct.String())
-		}
-		modelsRepositories[mStruct.RepositoryName] = append(modelsRepositories[mStruct.RepositoryName], mStruct)
-	}
-	for repoName, modelsStructures := range modelsRepositories {
-		repo := c.Repositories[repoName]
-		registrar, ok := repo.(service.ModelRegistrar)
-		if !ok {
-			continue
-		}
-		if err := registrar.RegisterModels(modelsStructures...); err != nil {
-			log.Errorf("Registering models in repository failed: %v", modelsStructures)
-			return err
-		}
+		c.ModelRepositories[mStruct] = r
 	}
 	return nil
 }

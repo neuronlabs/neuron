@@ -15,7 +15,7 @@ var (
 )
 
 // DetailedError is the class based error definition.
-// Each instance has it's own trackable ID. It's chainable
+// Each instance has it's own traceable ID.
 // It contains also a Class variable that might be comparable in logic.
 type DetailedError struct {
 	// ID is a unique error instance identification number.
@@ -27,7 +27,7 @@ type DetailedError struct {
 	// message is a message used as a string for the
 	// golang error interface implementation.
 	Message string
-	// Opertaion is the operation name when the error occurred.
+	// Operation is the operation name when the error occurred.
 	Operation string
 }
 

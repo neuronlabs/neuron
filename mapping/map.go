@@ -91,14 +91,6 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return err
 		}
 		thisModels = append(thisModels, mStruct)
-
-		if mStruct.RepositoryName == "" {
-			// if the model implements repository Name
-			repositoryNamer, ok := model.(RepositoryNamer)
-			if ok {
-				mStruct.RepositoryName = repositoryNamer.RepositoryName()
-			}
-		}
 		mStruct.namer = m.NameConvention
 	}
 
@@ -340,9 +332,14 @@ func (m *ModelMap) setRelationships() error {
 							return errors.NewDetf(ClassModelDefinition, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKeyName, relField.Name(), model.Type().Name())
 						}
 					}
+
+					fkType := fk.ReflectField().Type
+					if fkType.Kind() == reflect.Ptr {
+						fkType = fkType.Elem()
+					}
 					// the primary field type of the model should match current's model type.
-					if model.Primary().ReflectField().Type != fk.ReflectField().Type {
-						log.Debugf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.Primary().ReflectField().Type, fk.ReflectField().Type)
+					if model.Primary().ReflectField().Type != fkType {
+						log.Debugf("the foreign key in model: %v for the to-many relation: '%s' doesn't match the primary field type. Wanted: %v, Is: %v", modelWithFK.Type().Name(), relField.Name(), model.Type().Name(), model.Primary().ReflectField().Type, fkType)
 						return errors.NewDetf(ClassModelDefinition, "foreign key type doesn't match the primary field type of the root model")
 					}
 					relationship.setForeignKey(fk)
@@ -436,13 +433,16 @@ func (m *ModelMap) setRelationships() error {
 
 			// check if the foreign key match related primary field type
 			var match bool
+			foreignKeyType := relField.relationship.foreignKey.ReflectField().Type
 			switch relField.relationship.kind {
 			case RelBelongsTo:
-				if relField.relationship.mStruct.Primary().ReflectField().Type == relField.relationship.foreignKey.ReflectField().Type {
+				if relField.relationship.mStruct.Primary().ReflectField().Type == foreignKeyType ||
+					(foreignKeyType.Kind() == reflect.Ptr && foreignKeyType.Elem() == relField.relationship.mStruct.Primary().ReflectField().Type) {
 					match = true
 				}
 			case RelHasMany, RelHasOne:
-				if relField.mStruct.Primary().ReflectField().Type == relField.relationship.foreignKey.ReflectField().Type {
+				if relField.mStruct.Primary().ReflectField().Type == foreignKeyType ||
+					(foreignKeyType.Kind() == reflect.Ptr && foreignKeyType.Elem() == relField.mStruct.Primary().ReflectField().Type) {
 					match = true
 				}
 			}
@@ -451,8 +451,8 @@ func (m *ModelMap) setRelationships() error {
 				log.Errorf("the foreign key in model: %v for the belongs-to relation: %s with model: %s is of invalid type. Wanted: %v, Is: %v", model,
 					relField.relationship.foreignKey.mStruct.Type().Name(),
 					relField.relationship.modelType.Name(),
-					relField.relationship.Struct().Primary().ReflectField().Type,
-					relField.relationship.foreignKey.ReflectField().Type)
+					relField.relationship.RelatedModelStruct().Primary().ReflectField().Type,
+					foreignKeyType)
 				return errors.NewDetf(ClassModelDefinition, "foreign key: '%s' doesn't match model's: '%s' primary key type", relField.relationship.foreignKey.Name(), relField.relationship.mStruct.Type().Name())
 			}
 		}

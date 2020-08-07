@@ -22,7 +22,7 @@ type Payload struct {
 	// Options are the options for the codecs how to treat the payload.
 	PaginationLinks *PaginationLinks
 	// MarshalLinks are the links used to marshal for specific codecs.
-	MarshalLinks *LinkOptions
+	MarshalLinks LinkOptions
 	// MarshalSingularFormat marshals single model in a singular format for given codec.
 	MarshalSingularFormat bool
 }

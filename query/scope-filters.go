@@ -32,7 +32,7 @@ func (s *Scope) GetOrCreateRelationFilter(structField *mapping.StructField) filt
 func (s *Scope) Where(where string, values ...interface{}) error {
 	f, err := filter.NewFilter(s.ModelStruct, where, values...)
 	if err != nil {
-		log.Debug2f("SCOPE[%s] Where '%s' with values: %v failed %v", where, values, err)
+		log.Debug2f("Where '%s' with values: %v failed %v", where, values, err)
 		return err
 	}
 	s.Filters = append(s.Filters, f)

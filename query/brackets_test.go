@@ -11,13 +11,13 @@ import (
 func TestSplitBracketParameter(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		testCase := "[collection][field][$operator]"
-		splitted, err := SplitBracketParameter(testCase)
+		split, err := SplitBracketParameter(testCase)
 		require.NoError(t, err)
 
-		if assert.Len(t, splitted, 3) {
-			assert.Equal(t, "collection", splitted[0])
-			assert.Equal(t, "field", splitted[1])
-			assert.Equal(t, "$operator", splitted[2])
+		if assert.Len(t, split, 3) {
+			assert.Equal(t, "collection", split[0])
+			assert.Equal(t, "field", split[1])
+			assert.Equal(t, "$operator", split[2])
 		}
 	})
 
@@ -54,10 +54,10 @@ func TestSplitBracketParameter(t *testing.T) {
 			{"[doubleclose]]", false},
 		}
 
-		var splitted []string
+		var split []string
 		var err error
 		for _, v := range values {
-			splitted, err = SplitBracketParameter(v.Str)
+			split, err = SplitBracketParameter(v.Str)
 			if !v.Val {
 				assert.Error(t, err)
 				// t.Log(err)
@@ -66,7 +66,7 @@ func TestSplitBracketParameter(t *testing.T) {
 				}
 			} else {
 				assert.Nil(t, err)
-				assert.NotEmpty(t, splitted)
+				assert.NotEmpty(t, split)
 			}
 		}
 	})

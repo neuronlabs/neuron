@@ -187,7 +187,7 @@ func getSortRelationSubfield(relationField *mapping.StructField, sortSplit []str
 		return nil, errors.NewDet(ClassInternal, "setting sub sort field failed with 0 length")
 	case 1:
 		// if len is equal to one then it should be primary or attribute field
-		relatedModel := relationField.Relationship().Struct()
+		relatedModel := relationField.Relationship().RelatedModelStruct()
 		sort := sortSplit[0]
 
 		if sort == relatedModel.Primary().Name() || sort == relatedModel.Primary().NeuronName() {
@@ -211,7 +211,7 @@ func getSortRelationSubfield(relationField *mapping.StructField, sortSplit []str
 		return []*mapping.StructField{relationField}, nil
 	default:
 		// if length is more than one -> there is a relationship
-		relatedModel := relationField.Relationship().Struct()
+		relatedModel := relationField.Relationship().RelatedModelStruct()
 		log.Debug2f("More sort fields: '%v'", sortSplit)
 
 		sField, ok := relatedModel.RelationByName(sortSplit[0])

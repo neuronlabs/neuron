@@ -33,11 +33,11 @@ func BenchmarkBuilder(b *testing.B) {
 	previous := benchConst
 	var v string
 	for i := 0; i < b.N; i++ {
-		bldr := strings.Builder{}
-		bldr.WriteString("some")
-		bldr.WriteString(previous)
-		bldr.WriteString("some")
-		v = bldr.String()
+		sb := strings.Builder{}
+		sb.WriteString("some")
+		sb.WriteString(previous)
+		sb.WriteString("some")
+		v = sb.String()
 	}
 	b.Log(v)
 }

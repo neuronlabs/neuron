@@ -166,7 +166,7 @@ func (l *BasicLogger) SetLevel(level Level) {
 	l.level = level
 }
 
-// SetOutputDepth set sthe output depth of the basic logger
+// SetOutputDepth sets the output depth of the basic logger
 // the output depth is the standard logger function depths
 func (l *BasicLogger) SetOutputDepth(depth int) {
 	l.outputDepth = depth

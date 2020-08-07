@@ -5,11 +5,12 @@ import (
 
 	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/db"
+	"github.com/neuronlabs/neuron/database"
 )
 
 // Server is the interface used
 type Server interface {
+	EndpointsGetter
 	// Initialize apply controller and initialize given server.
 	Initialize(options Options) error
 	// ListenAndServe starts listen and serve the requests.
@@ -19,10 +20,16 @@ type Server interface {
 	Shutdown(ctx context.Context) error
 }
 
+// EndpointsGetter is an interface that allows to get endpoint information.
+type EndpointsGetter interface {
+	// GetEndpoints is a method that gets server endpoints after initialization process.
+	GetEndpoints() []*Endpoint
+}
+
 // Options are the server initialization options.
 type Options struct {
 	Authorizer    auth.Authorizer
 	Authenticator auth.Authenticator
 	Controller    *controller.Controller
-	DB            db.DB
+	DB            database.DB
 }

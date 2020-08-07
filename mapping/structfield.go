@@ -176,7 +176,7 @@ func (s *StructField) IsNestedStruct() bool {
 	return s.nested != nil
 }
 
-// IsNoFilter checks wether the field uses no filter flag.
+// IsNoFilter checks whether the field uses no filter flag.
 func (s *StructField) IsNoFilter() bool {
 	return s.isNoFilter()
 }
@@ -350,7 +350,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
-		return errors.NewDetf(ClassModelDefinition, "incorrect relationship type provided. The Only allowable types are structs, pointers or slices. This type is: %v", modelType)
+		return errors.NewDetf(ClassModelDefinition, "incorrect relationship type provided. The Only allowable types are structures, pointers or slices. This type is: %v", modelType)
 	}
 
 	switch modelType.Kind() {
@@ -552,7 +552,7 @@ func (s *StructField) isUpdatedAt() bool {
 }
 
 // Self returns itself. Used in the nested fields.
-// Implements structfielder interface.
+// Implements structFielder interface.
 func (s *StructField) Self() *StructField {
 	return s
 }
@@ -566,7 +566,7 @@ func (s *StructField) setTagValues() error {
 	var multiError errors.MultiError
 
 	tagValues := s.TagValues(tag)
-	// iterate over structfield additional tags
+	// iterate over struct field additional tags
 	for key, values := range tagValues {
 		switch key {
 		case AnnotationFieldType, AnnotationName, AnnotationForeignKey, AnnotationRelation:
@@ -674,7 +674,6 @@ func (s *StructField) setRelatedModel(relModel *ModelStruct) {
 }
 
 // newStructField is the creator function for the struct field
-// nolint:gocritic
 func newStructField(refField reflect.StructField, mStruct *ModelStruct) *StructField {
 	return &StructField{reflectField: refField, mStruct: mStruct}
 }

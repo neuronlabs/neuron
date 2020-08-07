@@ -11,7 +11,7 @@ import (
 // Model1WithMany2Many is the model with the many2many relationship.
 type Model1WithMany2Many struct {
 	ID     int                    `neuron:"type=primary"`
-	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=JoinModel;foreign=_,SecondForeign;on_delete=on_error=continue,order=2"`
+	Synced []*Model2WithMany2Many `neuron:"type=relation;many2many=JoinModel;foreign=_,SecondForeign"`
 }
 
 // Model2WithMany2Many is the second model with the many2many relationship.
@@ -96,7 +96,7 @@ type Comment struct {
 	Job   *Job
 }
 
-// Job is the model for a single timesheet job instance
+// Job is the model for a single time sheet job instance
 type Job struct {
 	ID string
 	// Timestamps
@@ -120,7 +120,7 @@ type Job struct {
 	Comments []*Comment
 }
 
-// User is the model that represents user's contanct in the timesheet
+// User is the model that represents user's contact in the time sheet
 type User struct {
 	ID string
 

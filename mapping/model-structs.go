@@ -12,8 +12,6 @@ import (
 // ModelStruct is the structure definition for the imported models.
 // It contains all the collection name, fields, config, store and a model type.
 type ModelStruct struct {
-	// RepositoryName is the model's repository name.
-	RepositoryName string
 	// modelType contain a reflect.Type information about given model
 	modelType reflect.Type
 	// collection is the name for the models collection.
@@ -98,6 +96,16 @@ func (m *ModelStruct) CreatedAt() (*StructField, bool) {
 // DeletedAt gets the 'DeletedAt' field for the model struct.
 func (m *ModelStruct) DeletedAt() (*StructField, bool) {
 	return m.deletedAt, m.deletedAt != nil
+}
+
+// StructFieldByName gets the struct field by it's neuron name or go field name.
+func (m *ModelStruct) StructFieldByName(name string) (*StructField, bool) {
+	for _, field := range m.structFields {
+		if field.neuronName == name || field.Name() == name {
+			return field, true
+		}
+	}
+	return nil, false
 }
 
 // FieldByName returns structField by it's 'name'. It matches both reflect.StructField.Name and NeuronName.
@@ -676,6 +684,12 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 			return errors.NewDetf(ClassModelDefinition, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
 		}
 	}
+	t := structField.ReflectField().Type
+	if t.Kind() == reflect.Ptr {
+		structField.setFlag(fPtr)
+		t = t.Elem()
+	}
+
 	m.foreignKeys = append(m.foreignKeys, structField)
 	m.fields = append(m.fields, structField)
 	return nil

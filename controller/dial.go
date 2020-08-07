@@ -7,7 +7,7 @@ import (
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/service"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // DialAll establish connections for all repositories.
@@ -30,10 +30,10 @@ func (c *Controller) DialAll(ctx context.Context) error {
 		return err
 	}
 	// create error channel
-	errc := make(chan error)
+	errChan := make(chan error)
 	// dial to all repositories
 	for job := range jobs {
-		c.dial(ctx, job, wg, errc)
+		c.dial(ctx, job, wg, errChan)
 	}
 	// create wait group channel finish function.
 	go func() {
@@ -45,7 +45,7 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	case <-ctx.Done():
 		log.Errorf("Dial - context deadline exceeded: %v", ctx.Err())
 		return ctx.Err()
-	case e := <-errc:
+	case e := <-errChan:
 		log.Errorf("Dial error: %v", e)
 		return e
 	case <-waitChan:
@@ -54,32 +54,22 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	return nil
 }
 
-// dialJob is very simple structure that matches repository with its name.
-type dialJob struct {
-	name   string
-	dialer service.Dialer
-}
-
-func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan dialJob, error) {
-	if len(c.Services) == 0 {
+func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Dialer, error) {
+	if len(c.Repositories) == 0 {
 		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
 	}
-	out := make(chan dialJob)
+	out := make(chan repository.Dialer)
 	go func() {
 		defer close(out)
 
-		for name, repo := range c.Services {
-			dialer, isDialer := repo.(service.Dialer)
+		for _, repo := range c.Repositories {
+			dialer, isDialer := repo.(repository.Dialer)
 			if !isDialer {
 				continue
 			}
-			job := dialJob{
-				name:   name,
-				dialer: dialer,
-			}
 			wg.Add(1)
 			select {
-			case out <- job:
+			case out <- dialer:
 			case <-ctx.Done():
 				return
 			}
@@ -88,10 +78,10 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<
 	return out, nil
 }
 
-func (c *Controller) dial(ctx context.Context, job dialJob, wg *sync.WaitGroup, errChan chan<- error) {
+func (c *Controller) dial(ctx context.Context, dialer repository.Dialer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
-		if err := job.dialer.Dial(ctx); err != nil {
+		if err := dialer.Dial(ctx); err != nil {
 			errChan <- err
 			return
 		}

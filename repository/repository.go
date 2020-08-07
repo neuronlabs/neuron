@@ -8,10 +8,17 @@ import (
 
 // Repository is the interface used to execute the queries.
 type Repository interface {
+	// ID gets the repository unique identification.
+	ID() string
+	// Count counts the models for the provided query scope.
 	Count(ctx context.Context, s *query.Scope) (int64, error)
+	// Insert inserts models provided in the scope with provided field set.
 	Insert(ctx context.Context, s *query.Scope) error
+	// Find finds the models for provided query scope.
 	Find(ctx context.Context, s *query.Scope) error
+	// Update updates the models for provided query scope.
 	Update(ctx context.Context, s *query.Scope) (int64, error)
+	// Delete deletes the models defined by provided query scope.
 	Delete(ctx context.Context, s *query.Scope) (int64, error)
 }
 
@@ -20,7 +27,7 @@ type Exister interface {
 	Exists(context.Context, *query.Scope) (bool, error)
 }
 
-// Upserter is the repository interface that upserts given query values.
+// Upserter is the repository interface that inserts or update on integration error given query values.
 type Upserter interface {
 	Upsert(ctx context.Context, s *query.Scope) error
 }

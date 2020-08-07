@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestClass tests creation of the `Major` subclassification.
+// TestClass tests creation of the `Major` sub classification.
 func TestClass(t *testing.T) {
 	t.Run("Major", func(t *testing.T) {
 		resetEmptyContainer()

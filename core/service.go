@@ -9,37 +9,21 @@ import (
 	"time"
 
 	"github.com/neuronlabs/neuron/auth"
-	"github.com/neuronlabs/neuron/codec"
 	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/db"
-	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/database"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/server"
 )
 
-var (
-	// MjrService is the major error classification for the neuron service.
-	MjrService errors.Major
-	// ClassInvalidOptions is the error classification for undefined server.
-	ClassInvalidOptions errors.Class
-)
-
-func init() {
-	MjrService = errors.MustNewMajor()
-	ClassInvalidOptions = errors.MustNewMajorClass(MjrService)
-}
-
 // Service is the neuron service struct definition.
 type Service struct {
-	Context context.Context
 	Options *Options
 
 	// Controller controls service model definitions, repositories and configuration.
 	Controller *controller.Controller
 	// Server serves defined models.
 	Server        server.Server
-	DB            db.DB
+	DB            database.DB
 	Authorizer    auth.Authorizer
 	Authenticator auth.Authenticator
 }
@@ -50,32 +34,23 @@ func New(options ...Option) *Service {
 	for _, opt := range options {
 		opt(svc.Options)
 	}
-	cfg, err := svc.Options.config()
-	if err != nil {
-		panic(err)
-	}
-
-	if err = controller.New(cfg); err != nil {
-		panic(err)
-	}
-	svc.Controller = controller.Default()
-
-	svc.DB = db.New(svc.Controller)
-	svc.Context = svc.Options.Context
+	svc.Controller = controller.New(svc.Options.controllerOptions())
+	svc.DB = database.New(svc.Controller)
+	svc.Server = svc.Options.Server
 	if svc.Server == nil {
-		panic(errors.Newf(ClassInvalidOptions, "no server defined for the service"))
+		log.Fatalf("no server defined for the service")
 	}
 	if len(svc.Options.Models) == 0 {
-		panic(errors.Newf(ClassInvalidOptions, "no models defined for the service"))
+		log.Fatal("no models defined for the service")
 	}
-	if len(svc.Options.Repositories) == 0 {
-		panic(errors.Newf(ClassInvalidOptions, "no repositories defined for the service"))
+	if svc.Options.DefaultRepository == nil && len(svc.Options.RepositoryModels) == 0 {
+		log.Fatal("no repositories defined for the service")
 	}
 	return svc
 }
 
 // Run starts the service.
-func (s *Service) Run() error {
+func (s *Service) Run(ctx context.Context) error {
 	if !s.Options.HandleSignals {
 		return s.Server.Serve()
 	}
@@ -93,10 +68,10 @@ func (s *Service) Run() error {
 	}()
 
 	select {
-	case <-s.Context.Done():
+	case <-ctx.Done():
 		log.Infof("Service context had finished.")
-	case <-quit:
-		log.Infof("Received Signal: '%s'. Shutdown Server begins...", s)
+	case sig := <-quit:
+		log.Infof("Received Signal: '%s'. Shutdown Server begins...", sig.String())
 	case err := <-errorChan:
 		// the error from the server listen and serve
 		return err
@@ -134,8 +109,34 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	}
 	defer cancelFunc()
 
-	for _, c := range codec.ListCodecs() {
-		if initializer, ok := c.(Initializer); ok {
+	// Register all models.
+	if err = s.Controller.RegisterModels(s.Options.Models...); err != nil {
+		return err
+	}
+
+	// Set the default repository.
+	if s.Options.DefaultRepository != nil {
+		if err = s.Controller.SetDefaultRepository(s.Options.DefaultRepository); err != nil {
+			return err
+		}
+	}
+
+	// For all non default repositories map related models.
+	for repo, models := range s.Options.RepositoryModels {
+		if err = s.Controller.MapRepositoryModels(repo, models...); err != nil {
+			return err
+		}
+	}
+
+	// Verify if all models have mapped repository or if there is a default one.
+	if err = s.Controller.VerifyModelRepositories(); err != nil {
+		return err
+	}
+
+	// Initialize all repositories that implements Initializer interface.
+	for _, repo := range s.Controller.Repositories {
+		initializer, ok := repo.(Initializer)
+		if ok {
 			if err = initializer.Initialize(s.Controller); err != nil {
 				return err
 			}
@@ -145,32 +146,6 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	// Establish connection with all repositories.
 	if err = s.Controller.DialAll(ctx); err != nil {
 		return err
-	}
-
-	// Register all models.
-	if err = s.Controller.RegisterModels(s.Options.Models...); err != nil {
-		return err
-	}
-
-	// Map models to their repositories.
-	modelsToMap := s.Options.Models
-	if len(s.Options.NonRepositoryModels) > 0 {
-		modelsCollections := map[string]mapping.Model{}
-		for _, model := range s.Options.Models {
-			modelsCollections[model.NeuronCollectionName()] = model
-		}
-		for _, model := range s.Options.NonRepositoryModels {
-			delete(modelsCollections, model.NeuronCollectionName())
-		}
-		modelsToMap = []mapping.Model{}
-		for _, model := range modelsCollections {
-			modelsToMap = append(modelsToMap, model)
-		}
-	}
-	if len(modelsToMap) > 0 {
-		if err = s.Controller.MapModelsRepositories(modelsToMap...); err != nil {
-			return err
-		}
 	}
 
 	// Migrate defined models.
@@ -188,15 +163,25 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	}
 
 	if s.Server != nil {
-		o := server.Options{
-			Authorizer:    s.Authorizer,
-			Authenticator: s.Authenticator,
-			Controller:    s.Controller,
-			DB:            s.DB,
-		}
+		o := s.serverOptions()
 		if err = s.Server.Initialize(o); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) serverOptions() server.Options {
+	o := server.Options{
+		Authorizer:    s.Authorizer,
+		Authenticator: s.Authenticator,
+		Controller:    s.Controller,
+		DB:            s.DB,
+	}
+	return o
+}
+
+// Initializer is an interface used to initialize services, repositories etc.
+type Initializer interface {
+	Initialize(c *controller.Controller) error
 }

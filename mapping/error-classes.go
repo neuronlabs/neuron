@@ -23,6 +23,8 @@ var (
 	// MnrModel is the minor error classification related to the models.
 	MnrModel errors.Minor
 
+	// ClassModelNotMatch
+	ClassModelNotMatch errors.Class
 	// ClassModelContainer is the error classification with models mapping container.
 	ClassModelContainer errors.Class
 	// ClassModelDefinition is the error classification for model without fields defined.
@@ -35,6 +37,8 @@ var (
 	ClassInvalidModelField errors.Class
 	// ClassFieldNotParser is the error classification when the field is not a string parser.
 	ClassFieldNotParser errors.Class
+	// ClassFieldNotNullable is the error classification when the field is not nullable.
+	ClassFieldNotNullable errors.Class
 
 	// ClassInternal is the error class for internal mapping errors.
 	ClassInternal errors.Class
@@ -56,11 +60,13 @@ func init() {
 
 	// Model
 	MnrModel = errors.MustNewMinor(MjrMapping)
+	ClassModelNotMatch = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelContainer = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelDefinition = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassModelNotFound = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassInvalidModelField = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 	ClassFieldNotParser = errors.MustNewClassWIndex(MjrMapping, MnrModel)
+	ClassFieldNotNullable = errors.MustNewClassWIndex(MjrMapping, MnrModel)
 
 	// Internal
 	ClassInternal = errors.MustNewMajorClass(MjrMapping)

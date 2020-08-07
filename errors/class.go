@@ -179,14 +179,6 @@ func newMinorClass(mjr Major, mnr Minor) (Class, error) {
 	return Class(uint32(mjr)<<(32-majorBitSize) | uint32(mnr)<<(32-minorBitSize-majorBitSize)), nil
 }
 
-func newIndexClass(mjr Major, mnr Minor) (Class, error) {
-	index, err := NewIndex(mjr, mnr)
-	if err != nil {
-		return Class(0), err
-	}
-	return newClass(mjr, mnr, index)
-}
-
 func newClass(mjr Major, mnr Minor, index Index) (Class, error) {
 	if !mjr.Valid() {
 		return Class(0), NewDet(ClInvalidMajor, "provided invalid major")

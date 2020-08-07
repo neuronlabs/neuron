@@ -51,7 +51,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 		if !ok {
 			return nil, errors.NewDetf(ClassFilterField, "provided unknown field: '%s'", field)
 		}
-		subFilter, err := newModelFilter(sField.Relationship().Struct(), relationField, op, values...)
+		subFilter, err := newModelFilter(sField.Relationship().RelatedModelStruct(), relationField, op, values...)
 		if err != nil {
 			return nil, err
 		}
@@ -75,6 +75,9 @@ func filterSplitOperator(filter string) (string, *Operator, error) {
 		return "", nil, errors.NewDetf(ClassFilterFormat, "provided invalid filter format: '%s'", filter)
 	}
 	field, operator := filter[:spaceIndex], filter[spaceIndex+1:]
+	if spaceIndex = strings.IndexRune(operator, ' '); spaceIndex != -1 {
+		operator = operator[:spaceIndex]
+	}
 	op, ok := Operators.Get(strings.ToLower(operator))
 	if !ok {
 		return "", nil, errors.NewDetf(ClassFilterFormat, "provided unsupported operator: '%s'", operator)

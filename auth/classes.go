@@ -7,6 +7,7 @@ import (
 var (
 	// MjrAuthorization is the major authorization errors.
 	MjrAuthorization errors.Major
+	ClassScope       errors.Class
 
 	// ClassInternal is the errors classification for internal auth errors.
 	ClassInternal errors.Class
@@ -34,6 +35,7 @@ func init() {
 
 	MjrAuthorization = errors.MustNewMajor()
 	ClassForbidden = errors.MustNewMajorClass(MjrAuthorization)
+	ClassScope = errors.MustNewMajorClass(MjrAuthorization)
 	ClassInvalidRole = errors.MustNewMajorClass(MjrAuthorization)
 	ClassInvalidSecret = errors.MustNewMajorClass(MjrAuthorization)
 	ClassAuthorizationHeader = errors.MustNewMajorClass(MjrAuthorization)

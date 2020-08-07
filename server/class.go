@@ -8,7 +8,7 @@ var (
 	ClassInternal errors.Class
 
 	MjrServer         errors.Major
-	ClassEndpoint     errors.Class
+	ClassOptions      errors.Class
 	ClassURIParameter errors.Class
 	// MnrHeader errors.Minor
 	MnrHeader                  errors.Minor
@@ -22,7 +22,7 @@ func init() {
 	ClassInternal = errors.MustNewMajorClass(errors.MjrInternal)
 
 	MjrServer = errors.MustNewMajor()
-	ClassEndpoint = errors.MustNewMajorClass(MjrServer)
+	ClassOptions = errors.MustNewMajorClass(MjrServer)
 	ClassURIParameter = errors.MustNewMajorClass(MjrServer)
 
 	MnrHeader = errors.MustNewMinor(MjrServer)

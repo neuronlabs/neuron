@@ -29,7 +29,7 @@ type TxState int
 
 // Done checks if current transaction is already finished.
 func (t TxState) Done() bool {
-	return t == TxRollback || t == TxCommit
+	return t != TxBegin
 }
 
 // Transaction Transaction.State enums
@@ -37,6 +37,7 @@ const (
 	TxBegin TxState = iota
 	TxCommit
 	TxRollback
+	TxFailed
 )
 
 func (t TxState) String() string {
@@ -48,6 +49,8 @@ func (t TxState) String() string {
 		str = "commit"
 	case TxRollback:
 		str = "rollback"
+	case TxFailed:
+		str = "failed"
 	default:
 		str = "unknown"
 	}

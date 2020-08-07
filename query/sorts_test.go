@@ -26,7 +26,7 @@ func TestNewUniques(t *testing.T) {
 	})
 
 	t.Run("TooManyPossible", func(t *testing.T) {
-		sorts := []string{}
+		var sorts []string
 		for i := 0; i < 200; i++ {
 			sorts = append(sorts, "id")
 		}
@@ -81,7 +81,7 @@ func TestNew(t *testing.T) {
 		t.Run("SubField", func(t *testing.T) {
 			t.Run("AllowedFK", func(t *testing.T) {
 				t.Run("Unknown", func(t *testing.T) {
-					_, err := NewSort(mStruct, "posts.unknwon")
+					_, err := NewSort(mStruct, "posts.unknown")
 					require.Error(t, err)
 				})
 
@@ -101,7 +101,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-// TestSortField tests the sortfield copy method.
+// TestSortField tests the sort field copy method.
 func TestSortField(t *testing.T) {
 	ms := mapping.NewModelMap(mapping.KebabCase)
 

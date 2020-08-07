@@ -45,10 +45,6 @@ const (
 	AnnotationAttributeFull = "attribute"
 )
 
-// AnnotationLanguage defines the attribute field that contains the language tag.
-// for i18n.
-const AnnotationLanguage = "lang"
-
 // Model relationship field annotation tags.
 const (
 	AnnotationRelation     = "relation"

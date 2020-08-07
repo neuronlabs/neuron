@@ -33,7 +33,7 @@ func (i *IncludedRelation) copy() *IncludedRelation {
 
 // Select sets the fieldset for given included
 func (i *IncludedRelation) SetFieldset(fields ...*mapping.StructField) error {
-	model := i.StructField.Relationship().Struct()
+	model := i.StructField.Relationship().RelatedModelStruct()
 	for _, field := range fields {
 		// Check if the field belongs to the relationship's model.
 		if field.Struct() != model {
@@ -65,7 +65,7 @@ func (s *Scope) Include(relation *mapping.StructField, relationFieldset ...*mapp
 
 	includedField := &IncludedRelation{StructField: relation}
 	if len(relationFieldset) == 0 {
-		includedField.Fieldset = append(mapping.FieldSet{}, relation.Relationship().Struct().Fields()...)
+		includedField.Fieldset = append(mapping.FieldSet{}, relation.Relationship().RelatedModelStruct().Fields()...)
 	} else if err := includedField.SetFieldset(relationFieldset...); err != nil {
 		return err
 	}
