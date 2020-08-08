@@ -46,6 +46,7 @@ type LinkOptions struct {
 	RelationField string
 }
 
+// MarshalOptions is a structure that contains marshaling information.
 type MarshalOptions struct {
 	Link         LinkOptions
 	SingleResult bool

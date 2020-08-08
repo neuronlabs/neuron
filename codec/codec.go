@@ -11,6 +11,7 @@ import (
 // StructTag is a constant used as a tag that defines models codecs.
 const StructTag = "codec"
 
+// Codec is an interface used to marshal and unmarshal data, payload and errors in some encoding type.
 type Codec interface {
 	// MarshalErrors marshals given errors.
 	MarshalErrors(w io.Writer, errors ...*Error) error

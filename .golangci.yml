@@ -133,7 +133,7 @@ linters-settings:
     # minimal length of string constant, 3 by default
     min-len: 3
     # minimal occurrences count to trigger, 3 by default
-    min-occurrences: 3
+    min-occurrences: 5
   depguard:
     list-type: blacklist
     include-go-root: false
@@ -190,6 +190,8 @@ linters-settings:
     # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
     disabled-checks:
       - regexpMust
+      - hugeParam
+      - rangeValCopy
 
     # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
     # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
@@ -243,7 +245,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - misspell
     - nakedret
     - staticcheck

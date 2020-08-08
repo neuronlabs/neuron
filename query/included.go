@@ -31,7 +31,7 @@ func (i *IncludedRelation) copy() *IncludedRelation {
 	return copiedIncludedField
 }
 
-// Select sets the fieldset for given included
+// SetFieldset sets the fieldset for given included.
 func (i *IncludedRelation) SetFieldset(fields ...*mapping.StructField) error {
 	model := i.StructField.Relationship().RelatedModelStruct()
 	for _, field := range fields {

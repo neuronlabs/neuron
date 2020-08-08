@@ -276,7 +276,7 @@ func (t *Tx) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 
 var _ QueryUpdater = &Tx{}
 
-// QueryUpdate implements QueryUpdater interface.
+// UpdateQuery implements QueryUpdater interface.
 func (t *Tx) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 	if err := t.checkTransaction(); err != nil {
 		return 0, err
@@ -337,7 +337,7 @@ func (t *Tx) DeleteQuery(ctx context.Context, s *query.Scope) (int64, error) {
 	return affected, nil
 }
 
-// refreshQuery implements DB interface.
+// Refresh implements DB interface.
 func (t *Tx) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
 	if err := t.checkTransaction(); err != nil {
 		return err
@@ -508,7 +508,7 @@ func (t *Tx) QueryClearRelations(ctx context.Context, q *query.Scope, relationFi
 	return affected, nil
 }
 
-// IncludeRelation implements DB interface.
+// IncludeRelations implements DB interface.
 func (t *Tx) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error {
 	if t.err != nil {
 		return t.err

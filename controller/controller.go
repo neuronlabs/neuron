@@ -9,7 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/repository"
 )
 
-// Options is the structure that contains, initialize and control the flow of the application.
+// Controller is the structure that contains, initialize and control the flow of the application.
 // It contains repositories, model definitions.
 type Controller struct {
 	// Config is the configuration struct for the controller.
@@ -24,7 +24,7 @@ type Controller struct {
 	DefaultRepository repository.Repository
 }
 
-// NewController creates new controller for given config 'cfg'.
+// New creates new controller for provided options.
 func New(options *Options) *Controller {
 	return newController(options)
 }

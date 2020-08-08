@@ -6,8 +6,10 @@ import (
 )
 
 const (
+	// MaxUint defines maximum uint value for given machine.
 	MaxUint = ^uint(0)
-	MaxInt  = int(MaxUint >> 1)
+	// MaxInt defines maximum int value for given machine.
+	MaxInt = int(MaxUint >> 1)
 )
 
 // IntegerBitSize is the integer bit size for given machine.

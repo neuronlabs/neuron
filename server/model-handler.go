@@ -10,6 +10,7 @@ import (
 	"github.com/neuronlabs/neuron/query"
 )
 
+// Params are the parameters passed to the server version.
 type Params struct {
 	Ctx           context.Context
 	Authorizer    auth.Authorizer
@@ -55,6 +56,7 @@ type BeforeUpdateHandler interface {
 	HandleBeforeUpdate(params *Params, input *codec.Payload) error
 }
 
+// UpdateHandler is a handler interface for the API update query.
 type UpdateHandler interface {
 	HandleUpdate(ctx context.Context, params Params, input *codec.Payload) (*codec.Payload, error)
 }

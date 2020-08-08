@@ -6,14 +6,17 @@ import (
 
 var (
 	// ErrAuthorization is the major authorization errors.
-	ErrAuthorization       = errors.New("authorization")
-	ErrAuthorizationScope  = errors.Wrap(ErrAuthorization, "scope")
+	ErrAuthorization = errors.New("authorization")
+	// ErrAuthorizationScope is an error related to the authorization scope.
+	ErrAuthorizationScope = errors.Wrap(ErrAuthorization, "scope")
+	// ErrAuthorizationHeader is an error related to authorization header.
 	ErrAuthorizationHeader = errors.Wrap(ErrAuthorization, "invalid or no header")
 
 	// ErrForbidden is the error classification when authorization fails.
 	ErrForbidden = errors.Wrap(ErrAuthorization, "forbidden access")
 	// ErrTokenExpired is the error classification when the token expired.
-	ErrToken        = errors.Wrap(ErrAuthorization, "invalid token")
+	ErrToken = errors.Wrap(ErrAuthorization, "invalid token")
+	// ErrTokenExpired is an error related to expired token.
 	ErrTokenExpired = errors.Wrap(ErrToken, "expired")
 	// ErrInvalidRole is the error classification when the role is not valid.
 	ErrInvalidRole = errors.Wrap(ErrAuthorization, "invalid role")

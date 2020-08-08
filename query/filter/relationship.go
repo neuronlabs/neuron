@@ -15,6 +15,7 @@ type Relation struct {
 	Nested []Filter
 }
 
+// Copy implements Filter interface.
 func (r Relation) Copy() Filter {
 	cp := Relation{
 		StructField: r.StructField,

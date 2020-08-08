@@ -76,17 +76,20 @@ type RelatedModel struct {
 	FloatField float64 `neuron:"type=attr"`
 }
 
+// ForeignWithRelation is a model that has foreign key
 type ForeignWithRelation struct {
 	ID         int
 	Relation   *HasManyWithRelation `neuron:"foreign=ForeignKey"`
 	ForeignKey int                  `neuron:"type=foreign"`
 }
 
+// HasManyWithRelation is a model that is used as has many relation.
 type HasManyWithRelation struct {
 	ID       int
 	Relation []*ForeignWithRelation `neuron:"foreign=ForeignKey"`
 }
 
+// Blog is a blog model.
 type Blog struct {
 	ID            int       `neuron:"type=primary"`
 	Title         string    `neuron:"type=attr;name=title"`
@@ -97,6 +100,7 @@ type Blog struct {
 	ViewCount     int       `neuron:"type=attr;name=view_count;flags=omitempty"`
 }
 
+// Post is a post model.
 type Post struct {
 	ID            uint64     `neuron:"type=primary"`
 	BlogID        int        `neuron:"type=foreign"`
@@ -106,6 +110,7 @@ type Post struct {
 	LatestComment *Comment   `neuron:"type=relation;name=latest_comment;foreign=PostID"`
 }
 
+// Comment is a comment model.
 type Comment struct {
 	ID     int    `neuron:"type=primary"`
 	PostID uint64 `neuron:"type=foreign"`

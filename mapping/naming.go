@@ -8,9 +8,10 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 )
 
-// namingConvention is the model mapping naming convention.
+// NamingConvention is the model mapping naming convention.
 type NamingConvention int
 
+// Enum values for the naming conventions.
 const (
 	_ NamingConvention = iota
 	// SnakeCase is the naming convention where all words are in lower case letters separated by the '_' character.
@@ -29,6 +30,7 @@ const (
 	KebabCase
 )
 
+// Parse parses the naming convention from 'name'.
 func (n *NamingConvention) Parse(name string) error {
 	switch strings.ToLower(name) {
 	case "snake":
@@ -45,6 +47,7 @@ func (n *NamingConvention) Parse(name string) error {
 	return nil
 }
 
+// Namer gets the namer function for the 'raw' value.
 func (n NamingConvention) Namer(raw string) string {
 	switch n {
 	case SnakeCase:
@@ -60,6 +63,7 @@ func (n NamingConvention) Namer(raw string) string {
 	}
 }
 
+// String implements fmt.Stringer interface.
 func (n NamingConvention) String() string {
 	switch n {
 	case SnakeCase:

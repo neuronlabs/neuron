@@ -44,6 +44,7 @@ func (s *Scope) Filter(f filter.Filter) {
 	s.Filters = append(s.Filters, f)
 }
 
+// WhereOr creates multiple or filters.
 func (s *Scope) WhereOr(filters ...filter.Simple) error {
 	for i := range filters {
 		if filters[i].StructField.ModelStruct() != s.ModelStruct {

@@ -40,14 +40,17 @@ func (s *simpleError) Unwrap() error {
 	return s.err
 }
 
+// Is checks if any of the chained errors is of 'target' type.
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
 
+// As executes errors.As function.
 func As(err error, target interface{}) bool {
 	return errors.As(err, target)
 }
 
+// Unwrap unwraps provided error.
 func Unwrap(err error) error {
 	return errors.Unwrap(err)
 }

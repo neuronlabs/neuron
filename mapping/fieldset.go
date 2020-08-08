@@ -17,7 +17,7 @@ func (b *BulkFieldSet) GetIndicesByFieldset(fieldSet FieldSet) []int {
 	return b.Indices[fieldSet.Hash()]
 }
 
-// AddIndex adds the model index to provided fieldset mapping. If the fieldSet was not stored yet it would be added
+// Add adds the model index to provided fieldset mapping. If the fieldSet was not stored yet it would be added
 // to the slice of field sets.
 func (b *BulkFieldSet) Add(fieldSet FieldSet, index int) {
 	hash := fieldSet.Hash()

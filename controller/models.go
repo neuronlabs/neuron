@@ -80,7 +80,7 @@ func (c *Controller) RegisterModels(models ...mapping.Model) (err error) {
 	return nil
 }
 
-// MapModelsRepositories maps models to their repositories. If the model doesn't have repository name mapped
+// MapRepositoryModels maps models to their repositories. If the model doesn't have repository name mapped
 // then the controller would match default repository.
 func (c *Controller) MapRepositoryModels(r repository.Repository, models ...mapping.Model) (err error) {
 	if _, ok := c.Repositories[r.ID()]; !ok {

@@ -30,6 +30,7 @@ type VersionedOptions struct {
 	Server        server.VersionedServer
 }
 
+// VersionedOption is an option that changes VersionedOptions.
 type VersionedOption func(o *VersionedOptions)
 
 // NewVersioned creates new versioned service.
@@ -62,6 +63,7 @@ func (v *VersionedService) Initialize(ctx context.Context) error {
 	return nil
 }
 
+// Run runs the versioned service.
 func (v *VersionedService) Run(ctx context.Context) error {
 	if !v.Options.HandleSignals {
 		return v.Options.Server.Serve()

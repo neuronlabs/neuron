@@ -498,17 +498,6 @@ func queryIncludeRelation(ctx context.Context, db DB, mStruct *mapping.ModelStru
 	return nil
 }
 
-// queryFindIncludedRelations find included relations for all models stored in given query and for all included relation fields.
-func queryFindIncludedRelations(ctx context.Context, db DB, s *query.Scope) error {
-	if len(s.Models) == 0 {
-		return errors.WrapDetf(query.ErrNoModels, "provided no models in the query")
-	}
-	if len(s.IncludedRelations) == 0 {
-		return errors.WrapDetf(query.ErrInvalidInput, "provided no included relations")
-	}
-	return findIncludedRelations(ctx, db, s)
-}
-
 // queryGetRelations gets the relations - at 'relationField' with optional 'relationFieldset' for provided 'models'.
 func queryGetRelations(ctx context.Context, db DB, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
 	if len(models) == 0 {
@@ -521,9 +510,9 @@ func queryGetRelations(ctx context.Context, db DB, mStruct *mapping.ModelStruct,
 	case mapping.RelBelongsTo:
 		return getRelationsBelongsTo(ctx, db, mStruct, models, relationField, relationFieldset...)
 	case mapping.RelHasMany, mapping.RelHasOne:
-		return getRelationsHasOneOrMany(ctx, db, mStruct, models, relationField, relationFieldset...)
+		return getRelationsHasOneOrMany(ctx, db, models, relationField, relationFieldset...)
 	case mapping.RelMany2Many:
-		return getRelationsMany2Many(ctx, db, mStruct, models, relationField, relationFieldset...)
+		return getRelationsMany2Many(ctx, db, models, relationField, relationFieldset...)
 	default:
 		return nil, errors.Wrapf(query.ErrInternal, "invalid relationship kind: '%s'", relationField.Relationship().Kind())
 	}
@@ -574,7 +563,7 @@ func getRelationsBelongsTo(ctx context.Context, db DB, mStruct *mapping.ModelStr
 	return relatedModels, nil
 }
 
-func getRelationsHasOneOrMany(ctx context.Context, db DB, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
+func getRelationsHasOneOrMany(ctx context.Context, db DB, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
 	relationship := relationField.Relationship()
 	if len(relationFieldset) == 0 {
 		relationFieldset = relationship.RelatedModelStruct().Fields()
@@ -599,7 +588,7 @@ func getRelationsHasOneOrMany(ctx context.Context, db DB, mStruct *mapping.Model
 	return relatedModels, nil
 }
 
-func getRelationsMany2Many(ctx context.Context, db DB, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
+func getRelationsMany2Many(ctx context.Context, db DB, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
 	relationship := relationField.Relationship()
 	if len(relationFieldset) == 0 {
 		relationFieldset = relationship.RelatedModelStruct().Fields()

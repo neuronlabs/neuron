@@ -687,7 +687,6 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	t := structField.ReflectField().Type
 	if t.Kind() == reflect.Ptr {
 		structField.setFlag(fPtr)
-		t = t.Elem()
 	}
 
 	m.foreignKeys = append(m.foreignKeys, structField)

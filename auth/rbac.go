@@ -44,14 +44,17 @@ type RoleFindOptions struct {
 	Scopes     []string
 }
 
+// RoleFindOption is a function that changes RoleFindOptions.
 type RoleFindOption func(o *RoleFindOptions)
 
+// RolesWithAccountIDs sets the role find option account ids.
 func RolesWithAccountIDs(accountIDs ...interface{}) RoleFindOption {
 	return func(o *RoleFindOptions) {
 		o.AccountIDs = append(o.AccountIDs, accountIDs...)
 	}
 }
 
+// RolesWithScopes sets the role find options scopes.
 func RolesWithScopes(scopes ...string) RoleFindOption {
 	return func(o *RoleFindOptions) {
 		o.Scopes = append(o.Scopes, scopes...)

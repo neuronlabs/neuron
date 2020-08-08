@@ -5,7 +5,7 @@ import (
 	"github.com/neuronlabs/neuron/log"
 )
 
-// FilterOperators is the container that stores all
+// Operators is the container that stores all
 // query filter operators.
 var Operators = newOpContainer()
 

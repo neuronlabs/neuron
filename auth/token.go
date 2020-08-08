@@ -23,7 +23,7 @@ type Token struct {
 	RefreshToken string
 }
 
-// TokenOption is the options used to create the token.
+// TokenOptions is the options used to create the token.
 type TokenOptions struct {
 	// AccountIdentifier is the account identifier (email, account id etc.)
 	AccountID interface{}

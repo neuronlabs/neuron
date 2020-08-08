@@ -124,8 +124,8 @@ func isDeletedAtField(sField *mapping.StructField, f filter.Filter) bool {
 			return true
 		}
 	case filter.OrGroup:
-		for _, sub := range ft {
-			if isDeletedAtField(sField, sub) {
+		for i := range ft {
+			if isDeletedAtField(sField, ft[i]) {
 				return true
 			}
 		}
@@ -236,7 +236,6 @@ func findBelongsToRelationShort(s *query.Scope, included *query.IncludedRelation
 		if err = relationer.SetRelationModel(included.StructField, relationModel); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }

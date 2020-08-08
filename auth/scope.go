@@ -13,6 +13,7 @@ type ScopeCollection interface {
 	DeleteScope(ctx context.Context, db database.DB, scope string) error
 }
 
+// Scope is an interface that defines authorization scope.
 type Scope interface {
 	ScopeName() string
 }

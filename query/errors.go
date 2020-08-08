@@ -31,7 +31,7 @@ var (
 	ErrFieldValue = errors.Wrap(ErrInput, "field value")
 	// ErrNoModels is the error classification when there is models provided in the input.
 	ErrNoModels = errors.Wrap(ErrInput, "no models")
-	// ClassNoFieldsInFieldset is the error classification when no fields are present in the fieldset.
+	// ErrNoFieldsInFieldSet is the error classification when no fields are present in the fieldset.
 	ErrNoFieldsInFieldSet = errors.Wrap(ErrInput, "no fields in field set")
 
 	// ErrTransaction is minor error classification for the query transactions.

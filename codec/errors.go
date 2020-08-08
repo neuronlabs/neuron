@@ -9,14 +9,21 @@ import (
 )
 
 var (
-	ErrCodec          = errors.New("codec")
-	ErrMarshal        = errors.Wrap(ErrCodec, "marshal")
+	// ErrCodec is a general codec error.
+	ErrCodec = errors.New("codec")
+	// ErrMarshal is an error with marshaling.
+	ErrMarshal = errors.Wrap(ErrCodec, "marshal")
+	// ErrMarshalPayload is an error of marshaling payload.
 	ErrMarshalPayload = errors.Wrap(ErrMarshal, "payload")
 
-	ErrUnmarshal           = errors.Wrap(ErrCodec, "unmarshal")
-	ErrUnmarshalDocument   = errors.Wrap(ErrUnmarshal, "document")
+	// ErrUnmarshal is an error related to unmarshaling process.
+	ErrUnmarshal = errors.Wrap(ErrCodec, "unmarshal")
+	// ErrUnmarshalDocument is an error related to unmarshaling invalid document,
+	ErrUnmarshalDocument = errors.Wrap(ErrUnmarshal, "document")
+	// ErrUnmarshalFieldValue is an error related to unmarshaling field value.
 	ErrUnmarshalFieldValue = errors.Wrap(ErrUnmarshal, "field value")
-	ErrUnmarshalFieldName  = errors.Wrap(ErrUnmarshal, "field name")
+	// ErrUnmarshalFieldName is an error related t unmarshaling field name
+	ErrUnmarshalFieldName = errors.Wrap(ErrUnmarshal, "field name")
 )
 
 // Error is the error structure used for used for codec processes.
@@ -67,6 +74,7 @@ func (e *Error) error(sb *strings.Builder) {
 	}
 }
 
+// MultiError is an error composed of multiple single errors.
 type MultiError []*Error
 
 func (m MultiError) Error() string {

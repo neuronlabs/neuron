@@ -107,7 +107,7 @@ func (r *Relationship) ManyToManyForeignKey() *StructField {
 	return r.mtmRelatedForeignKey
 }
 
-// Struct returns relationship model *ModelStruct.
+// RelatedModelStruct returns relationship model *ModelStruct.
 func (r *Relationship) RelatedModelStruct() *ModelStruct {
 	return r.mStruct
 }

@@ -15,8 +15,8 @@ type OrGroup []Simple
 // Copy implements Filter interface.
 func (o OrGroup) Copy() Filter {
 	cp := make([]Simple, len(o))
-	for i, filter := range o {
-		cp[i] = filter.Copy().(Simple)
+	for i := range o {
+		cp[i] = o[i].Copy().(Simple)
 	}
 	return OrGroup(cp)
 }
@@ -24,8 +24,8 @@ func (o OrGroup) Copy() Filter {
 // Stringer implements fmt.Stringer interface.
 func (o OrGroup) String() string {
 	sb := strings.Builder{}
-	for i, filter := range o {
-		sb.WriteString(filter.String())
+	for i := range o {
+		sb.WriteString(o[i].String())
 		if i != len(o)-1 {
 			sb.WriteString(" OR ")
 		}

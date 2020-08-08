@@ -39,7 +39,7 @@ func (c *Controller) GetRepositoryByModelStruct(mStruct *mapping.ModelStruct) (r
 	return repo, nil
 }
 
-// RegisterService registers provided service for given 'name' and with with given 'cfg' config.
+// RegisterRepositories registers provided repositories.
 func (c *Controller) RegisterRepositories(repositories ...repository.Repository) {
 	for _, repo := range repositories {
 		_, ok := c.Repositories[repo.ID()]
@@ -50,6 +50,7 @@ func (c *Controller) RegisterRepositories(repositories ...repository.Repository)
 	}
 }
 
+// VerifyModelRepositories checks if all models have their repositories mapped.
 func (c *Controller) VerifyModelRepositories() error {
 	if c.DefaultRepository != nil {
 		return nil

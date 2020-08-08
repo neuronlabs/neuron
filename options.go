@@ -72,7 +72,7 @@ func NamingConvention(convention mapping.NamingConvention) core.Option {
 	}
 }
 
-// RepositoryModel maps the repository 'r' to the 'model'.
+// RepositoryModels maps the repository 'r' to provided 'models'.
 func RepositoryModels(r repository.Repository, models ...mapping.Model) core.Option {
 	return func(o *core.Options) {
 		o.RepositoryModels[r] = append(o.RepositoryModels[r], models...)

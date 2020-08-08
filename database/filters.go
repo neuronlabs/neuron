@@ -80,8 +80,8 @@ func reduceRelationshipFiltersAsynchronous(ctx context.Context, db DB, s *query.
 }
 
 func reduceRelationshipFiltersSynchronous(ctx context.Context, db DB, s *query.Scope, filters ...filter.Relation) (err error) {
-	for _, f := range filters {
-		if err = reduceRelationshipFilter(ctx, db, s, f); err != nil {
+	for i := range filters {
+		if err = reduceRelationshipFilter(ctx, db, s, filters[i]); err != nil {
 			return err
 		}
 	}
@@ -361,13 +361,12 @@ func reduceFilterJobCreator(ctx context.Context, wg *sync.WaitGroup, filters ...
 	out := make(chan filter.Relation)
 	go func() {
 		defer close(out)
-		for _, relationFilter := range filters {
+		for i := range filters {
 			wg.Add(1)
 			select {
-			case out <- relationFilter:
+			case out <- filters[i]:
 			case <-ctx.Done():
 				return
-
 			}
 		}
 	}()
