@@ -49,7 +49,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 		relation, relationField := field[:dotIndex], field[dotIndex+1:]
 		sField, ok := m.RelationByName(relation)
 		if !ok {
-			return nil, errors.NewDetf(ClassFilterField, "provided unknown field: '%s'", field)
+			return nil, errors.WrapDetf(ErrFilterField, "provided unknown field: '%s'", field)
 		}
 		subFilter, err := newModelFilter(sField.Relationship().RelatedModelStruct(), relationField, op, values...)
 		if err != nil {
@@ -62,7 +62,7 @@ func newModelFilter(m *mapping.ModelStruct, field string, op *Operator, values .
 	}
 	sField, ok := m.FieldByName(field)
 	if !ok {
-		return nil, errors.NewDetf(ClassFilterField, "provided unknown field: '%s'", field)
+		return nil, errors.WrapDetf(ErrFilterField, "provided unknown field: '%s'", field)
 	}
 	return Simple{StructField: sField, Operator: op, Values: values}, nil
 }
@@ -72,7 +72,7 @@ func filterSplitOperator(filter string) (string, *Operator, error) {
 	filter = strings.TrimSpace(filter)
 	spaceIndex := strings.IndexRune(filter, ' ')
 	if spaceIndex == -1 {
-		return "", nil, errors.NewDetf(ClassFilterFormat, "provided invalid filter format: '%s'", filter)
+		return "", nil, errors.WrapDetf(ErrFilterFormat, "provided invalid filter format: '%s'", filter)
 	}
 	field, operator := filter[:spaceIndex], filter[spaceIndex+1:]
 	if spaceIndex = strings.IndexRune(operator, ' '); spaceIndex != -1 {
@@ -80,7 +80,7 @@ func filterSplitOperator(filter string) (string, *Operator, error) {
 	}
 	op, ok := Operators.Get(strings.ToLower(operator))
 	if !ok {
-		return "", nil, errors.NewDetf(ClassFilterFormat, "provided unsupported operator: '%s'", operator)
+		return "", nil, errors.WrapDetf(ErrFilterFormat, "provided unsupported operator: '%s'", operator)
 	}
 	return field, op, nil
 }

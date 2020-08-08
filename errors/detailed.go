@@ -11,7 +11,7 @@ import (
 
 // compile time check for DetailedError interfaces.
 var (
-	_ ClassError = &DetailedError{}
+	_ error = &DetailedError{}
 )
 
 // DetailedError is the class based error definition.
@@ -20,8 +20,6 @@ var (
 type DetailedError struct {
 	// ID is a unique error instance identification number.
 	ID uuid.UUID
-	// Classification defines the error classification.
-	Classification Class
 	// details contains the detailed information.
 	Details string
 	// message is a message used as a string for the
@@ -29,6 +27,8 @@ type DetailedError struct {
 	Message string
 	// Operation is the operation name when the error occurred.
 	Operation string
+
+	err error
 }
 
 // WithDetail sets error detail.
@@ -43,24 +43,18 @@ func (e *DetailedError) WithDetailf(format string, values ...interface{}) *Detai
 	return e
 }
 
-// NewDet creates DetailedError with given 'class' and message 'message'.
-func NewDet(c Class, message string) *DetailedError {
-	err := newDetailed(c)
-	err.Message = message
-	return err
+// WrapDet wraps 'err' error and creates DetailedError with given 'message'.
+func WrapDet(err error, message string) *DetailedError {
+	detailedErr := newDetailed(err)
+	detailedErr.Message = message
+	return detailedErr
 }
 
-// NewDetf creates DetailedError instance with provided 'class' with formatted message.
-// DetailedError implements ClassError interface.
-func NewDetf(c Class, format string, args ...interface{}) *DetailedError {
-	err := newDetailed(c)
-	err.Message = fmt.Sprintf(format, args...)
-	return err
-}
-
-// Class implements ClassError.
-func (e *DetailedError) Class() Class {
-	return e.Classification
+// WrapDetf wraps 'err' error and created DetailedError with formatted message.
+func WrapDetf(err error, format string, args ...interface{}) *DetailedError {
+	detailedErr := newDetailed(err)
+	detailedErr.Message = fmt.Sprintf(format, args...)
+	return detailedErr
 }
 
 // DetailedError implements error interface.
@@ -68,17 +62,22 @@ func (e *DetailedError) Error() string {
 	return e.Message
 }
 
-func newDetailed(c Class) *DetailedError {
-	err := &DetailedError{
-		ID:             uuid.New(),
-		Classification: c,
+// Unwrap unwraps provided error.
+func (e *DetailedError) Unwrap() error {
+	return e.err
+}
+
+func newDetailed(err error) *DetailedError {
+	detailedErr := &DetailedError{
+		ID:  uuid.New(),
+		err: err,
 	}
 	pc, _, _, ok := runtime.Caller(2)
 	details := runtime.FuncForPC(pc)
 	if ok && details != nil {
 		file, line := details.FileLine(pc)
 		_, singleFile := filepath.Split(file)
-		err.Operation = details.Name() + "#" + singleFile + ":" + strconv.Itoa(line)
+		detailedErr.Operation = details.Name() + "#" + singleFile + ":" + strconv.Itoa(line)
 	}
-	return err
+	return detailedErr
 }

@@ -99,7 +99,7 @@ func newUniqueSortFields(m *mapping.ModelStruct, sorts ...string) ([]Sort, error
 	fields := make(map[string]int)
 	// If the number of sort fields is too long then do not allow
 	if len(sorts) > m.SortScopeCount() {
-		return nil, errors.NewDet(ClassInvalidSort, "too many sort fields provided for given model").
+		return nil, errors.WrapDet(ErrInvalidSort, "too many sort fields provided for given model").
 			WithDetailf("There are too many sort parameters for the '%v' collection.", m.Collection())
 	}
 
@@ -117,7 +117,7 @@ func newUniqueSortFields(m *mapping.ModelStruct, sorts ...string) ([]Sort, error
 
 		fields[sort] = count
 		if count > 1 {
-			return nil, errors.NewDet(ClassInvalidSort, "duplicated sort field provided").WithDetailf("OrderBy parameter: %v used more than once.", sort)
+			return nil, errors.WrapDet(ErrInvalidSort, "duplicated sort field provided").WithDetailf("OrderBy parameter: %v used more than once.", sort)
 		}
 
 		sortField, err := newStringSortField(m, sort, order)
@@ -151,7 +151,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder) (S
 		sField, ok = m.ForeignKey(sort)
 		if !ok {
 			// field not found for the model.
-			return nil, errors.NewDetf(ClassInvalidSort, "sort field: '%s' not found", sort).
+			return nil, errors.WrapDetf(ErrInvalidSort, "sort field: '%s' not found", sort).
 				WithDetailf("OrderBy: field '%s' not found in the model: '%s'", sort, m.Collection())
 		}
 		return SortField{StructField: sField, SortOrder: order}, nil
@@ -159,7 +159,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder) (S
 		// for split length greater than 1 it must be a relationship
 		sField, ok := m.RelationByName(split[0])
 		if !ok {
-			return nil, errors.NewDet(ClassInvalidSort, "sort field not found").
+			return nil, errors.WrapDet(ErrInvalidSort, "sort field not found").
 				WithDetailf("OrderBy: field '%s' not found in the model: '%s'", sort, m.Collection())
 		}
 
@@ -169,7 +169,7 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder) (S
 		}
 		return RelationSort{StructField: sField, RelationFields: subFields, SortOrder: order}, nil
 	default:
-		return nil, errors.NewDet(ClassInvalidSort, "sort field nested level too deep").
+		return nil, errors.WrapDet(ErrInvalidSort, "sort field nested level too deep").
 			WithDetailf("OrderBy: field '%s' nested level is too deep: '%d'", sort, l)
 	}
 }
@@ -177,14 +177,14 @@ func newStringSortField(m *mapping.ModelStruct, sort string, order SortOrder) (S
 func getSortRelationSubfield(relationField *mapping.StructField, sortSplit []string) ([]*mapping.StructField, error) {
 	// Subfields are available only for the relationships
 	if !relationField.IsRelationship() {
-		return nil, errors.NewDet(ClassInvalidSort, "given sub sort field is not a relationship").
+		return nil, errors.WrapDet(ErrInvalidSort, "given sub sort field is not a relationship").
 			WithDetailf("OrderBy: field '%s' is not a relationship in the model: '%s'", relationField.NeuronName(), relationField.Struct().Collection())
 	}
 
 	switch len(sortSplit) {
 	case 0:
 		log.Debug2("No sort field found")
-		return nil, errors.NewDet(ClassInternal, "setting sub sort field failed with 0 length")
+		return nil, errors.WrapDet(ErrInternal, "setting sub sort field failed with 0 length")
 	case 1:
 		// if len is equal to one then it should be primary or attribute field
 		relatedModel := relationField.Relationship().RelatedModelStruct()
@@ -205,7 +205,7 @@ func getSortRelationSubfield(relationField *mapping.StructField, sortSplit []str
 		relationField, ok = relatedModel.ForeignKey(sort)
 		if !ok {
 			// no 'sort' field found.
-			return nil, errors.NewDet(ClassInvalidSort, "sort field not found").
+			return nil, errors.WrapDet(ErrInvalidSort, "sort field not found").
 				WithDetailf("OrderBy: field '%s' not found in the model: '%s'", sort, relatedModel.Collection())
 		}
 		return []*mapping.StructField{relationField}, nil
@@ -216,7 +216,7 @@ func getSortRelationSubfield(relationField *mapping.StructField, sortSplit []str
 
 		sField, ok := relatedModel.RelationByName(sortSplit[0])
 		if !ok {
-			return nil, errors.NewDet(ClassInvalidSort, "sort field not found").
+			return nil, errors.WrapDet(ErrInvalidSort, "sort field not found").
 				WithDetailf("OrderBy: field '%s' not found in the model: '%s'", sortSplit[0], relatedModel.Collection())
 		}
 

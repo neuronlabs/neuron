@@ -44,7 +44,7 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	}
 	if len(s.Models) == 0 {
 		log.Debug(logFormat(s, "provided empty models slice to update"))
-		return 0, errors.New(query.ClassNoModels, "no values provided to update")
+		return 0, errors.Wrap(query.ErrNoModels, "no values provided to update")
 	}
 
 	// Get models Updater repository.
@@ -81,7 +81,7 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	case 1, len(s.Models):
 		// Common fieldset for the insert or each fieldset per model. Do nothing.
 	default:
-		return 0, errors.NewDetf(query.ClassInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
+		return 0, errors.WrapDetf(query.ErrInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
 	}
 
 	if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
@@ -97,9 +97,9 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	if modelsAffected != int64(len(s.Models)) {
 		switch len(s.Models) {
 		case 1:
-			return 0, errors.Newf(query.ClassNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
+			return 0, errors.Wrapf(query.ErrQueryNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
 		default:
-			return 0, errors.New(query.ClassNoResult, "one or more of provided models doesn't exists")
+			return 0, errors.Wrap(query.ErrQueryNoResult, "one or more of provided models doesn't exists")
 		}
 	}
 
@@ -126,14 +126,14 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	switch len(s.Models) {
 	case 0:
-		return 0, errors.New(query.ClassNoModels, "no models provided to update")
+		return 0, errors.Wrap(query.ErrNoModels, "no models provided to update")
 	case 1:
 		// Only a single model value is allowed to update with the filters.
 	default:
-		return 0, errors.New(query.ClassInvalidModels, "too many models for the query ")
+		return 0, errors.Wrap(query.ErrInvalidModels, "too many models for the query ")
 	}
 	if len(s.ModelStruct.Fields()) == 1 {
-		return 0, errors.New(query.ClassInvalidInput, "cannot update a model without any fields")
+		return 0, errors.Wrap(query.ErrInvalidInput, "cannot update a model without any fields")
 	}
 	// The first model would be used to change the values.
 	model := s.Models[0]
@@ -146,12 +146,12 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		}
 	}
 	if len(s.FieldSets) > 1 {
-		return 0, errors.NewDetf(query.ClassInvalidFieldSet, "too many field sets for the filtered update query")
+		return 0, errors.WrapDetf(query.ErrInvalidFieldSet, "too many field sets for the filtered update query")
 	}
 
 	commonFieldset, hasCommonFieldset := s.CommonFieldSet()
 	if !model.IsPrimaryKeyZero() || hasCommonFieldset && commonFieldset.Contains(s.ModelStruct.Primary()) {
-		return 0, errors.New(query.ClassInvalidField, "cannot update filtered models with the primary model in the fieldset")
+		return 0, errors.Wrap(query.ErrInvalidField, "cannot update filtered models with the primary model in the fieldset")
 	}
 	// If the model implements before or after update hooks we need to find all given models and then update their values.
 	if requireFind {
@@ -162,7 +162,7 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		// Check if the model implements Fielder - otherwise the query should be based on the
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
+			return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
 		}
 		// Select all non zero, not primary fields from the 'model'.
 		for _, field := range s.ModelStruct.Fields() {
@@ -190,7 +190,7 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
+			return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
 		}
 
 		if err := fielder.SetFieldValue(updatedAt, db.Controller().Now()); err != nil {
@@ -199,7 +199,7 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	}
 
 	if len(commonFieldset) == 0 {
-		return 0, errors.New(query.ClassNoModels, "nothing to update - only primary key field in the fieldset")
+		return 0, errors.Wrap(query.ErrNoModels, "nothing to update - only primary key field in the fieldset")
 	}
 	// Reduce relationship filters.
 	if err := reduceRelationshipFilters(ctx, db, s); err != nil {
@@ -213,7 +213,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 	findFieldset := mapping.FieldSet{s.ModelStruct.Primary()}
 	fielder, ok := model.(mapping.Fielder)
 	if !ok {
-		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
+		return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
 	}
 
 	commonFieldSet, hasCommonFieldset := s.CommonFieldSet()
@@ -239,7 +239,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 	// Check if there are any field other than primary key in the fieldset.
 	// This would mean which fields were marked to update.
 	if len(findFieldset) == 1 {
-		return 0, errors.Newf(query.ClassNoModels, "nothing to update - only primary key field in the fieldset")
+		return 0, errors.Wrapf(query.ErrNoModels, "nothing to update - only primary key field in the fieldset")
 	}
 	// Find all models for given query.
 	findQuery := db.QueryCtx(ctx, s.ModelStruct).Select(findFieldset...)
@@ -280,7 +280,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 		for i, singleModel := range models {
 			fielder, ok = singleModel.(mapping.Fielder)
 			if !ok {
-				return 0, errors.Newf(mapping.ClassModelNotImplements, "singleModel: '%s' doesn't implement Fielder interface", s.ModelStruct)
+				return 0, errors.Wrapf(mapping.ErrModelNotImplements, "singleModel: '%s' doesn't implement Fielder interface", s.ModelStruct)
 			}
 			if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 				log.Debug3f(logFormat(s, "model[%d], setting updated at field to: '%s'"), i, tsNow)
@@ -312,7 +312,7 @@ func createSingleUpdateFieldSet(s *query.Scope, index int, startTS time.Time) (m
 	fieldSet := mapping.FieldSet{}
 	fielder, ok := model.(mapping.Fielder)
 	if !ok {
-		return nil, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
+		return nil, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
 	}
 
 	for _, field := range s.ModelStruct.Fields() {
@@ -323,7 +323,7 @@ func createSingleUpdateFieldSet(s *query.Scope, index int, startTS time.Time) (m
 		if isZero {
 			switch {
 			case field.IsPrimary():
-				return nil, errors.Newf(query.ClassInvalidModels, "cannot update model at: '%d' index. The primary key field have zero value.", index)
+				return nil, errors.Wrapf(query.ErrInvalidModels, "cannot update model at: '%d' index. The primary key field have zero value.", index)
 			case hasUpdatedAt && field == updatedAt:
 				if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
 					log.Debug3f(logFormat(s, "model[%d], setting updated at field to: '%s'"), index, startTS)

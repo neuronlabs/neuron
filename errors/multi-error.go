@@ -5,7 +5,7 @@ import (
 )
 
 // MultiError is the slice of errors parsable into a single error.
-type MultiError []ClassError
+type MultiError []error
 
 // Error implements error interface.
 func (m MultiError) Error() string {
@@ -18,14 +18,4 @@ func (m MultiError) Error() string {
 		}
 	}
 	return sb.String()
-}
-
-// HasMajor checks if provided 'mjr' occurs in given multi error slice.
-func (m MultiError) HasMajor(mjr Major) bool {
-	for _, err := range m {
-		if err.Class().Major() == mjr {
-			return true
-		}
-	}
-	return false
 }

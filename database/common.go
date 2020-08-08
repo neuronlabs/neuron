@@ -21,7 +21,7 @@ func Count(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 func Exists(ctx context.Context, db DB, s *query.Scope) (bool, error) {
 	exister, isExister := getRepository(db.Controller(), s).(repository.Exister)
 	if !isExister {
-		return false, errors.Newf(repository.ClassNotImplements, "repository for model: '%s' doesn't implement Exister interface", s.ModelStruct)
+		return false, errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't implement Exister interface", s.ModelStruct)
 	}
 	filterSoftDeleted(s)
 	return exister.Exists(ctx, s)
@@ -45,13 +45,13 @@ func getModelRepository(c *controller.Controller, model *mapping.ModelStruct) re
 
 func requireNoFilters(s *query.Scope) error {
 	if len(s.Filters) != 0 {
-		return errors.Newf(query.ClassInvalidInput, "given query doesn't allow filtering")
+		return errors.Wrapf(query.ErrInvalidInput, "given query doesn't allow filtering")
 	}
 	return nil
 }
 
-func errModelNotImplements(model *mapping.ModelStruct, interfaceName string) errors.ClassError {
-	return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement %s interface", model, interfaceName)
+func errModelNotImplements(model *mapping.ModelStruct, interfaceName string) error {
+	return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement %s interface", model, interfaceName)
 }
 
 func logFormat(s *query.Scope, format string) string {

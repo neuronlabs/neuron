@@ -47,7 +47,7 @@ func findIncludedRelation(ctx context.Context, db DB, s *query.Scope, included *
 	case mapping.RelMany2Many:
 		err = findManyToManyRelation(ctx, db, s, included)
 	default:
-		return errors.Newf(query.ClassInternal, "invalid relationship: '%s' kind: '%s'", included.StructField, included.StructField.Relationship().Kind())
+		return errors.Wrapf(query.ErrInternal, "invalid relationship: '%s' kind: '%s'", included.StructField, included.StructField.Relationship().Kind())
 	}
 	return err
 }

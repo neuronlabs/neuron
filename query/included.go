@@ -37,17 +37,17 @@ func (i *IncludedRelation) SetFieldset(fields ...*mapping.StructField) error {
 	for _, field := range fields {
 		// Check if the field belongs to the relationship's model.
 		if field.Struct() != model {
-			return errors.NewDetf(ClassInvalidField, "provided field: '%s' doesn't belong to the relationship model: '%s'", field, model)
+			return errors.WrapDetf(ErrInvalidField, "provided field: '%s' doesn't belong to the relationship model: '%s'", field, model)
 		}
 		// Check if provided field is not a relationship.
 		if !field.IsField() {
-			return errors.NewDetf(ClassInvalidField,
+			return errors.WrapDetf(ErrInvalidField,
 				"provided invalid field: '%s' in the fieldset of included field: '%s'", field, i.StructField.Name())
 		}
 
 		// Check if given fieldset doesn't contain this field already.
 		if i.Fieldset.Contains(field) {
-			return errors.NewDetf(ClassInvalidField,
+			return errors.WrapDetf(ErrInvalidField,
 				"provided field: '%s' in the fieldset of included field: '%s' is already in the included fieldset",
 				field, i.StructField.Name())
 		}
@@ -59,7 +59,7 @@ func (i *IncludedRelation) SetFieldset(fields ...*mapping.StructField) error {
 // Include includes 'relation' field in the scope's query results.
 func (s *Scope) Include(relation *mapping.StructField, relationFieldset ...*mapping.StructField) error {
 	if !relation.IsRelationship() {
-		return errors.NewDetf(ClassInvalidField,
+		return errors.WrapDetf(ErrInvalidField,
 			"included relation: '%s' is not found for the model: '%s'", relation, s.ModelStruct.String())
 	}
 

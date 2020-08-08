@@ -5,45 +5,28 @@ import (
 )
 
 var (
-	// MjrAuthorization is the major authorization errors.
-	MjrAuthorization errors.Major
-	ClassScope       errors.Class
+	// ErrAuthorization is the major authorization errors.
+	ErrAuthorization       = errors.New("authorization")
+	ErrAuthorizationScope  = errors.Wrap(ErrAuthorization, "scope")
+	ErrAuthorizationHeader = errors.Wrap(ErrAuthorization, "invalid or no header")
 
-	// ClassInternal is the errors classification for internal auth errors.
-	ClassInternal errors.Class
-	// ClassForbidden is the error classification when authorization fails.
-	ClassForbidden errors.Class
-	// ClassTokenExpired is the error classification when the token expired.
-	MnrToken          errors.Minor
-	ClassInvalidToken errors.Class
-	ClassTokenExpired errors.Class
-	// ClassInvalidRole is the error classification when the role is not valid.
-	ClassInvalidRole errors.Class
-	// ClassInvalidSecret is the error classification when provided secret is not valid.
-	ClassInvalidSecret errors.Class
-	// ClassAccountNotFound is the error classification when account is not found.
-	ClassAccountNotFound     errors.Class
-	ClassAuthorizationHeader errors.Class
-	// ClassInitialization is the error classification while initializing the structures.
-	ClassInitialization errors.Class
-	// ClassNoRequiredOption is the error classification while there is no required option.
-	ClassNoRequiredOption errors.Class
+	// ErrForbidden is the error classification when authorization fails.
+	ErrForbidden = errors.Wrap(ErrAuthorization, "forbidden access")
+	// ErrTokenExpired is the error classification when the token expired.
+	ErrToken        = errors.Wrap(ErrAuthorization, "invalid token")
+	ErrTokenExpired = errors.Wrap(ErrToken, "expired")
+	// ErrInvalidRole is the error classification when the role is not valid.
+	ErrInvalidRole = errors.Wrap(ErrAuthorization, "invalid role")
+
+	// Authentication errors.
+	ErrAuthentication = errors.New("authentication")
+	// ErrInvalidSecret is the error classification when provided secret is not valid.
+	ErrInvalidSecret = errors.Wrap(ErrAuthentication, "provided invalid secret")
+	// ErrAccountNotFound is the error classification when account is not found.
+	ErrAccountNotFound = errors.Wrap(ErrAuthentication, "account not found")
+
+	// ErrInitialization is the error classification while initializing the structures.
+	ErrInitialization = errors.New("auth initialization failed")
+	// ErrAuthenticationNoRequiredOption is the error classification while there is no required option.
+	ErrAuthenticationNoRequiredOption = errors.Wrap(ErrAuthentication, "provided no required option")
 )
-
-func init() {
-	ClassInternal = errors.MustNewMajorClass(errors.MjrInternal)
-
-	MjrAuthorization = errors.MustNewMajor()
-	ClassForbidden = errors.MustNewMajorClass(MjrAuthorization)
-	ClassScope = errors.MustNewMajorClass(MjrAuthorization)
-	ClassInvalidRole = errors.MustNewMajorClass(MjrAuthorization)
-	ClassInvalidSecret = errors.MustNewMajorClass(MjrAuthorization)
-	ClassAuthorizationHeader = errors.MustNewMajorClass(MjrAuthorization)
-	ClassInitialization = errors.MustNewMajorClass(MjrAuthorization)
-	ClassNoRequiredOption = errors.MustNewMajorClass(MjrAuthorization)
-
-	MnrToken = errors.MustNewMinor(MjrAuthorization)
-	ClassInvalidToken = errors.MustNewMinorClass(MjrAuthorization, MnrToken)
-	ClassTokenExpired = errors.MustNewMinorClass(MjrAuthorization, MnrToken)
-
-}

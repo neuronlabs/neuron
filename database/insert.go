@@ -18,7 +18,7 @@ func queryInsert(ctx context.Context, db DB, s *query.Scope) (err error) {
 	}
 	if len(s.Models) == 0 {
 		log.Debug(logFormat(s, "provided empty models slice to insert"))
-		return errors.New(query.ClassInvalidModels, "nothing to insert")
+		return errors.Wrap(query.ErrInvalidModels, "nothing to insert")
 	}
 
 	// Check if models repository implements Inserter interface.
@@ -61,7 +61,7 @@ func queryInsert(ctx context.Context, db DB, s *query.Scope) (err error) {
 			return err
 		}
 	default:
-		return errors.NewDetf(query.ClassInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
+		return errors.WrapDetf(query.ErrInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
 	}
 	// Execute repository Insert method.
 	err = getRepository(db.Controller(), s).Insert(ctx, s)
@@ -181,7 +181,7 @@ func singleFieldsetInsertSetTimestamps(s *query.Scope, startTS time.Time) error 
 	for _, model := range s.Models {
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement Fielder interface", s.ModelStruct)
+			return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", s.ModelStruct)
 		}
 		if setCreatedAt {
 			if err := fielder.SetFieldValue(createdAt, startTS); err != nil {

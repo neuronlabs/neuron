@@ -110,7 +110,7 @@ func (p *Pagination) Last(total int64) (*Pagination, error) {
 		return nil, err
 	}
 	if total < 0 {
-		return nil, errors.NewDetf(ClassInvalidInput, "Total instance value lower than 0: %v", total)
+		return nil, errors.WrapDetf(ErrInvalidInput, "Total instance value lower than 0: %v", total)
 	}
 
 	var offset int64
@@ -142,7 +142,7 @@ func (p *Pagination) Next(total int64) (*Pagination, error) {
 		return nil, err
 	}
 	if total < 0 {
-		return nil, errors.NewDetf(ClassInvalidInput, "Total instance value lower than 0: %v", total)
+		return nil, errors.WrapDetf(ErrInvalidInput, "Total instance value lower than 0: %v", total)
 	}
 
 	// keep the same size but change the offset
@@ -186,12 +186,12 @@ func (p *Pagination) checkValues() error {
 
 func (p *Pagination) checkOffsetBasedValues() error {
 	if p.Limit < 0 {
-		return errors.NewDet(ClassInvalidInput, "invalid pagination").
+		return errors.WrapDet(ErrInvalidInput, "invalid pagination").
 			WithDetail("Pagination limit lower than -1")
 	}
 
 	if p.Offset < 0 {
-		return errors.NewDet(ClassInvalidInput, "invalid pagination").WithDetail("Pagination offset lower than 0")
+		return errors.WrapDet(ErrInvalidInput, "invalid pagination").WithDetail("Pagination offset lower than 0")
 	}
 	return nil
 }

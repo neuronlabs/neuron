@@ -350,7 +350,7 @@ func (s *StructField) fieldSetRelatedType() error {
 	modelType := s.reflectField.Type
 	// get error function
 	getError := func() error {
-		return errors.NewDetf(ClassModelDefinition, "incorrect relationship type provided. The Only allowable types are structures, pointers or slices. This type is: %v", modelType)
+		return errors.WrapDetf(ErrModelDefinition, "incorrect relationship type provided. The Only allowable types are structures, pointers or slices. This type is: %v", modelType)
 	}
 
 	switch modelType.Kind() {
@@ -436,20 +436,20 @@ func (s *StructField) initCheckFieldType() error {
 		case reflect.Array, reflect.Slice:
 			fieldType = fieldType.Elem()
 			if fieldType.Kind() != reflect.Uint8 {
-				return errors.NewDetf(ClassModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
+				return errors.WrapDetf(ErrModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 			}
 		default:
-			return errors.NewDetf(ClassModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
+			return errors.WrapDetf(ErrModelDefinition, "invalid primary field type: %s for the field: %s in model: %s", fieldType, s.fieldName(), s.mStruct.modelType.Name())
 		}
 	case KindAttribute:
 		// almost any type
 		switch fieldType.Kind() {
 		case reflect.Interface, reflect.Chan, reflect.Func, reflect.Invalid:
-			return errors.NewDetf(ClassModelDefinition, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
+			return errors.WrapDetf(ErrModelDefinition, "invalid attribute field type: %v for field: %s in model: %s", fieldType, s.Name(), s.mStruct.modelType.Name())
 		}
 		if s.isLanguage() {
 			if fieldType.Kind() != reflect.String {
-				return errors.NewDetf(ClassModelDefinition, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
+				return errors.WrapDetf(ErrModelDefinition, "incorrect field type: %v for language field. The langtag field must be a string. Model: '%v'", fieldType, s.mStruct.modelType.Name())
 			}
 		}
 
@@ -465,10 +465,10 @@ func (s *StructField) initCheckFieldType() error {
 				fieldType = fieldType.Elem()
 			}
 			if fieldType.Kind() != reflect.Struct {
-				return errors.NewDetf(ClassModelDefinition, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
+				return errors.WrapDetf(ErrModelDefinition, "invalid slice type: %v, for the relationship: %v", fieldType, s.neuronName)
 			}
 		default:
-			return errors.NewDetf(ClassModelDefinition, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
+			return errors.WrapDetf(ErrModelDefinition, "invalid field type: %v, for the relationship: %v", fieldType, s.neuronName)
 		}
 	}
 	return nil
@@ -580,7 +580,7 @@ func (s *StructField) setTagValues() error {
 
 		if !s.isRelationship() {
 			log.Debugf("Field: %s tagged with: %s is not a relationship.", s.reflectField.Name, AnnotationManyToMany)
-			return errors.NewDetf(ClassModelDefinition, "%s tag on non relationship field", key)
+			return errors.WrapDetf(ErrModelDefinition, "%s tag on non relationship field", key)
 		}
 
 		r := s.relationship
@@ -600,7 +600,7 @@ func (s *StructField) setTagValues() error {
 				}
 			case 0:
 			default:
-				err := errors.NewDet(ClassModelDefinition, "relationship many2many tag has too many values")
+				err := errors.WrapDet(ErrModelDefinition, "relationship many2many tag has too many values")
 				multiError = append(multiError, err)
 			}
 			continue
@@ -611,7 +611,7 @@ func (s *StructField) setTagValues() error {
 		for _, value := range values {
 			i := strings.IndexRune(value, '=')
 			if i == -1 {
-				err := errors.NewDetf(ClassModelDefinition, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.mStruct.Type().Name(), s.Name(), key, value)
+				err := errors.WrapDetf(ErrModelDefinition, "model: '%s' field: '%s' tag: '%s' doesn't have 'equal' sign in key=value pair: '%s'", s.mStruct.Type().Name(), s.Name(), key, value)
 				multiError = append(multiError, err)
 				continue
 			}

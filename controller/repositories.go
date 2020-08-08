@@ -9,7 +9,7 @@ import (
 // SetDefaultRepository sets the default repository for given controller.
 func (c *Controller) SetDefaultRepository(r repository.Repository) error {
 	if c.DefaultRepository != nil {
-		return errors.NewDetf(ClassRepositoryAlreadyRegistered, "default repository already set to: %T", c.DefaultRepository)
+		return errors.WrapDetf(ErrRepositoryAlreadyRegistered, "default repository already set to: %T", c.DefaultRepository)
 	}
 	if _, ok := c.Repositories[r.ID()]; !ok {
 		c.Repositories[r.ID()] = r
@@ -32,7 +32,7 @@ func (c *Controller) GetRepositoryByModelStruct(mStruct *mapping.ModelStruct) (r
 	repo, ok := c.ModelRepositories[mStruct]
 	if !ok {
 		if c.DefaultRepository == nil {
-			return nil, errors.Newf(ClassRepositoryNotFound, "service not found for the model: %s", mStruct)
+			return nil, errors.Wrapf(ErrRepositoryNotFound, "service not found for the model: %s", mStruct)
 		}
 		repo = c.DefaultRepository
 	}
@@ -65,7 +65,7 @@ func (c *Controller) VerifyModelRepositories() error {
 		}
 	}
 	if nonRepositoryModels != "" {
-		return errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the models: %s", nonRepositoryModels)
+		return errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the models: %s", nonRepositoryModels)
 	}
 	return nil
 }

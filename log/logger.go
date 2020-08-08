@@ -114,7 +114,7 @@ func Panicf(format string, args ...interface{}) {
 // SetLevel sets the level if possible for the logger file.
 func SetLevel(level Level) error {
 	if level == LevelUnknown {
-		return errors.NewDet(ClassInvalidLogger, "can't set unknown logger level. provided level is not valid")
+		return errors.WrapDet(ErrInvalidLogger, "can't set unknown logger level. provided level is not valid")
 	}
 
 	// level is already the same
@@ -130,7 +130,7 @@ func SetLevel(level Level) error {
 
 	lvl, ok := defaultLogger.(LevelSetter)
 	if !ok {
-		return errors.NewDet(ClassInvalidLogger, "logger doesn't implement LevelSetter interface")
+		return errors.WrapDet(ErrInvalidLogger, "logger doesn't implement LevelSetter interface")
 	}
 
 	lvl.SetLevel(currentLevel)
@@ -171,7 +171,7 @@ func SetLogger(log LeveledLogger) {
 // SetModulesLevel sets the 'level' for all modules.
 func SetModulesLevel(level Level) error {
 	if level == LevelUnknown {
-		return errors.NewDet(ClassInvalidLogger, "can't set unknown logger level. provided level is not valid")
+		return errors.WrapDet(ErrInvalidLogger, "can't set unknown logger level. provided level is not valid")
 	}
 	for _, module := range modules {
 		module.SetLevel(level)

@@ -129,7 +129,7 @@ func TestMappedRelationships(t *testing.T) {
 
 				e, ok := err.(*errors.DetailedError)
 				require.True(t, ok)
-				assert.Equal(t, ClassModelDefinition, e.Class())
+				assert.Equal(t, ErrModelDefinition, e.Class())
 			})
 
 			t.Run("NotDefinedInTag", func(t *testing.T) {

@@ -40,7 +40,7 @@ func (n *NamingConvention) Parse(name string) error {
 	case "kebab":
 		*n = KebabCase
 	default:
-		return errors.NewDetf(ClassNamingConvention, "unknown naming convention name: %s", name)
+		return errors.WrapDetf(ErrNamingConvention, "unknown naming convention name: %s", name)
 	}
 	return nil
 }

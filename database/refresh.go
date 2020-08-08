@@ -13,7 +13,7 @@ import (
 func refreshQuery(ctx context.Context, db DB, q *query.Scope) error {
 	switch len(q.Models) {
 	case 0:
-		return errors.NewDet(query.ClassInvalidInput, "nothing to refresh")
+		return errors.WrapDet(query.ErrInvalidInput, "nothing to refresh")
 	case 1:
 		return refreshSingle(ctx, db, q)
 	default:
@@ -24,7 +24,7 @@ func refreshQuery(ctx context.Context, db DB, q *query.Scope) error {
 func refreshSingle(ctx context.Context, db DB, q *query.Scope) error {
 	model := q.Models[0]
 	if model.IsPrimaryKeyZero() {
-		return errors.NewDetf(query.ClassInvalidInput, "provided model has zero value primary key")
+		return errors.WrapDetf(query.ErrInvalidInput, "provided model has zero value primary key")
 	}
 	q.Models = nil
 	q.Filter(filter.New(q.ModelStruct.Primary(), filter.OpEqual, model.GetPrimaryKeyValue()))
@@ -44,7 +44,7 @@ func refreshMany(ctx context.Context, db DB, q *query.Scope) error {
 	primaryKeys := make([]interface{}, len(models))
 	for i, model := range models {
 		if model.IsPrimaryKeyZero() {
-			return errors.NewDetf(query.ClassInvalidInput, "one of provided models has zero value primary key")
+			return errors.WrapDetf(query.ErrInvalidInput, "one of provided models has zero value primary key")
 		}
 		idToIndex[model.GetPrimaryKeyHashableValue()] = i
 		primaryKeys[i] = model.GetPrimaryKeyValue()
@@ -82,11 +82,11 @@ func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelat
 
 	resultFielder, ok := from.(mapping.Fielder)
 	if !ok {
-		return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
+		return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
 	}
 	modelFielder, ok := to.(mapping.Fielder)
 	if !ok {
-		return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
+		return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
 	}
 	for _, sField := range mStruct.Fields() {
 		fieldValue, err := resultFielder.GetFieldValue(sField)
@@ -111,13 +111,13 @@ func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelat
 			if resultMulti == nil {
 				resultMulti, ok = from.(mapping.MultiRelationer)
 				if !ok {
-					return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
+					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
 				}
 			}
 			if modelMulti == nil {
 				modelMulti, ok = to.(mapping.MultiRelationer)
 				if !ok {
-					return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
+					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
 				}
 			}
 			relation, err := resultMulti.GetRelationModels(included.StructField)
@@ -131,13 +131,13 @@ func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelat
 			if resultSingle == nil {
 				resultSingle, ok = from.(mapping.SingleRelationer)
 				if !ok {
-					return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
+					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
 				}
 			}
 			if modelSingle == nil {
 				modelSingle, ok = to.(mapping.SingleRelationer)
 				if !ok {
-					return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
+					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
 				}
 			}
 			relation, err := resultSingle.GetRelationModel(included.StructField)
@@ -148,7 +148,7 @@ func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelat
 				return err
 			}
 		default:
-			return errors.New(query.ClassInternal, "provided invalid included relation field")
+			return errors.Wrap(query.ErrInternal, "provided invalid included relation field")
 		}
 	}
 	return nil
@@ -160,7 +160,7 @@ func RefreshModels(ctx context.Context, db DB, mStruct *mapping.ModelStruct, mod
 	primaryKeys := make([]interface{}, len(models))
 	for i, model := range models {
 		if model.IsPrimaryKeyZero() {
-			return errors.NewDetf(query.ClassInvalidInput, "one of provided models has zero value primary key")
+			return errors.WrapDetf(query.ErrInvalidInput, "one of provided models has zero value primary key")
 		}
 		idToIndex[model.GetPrimaryKeyHashableValue()] = i
 		primaryKeys[i] = model.GetPrimaryKeyValue()
@@ -187,11 +187,11 @@ func RefreshModels(ctx context.Context, db DB, mStruct *mapping.ModelStruct, mod
 		model := models[index]
 		resultFielder, ok := result.(mapping.Fielder)
 		if !ok {
-			return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
+			return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
 		}
 		modelFielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.NewDetf(mapping.ClassModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
+			return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
 		}
 		for _, sField := range mStruct.Fields() {
 			fieldValue, err := resultFielder.GetFieldValue(sField)

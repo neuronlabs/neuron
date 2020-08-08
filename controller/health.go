@@ -56,7 +56,7 @@ func (c *Controller) HealthCheck(ctx context.Context) (*repository.HealthRespons
 
 func (c *Controller) healthCheckJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.HealthChecker, error) {
 	if len(c.Repositories) == 0 {
-		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
+		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
 	}
 	out := make(chan repository.HealthChecker)
 	go func() {

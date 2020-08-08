@@ -63,7 +63,7 @@ func deleteFilteredWithHooks(ctx context.Context, db DB, s *query.Scope) (int64,
 
 func deleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected int64, err error) {
 	if len(s.Models) == 0 {
-		return 0, errors.Newf(query.ClassNoModels, "no models provided to delete")
+		return 0, errors.Wrapf(query.ErrNoModels, "no models provided to delete")
 	}
 
 	// If the model has 'DeletedAt' timestamp - do the soft delete - updates models with the 'DeletedAt' timestamp.
@@ -76,7 +76,7 @@ func deleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected in
 	// Otherwise get all models primary keys and set it as the filter for the deleteQuery method.
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.New(query.ClassInvalidModels, "one of the models have primary key with zero value")
+			return 0, errors.Wrap(query.ErrInvalidModels, "one of the models have primary key with zero value")
 		}
 		primaries = append(primaries, model.GetPrimaryKeyValue())
 	}
@@ -111,7 +111,7 @@ func softDeleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, erro
 	deletedAt, _ := s.ModelStruct.DeletedAt()
 	fielder, isFielder := updateModel.(mapping.Fielder)
 	if !isFielder {
-		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
+		return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
 	}
 	if err := fielder.SetFieldValue(deletedAt, db.Controller().Now()); err != nil {
 		return 0, err
@@ -138,7 +138,7 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 	primaries := make([]interface{}, len(s.Models))
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
-			return 0, errors.New(query.ClassInvalidModels, "one of the models have primary key with zero value")
+			return 0, errors.Wrap(query.ErrInvalidModels, "one of the models have primary key with zero value")
 		}
 		primaries = append(primaries, model.GetPrimaryKeyValue())
 	}
@@ -148,7 +148,7 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 	updateModel := mapping.NewModel(s.ModelStruct)
 	fielder, isFielder := updateModel.(mapping.Fielder)
 	if !isFielder {
-		return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
+		return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
 	}
 	if err = fielder.SetFieldValue(deletedAt, deletedAtTS); err != nil {
 		return 0, err
@@ -162,7 +162,7 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 		for _, model := range s.Models {
 			fielder, ok := model.(mapping.Fielder)
 			if !ok {
-				return 0, errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
+				return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
 			}
 			if err = fielder.SetFieldValue(deletedAt, deletedAtTS); err != nil {
 				return 0, err

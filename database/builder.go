@@ -19,7 +19,7 @@ type Builder interface {
 
 	// Count returns the number of model instances in the repository matching given query.
 	Count() (int64, error)
-	// Insert models into repository. Returns error with class ClassViolationUnique if the model with given primary key already exists.
+	// Insert models into repository. Returns error with class ErrViolationUnique if the model with given primary key already exists.
 	Insert() error
 	// update updates query models in the repository. Input models with non zero primary key the function would take
 	// update these models instances. For a non zero single model with filters it would update all models that match

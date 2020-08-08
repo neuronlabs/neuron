@@ -47,7 +47,7 @@ func (s *Scope) Filter(f filter.Filter) {
 func (s *Scope) WhereOr(filters ...filter.Simple) error {
 	for i := range filters {
 		if filters[i].StructField.ModelStruct() != s.ModelStruct {
-			return errors.New(filter.ClassFilterCollection, "Or filter elements have different root model")
+			return errors.Wrap(filter.ErrFilterCollection, "Or filter elements have different root model")
 		}
 	}
 	s.Filters = append(s.Filters, filter.OrGroup(filters))

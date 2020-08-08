@@ -56,7 +56,7 @@ func (c *Controller) DialAll(ctx context.Context) error {
 
 func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Dialer, error) {
 	if len(c.Repositories) == 0 {
-		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
+		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
 	}
 	out := make(chan repository.Dialer)
 	go func() {

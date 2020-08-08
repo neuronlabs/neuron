@@ -117,12 +117,8 @@ func (b *txQuery) Get() (mapping.Model, error) {
 	}
 	result, err := queryGet(b.tx.Transaction.Ctx, b.tx, b.scope)
 	if err != nil {
-		b.tx.err = err
-		if classError, ok := err.(errors.ClassError); ok {
-			// TODO: this might be invalid if the error is of class query Value NoResult.
-			if classError.Class() == query.ClassNoResult {
-				b.tx.err = err
-			}
+		if !errors.Is(err, query.ErrQueryNoResult) {
+			b.tx.err = err
 		}
 		return nil, err
 	}

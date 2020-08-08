@@ -80,7 +80,7 @@ func (t *TxState) UnmarshalJSON(data []byte) error {
 		*t = 0
 	default:
 		log.Errorf("Unknown transaction Transaction.State: %s", str)
-		return errors.NewDet(ClassTxState, "unknown transaction Transaction.State")
+		return errors.WrapDet(ErrTxState, "unknown transaction Transaction.State")
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func (i *IsolationLevel) UnmarshalJSON(data []byte) error {
 		*i = LevelLinearizable
 	default:
 		log.Debugf("Unknown transaction isolation level: %s", string(data))
-		return errors.NewDetf(ClassTxState, "unknown transaction isolation level: %s", string(data))
+		return errors.WrapDetf(ErrTxState, "unknown transaction isolation level: %s", string(data))
 	}
 	return nil
 }

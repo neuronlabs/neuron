@@ -1,24 +1,33 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 )
 
-var _ ClassError = &simpleError{}
+// ErrInternal is an internal neuron error definition.
+var ErrInternal = errors.New("internal error")
+
+var _ error = &simpleError{}
 
 type simpleError struct {
-	class Class
-	msg   string
+	err error
+	msg string
 }
 
-// New creates simple ClassError for provided 'c' Class and 'msg' message.
-func New(c Class, msg string) ClassError {
-	return &simpleError{c, msg}
+// New creates new error.
+func New(msg string) error {
+	return errors.New(msg)
 }
 
-// Newf creates simple formatted ClassError for provided 'c' Class, 'format' and arguments 'args'.
-func Newf(c Class, format string, args ...interface{}) ClassError {
-	return &simpleError{c, fmt.Sprintf(format, args...)}
+// Wrap creates simple ClassError for provided 'c' Class and 'msg' message.
+func Wrap(err error, msg string) error {
+	return &simpleError{err, msg}
+}
+
+// Wrapf creates simple formatted ClassError for provided 'c' Class, 'format' and arguments 'args'.
+func Wrapf(err error, format string, args ...interface{}) error {
+	return &simpleError{err, fmt.Sprintf(format, args...)}
 }
 
 // Error implements error interface.
@@ -26,7 +35,19 @@ func (s *simpleError) Error() string {
 	return s.msg
 }
 
-// Class implements ClassError interface.
-func (s *simpleError) Class() Class {
-	return s.class
+// Unwrap unwraps provided error.
+func (s *simpleError) Unwrap() error {
+	return s.err
+}
+
+func Is(err, target error) bool {
+	return errors.Is(err, target)
+}
+
+func As(err error, target interface{}) bool {
+	return errors.As(err, target)
+}
+
+func Unwrap(err error) error {
+	return errors.Unwrap(err)
 }

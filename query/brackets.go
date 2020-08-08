@@ -8,7 +8,7 @@ import (
 // SplitBracketParameter splits the parameters within the '[' and ']' brackets.
 func SplitBracketParameter(bracketed string) (values []string, err error) {
 	doubleOpen := func() error {
-		return errors.NewDet(ClassInvalidParameter, "double open square brackets").
+		return errors.WrapDet(ErrInvalidParameter, "double open square brackets").
 			WithDetailf("open square bracket '[' found, without closing ']' in: '%s'", bracketed)
 	}
 
@@ -29,7 +29,7 @@ func SplitBracketParameter(bracketed string) (values []string, err error) {
 			// if opening bracket not set or in case of more than one brackets
 			// if start was not set before this endIndex
 			if startIndex == -1 || startIndex < endIndex {
-				return nil, errors.NewDet(ClassInvalidParameter, "no opening bracket found").
+				return nil, errors.WrapDet(ErrInvalidParameter, "no opening bracket found").
 					WithDetailf("close square bracket ']' found, without opening '[' in '%s'", bracketed)
 			}
 			endIndex = i

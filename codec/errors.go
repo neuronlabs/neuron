@@ -9,30 +9,15 @@ import (
 )
 
 var (
-	MjrCodec     errors.Major
-	MnrMarshal   errors.Minor
-	MnrUnmarshal errors.Minor
+	ErrCodec          = errors.New("codec")
+	ErrMarshal        = errors.Wrap(ErrCodec, "marshal")
+	ErrMarshalPayload = errors.Wrap(ErrMarshal, "payload")
 
-	ClassMarshal           errors.Class
-	ClassUnmarshal         errors.Class
-	ClassUnmarshalDocument errors.Class
-
-	ClassInternal       errors.Class
-	ClassMarshalPayload errors.Class
+	ErrUnmarshal           = errors.Wrap(ErrCodec, "unmarshal")
+	ErrUnmarshalDocument   = errors.Wrap(ErrUnmarshal, "document")
+	ErrUnmarshalFieldValue = errors.Wrap(ErrUnmarshal, "field value")
+	ErrUnmarshalFieldName  = errors.Wrap(ErrUnmarshal, "field name")
 )
-
-func init() {
-	MjrCodec = errors.MustNewMajor()
-	MnrMarshal = errors.MustNewMinor(MjrCodec)
-	MnrUnmarshal = errors.MustNewMinor(MjrCodec)
-
-	ClassMarshal = errors.MustNewMinorClass(MjrCodec, MnrMarshal)
-	ClassMarshalPayload = errors.MustNewMinorClass(MjrCodec, MnrMarshal)
-
-	ClassUnmarshal = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
-	ClassUnmarshalDocument = errors.MustNewMinorClass(MjrCodec, MnrUnmarshal)
-	ClassInternal = errors.MustNewMajorClass(errors.MjrInternal)
-}
 
 // Error is the error structure used for used for codec processes.
 // More info can be found at: 'https://jsonapi.org/format/#errors'

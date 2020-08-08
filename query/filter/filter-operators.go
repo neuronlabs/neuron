@@ -190,10 +190,10 @@ func (c *operatorContainer) registerOperator(op *Operator) error {
 	op.ID = c.nextID()
 	for _, o := range c.operators {
 		if o.Name == op.Name {
-			return errors.NewDetf(ClassInternal, "operator with the name: %s and value: %s already registered.", op.Name, op.URLAlias)
+			return errors.WrapDetf(errors.ErrInternal, "operator with the name: %s and value: %s already registered.", op.Name, op.URLAlias)
 		}
 		if (op.URLAlias != "" && (op.URLAlias == o.URLAlias)) || op.Value == o.Value {
-			return errors.NewDetf(ClassInternal, "operator already registered. %+v", op)
+			return errors.WrapDetf(errors.ErrInternal, "operator already registered. %+v", op)
 		}
 	}
 
@@ -205,7 +205,7 @@ func (c *operatorContainer) registerOperator(op *Operator) error {
 	for _, alias := range op.Aliases {
 		_, ok := c.operators[alias]
 		if ok {
-			return errors.NewDetf(ClassInternal, "operator alias: '%s' already registered. Operator: '%s'", alias, op.Name)
+			return errors.WrapDetf(errors.ErrInternal, "operator alias: '%s' already registered. Operator: '%s'", alias, op.Name)
 		}
 		c.operators[alias] = op
 	}

@@ -47,7 +47,7 @@ func (c *Controller) MigrateModels(ctx context.Context, models ...mapping.Model)
 		}
 		migrator, ok := repo.(repository.Migrator)
 		if !ok {
-			return errors.Newf(repository.ClassNotImplements,
+			return errors.WrapDetf(repository.ErrNotImplements,
 				"models: '%s' repository doesn't not allow to Migrate", modelStruct.Type().Name())
 		}
 		migratorModels[migrator] = append(migratorModels[migrator], modelStruct)
@@ -98,11 +98,11 @@ func (c *Controller) MapRepositoryModels(r repository.Repository, models ...mapp
 
 func (c *Controller) getModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {
 	if model == nil {
-		return nil, errors.NewDet(ClassInvalidModel, "provided nil model value")
+		return nil, errors.WrapDet(mapping.ErrModelDefinition, "provided nil model value")
 	}
 	mStruct, ok := c.ModelMap.GetModelStruct(model)
 	if !ok {
-		return nil, errors.Newf(mapping.ClassModelNotFound, "provided model: '%T' is not found within given controller", model)
+		return nil, errors.Wrapf(mapping.ErrModelNotFound, "provided model: '%T' is not found within given controller", model)
 	}
 	return mStruct, nil
 }

@@ -35,7 +35,7 @@ func Begin(ctx context.Context, db DB, options *query.TxOptions) (*Tx, error) {
 			return nil, tx.err
 		}
 		if tx.Transaction.State.Done() {
-			return nil, errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", tx.Transaction.ID.String())
+			return nil, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", tx.Transaction.ID.String())
 		}
 		return tx, nil
 	}
@@ -49,7 +49,7 @@ func (t *Tx) Commit() error {
 		return nil
 	}
 	if t.Transaction.State.Done() {
-		return errors.NewDetf(query.ClassTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID.String())
+		return errors.WrapDetf(query.ErrTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID.String())
 	}
 
 	ctx, cancelFunc := context.WithCancel(t.Transaction.Ctx)
@@ -98,7 +98,7 @@ func (t *Tx) Rollback() error {
 		return nil
 	}
 	if t.Transaction.State.Done() {
-		return errors.NewDetf(query.ClassTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID)
+		return errors.WrapDetf(query.ErrTxDone, "provided transaction: '%s' is already finished", t.Transaction.ID)
 	}
 
 	ctx, cancelFunc := context.WithCancel(t.Transaction.Ctx)
@@ -220,7 +220,7 @@ func (t *Tx) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 		return err
 	}
 	if len(models) == 0 {
-		t.err = errors.New(query.ClassNoModels, "nothing to insert")
+		t.err = errors.Wrap(query.ErrNoModels, "nothing to insert")
 		return t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -258,7 +258,7 @@ func (t *Tx) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 		return 0, err
 	}
 	if len(models) == 0 {
-		t.err = errors.New(query.ClassNoModels, "nothing to update")
+		t.err = errors.Wrap(query.ErrNoModels, "nothing to update")
 		return 0, t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -299,11 +299,11 @@ func (t *Tx) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 		return 0, t.err
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return 0, t.err
 	}
 	if len(models) == 0 {
-		t.err = errors.New(query.ClassNoModels, "nothing to delete")
+		t.err = errors.Wrap(query.ErrNoModels, "nothing to delete")
 		return 0, t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -343,7 +343,7 @@ func (t *Tx) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models .
 		return err
 	}
 	if len(models) == 0 {
-		t.err = errors.NewDetf(query.ClassNoModels, "nothing to refresh")
+		t.err = errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
 		return t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -366,7 +366,7 @@ func (t *Tx) QueryRefresh(ctx context.Context, q *query.Scope) error {
 		return err
 	}
 	if len(q.Models) == 0 {
-		t.err = errors.NewDetf(query.ClassNoModels, "nothing to refresh")
+		t.err = errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
 		return t.err
 	}
 	if err := t.beginScopeTransaction(q); err != nil {
@@ -469,7 +469,7 @@ func (t *Tx) ClearRelations(ctx context.Context, model mapping.Model, relationFi
 		return 0, t.err
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return 0, t.err
 	}
 	mStruct, err := t.c.ModelStruct(model)
@@ -514,7 +514,7 @@ func (t *Tx) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct,
 		return t.err
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -533,7 +533,7 @@ func (t *Tx) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, mod
 		return []mapping.Model{}, t.err
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return []mapping.Model{}, t.err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -569,7 +569,7 @@ func (t *Tx) checkTransaction() error {
 		return t.err
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return t.err
 	}
 	return nil
@@ -612,7 +612,7 @@ func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery
 		return tb
 	}
 	if t.Transaction.State.Done() {
-		t.err = errors.NewDetf(query.ClassTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return tb
 	}
 	// create new scope and add it to the txQuery.

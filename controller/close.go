@@ -54,7 +54,7 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 
 func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Closer, error) {
 	if len(c.Repositories) == 0 {
-		return nil, errors.NewDetf(ClassRepositoryNotFound, "no repositories found for the model")
+		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
 	}
 	out := make(chan repository.Closer)
 	go func() {

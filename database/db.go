@@ -151,7 +151,7 @@ func (d *db) QueryFind(ctx context.Context, q *query.Scope) ([]mapping.Model, er
 // Insert implements DB interface.
 func (d *db) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
 	if len(models) == 0 {
-		return errors.New(query.ClassNoModels, "nothing to insert")
+		return errors.Wrap(query.ErrNoModels, "nothing to insert")
 	}
 	s := query.NewScope(mStruct, models...)
 	return queryInsert(ctx, d, s)
@@ -165,7 +165,7 @@ func (d *db) InsertQuery(ctx context.Context, q *query.Scope) error {
 // Update implements DB interface.
 func (d *db) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
 	if len(models) == 0 {
-		return 0, errors.New(query.ClassNoModels, "nothing to update")
+		return 0, errors.Wrap(query.ErrNoModels, "nothing to update")
 	}
 	s := query.NewScope(mStruct, models...)
 	return queryUpdate(ctx, d, s)
@@ -179,7 +179,7 @@ func (d *db) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 // deleteQuery implements DB interface.
 func (d *db) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
 	if len(models) == 0 {
-		return 0, errors.New(query.ClassNoModels, "nothing to delete")
+		return 0, errors.Wrap(query.ErrNoModels, "nothing to delete")
 	}
 	s := query.NewScope(mStruct, models...)
 	return deleteQuery(ctx, d, s)

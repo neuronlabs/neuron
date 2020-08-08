@@ -111,7 +111,7 @@ func (b *BenchModel) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		b.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'BenchModel'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'BenchModel'", value)
 	}
 	return nil
 }
@@ -143,7 +143,7 @@ func (b *BenchModel) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 4: // Third
 		return &b.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -160,7 +160,7 @@ func (b *BenchModel) GetFieldZeroValue(field *StructField) (interface{}, error) 
 	case 4: // Third
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -178,7 +178,7 @@ func (b *BenchModel) IsFieldZero(field *StructField) (bool, error) {
 	case 4: // Third
 		return b.Third == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -195,7 +195,7 @@ func (b *BenchModel) SetFieldZeroValue(field *StructField) error {
 	case 4: // Third
 		b.Third = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -214,7 +214,7 @@ func (b *BenchModel) GetHashableFieldValue(field *StructField) (interface{}, err
 	case 4: // Third
 		return b.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'BenchModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'BenchModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -231,7 +231,7 @@ func (b *BenchModel) GetFieldValue(field *StructField) (interface{}, error) {
 	case 4: // Third
 		return b.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -267,7 +267,7 @@ func (b *BenchModel) SetFieldValue(field *StructField, value interface{}) (err e
 		case float64:
 			b.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // Name
@@ -281,7 +281,7 @@ func (b *BenchModel) SetFieldValue(field *StructField, value interface{}) (err e
 			b.Name = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // First
 		if v, ok := value.(string); ok {
 			b.First = v
@@ -293,7 +293,7 @@ func (b *BenchModel) SetFieldValue(field *StructField, value interface{}) (err e
 			b.First = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // Second
 		if v, ok := value.(int); ok {
 			b.Second = v
@@ -324,7 +324,7 @@ func (b *BenchModel) SetFieldValue(field *StructField, value interface{}) (err e
 		case float64:
 			b.Second = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 4: // Third
@@ -338,9 +338,9 @@ func (b *BenchModel) SetFieldValue(field *StructField, value interface{}) (err e
 			b.Third = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'BenchModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'BenchModel'", field.Name())
 	}
 }
 
@@ -358,7 +358,7 @@ func (b *BenchModel) ParseFieldsStringValue(field *StructField, value string) (i
 	case 4: // Third
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: BenchModel'", field.Name())
 }
 
 // Compile time check if Car implements Model interface.
@@ -431,7 +431,7 @@ func (c *Car) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		c.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'Car'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'Car'", value)
 	}
 	return nil
 }
@@ -459,7 +459,7 @@ func (c *Car) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 3: // BrandID
 		return &c.BrandID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -472,7 +472,7 @@ func (c *Car) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 3: // BrandID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -486,7 +486,7 @@ func (c *Car) IsFieldZero(field *StructField) (bool, error) {
 	case 3: // BrandID
 		return c.BrandID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -499,7 +499,7 @@ func (c *Car) SetFieldZeroValue(field *StructField) error {
 	case 3: // BrandID
 		c.BrandID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -514,7 +514,7 @@ func (c *Car) GetHashableFieldValue(field *StructField) (interface{}, error) {
 	case 3: // BrandID
 		return c.BrandID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Car'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Car'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -527,7 +527,7 @@ func (c *Car) GetFieldValue(field *StructField) (interface{}, error) {
 	case 3: // BrandID
 		return c.BrandID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -563,7 +563,7 @@ func (c *Car) SetFieldValue(field *StructField, value interface{}) (err error) {
 		case float64:
 			c.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // UserID
@@ -577,7 +577,7 @@ func (c *Car) SetFieldValue(field *StructField, value interface{}) (err error) {
 			c.UserID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // BrandID
 		if v, ok := value.(int); ok {
 			c.BrandID = v
@@ -608,11 +608,11 @@ func (c *Car) SetFieldValue(field *StructField, value interface{}) (err error) {
 		case float64:
 			c.BrandID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Car'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Car'", field.Name())
 	}
 }
 
@@ -626,7 +626,7 @@ func (c *Car) ParseFieldsStringValue(field *StructField, value string) (interfac
 	case 3: // BrandID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Car'", field.Name())
 }
 
 // Compile time check if Car implements SingleRelationer interface.
@@ -641,7 +641,7 @@ func (c *Car) GetRelationModel(relation *StructField) (Model, error) {
 		}
 		return c.Brand, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
 	}
 }
 
@@ -656,9 +656,9 @@ func (c *Car) SetRelationModel(relation *StructField, model Model) error {
 			c.Brand = brand
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation Brand", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation Brand", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
 	}
 }
 
@@ -732,7 +732,7 @@ func (c *CarBrand) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		c.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'CarBrand'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'CarBrand'", value)
 	}
 	return nil
 }
@@ -756,7 +756,7 @@ func (c *CarBrand) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return &c.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -765,7 +765,7 @@ func (c *CarBrand) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -775,7 +775,7 @@ func (c *CarBrand) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return c.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -784,7 +784,7 @@ func (c *CarBrand) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		c.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -795,7 +795,7 @@ func (c *CarBrand) GetHashableFieldValue(field *StructField) (interface{}, error
 	case 0: // ID
 		return c.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'CarBrand'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'CarBrand'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -804,7 +804,7 @@ func (c *CarBrand) GetFieldValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return c.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -840,11 +840,11 @@ func (c *CarBrand) SetFieldValue(field *StructField, value interface{}) (err err
 		case float64:
 			c.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'CarBrand'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'CarBrand'", field.Name())
 	}
 }
 
@@ -854,7 +854,7 @@ func (c *CarBrand) ParseFieldsStringValue(field *StructField, value string) (int
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: CarBrand'", field.Name())
 }
 
 // Compile time check if Comment implements Model interface.
@@ -907,7 +907,7 @@ func (c *Comment) SetPrimaryKeyValue(value interface{}) error {
 		c.ID = string(v)
 		return nil
 	}
-	return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
+	return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
 		value, c)
 }
 
@@ -936,7 +936,7 @@ func (c *Comment) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 6: // JobID
 		return &c.JobID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -955,7 +955,7 @@ func (c *Comment) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 6: // JobID
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -975,7 +975,7 @@ func (c *Comment) IsFieldZero(field *StructField) (bool, error) {
 	case 6: // JobID
 		return c.JobID == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -994,7 +994,7 @@ func (c *Comment) SetFieldZeroValue(field *StructField) error {
 	case 6: // JobID
 		c.JobID = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -1018,7 +1018,7 @@ func (c *Comment) GetHashableFieldValue(field *StructField) (interface{}, error)
 	case 6: // JobID
 		return c.JobID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Comment'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Comment'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -1037,7 +1037,7 @@ func (c *Comment) GetFieldValue(field *StructField) (interface{}, error) {
 	case 6: // JobID
 		return c.JobID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -1054,21 +1054,21 @@ func (c *Comment) SetFieldValue(field *StructField, value interface{}) (err erro
 			c.ID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 1: // CreatedAt
 		if v, ok := value.(time.Time); ok {
 			c.CreatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // UpdatedAt
 		if v, ok := value.(time.Time); ok {
 			c.UpdatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // DeletedAt
 		if value == nil {
 			c.DeletedAt = nil
@@ -1084,7 +1084,7 @@ func (c *Comment) SetFieldValue(field *StructField, value interface{}) (err erro
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 4: // UserID
 		if v, ok := value.(string); ok {
 			c.UserID = v
@@ -1096,7 +1096,7 @@ func (c *Comment) SetFieldValue(field *StructField, value interface{}) (err erro
 			c.UserID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 6: // JobID
 		if v, ok := value.(string); ok {
 			c.JobID = v
@@ -1108,9 +1108,9 @@ func (c *Comment) SetFieldValue(field *StructField, value interface{}) (err erro
 			c.JobID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Comment'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Comment'", field.Name())
 	}
 }
 
@@ -1122,22 +1122,22 @@ func (c *Comment) ParseFieldsStringValue(field *StructField, value string) (inte
 	case 1: // CreatedAt
 		temp := c.CreatedAt
 		if err := c.CreatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", c.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", c.CreatedAt, err)
 		}
 		bt, err := c.CreatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", c.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", c.CreatedAt, err)
 		}
 		c.CreatedAt = temp
 		return string(bt), nil
 	case 2: // UpdatedAt
 		temp := c.UpdatedAt
 		if err := c.UpdatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", c.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", c.UpdatedAt, err)
 		}
 		bt, err := c.UpdatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", c.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", c.UpdatedAt, err)
 		}
 		c.UpdatedAt = temp
 		return string(bt), nil
@@ -1145,11 +1145,11 @@ func (c *Comment) ParseFieldsStringValue(field *StructField, value string) (inte
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", c.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", c.DeletedAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", c.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", c.DeletedAt, err)
 		}
 
 		return string(bt), nil
@@ -1158,7 +1158,7 @@ func (c *Comment) ParseFieldsStringValue(field *StructField, value string) (inte
 	case 6: // JobID
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Comment'", field.Name())
 }
 
 // Compile time check if Comment implements SingleRelationer interface.
@@ -1178,7 +1178,7 @@ func (c *Comment) GetRelationModel(relation *StructField) (Model, error) {
 		}
 		return c.Job, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
 	}
 }
 
@@ -1193,7 +1193,7 @@ func (c *Comment) SetRelationModel(relation *StructField, model Model) error {
 			c.User = user
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation User", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation User", model)
 	case 7: // Job
 		if model == nil {
 			c.Job = nil
@@ -1202,9 +1202,9 @@ func (c *Comment) SetRelationModel(relation *StructField, model Model) error {
 			c.Job = job
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation Job", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation Job", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, c)
 	}
 }
 
@@ -1278,7 +1278,7 @@ func (f *First) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		f.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'First'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'First'", value)
 	}
 	return nil
 }
@@ -1302,7 +1302,7 @@ func (f *First) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return &f.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -1311,7 +1311,7 @@ func (f *First) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -1321,7 +1321,7 @@ func (f *First) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return f.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -1330,7 +1330,7 @@ func (f *First) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		f.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -1341,7 +1341,7 @@ func (f *First) GetHashableFieldValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return f.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'First'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'First'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -1350,7 +1350,7 @@ func (f *First) GetFieldValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return f.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -1386,11 +1386,11 @@ func (f *First) SetFieldValue(field *StructField, value interface{}) (err error)
 		case float64:
 			f.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'First'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'First'", field.Name())
 	}
 }
 
@@ -1400,7 +1400,7 @@ func (f *First) ParseFieldsStringValue(field *StructField, value string) (interf
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: First'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -1412,11 +1412,11 @@ func (f *First) AddRelationModel(relation *StructField, model Model) error {
 	case 1: // Many
 		second, ok := model.(*Second)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Many'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Many'", model)
 		}
 		f.Many = append(f.Many, second)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'First'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'First'", model)
 	}
 	return nil
 }
@@ -1429,7 +1429,7 @@ func (f *First) GetRelationModels(relation *StructField) (models []Model, err er
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
 	}
 	return models, nil
 }
@@ -1439,11 +1439,11 @@ func (f *First) GetRelationModelAt(relation *StructField, index int) (models Mod
 	switch relation.Index[0] {
 	case 1: // Many
 		if index > len(f.Many)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'First', Field Many")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'First', Field Many")
 		}
 		return f.Many[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
 	}
 	return models, nil
 }
@@ -1454,7 +1454,7 @@ func (f *First) GetRelationLen(relation *StructField) (int, error) {
 	case 1: // Many
 		return len(f.Many), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, f)
 	}
 }
 
@@ -1466,13 +1466,13 @@ func (f *First) SetRelationModels(relation *StructField, models ...Model) error 
 		for i, model := range models {
 			second, ok := model.(*Second)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Many'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Many'", model)
 			}
 			temp[i] = second
 		}
 		f.Many = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'First'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'First'", relation.String())
 	}
 	return nil
 }
@@ -1547,7 +1547,7 @@ func (f *FirstSeconds) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		f.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'FirstSeconds'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'FirstSeconds'", value)
 	}
 	return nil
 }
@@ -1575,7 +1575,7 @@ func (f *FirstSeconds) GetFieldsAddress(field *StructField) (interface{}, error)
 	case 2: // SecondID
 		return &f.SecondID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -1588,7 +1588,7 @@ func (f *FirstSeconds) GetFieldZeroValue(field *StructField) (interface{}, error
 	case 2: // SecondID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -1602,7 +1602,7 @@ func (f *FirstSeconds) IsFieldZero(field *StructField) (bool, error) {
 	case 2: // SecondID
 		return f.SecondID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -1615,7 +1615,7 @@ func (f *FirstSeconds) SetFieldZeroValue(field *StructField) error {
 	case 2: // SecondID
 		f.SecondID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -1630,7 +1630,7 @@ func (f *FirstSeconds) GetHashableFieldValue(field *StructField) (interface{}, e
 	case 2: // SecondID
 		return f.SecondID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'FirstSeconds'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'FirstSeconds'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -1643,7 +1643,7 @@ func (f *FirstSeconds) GetFieldValue(field *StructField) (interface{}, error) {
 	case 2: // SecondID
 		return f.SecondID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -1679,7 +1679,7 @@ func (f *FirstSeconds) SetFieldValue(field *StructField, value interface{}) (err
 		case float64:
 			f.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // FirstID
@@ -1712,7 +1712,7 @@ func (f *FirstSeconds) SetFieldValue(field *StructField, value interface{}) (err
 		case float64:
 			f.FirstID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 2: // SecondID
@@ -1745,11 +1745,11 @@ func (f *FirstSeconds) SetFieldValue(field *StructField, value interface{}) (err
 		case float64:
 			f.SecondID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'FirstSeconds'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'FirstSeconds'", field.Name())
 	}
 }
 
@@ -1763,7 +1763,7 @@ func (f *FirstSeconds) ParseFieldsStringValue(field *StructField, value string) 
 	case 2: // SecondID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: FirstSeconds'", field.Name())
 }
 
 // Compile time check if InvalidCreatedAt implements Model interface.
@@ -1836,7 +1836,7 @@ func (i *InvalidCreatedAt) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		i.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidCreatedAt'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidCreatedAt'", value)
 	}
 	return nil
 }
@@ -1862,7 +1862,7 @@ func (i *InvalidCreatedAt) GetFieldsAddress(field *StructField) (interface{}, er
 	case 1: // CreatedAt
 		return &i.CreatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -1873,7 +1873,7 @@ func (i *InvalidCreatedAt) GetFieldZeroValue(field *StructField) (interface{}, e
 	case 1: // CreatedAt
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -1885,7 +1885,7 @@ func (i *InvalidCreatedAt) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // CreatedAt
 		return i.CreatedAt == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -1896,7 +1896,7 @@ func (i *InvalidCreatedAt) SetFieldZeroValue(field *StructField) error {
 	case 1: // CreatedAt
 		i.CreatedAt = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -1909,7 +1909,7 @@ func (i *InvalidCreatedAt) GetHashableFieldValue(field *StructField) (interface{
 	case 1: // CreatedAt
 		return i.CreatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidCreatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidCreatedAt'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -1920,7 +1920,7 @@ func (i *InvalidCreatedAt) GetFieldValue(field *StructField) (interface{}, error
 	case 1: // CreatedAt
 		return i.CreatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -1956,7 +1956,7 @@ func (i *InvalidCreatedAt) SetFieldValue(field *StructField, value interface{}) 
 		case float64:
 			i.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // CreatedAt
@@ -1970,9 +1970,9 @@ func (i *InvalidCreatedAt) SetFieldValue(field *StructField, value interface{}) 
 			i.CreatedAt = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidCreatedAt'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidCreatedAt'", field.Name())
 	}
 }
 
@@ -1984,7 +1984,7 @@ func (i *InvalidCreatedAt) ParseFieldsStringValue(field *StructField, value stri
 	case 1: // CreatedAt
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidCreatedAt'", field.Name())
 }
 
 // Compile time check if InvalidDeletedAt implements Model interface.
@@ -2057,7 +2057,7 @@ func (i *InvalidDeletedAt) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		i.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidDeletedAt'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidDeletedAt'", value)
 	}
 	return nil
 }
@@ -2083,7 +2083,7 @@ func (i *InvalidDeletedAt) GetFieldsAddress(field *StructField) (interface{}, er
 	case 1: // DeletedAt
 		return &i.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -2094,7 +2094,7 @@ func (i *InvalidDeletedAt) GetFieldZeroValue(field *StructField) (interface{}, e
 	case 1: // DeletedAt
 		return time.Time{}, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -2106,7 +2106,7 @@ func (i *InvalidDeletedAt) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // DeletedAt
 		return i.DeletedAt == time.Time{}, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -2117,7 +2117,7 @@ func (i *InvalidDeletedAt) SetFieldZeroValue(field *StructField) error {
 	case 1: // DeletedAt
 		i.DeletedAt = time.Time{}
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -2130,7 +2130,7 @@ func (i *InvalidDeletedAt) GetHashableFieldValue(field *StructField) (interface{
 	case 1: // DeletedAt
 		return i.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidDeletedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidDeletedAt'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -2141,7 +2141,7 @@ func (i *InvalidDeletedAt) GetFieldValue(field *StructField) (interface{}, error
 	case 1: // DeletedAt
 		return i.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -2177,7 +2177,7 @@ func (i *InvalidDeletedAt) SetFieldValue(field *StructField, value interface{}) 
 		case float64:
 			i.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // DeletedAt
@@ -2186,9 +2186,9 @@ func (i *InvalidDeletedAt) SetFieldValue(field *StructField, value interface{}) 
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidDeletedAt'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidDeletedAt'", field.Name())
 	}
 }
 
@@ -2200,16 +2200,16 @@ func (i *InvalidDeletedAt) ParseFieldsStringValue(field *StructField, value stri
 	case 1: // DeletedAt
 		temp := i.DeletedAt
 		if err := i.DeletedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", i.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", i.DeletedAt, err)
 		}
 		bt, err := i.DeletedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", i.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", i.DeletedAt, err)
 		}
 		i.DeletedAt = temp
 		return string(bt), nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidDeletedAt'", field.Name())
 }
 
 // Compile time check if InvalidUpdatedAt implements Model interface.
@@ -2282,7 +2282,7 @@ func (i *InvalidUpdatedAt) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		i.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidUpdatedAt'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'InvalidUpdatedAt'", value)
 	}
 	return nil
 }
@@ -2308,7 +2308,7 @@ func (i *InvalidUpdatedAt) GetFieldsAddress(field *StructField) (interface{}, er
 	case 1: // UpdatedAt
 		return &i.UpdatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -2319,7 +2319,7 @@ func (i *InvalidUpdatedAt) GetFieldZeroValue(field *StructField) (interface{}, e
 	case 1: // UpdatedAt
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -2331,7 +2331,7 @@ func (i *InvalidUpdatedAt) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // UpdatedAt
 		return i.UpdatedAt == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -2342,7 +2342,7 @@ func (i *InvalidUpdatedAt) SetFieldZeroValue(field *StructField) error {
 	case 1: // UpdatedAt
 		i.UpdatedAt = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -2355,7 +2355,7 @@ func (i *InvalidUpdatedAt) GetHashableFieldValue(field *StructField) (interface{
 	case 1: // UpdatedAt
 		return i.UpdatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidUpdatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'InvalidUpdatedAt'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -2366,7 +2366,7 @@ func (i *InvalidUpdatedAt) GetFieldValue(field *StructField) (interface{}, error
 	case 1: // UpdatedAt
 		return i.UpdatedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -2402,7 +2402,7 @@ func (i *InvalidUpdatedAt) SetFieldValue(field *StructField, value interface{}) 
 		case float64:
 			i.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // UpdatedAt
@@ -2435,11 +2435,11 @@ func (i *InvalidUpdatedAt) SetFieldValue(field *StructField, value interface{}) 
 		case float64:
 			i.UpdatedAt = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidUpdatedAt'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'InvalidUpdatedAt'", field.Name())
 	}
 }
 
@@ -2451,7 +2451,7 @@ func (i *InvalidUpdatedAt) ParseFieldsStringValue(field *StructField, value stri
 	case 1: // UpdatedAt
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: InvalidUpdatedAt'", field.Name())
 }
 
 // Compile time check if Job implements Model interface.
@@ -2504,7 +2504,7 @@ func (j *Job) SetPrimaryKeyValue(value interface{}) error {
 		j.ID = string(v)
 		return nil
 	}
-	return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
+	return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
 		value, j)
 }
 
@@ -2537,7 +2537,7 @@ func (j *Job) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 7: // CreatorID
 		return &j.CreatorID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -2560,7 +2560,7 @@ func (j *Job) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 7: // CreatorID
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -2584,7 +2584,7 @@ func (j *Job) IsFieldZero(field *StructField) (bool, error) {
 	case 7: // CreatorID
 		return j.CreatorID == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -2607,7 +2607,7 @@ func (j *Job) SetFieldZeroValue(field *StructField) error {
 	case 7: // CreatorID
 		j.CreatorID = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -2641,7 +2641,7 @@ func (j *Job) GetHashableFieldValue(field *StructField) (interface{}, error) {
 	case 7: // CreatorID
 		return j.CreatorID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Job'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Job'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -2664,7 +2664,7 @@ func (j *Job) GetFieldValue(field *StructField) (interface{}, error) {
 	case 7: // CreatorID
 		return j.CreatorID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -2681,21 +2681,21 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			j.ID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 1: // CreatedAt
 		if v, ok := value.(time.Time); ok {
 			j.CreatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // UpdatedAt
 		if v, ok := value.(time.Time); ok {
 			j.UpdatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // DeletedAt
 		if value == nil {
 			j.DeletedAt = nil
@@ -2711,7 +2711,7 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 4: // StartAt
 		if value == nil {
 			j.StartAt = nil
@@ -2727,7 +2727,7 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 5: // EndAt
 		if value == nil {
 			j.EndAt = nil
@@ -2743,7 +2743,7 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 6: // Title
 		if v, ok := value.(string); ok {
 			j.Title = v
@@ -2755,7 +2755,7 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			j.Title = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 7: // CreatorID
 		if v, ok := value.(string); ok {
 			j.CreatorID = v
@@ -2767,9 +2767,9 @@ func (j *Job) SetFieldValue(field *StructField, value interface{}) (err error) {
 			j.CreatorID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Job'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Job'", field.Name())
 	}
 }
 
@@ -2781,22 +2781,22 @@ func (j *Job) ParseFieldsStringValue(field *StructField, value string) (interfac
 	case 1: // CreatedAt
 		temp := j.CreatedAt
 		if err := j.CreatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", j.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", j.CreatedAt, err)
 		}
 		bt, err := j.CreatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", j.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", j.CreatedAt, err)
 		}
 		j.CreatedAt = temp
 		return string(bt), nil
 	case 2: // UpdatedAt
 		temp := j.UpdatedAt
 		if err := j.UpdatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", j.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", j.UpdatedAt, err)
 		}
 		bt, err := j.UpdatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", j.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", j.UpdatedAt, err)
 		}
 		j.UpdatedAt = temp
 		return string(bt), nil
@@ -2804,11 +2804,11 @@ func (j *Job) ParseFieldsStringValue(field *StructField, value string) (interfac
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", j.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", j.DeletedAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", j.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", j.DeletedAt, err)
 		}
 
 		return string(bt), nil
@@ -2816,11 +2816,11 @@ func (j *Job) ParseFieldsStringValue(field *StructField, value string) (interfac
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'StartAt' value: '%v' to parse string. Err: %v", j.StartAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'StartAt' value: '%v' to parse string. Err: %v", j.StartAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'StartAt' value: '%v' to parse string. Err: %v", j.StartAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'StartAt' value: '%v' to parse string. Err: %v", j.StartAt, err)
 		}
 
 		return string(bt), nil
@@ -2828,11 +2828,11 @@ func (j *Job) ParseFieldsStringValue(field *StructField, value string) (interfac
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'EndAt' value: '%v' to parse string. Err: %v", j.EndAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'EndAt' value: '%v' to parse string. Err: %v", j.EndAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'EndAt' value: '%v' to parse string. Err: %v", j.EndAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'EndAt' value: '%v' to parse string. Err: %v", j.EndAt, err)
 		}
 
 		return string(bt), nil
@@ -2841,7 +2841,7 @@ func (j *Job) ParseFieldsStringValue(field *StructField, value string) (interfac
 	case 7: // CreatorID
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Job'", field.Name())
 }
 
 // Compile time check if Job implements SingleRelationer interface.
@@ -2856,7 +2856,7 @@ func (j *Job) GetRelationModel(relation *StructField) (Model, error) {
 		}
 		return j.Creator, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 }
 
@@ -2871,9 +2871,9 @@ func (j *Job) SetRelationModel(relation *StructField, model Model) error {
 			j.Creator = creator
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation Creator", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation Creator", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 }
 
@@ -2886,11 +2886,11 @@ func (j *Job) AddRelationModel(relation *StructField, model Model) error {
 	case 9: // Comments
 		comment, ok := model.(*Comment)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Comments'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Comments'", model)
 		}
 		j.Comments = append(j.Comments, comment)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'Job'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'Job'", model)
 	}
 	return nil
 }
@@ -2903,7 +2903,7 @@ func (j *Job) GetRelationModels(relation *StructField) (models []Model, err erro
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 	return models, nil
 }
@@ -2913,11 +2913,11 @@ func (j *Job) GetRelationModelAt(relation *StructField, index int) (models Model
 	switch relation.Index[0] {
 	case 9: // Comments
 		if index > len(j.Comments)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'Job', Field Comments")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'Job', Field Comments")
 		}
 		return j.Comments[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 	return models, nil
 }
@@ -2928,7 +2928,7 @@ func (j *Job) GetRelationLen(relation *StructField) (int, error) {
 	case 9: // Comments
 		return len(j.Comments), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 }
 
@@ -2940,13 +2940,13 @@ func (j *Job) SetRelationModels(relation *StructField, models ...Model) error {
 		for i, model := range models {
 			comment, ok := model.(*Comment)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Comments'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Comments'", model)
 			}
 			temp[i] = comment
 		}
 		j.Comments = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'Job'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'Job'", relation.String())
 	}
 	return nil
 }
@@ -3021,7 +3021,7 @@ func (j *JoinModel) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		j.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'JoinModel'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'JoinModel'", value)
 	}
 	return nil
 }
@@ -3049,7 +3049,7 @@ func (j *JoinModel) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 4: // SecondForeign
 		return &j.SecondForeign, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -3062,7 +3062,7 @@ func (j *JoinModel) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 4: // SecondForeign
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -3076,7 +3076,7 @@ func (j *JoinModel) IsFieldZero(field *StructField) (bool, error) {
 	case 4: // SecondForeign
 		return j.SecondForeign == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -3089,7 +3089,7 @@ func (j *JoinModel) SetFieldZeroValue(field *StructField) error {
 	case 4: // SecondForeign
 		j.SecondForeign = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -3104,7 +3104,7 @@ func (j *JoinModel) GetHashableFieldValue(field *StructField) (interface{}, erro
 	case 4: // SecondForeign
 		return j.SecondForeign, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'JoinModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'JoinModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -3117,7 +3117,7 @@ func (j *JoinModel) GetFieldValue(field *StructField) (interface{}, error) {
 	case 4: // SecondForeign
 		return j.SecondForeign, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -3153,7 +3153,7 @@ func (j *JoinModel) SetFieldValue(field *StructField, value interface{}) (err er
 		case float64:
 			j.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 2: // Model1WithMany2ManyID
@@ -3186,7 +3186,7 @@ func (j *JoinModel) SetFieldValue(field *StructField, value interface{}) (err er
 		case float64:
 			j.Model1WithMany2ManyID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 4: // SecondForeign
@@ -3219,11 +3219,11 @@ func (j *JoinModel) SetFieldValue(field *StructField, value interface{}) (err er
 		case float64:
 			j.SecondForeign = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'JoinModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'JoinModel'", field.Name())
 	}
 }
 
@@ -3237,7 +3237,7 @@ func (j *JoinModel) ParseFieldsStringValue(field *StructField, value string) (in
 	case 4: // SecondForeign
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: JoinModel'", field.Name())
 }
 
 // Compile time check if JoinModel implements SingleRelationer interface.
@@ -3257,7 +3257,7 @@ func (j *JoinModel) GetRelationModel(relation *StructField) (Model, error) {
 		}
 		return j.Second, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 }
 
@@ -3272,7 +3272,7 @@ func (j *JoinModel) SetRelationModel(relation *StructField, model Model) error {
 			j.First = first
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation First", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation First", model)
 	case 3: // Second
 		if model == nil {
 			j.Second = nil
@@ -3281,9 +3281,9 @@ func (j *JoinModel) SetRelationModel(relation *StructField, model Model) error {
 			j.Second = second
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation Second", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation Second", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, j)
 	}
 }
 
@@ -3357,7 +3357,7 @@ func (m *Model1WithMany2Many) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'Model1WithMany2Many'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'Model1WithMany2Many'", value)
 	}
 	return nil
 }
@@ -3381,7 +3381,7 @@ func (m *Model1WithMany2Many) GetFieldsAddress(field *StructField) (interface{},
 	case 0: // ID
 		return &m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -3390,7 +3390,7 @@ func (m *Model1WithMany2Many) GetFieldZeroValue(field *StructField) (interface{}
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -3400,7 +3400,7 @@ func (m *Model1WithMany2Many) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return m.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -3409,7 +3409,7 @@ func (m *Model1WithMany2Many) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		m.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -3420,7 +3420,7 @@ func (m *Model1WithMany2Many) GetHashableFieldValue(field *StructField) (interfa
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Model1WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Model1WithMany2Many'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -3429,7 +3429,7 @@ func (m *Model1WithMany2Many) GetFieldValue(field *StructField) (interface{}, er
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -3465,11 +3465,11 @@ func (m *Model1WithMany2Many) SetFieldValue(field *StructField, value interface{
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Model1WithMany2Many'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Model1WithMany2Many'", field.Name())
 	}
 }
 
@@ -3479,7 +3479,7 @@ func (m *Model1WithMany2Many) ParseFieldsStringValue(field *StructField, value s
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model1WithMany2Many'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -3491,11 +3491,11 @@ func (m *Model1WithMany2Many) AddRelationModel(relation *StructField, model Mode
 	case 1: // Synced
 		model2WithMany2Many, ok := model.(*Model2WithMany2Many)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
 		}
 		m.Synced = append(m.Synced, model2WithMany2Many)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'Model1WithMany2Many'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'Model1WithMany2Many'", model)
 	}
 	return nil
 }
@@ -3508,7 +3508,7 @@ func (m *Model1WithMany2Many) GetRelationModels(relation *StructField) (models [
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -3518,11 +3518,11 @@ func (m *Model1WithMany2Many) GetRelationModelAt(relation *StructField, index in
 	switch relation.Index[0] {
 	case 1: // Synced
 		if index > len(m.Synced)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'Model1WithMany2Many', Field Synced")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'Model1WithMany2Many', Field Synced")
 		}
 		return m.Synced[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -3533,7 +3533,7 @@ func (m *Model1WithMany2Many) GetRelationLen(relation *StructField) (int, error)
 	case 1: // Synced
 		return len(m.Synced), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -3545,13 +3545,13 @@ func (m *Model1WithMany2Many) SetRelationModels(relation *StructField, models ..
 		for i, model := range models {
 			model2WithMany2Many, ok := model.(*Model2WithMany2Many)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
 			}
 			temp[i] = model2WithMany2Many
 		}
 		m.Synced = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'Model1WithMany2Many'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'Model1WithMany2Many'", relation.String())
 	}
 	return nil
 }
@@ -3626,7 +3626,7 @@ func (m *Model2WithMany2Many) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'Model2WithMany2Many'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'Model2WithMany2Many'", value)
 	}
 	return nil
 }
@@ -3650,7 +3650,7 @@ func (m *Model2WithMany2Many) GetFieldsAddress(field *StructField) (interface{},
 	case 0: // ID
 		return &m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -3659,7 +3659,7 @@ func (m *Model2WithMany2Many) GetFieldZeroValue(field *StructField) (interface{}
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -3669,7 +3669,7 @@ func (m *Model2WithMany2Many) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return m.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -3678,7 +3678,7 @@ func (m *Model2WithMany2Many) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		m.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -3689,7 +3689,7 @@ func (m *Model2WithMany2Many) GetHashableFieldValue(field *StructField) (interfa
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Model2WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Model2WithMany2Many'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -3698,7 +3698,7 @@ func (m *Model2WithMany2Many) GetFieldValue(field *StructField) (interface{}, er
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -3734,11 +3734,11 @@ func (m *Model2WithMany2Many) SetFieldValue(field *StructField, value interface{
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Model2WithMany2Many'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Model2WithMany2Many'", field.Name())
 	}
 }
 
@@ -3748,7 +3748,7 @@ func (m *Model2WithMany2Many) ParseFieldsStringValue(field *StructField, value s
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Model2WithMany2Many'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -3760,11 +3760,11 @@ func (m *Model2WithMany2Many) AddRelationModel(relation *StructField, model Mode
 	case 1: // Synced
 		model1WithMany2Many, ok := model.(*Model1WithMany2Many)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
 		}
 		m.Synced = append(m.Synced, model1WithMany2Many)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'Model2WithMany2Many'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'Model2WithMany2Many'", model)
 	}
 	return nil
 }
@@ -3777,7 +3777,7 @@ func (m *Model2WithMany2Many) GetRelationModels(relation *StructField) (models [
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -3787,11 +3787,11 @@ func (m *Model2WithMany2Many) GetRelationModelAt(relation *StructField, index in
 	switch relation.Index[0] {
 	case 1: // Synced
 		if index > len(m.Synced)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'Model2WithMany2Many', Field Synced")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'Model2WithMany2Many', Field Synced")
 		}
 		return m.Synced[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -3802,7 +3802,7 @@ func (m *Model2WithMany2Many) GetRelationLen(relation *StructField) (int, error)
 	case 1: // Synced
 		return len(m.Synced), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -3814,13 +3814,13 @@ func (m *Model2WithMany2Many) SetRelationModels(relation *StructField, models ..
 		for i, model := range models {
 			model1WithMany2Many, ok := model.(*Model1WithMany2Many)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Synced'", model)
 			}
 			temp[i] = model1WithMany2Many
 		}
 		m.Synced = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'Model2WithMany2Many'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'Model2WithMany2Many'", relation.String())
 	}
 	return nil
 }
@@ -3895,7 +3895,7 @@ func (m *ModelWithBelongsTo) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithBelongsTo'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithBelongsTo'", value)
 	}
 	return nil
 }
@@ -3921,7 +3921,7 @@ func (m *ModelWithBelongsTo) GetFieldsAddress(field *StructField) (interface{}, 
 	case 1: // ForeignKey
 		return &m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -3932,7 +3932,7 @@ func (m *ModelWithBelongsTo) GetFieldZeroValue(field *StructField) (interface{},
 	case 1: // ForeignKey
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -3944,7 +3944,7 @@ func (m *ModelWithBelongsTo) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // ForeignKey
 		return m.ForeignKey == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -3955,7 +3955,7 @@ func (m *ModelWithBelongsTo) SetFieldZeroValue(field *StructField) error {
 	case 1: // ForeignKey
 		m.ForeignKey = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -3968,7 +3968,7 @@ func (m *ModelWithBelongsTo) GetHashableFieldValue(field *StructField) (interfac
 	case 1: // ForeignKey
 		return m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithBelongsTo'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithBelongsTo'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -3979,7 +3979,7 @@ func (m *ModelWithBelongsTo) GetFieldValue(field *StructField) (interface{}, err
 	case 1: // ForeignKey
 		return m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -4015,7 +4015,7 @@ func (m *ModelWithBelongsTo) SetFieldValue(field *StructField, value interface{}
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // ForeignKey
@@ -4048,11 +4048,11 @@ func (m *ModelWithBelongsTo) SetFieldValue(field *StructField, value interface{}
 		case float64:
 			m.ForeignKey = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithBelongsTo'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithBelongsTo'", field.Name())
 	}
 }
 
@@ -4064,7 +4064,7 @@ func (m *ModelWithBelongsTo) ParseFieldsStringValue(field *StructField, value st
 	case 1: // ForeignKey
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithBelongsTo'", field.Name())
 }
 
 // Compile time check if ModelWithBelongsTo implements SingleRelationer interface.
@@ -4079,7 +4079,7 @@ func (m *ModelWithBelongsTo) GetRelationModel(relation *StructField) (Model, err
 		}
 		return m.BelongsTo, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -4094,9 +4094,9 @@ func (m *ModelWithBelongsTo) SetRelationModel(relation *StructField, model Model
 			m.BelongsTo = belongsTo
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation BelongsTo", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation BelongsTo", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -4170,7 +4170,7 @@ func (m *ModelWithForeignKey) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithForeignKey'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithForeignKey'", value)
 	}
 	return nil
 }
@@ -4196,7 +4196,7 @@ func (m *ModelWithForeignKey) GetFieldsAddress(field *StructField) (interface{},
 	case 1: // ForeignKey
 		return &m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -4207,7 +4207,7 @@ func (m *ModelWithForeignKey) GetFieldZeroValue(field *StructField) (interface{}
 	case 1: // ForeignKey
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -4219,7 +4219,7 @@ func (m *ModelWithForeignKey) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // ForeignKey
 		return m.ForeignKey == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -4230,7 +4230,7 @@ func (m *ModelWithForeignKey) SetFieldZeroValue(field *StructField) error {
 	case 1: // ForeignKey
 		m.ForeignKey = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -4243,7 +4243,7 @@ func (m *ModelWithForeignKey) GetHashableFieldValue(field *StructField) (interfa
 	case 1: // ForeignKey
 		return m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithForeignKey'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithForeignKey'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -4254,7 +4254,7 @@ func (m *ModelWithForeignKey) GetFieldValue(field *StructField) (interface{}, er
 	case 1: // ForeignKey
 		return m.ForeignKey, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -4290,7 +4290,7 @@ func (m *ModelWithForeignKey) SetFieldValue(field *StructField, value interface{
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // ForeignKey
@@ -4323,11 +4323,11 @@ func (m *ModelWithForeignKey) SetFieldValue(field *StructField, value interface{
 		case float64:
 			m.ForeignKey = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithForeignKey'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithForeignKey'", field.Name())
 	}
 }
 
@@ -4339,7 +4339,7 @@ func (m *ModelWithForeignKey) ParseFieldsStringValue(field *StructField, value s
 	case 1: // ForeignKey
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithForeignKey'", field.Name())
 }
 
 // Compile time check if ModelWithHasMany implements Model interface.
@@ -4412,7 +4412,7 @@ func (m *ModelWithHasMany) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithHasMany'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithHasMany'", value)
 	}
 	return nil
 }
@@ -4436,7 +4436,7 @@ func (m *ModelWithHasMany) GetFieldsAddress(field *StructField) (interface{}, er
 	case 0: // ID
 		return &m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -4445,7 +4445,7 @@ func (m *ModelWithHasMany) GetFieldZeroValue(field *StructField) (interface{}, e
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -4455,7 +4455,7 @@ func (m *ModelWithHasMany) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return m.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -4464,7 +4464,7 @@ func (m *ModelWithHasMany) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		m.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -4475,7 +4475,7 @@ func (m *ModelWithHasMany) GetHashableFieldValue(field *StructField) (interface{
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithHasMany'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithHasMany'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -4484,7 +4484,7 @@ func (m *ModelWithHasMany) GetFieldValue(field *StructField) (interface{}, error
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -4520,11 +4520,11 @@ func (m *ModelWithHasMany) SetFieldValue(field *StructField, value interface{}) 
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithHasMany'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithHasMany'", field.Name())
 	}
 }
 
@@ -4534,7 +4534,7 @@ func (m *ModelWithHasMany) ParseFieldsStringValue(field *StructField, value stri
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasMany'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -4546,11 +4546,11 @@ func (m *ModelWithHasMany) AddRelationModel(relation *StructField, model Model) 
 	case 1: // HasMany
 		modelWithForeignKey, ok := model.(*ModelWithForeignKey)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'HasMany'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'HasMany'", model)
 		}
 		m.HasMany = append(m.HasMany, modelWithForeignKey)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'ModelWithHasMany'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'ModelWithHasMany'", model)
 	}
 	return nil
 }
@@ -4563,7 +4563,7 @@ func (m *ModelWithHasMany) GetRelationModels(relation *StructField) (models []Mo
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -4573,11 +4573,11 @@ func (m *ModelWithHasMany) GetRelationModelAt(relation *StructField, index int) 
 	switch relation.Index[0] {
 	case 1: // HasMany
 		if index > len(m.HasMany)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'ModelWithHasMany', Field HasMany")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'ModelWithHasMany', Field HasMany")
 		}
 		return m.HasMany[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 	return models, nil
 }
@@ -4588,7 +4588,7 @@ func (m *ModelWithHasMany) GetRelationLen(relation *StructField) (int, error) {
 	case 1: // HasMany
 		return len(m.HasMany), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -4600,13 +4600,13 @@ func (m *ModelWithHasMany) SetRelationModels(relation *StructField, models ...Mo
 		for i, model := range models {
 			modelWithForeignKey, ok := model.(*ModelWithForeignKey)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'HasMany'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'HasMany'", model)
 			}
 			temp[i] = modelWithForeignKey
 		}
 		m.HasMany = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'ModelWithHasMany'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'ModelWithHasMany'", relation.String())
 	}
 	return nil
 }
@@ -4681,7 +4681,7 @@ func (m *ModelWithHasOne) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithHasOne'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithHasOne'", value)
 	}
 	return nil
 }
@@ -4705,7 +4705,7 @@ func (m *ModelWithHasOne) GetFieldsAddress(field *StructField) (interface{}, err
 	case 0: // ID
 		return &m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -4714,7 +4714,7 @@ func (m *ModelWithHasOne) GetFieldZeroValue(field *StructField) (interface{}, er
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -4724,7 +4724,7 @@ func (m *ModelWithHasOne) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return m.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -4733,7 +4733,7 @@ func (m *ModelWithHasOne) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		m.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -4744,7 +4744,7 @@ func (m *ModelWithHasOne) GetHashableFieldValue(field *StructField) (interface{}
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithHasOne'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithHasOne'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -4753,7 +4753,7 @@ func (m *ModelWithHasOne) GetFieldValue(field *StructField) (interface{}, error)
 	case 0: // ID
 		return m.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -4789,11 +4789,11 @@ func (m *ModelWithHasOne) SetFieldValue(field *StructField, value interface{}) (
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithHasOne'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithHasOne'", field.Name())
 	}
 }
 
@@ -4803,7 +4803,7 @@ func (m *ModelWithHasOne) ParseFieldsStringValue(field *StructField, value strin
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithHasOne'", field.Name())
 }
 
 // Compile time check if ModelWithHasOne implements SingleRelationer interface.
@@ -4818,7 +4818,7 @@ func (m *ModelWithHasOne) GetRelationModel(relation *StructField) (Model, error)
 		}
 		return m.HasOne, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -4833,9 +4833,9 @@ func (m *ModelWithHasOne) SetRelationModel(relation *StructField, model Model) e
 			m.HasOne = hasOne
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation HasOne", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation HasOne", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, m)
 	}
 }
 
@@ -4909,7 +4909,7 @@ func (m *ModelWithNested) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		m.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithNested'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'ModelWithNested'", value)
 	}
 	return nil
 }
@@ -4935,7 +4935,7 @@ func (m *ModelWithNested) GetFieldsAddress(field *StructField) (interface{}, err
 	case 1: // PtrComposed
 		return &m.PtrComposed, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -4946,7 +4946,7 @@ func (m *ModelWithNested) GetFieldZeroValue(field *StructField) (interface{}, er
 	case 1: // PtrComposed
 		return nil, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -4958,7 +4958,7 @@ func (m *ModelWithNested) IsFieldZero(field *StructField) (bool, error) {
 	case 1: // PtrComposed
 		return m.PtrComposed == nil, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -4969,7 +4969,7 @@ func (m *ModelWithNested) SetFieldZeroValue(field *StructField) error {
 	case 1: // PtrComposed
 		m.PtrComposed = nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -4985,7 +4985,7 @@ func (m *ModelWithNested) GetHashableFieldValue(field *StructField) (interface{}
 		}
 		return *m.PtrComposed, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithNested'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'ModelWithNested'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -4996,7 +4996,7 @@ func (m *ModelWithNested) GetFieldValue(field *StructField) (interface{}, error)
 	case 1: // PtrComposed
 		return m.PtrComposed, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -5032,7 +5032,7 @@ func (m *ModelWithNested) SetFieldValue(field *StructField, value interface{}) (
 		case float64:
 			m.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // PtrComposed
@@ -5050,9 +5050,9 @@ func (m *ModelWithNested) SetFieldValue(field *StructField, value interface{}) (
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithNested'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'ModelWithNested'", field.Name())
 	}
 }
 
@@ -5062,9 +5062,9 @@ func (m *ModelWithNested) ParseFieldsStringValue(field *StructField, value strin
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	case 1: // PtrComposed
-		return "", errors.New(ClassFieldNotParser, "field 'PtrComposed' doesn't have string setter.")
+		return "", errors.Wrap(ErrFieldNotParser, "field 'PtrComposed' doesn't have string setter.")
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: ModelWithNested'", field.Name())
 }
 
 // Compile time check if NotTaggedModel implements Model interface.
@@ -5137,7 +5137,7 @@ func (n *NotTaggedModel) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		n.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'NotTaggedModel'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'NotTaggedModel'", value)
 	}
 	return nil
 }
@@ -5171,7 +5171,7 @@ func (n *NotTaggedModel) GetFieldsAddress(field *StructField) (interface{}, erro
 	case 6: // ManyRelationID
 		return &n.ManyRelationID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -5190,7 +5190,7 @@ func (n *NotTaggedModel) GetFieldZeroValue(field *StructField) (interface{}, err
 	case 6: // ManyRelationID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -5210,7 +5210,7 @@ func (n *NotTaggedModel) IsFieldZero(field *StructField) (bool, error) {
 	case 6: // ManyRelationID
 		return n.ManyRelationID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -5229,7 +5229,7 @@ func (n *NotTaggedModel) SetFieldZeroValue(field *StructField) error {
 	case 6: // ManyRelationID
 		n.ManyRelationID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -5250,7 +5250,7 @@ func (n *NotTaggedModel) GetHashableFieldValue(field *StructField) (interface{},
 	case 6: // ManyRelationID
 		return n.ManyRelationID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'NotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'NotTaggedModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -5269,7 +5269,7 @@ func (n *NotTaggedModel) GetFieldValue(field *StructField) (interface{}, error) 
 	case 6: // ManyRelationID
 		return n.ManyRelationID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -5305,7 +5305,7 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 		case float64:
 			n.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // Name
@@ -5319,7 +5319,7 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 			n.Name = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // Age
 		if v, ok := value.(int); ok {
 			n.Age = v
@@ -5350,7 +5350,7 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 		case float64:
 			n.Age = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 3: // Created
@@ -5359,7 +5359,7 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 4: // OtherNotTaggedModelID
 		if v, ok := value.(int); ok {
 			n.OtherNotTaggedModelID = v
@@ -5390,7 +5390,7 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 		case float64:
 			n.OtherNotTaggedModelID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 6: // ManyRelationID
@@ -5423,11 +5423,11 @@ func (n *NotTaggedModel) SetFieldValue(field *StructField, value interface{}) (e
 		case float64:
 			n.ManyRelationID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'NotTaggedModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'NotTaggedModel'", field.Name())
 	}
 }
 
@@ -5443,11 +5443,11 @@ func (n *NotTaggedModel) ParseFieldsStringValue(field *StructField, value string
 	case 3: // Created
 		temp := n.Created
 		if err := n.Created.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'Created' value: '%v' to parse string. Err: %v", n.Created, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'Created' value: '%v' to parse string. Err: %v", n.Created, err)
 		}
 		bt, err := n.Created.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'Created' value: '%v' to parse string. Err: %v", n.Created, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'Created' value: '%v' to parse string. Err: %v", n.Created, err)
 		}
 		n.Created = temp
 		return string(bt), nil
@@ -5456,7 +5456,7 @@ func (n *NotTaggedModel) ParseFieldsStringValue(field *StructField, value string
 	case 6: // ManyRelationID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: NotTaggedModel'", field.Name())
 }
 
 // Compile time check if NotTaggedModel implements SingleRelationer interface.
@@ -5471,7 +5471,7 @@ func (n *NotTaggedModel) GetRelationModel(relation *StructField) (Model, error) 
 		}
 		return n.Related, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, n)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, n)
 	}
 }
 
@@ -5486,9 +5486,9 @@ func (n *NotTaggedModel) SetRelationModel(relation *StructField, model Model) er
 			n.Related = related
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation Related", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation Related", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, n)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, n)
 	}
 }
 
@@ -5515,7 +5515,7 @@ func (o *OrderModel) GetPrimaryKeyValue() interface{} {
 func (o *OrderModel) GetPrimaryKeyStringValue() (string, error) {
 	id, err := o.ID.MarshalText()
 	if err != nil {
-		return "", errors.Newf(ClassFieldValue, "invalid primary field value: %v to parse string. Err: %v", o.ID, err)
+		return "", errors.Wrapf(ErrFieldValue, "invalid primary field value: %v to parse string. Err: %v", o.ID, err)
 	}
 	return string(id), nil
 }
@@ -5543,14 +5543,14 @@ func (o *OrderModel) SetPrimaryKeyValue(value interface{}) error {
 	} else if v, ok := value.([16]byte); ok {
 		o.ID = uuid.UUID(v)
 	}
-	return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
+	return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
 		value, o)
 }
 
 // SetPrimaryKeyStringValue implements Model interface method.
 func (o *OrderModel) SetPrimaryKeyStringValue(value string) error {
 	if err := o.ID.UnmarshalText([]byte(value)); err != nil {
-		return errors.Newf(ClassFieldValue, "invalid primary field value: %v to parse string. Err: %v", o.ID, err)
+		return errors.Wrapf(ErrFieldValue, "invalid primary field value: %v to parse string. Err: %v", o.ID, err)
 	}
 	return nil
 }
@@ -5572,7 +5572,7 @@ func (o *OrderModel) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 4: // Third
 		return &o.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -5589,7 +5589,7 @@ func (o *OrderModel) GetFieldZeroValue(field *StructField) (interface{}, error) 
 	case 4: // Third
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -5607,7 +5607,7 @@ func (o *OrderModel) IsFieldZero(field *StructField) (bool, error) {
 	case 4: // Third
 		return o.Third == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -5624,7 +5624,7 @@ func (o *OrderModel) SetFieldZeroValue(field *StructField) error {
 	case 4: // Third
 		o.Third = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -5643,7 +5643,7 @@ func (o *OrderModel) GetHashableFieldValue(field *StructField) (interface{}, err
 	case 4: // Third
 		return o.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'OrderModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'OrderModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -5660,7 +5660,7 @@ func (o *OrderModel) GetFieldValue(field *StructField) (interface{}, error) {
 	case 4: // Third
 		return o.Third, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -5673,7 +5673,7 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 		}
 		if generic, ok := value.([]interface{}); ok {
 			if len(generic) > 16 {
-				return errors.Newf(ClassFieldValue, "provided too many values for the field: 'ID")
+				return errors.Wrapf(ErrFieldValue, "provided too many values for the field: 'ID")
 			}
 			for i, item := range generic {
 				if v, ok := item.(byte); ok {
@@ -5689,7 +5689,7 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 			o.ID = uuid.UUID(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 1: // Name
 		if v, ok := value.(string); ok {
 			o.Name = v
@@ -5701,7 +5701,7 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 			o.Name = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // First
 		if v, ok := value.(string); ok {
 			o.First = v
@@ -5713,7 +5713,7 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 			o.First = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // Second
 		if v, ok := value.(int); ok {
 			o.Second = v
@@ -5744,7 +5744,7 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 		case float64:
 			o.Second = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 4: // Third
@@ -5758,9 +5758,9 @@ func (o *OrderModel) SetFieldValue(field *StructField, value interface{}) (err e
 			o.Third = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'OrderModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'OrderModel'", field.Name())
 	}
 }
 
@@ -5770,11 +5770,11 @@ func (o *OrderModel) ParseFieldsStringValue(field *StructField, value string) (i
 	case 0: // ID
 		temp := o.ID
 		if err := o.ID.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'ID' value: '%v' to parse string. Err: %v", o.ID, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'ID' value: '%v' to parse string. Err: %v", o.ID, err)
 		}
 		bt, err := o.ID.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'ID' value: '%v' to parse string. Err: %v", o.ID, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'ID' value: '%v' to parse string. Err: %v", o.ID, err)
 		}
 		o.ID = temp
 		return string(bt), nil
@@ -5787,7 +5787,7 @@ func (o *OrderModel) ParseFieldsStringValue(field *StructField, value string) (i
 	case 4: // Third
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OrderModel'", field.Name())
 }
 
 // Compile time check if OtherNotTaggedModel implements Model interface.
@@ -5860,7 +5860,7 @@ func (o *OtherNotTaggedModel) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		o.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'OtherNotTaggedModel'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'OtherNotTaggedModel'", value)
 	}
 	return nil
 }
@@ -5884,7 +5884,7 @@ func (o *OtherNotTaggedModel) GetFieldsAddress(field *StructField) (interface{},
 	case 0: // ID
 		return &o.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -5893,7 +5893,7 @@ func (o *OtherNotTaggedModel) GetFieldZeroValue(field *StructField) (interface{}
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -5903,7 +5903,7 @@ func (o *OtherNotTaggedModel) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return o.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -5912,7 +5912,7 @@ func (o *OtherNotTaggedModel) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		o.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -5923,7 +5923,7 @@ func (o *OtherNotTaggedModel) GetHashableFieldValue(field *StructField) (interfa
 	case 0: // ID
 		return o.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'OtherNotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'OtherNotTaggedModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -5932,7 +5932,7 @@ func (o *OtherNotTaggedModel) GetFieldValue(field *StructField) (interface{}, er
 	case 0: // ID
 		return o.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -5968,11 +5968,11 @@ func (o *OtherNotTaggedModel) SetFieldValue(field *StructField, value interface{
 		case float64:
 			o.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'OtherNotTaggedModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'OtherNotTaggedModel'", field.Name())
 	}
 }
 
@@ -5982,7 +5982,7 @@ func (o *OtherNotTaggedModel) ParseFieldsStringValue(field *StructField, value s
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: OtherNotTaggedModel'", field.Name())
 }
 
 // Compile time check if OtherNotTaggedModel implements SingleRelationer interface.
@@ -5997,7 +5997,7 @@ func (o *OtherNotTaggedModel) GetRelationModel(relation *StructField) (Model, er
 		}
 		return o.SingleRelated, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
 	}
 }
 
@@ -6012,9 +6012,9 @@ func (o *OtherNotTaggedModel) SetRelationModel(relation *StructField, model Mode
 			o.SingleRelated = singleRelated
 			return nil
 		}
-		return errors.Newf(ClassInvalidRelationValue, "provided invalid model value: '%T' for relation SingleRelated", model)
+		return errors.Wrapf(ErrInvalidRelationValue, "provided invalid model value: '%T' for relation SingleRelated", model)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
 	}
 }
 
@@ -6027,11 +6027,11 @@ func (o *OtherNotTaggedModel) AddRelationModel(relation *StructField, model Mode
 	case 2: // ManyRelation
 		notTaggedModel, ok := model.(*NotTaggedModel)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'ManyRelation'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'ManyRelation'", model)
 		}
 		o.ManyRelation = append(o.ManyRelation, notTaggedModel)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'OtherNotTaggedModel'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'OtherNotTaggedModel'", model)
 	}
 	return nil
 }
@@ -6044,7 +6044,7 @@ func (o *OtherNotTaggedModel) GetRelationModels(relation *StructField) (models [
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
 	}
 	return models, nil
 }
@@ -6054,11 +6054,11 @@ func (o *OtherNotTaggedModel) GetRelationModelAt(relation *StructField, index in
 	switch relation.Index[0] {
 	case 2: // ManyRelation
 		if index > len(o.ManyRelation)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'OtherNotTaggedModel', Field ManyRelation")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'OtherNotTaggedModel', Field ManyRelation")
 		}
 		return o.ManyRelation[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
 	}
 	return models, nil
 }
@@ -6069,7 +6069,7 @@ func (o *OtherNotTaggedModel) GetRelationLen(relation *StructField) (int, error)
 	case 2: // ManyRelation
 		return len(o.ManyRelation), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, o)
 	}
 }
 
@@ -6081,13 +6081,13 @@ func (o *OtherNotTaggedModel) SetRelationModels(relation *StructField, models ..
 		for i, model := range models {
 			notTaggedModel, ok := model.(*NotTaggedModel)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'ManyRelation'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'ManyRelation'", model)
 			}
 			temp[i] = notTaggedModel
 		}
 		o.ManyRelation = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'OtherNotTaggedModel'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'OtherNotTaggedModel'", relation.String())
 	}
 	return nil
 }
@@ -6162,7 +6162,7 @@ func (s *Second) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		s.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'Second'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'Second'", value)
 	}
 	return nil
 }
@@ -6186,7 +6186,7 @@ func (s *Second) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return &s.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -6195,7 +6195,7 @@ func (s *Second) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return 0, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -6205,7 +6205,7 @@ func (s *Second) IsFieldZero(field *StructField) (bool, error) {
 	case 0: // ID
 		return s.ID == 0, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -6214,7 +6214,7 @@ func (s *Second) SetFieldZeroValue(field *StructField) error {
 	case 0: // ID
 		s.ID = 0
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -6225,7 +6225,7 @@ func (s *Second) GetHashableFieldValue(field *StructField) (interface{}, error) 
 	case 0: // ID
 		return s.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Second'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Second'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -6234,7 +6234,7 @@ func (s *Second) GetFieldValue(field *StructField) (interface{}, error) {
 	case 0: // ID
 		return s.ID, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -6270,11 +6270,11 @@ func (s *Second) SetFieldValue(field *StructField, value interface{}) (err error
 		case float64:
 			s.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Second'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Second'", field.Name())
 	}
 }
 
@@ -6284,7 +6284,7 @@ func (s *Second) ParseFieldsStringValue(field *StructField, value string) (inter
 	case 0: // ID
 		return strconv.ParseInt(value, 10, IntegerBitSize)
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Second'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -6296,11 +6296,11 @@ func (s *Second) AddRelationModel(relation *StructField, model Model) error {
 	case 1: // Firsts
 		first, ok := model.(*First)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Firsts'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Firsts'", model)
 		}
 		s.Firsts = append(s.Firsts, first)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'Second'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'Second'", model)
 	}
 	return nil
 }
@@ -6313,7 +6313,7 @@ func (s *Second) GetRelationModels(relation *StructField) (models []Model, err e
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
 	}
 	return models, nil
 }
@@ -6323,11 +6323,11 @@ func (s *Second) GetRelationModelAt(relation *StructField, index int) (models Mo
 	switch relation.Index[0] {
 	case 1: // Firsts
 		if index > len(s.Firsts)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'Second', Field Firsts")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'Second', Field Firsts")
 		}
 		return s.Firsts[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
 	}
 	return models, nil
 }
@@ -6338,7 +6338,7 @@ func (s *Second) GetRelationLen(relation *StructField) (int, error) {
 	case 1: // Firsts
 		return len(s.Firsts), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, s)
 	}
 }
 
@@ -6350,13 +6350,13 @@ func (s *Second) SetRelationModels(relation *StructField, models ...Model) error
 		for i, model := range models {
 			first, ok := model.(*First)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Firsts'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Firsts'", model)
 			}
 			temp[i] = first
 		}
 		s.Firsts = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'Second'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'Second'", relation.String())
 	}
 	return nil
 }
@@ -6431,7 +6431,7 @@ func (t *TModel) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		t.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'TModel'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'TModel'", value)
 	}
 	return nil
 }
@@ -6465,7 +6465,7 @@ func (t *TModel) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 5: // String
 		return &t.String, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -6484,7 +6484,7 @@ func (t *TModel) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 5: // String
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -6504,7 +6504,7 @@ func (t *TModel) IsFieldZero(field *StructField) (bool, error) {
 	case 5: // String
 		return t.String == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -6523,7 +6523,7 @@ func (t *TModel) SetFieldZeroValue(field *StructField) error {
 	case 5: // String
 		t.String = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -6550,7 +6550,7 @@ func (t *TModel) GetHashableFieldValue(field *StructField) (interface{}, error) 
 	case 5: // String
 		return t.String, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'TModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'TModel'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -6569,7 +6569,7 @@ func (t *TModel) GetFieldValue(field *StructField) (interface{}, error) {
 	case 5: // String
 		return t.String, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -6605,7 +6605,7 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 		case float64:
 			t.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // CreatedTime
@@ -6614,7 +6614,7 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // UpdatedTime
 		if value == nil {
 			t.UpdatedTime = nil
@@ -6630,7 +6630,7 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // DeletedTime
 		if value == nil {
 			t.DeletedTime = nil
@@ -6646,7 +6646,7 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 4: // Number
 		if v, ok := value.(int); ok {
 			t.Number = v
@@ -6677,7 +6677,7 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 		case float64:
 			t.Number = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 5: // String
@@ -6691,9 +6691,9 @@ func (t *TModel) SetFieldValue(field *StructField, value interface{}) (err error
 			t.String = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'TModel'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'TModel'", field.Name())
 	}
 }
 
@@ -6705,11 +6705,11 @@ func (t *TModel) ParseFieldsStringValue(field *StructField, value string) (inter
 	case 1: // CreatedTime
 		temp := t.CreatedTime
 		if err := t.CreatedTime.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedTime' value: '%v' to parse string. Err: %v", t.CreatedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedTime' value: '%v' to parse string. Err: %v", t.CreatedTime, err)
 		}
 		bt, err := t.CreatedTime.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedTime' value: '%v' to parse string. Err: %v", t.CreatedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedTime' value: '%v' to parse string. Err: %v", t.CreatedTime, err)
 		}
 		t.CreatedTime = temp
 		return string(bt), nil
@@ -6717,11 +6717,11 @@ func (t *TModel) ParseFieldsStringValue(field *StructField, value string) (inter
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedTime' value: '%v' to parse string. Err: %v", t.UpdatedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedTime' value: '%v' to parse string. Err: %v", t.UpdatedTime, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedTime' value: '%v' to parse string. Err: %v", t.UpdatedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedTime' value: '%v' to parse string. Err: %v", t.UpdatedTime, err)
 		}
 
 		return string(bt), nil
@@ -6729,11 +6729,11 @@ func (t *TModel) ParseFieldsStringValue(field *StructField, value string) (inter
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedTime' value: '%v' to parse string. Err: %v", t.DeletedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedTime' value: '%v' to parse string. Err: %v", t.DeletedTime, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedTime' value: '%v' to parse string. Err: %v", t.DeletedTime, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedTime' value: '%v' to parse string. Err: %v", t.DeletedTime, err)
 		}
 
 		return string(bt), nil
@@ -6742,7 +6742,7 @@ func (t *TModel) ParseFieldsStringValue(field *StructField, value string) (inter
 	case 5: // String
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: TModel'", field.Name())
 }
 
 // Compile time check if Timer implements Model interface.
@@ -6815,7 +6815,7 @@ func (t *Timer) SetPrimaryKeyValue(value interface{}) error {
 	case float64:
 		t.ID = int(valueType)
 	default:
-		return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: 'Timer'", value)
+		return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: 'Timer'", value)
 	}
 	return nil
 }
@@ -6845,7 +6845,7 @@ func (t *Timer) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 3: // DeletedAt
 		return &t.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -6860,7 +6860,7 @@ func (t *Timer) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 3: // DeletedAt
 		return nil, nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -6876,7 +6876,7 @@ func (t *Timer) IsFieldZero(field *StructField) (bool, error) {
 	case 3: // DeletedAt
 		return t.DeletedAt == nil, nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -6891,7 +6891,7 @@ func (t *Timer) SetFieldZeroValue(field *StructField) error {
 	case 3: // DeletedAt
 		t.DeletedAt = nil
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -6914,7 +6914,7 @@ func (t *Timer) GetHashableFieldValue(field *StructField) (interface{}, error) {
 		}
 		return *t.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'Timer'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'Timer'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -6929,7 +6929,7 @@ func (t *Timer) GetFieldValue(field *StructField) (interface{}, error) {
 	case 3: // DeletedAt
 		return t.DeletedAt, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -6965,7 +6965,7 @@ func (t *Timer) SetFieldValue(field *StructField, value interface{}) (err error)
 		case float64:
 			t.ID = int(v)
 		default:
-			return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+			return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 		}
 		return nil
 	case 1: // CreatedAt
@@ -6974,7 +6974,7 @@ func (t *Timer) SetFieldValue(field *StructField, value interface{}) (err error)
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // UpdatedAt
 		if value == nil {
 			t.UpdatedAt = nil
@@ -6990,7 +6990,7 @@ func (t *Timer) SetFieldValue(field *StructField, value interface{}) (err error)
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // DeletedAt
 		if value == nil {
 			t.DeletedAt = nil
@@ -7006,9 +7006,9 @@ func (t *Timer) SetFieldValue(field *StructField, value interface{}) (err error)
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'Timer'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'Timer'", field.Name())
 	}
 }
 
@@ -7020,11 +7020,11 @@ func (t *Timer) ParseFieldsStringValue(field *StructField, value string) (interf
 	case 1: // CreatedAt
 		temp := t.CreatedAt
 		if err := t.CreatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", t.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", t.CreatedAt, err)
 		}
 		bt, err := t.CreatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", t.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", t.CreatedAt, err)
 		}
 		t.CreatedAt = temp
 		return string(bt), nil
@@ -7032,11 +7032,11 @@ func (t *Timer) ParseFieldsStringValue(field *StructField, value string) (interf
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", t.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", t.UpdatedAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", t.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", t.UpdatedAt, err)
 		}
 
 		return string(bt), nil
@@ -7044,16 +7044,16 @@ func (t *Timer) ParseFieldsStringValue(field *StructField, value string) (interf
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", t.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", t.DeletedAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", t.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", t.DeletedAt, err)
 		}
 
 		return string(bt), nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: Timer'", field.Name())
 }
 
 // Compile time check if User implements Model interface.
@@ -7106,7 +7106,7 @@ func (u *User) SetPrimaryKeyValue(value interface{}) error {
 		u.ID = string(v)
 		return nil
 	}
-	return errors.Newf(ClassFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
+	return errors.Wrapf(ErrFieldValue, "provided invalid value: '%T' for the primary field for model: '%T'",
 		value, u)
 }
 
@@ -7137,7 +7137,7 @@ func (u *User) GetFieldsAddress(field *StructField) (interface{}, error) {
 	case 7: // Email
 		return &u.Email, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
 }
 
 // GetFieldZeroValue implements Fielder interface.s
@@ -7158,7 +7158,7 @@ func (u *User) GetFieldZeroValue(field *StructField) (interface{}, error) {
 	case 7: // Email
 		return "", nil
 	default:
-		return nil, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 }
 
@@ -7180,7 +7180,7 @@ func (u *User) IsFieldZero(field *StructField) (bool, error) {
 	case 7: // Email
 		return u.Email == "", nil
 	}
-	return false, errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 }
 
 // SetFieldZeroValue implements Fielder interface.s
@@ -7201,7 +7201,7 @@ func (u *User) SetFieldZeroValue(field *StructField) error {
 	case 7: // Email
 		u.Email = ""
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field name: '%s'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
 	}
 	return nil
 }
@@ -7227,7 +7227,7 @@ func (u *User) GetHashableFieldValue(field *StructField) (interface{}, error) {
 	case 7: // Email
 		return u.Email, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: 'User'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'User'", field.Name())
 }
 
 // GetFieldValue implements Fielder interface.
@@ -7248,7 +7248,7 @@ func (u *User) GetFieldValue(field *StructField) (interface{}, error) {
 	case 7: // Email
 		return u.Email, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
 }
 
 // SetFieldValue implements Fielder interface.
@@ -7265,21 +7265,21 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			u.ID = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 2: // CreatedAt
 		if v, ok := value.(time.Time); ok {
 			u.CreatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 3: // UpdatedAt
 		if v, ok := value.(time.Time); ok {
 			u.UpdatedAt = v
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 4: // DeletedAt
 		if value == nil {
 			u.DeletedAt = nil
@@ -7295,7 +7295,7 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			return nil
 		}
 
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 5: // FirstName
 		if v, ok := value.(string); ok {
 			u.FirstName = v
@@ -7307,7 +7307,7 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			u.FirstName = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 6: // LastName
 		if v, ok := value.(string); ok {
 			u.LastName = v
@@ -7319,7 +7319,7 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			u.LastName = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	case 7: // Email
 		if v, ok := value.(string); ok {
 			u.Email = v
@@ -7331,9 +7331,9 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			u.Email = string(v)
 			return nil
 		}
-		return errors.Newf(ClassFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
+		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
 	default:
-		return errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for the model: 'User'", field.Name())
+		return errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for the model: 'User'", field.Name())
 	}
 }
 
@@ -7345,22 +7345,22 @@ func (u *User) ParseFieldsStringValue(field *StructField, value string) (interfa
 	case 2: // CreatedAt
 		temp := u.CreatedAt
 		if err := u.CreatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", u.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", u.CreatedAt, err)
 		}
 		bt, err := u.CreatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", u.CreatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'CreatedAt' value: '%v' to parse string. Err: %v", u.CreatedAt, err)
 		}
 		u.CreatedAt = temp
 		return string(bt), nil
 	case 3: // UpdatedAt
 		temp := u.UpdatedAt
 		if err := u.UpdatedAt.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", u.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", u.UpdatedAt, err)
 		}
 		bt, err := u.UpdatedAt.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", u.UpdatedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'UpdatedAt' value: '%v' to parse string. Err: %v", u.UpdatedAt, err)
 		}
 		u.UpdatedAt = temp
 		return string(bt), nil
@@ -7368,11 +7368,11 @@ func (u *User) ParseFieldsStringValue(field *StructField, value string) (interfa
 		var base time.Time
 		temp := &base
 		if err := temp.UnmarshalText([]byte(value)); err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", u.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", u.DeletedAt, err)
 		}
 		bt, err := temp.MarshalText()
 		if err != nil {
-			return "", errors.Newf(ClassFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", u.DeletedAt, err)
+			return "", errors.Wrapf(ErrFieldValue, "invalid field 'DeletedAt' value: '%v' to parse string. Err: %v", u.DeletedAt, err)
 		}
 
 		return string(bt), nil
@@ -7383,7 +7383,7 @@ func (u *User) ParseFieldsStringValue(field *StructField, value string) (interfa
 	case 7: // Email
 		return value, nil
 	}
-	return nil, errors.Newf(ClassInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
+	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
 }
 
 // Compile time check for the MultiRelationer interface implementation.
@@ -7395,17 +7395,17 @@ func (u *User) AddRelationModel(relation *StructField, model Model) error {
 	case 1: // Cars
 		car, ok := model.(*Car)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Cars'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Cars'", model)
 		}
 		u.Cars = append(u.Cars, car)
 	case 8: // Jobs
 		job, ok := model.(*Job)
 		if !ok {
-			return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Jobs'", model)
+			return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Jobs'", model)
 		}
 		u.Jobs = append(u.Jobs, job)
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%T' for the model 'User'", model)
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%T' for the model 'User'", model)
 	}
 	return nil
 }
@@ -7422,7 +7422,7 @@ func (u *User) GetRelationModels(relation *StructField) (models []Model, err err
 			models = append(models, model)
 		}
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
 	}
 	return models, nil
 }
@@ -7432,16 +7432,16 @@ func (u *User) GetRelationModelAt(relation *StructField, index int) (models Mode
 	switch relation.Index[0] {
 	case 1: // Cars
 		if index > len(u.Cars)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'User', Field Cars")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'User', Field Cars")
 		}
 		return u.Cars[index], nil
 	case 8: // Jobs
 		if index > len(u.Jobs)-1 {
-			return nil, errors.Newf(ClassInvalidRelationIndex, "index out of possible range. Model: 'User', Field Jobs")
+			return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of possible range. Model: 'User', Field Jobs")
 		}
 		return u.Jobs[index], nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
+		return nil, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
 	}
 	return models, nil
 }
@@ -7454,7 +7454,7 @@ func (u *User) GetRelationLen(relation *StructField) (int, error) {
 	case 8: // Jobs
 		return len(u.Jobs), nil
 	default:
-		return 0, errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
+		return 0, errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for model: '%T'", relation, u)
 	}
 }
 
@@ -7466,7 +7466,7 @@ func (u *User) SetRelationModels(relation *StructField, models ...Model) error {
 		for i, model := range models {
 			car, ok := model.(*Car)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Cars'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Cars'", model)
 			}
 			temp[i] = car
 		}
@@ -7476,13 +7476,13 @@ func (u *User) SetRelationModels(relation *StructField, models ...Model) error {
 		for i, model := range models {
 			job, ok := model.(*Job)
 			if !ok {
-				return errors.Newf(ClassInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Jobs'", model)
+				return errors.Wrapf(ErrInvalidRelationValue, "provided invalid value type: '%T'  for the field: 'Jobs'", model)
 			}
 			temp[i] = job
 		}
 		u.Jobs = temp
 	default:
-		return errors.Newf(ClassInvalidRelationField, "provided invalid relation: '%s' for the model 'User'", relation.String())
+		return errors.Wrapf(ErrInvalidRelationField, "provided invalid relation: '%s' for the model 'User'", relation.String())
 	}
 	return nil
 }

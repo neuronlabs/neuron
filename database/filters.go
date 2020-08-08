@@ -97,7 +97,7 @@ func reduceRelationshipFilter(ctx context.Context, db DB, s *query.Scope, relati
 	case mapping.RelMany2Many:
 		return reduceMany2ManyRelationshipFilter(ctx, db, s, relationFilter)
 	default:
-		return errors.Newf(filter.ClassFilterField, "filter's field: '%s' is not a relationship", relationFilter.StructField)
+		return errors.Wrapf(filter.ErrFilterField, "filter's field: '%s' is not a relationship", relationFilter.StructField)
 	}
 }
 
@@ -139,7 +139,7 @@ func reduceBelongsToRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	}
 	if len(models) == 0 {
 		log.Debug2f(logFormat(s, "no belongs to relationship: '%s' results found"), f.StructField)
-		return errors.Newf(query.ClassNoResult, "no relationship: '%s' filter results found", f.StructField)
+		return errors.Wrapf(query.ErrQueryNoResult, "no relationship: '%s' filter results found", f.StructField)
 	}
 
 	// Get primary key values and set as the scope's foreign key field filters.
@@ -194,7 +194,7 @@ func reduceHasManyRelationshipFilter(ctx context.Context, db DB, s *query.Scope,
 	for _, relationModel := range relationModels {
 		relationFielder, ok := relationModel.(mapping.Fielder)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
 		}
 		// Check if the foreign key field is not zero value.
 		isZero, err := relationFielder.IsFieldZero(foreignKey)
@@ -213,7 +213,7 @@ func reduceHasManyRelationshipFilter(ctx context.Context, db DB, s *query.Scope,
 	// If there is no foreign key values then no query matches given filter. Return error QueryNoResult.
 	if len(uniqueForeignKeyValues) == 0 {
 		log.Debug2f(logFormat(s, "No results found for the relationship filter for field: %s"), relationFilter.StructField.NeuronName())
-		return errors.Newf(query.ClassNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
+		return errors.Wrapf(query.ErrQueryNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
 	}
 	// Create primary filter that matches all relationship foreign key values.
 	primaryFilter := filter.Simple{StructField: s.ModelStruct.Primary(), Operator: filter.OpIn}
@@ -264,7 +264,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 		for _, joinModel := range joinModels {
 			relationFielder, ok := joinModel.(mapping.Fielder)
 			if !ok {
-				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
 			}
 			// Check if the foreign key field is not zero value.
 			isZero, err := relationFielder.IsFieldZero(foreignKey)
@@ -283,7 +283,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 		// If there is no foreign key values then no query matches given filter. Return error QueryNoResult.
 		if len(uniqueForeignKeyValues) == 0 {
 			log.Debug2f(logFormat(s, "No results found for the relationship filter for field: %s"), relationFilter.StructField.NeuronName())
-			return errors.Newf(query.ClassNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
+			return errors.Wrapf(query.ErrQueryNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
 		}
 
 		// Create primary filter that matches all relationship foreign key values.
@@ -307,7 +307,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	}
 	if len(relatedModels) == 0 {
 		log.Debug2f(logFormat(s, "No relationship: '%s' filter results found"), relationFilter.StructField)
-		return errors.Newf(query.ClassNoResult, "no relationship: '%s' filter results", relationFilter.StructField)
+		return errors.Wrapf(query.ErrQueryNoResult, "no relationship: '%s' filter results", relationFilter.StructField)
 	}
 	var primaries []interface{}
 	for _, model := range relatedModels {
@@ -325,7 +325,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	for _, joinModel := range joinModels {
 		relationFielder, ok := joinModel.(mapping.Fielder)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder", relationFilter.StructField.Relationship().RelatedModelStruct())
 		}
 		// Check if the foreign key field is not zero value.
 		isZero, err := relationFielder.IsFieldZero(foreignKey)
@@ -344,7 +344,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	// If there is no foreign key values then no query matches given filter. Return error QueryNoResult.
 	if len(uniqueForeignKeyValues) == 0 {
 		log.Debug2f(logFormat(s, "No results found for the relationship filter for field: %s"), relationFilter.StructField.NeuronName())
-		return errors.Newf(query.ClassNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
+		return errors.Wrapf(query.ErrQueryNoResult, "no relationship: '%s' filter filterValues found", relationFilter.StructField)
 	}
 
 	// Create primary filter that matches all relationship foreign key values.

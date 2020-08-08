@@ -11,17 +11,17 @@ import (
 // the StructField Name (string).
 func (s *Scope) Select(fields ...*mapping.StructField) error {
 	if len(fields) == 0 {
-		return errors.Newf(ClassInvalidFieldSet, "provided no fields")
+		return errors.Wrapf(ErrInvalidFieldSet, "provided no fields")
 	}
 
 	currentFieldset, hasCommon := s.CommonFieldSet()
 	if hasCommon || len(s.FieldSets) > 1 {
-		return errors.NewDetf(ClassInvalidFieldSet, "cannot select fields for multiple field sets")
+		return errors.WrapDetf(ErrInvalidFieldSet, "cannot select fields for multiple field sets")
 	}
 
 	for _, field := range fields {
 		if field.Struct() != s.ModelStruct {
-			return errors.Newf(ClassInvalidField, "provided field: '%s' does not belong to model: '%s'", field, s.ModelStruct)
+			return errors.Wrapf(ErrInvalidField, "provided field: '%s' does not belong to model: '%s'", field, s.ModelStruct)
 		}
 		if currentFieldset.Contains(field) {
 			log.Debugf("Field: '%s' is already included in the scope's fieldset", field)

@@ -201,14 +201,14 @@ func (m *ModelStruct) PrivateFields() []*StructField {
 // RelationByIndex gets the relation by provided 'index'.
 func (m *ModelStruct) RelationByIndex(index int) (*StructField, error) {
 	if index > len(m.structFields)-1 {
-		return nil, errors.Newf(ClassInvalidRelationIndex, "index out of range: '%d'", index)
+		return nil, errors.Wrapf(ErrInvalidRelationIndex, "index out of range: '%d'", index)
 	}
 	structField := m.structFields[index]
 	switch structField.kind {
 	case KindRelationshipSingle, KindRelationshipMultiple:
 		return structField, nil
 	default:
-		return nil, errors.Newf(ClassInvalidRelationIndex, "field with index: '%d' is not a relationship", index)
+		return nil, errors.Wrapf(ErrInvalidRelationIndex, "field with index: '%d' is not a relationship", index)
 	}
 }
 
@@ -429,7 +429,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 
 		// Check if field is embedded.
 		if tField.Anonymous {
-			return errors.Newf(ClassModelDefinition, "unsupported embedded field: '%s' in model: '%s'", tField.Name, modelType.String())
+			return errors.Wrapf(ErrModelDefinition, "unsupported embedded field: '%s' in model: '%s'", tField.Name, modelType.String())
 		}
 		structField := newStructField(tField, m)
 		m.structFields = append(m.structFields, structField)
@@ -473,7 +473,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 			continue
 		case 1:
 		default:
-			return errors.NewDetf(ClassModelDefinition, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
+			return errors.WrapDetf(ErrModelDefinition, "model's: '%s' field: '%s' type tag contains more than one value", m.Collection(), neuronName)
 		}
 
 		// addModel field type
@@ -499,7 +499,7 @@ func (m *ModelStruct) mapFields(modelType reflect.Type, modelValue reflect.Value
 				return err
 			}
 		default:
-			return errors.NewDetf(ClassModelDefinition, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
+			return errors.WrapDetf(ErrModelDefinition, "unknown field type: %s. Model: %s, field: %s", value, m.Type().Name(), tField.Name)
 		}
 
 		if err = structField.setTagValues(); err != nil {
@@ -518,7 +518,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 	// check if no duplicates
 	_, ok := m.attributes[structField.neuronName]
 	if ok {
-		return errors.NewDetf(ClassModelDefinition, "duplicated neuron attribute name: '%s' for model: '%v'.",
+		return errors.WrapDetf(ErrModelDefinition, "duplicated neuron attribute name: '%s' for model: '%v'.",
 			structField.neuronName, m.modelType.Name())
 	}
 
@@ -613,7 +613,7 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 				}
 			case reflect.Slice, reflect.Array, reflect.Map:
 				// disallow nested map, arrays, maps in ptr type slices
-				return errors.NewDetf(ClassModelDefinition, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
+				return errors.WrapDetf(ErrModelDefinition, "structField: '%s' nested type is invalid. The model doesn't allow one of slices to ptr of slices or map", structField.Name())
 			default:
 			}
 		default:
@@ -658,10 +658,10 @@ func (m *ModelStruct) setAttribute(structField *StructField) error {
 			}
 		case reflect.Map:
 			// map should not be allow as slice nested field
-			return errors.NewDetf(ClassModelDefinition, "map can't be a base of the slice. Field: '%s'", structField.Name())
+			return errors.WrapDetf(ErrModelDefinition, "map can't be a base of the slice. Field: '%s'", structField.Name())
 		case reflect.Array, reflect.Slice:
 			// cannot use slice of ptr slices
-			return errors.NewDetf(ClassModelDefinition, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
+			return errors.WrapDetf(ErrModelDefinition, "ptr slice can't be the base of the Slice field. Field: '%s'", structField.Name())
 		default:
 		}
 	default:
@@ -681,7 +681,7 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 	// Check if given name already exists.
 	for _, foreignKey := range m.foreignKeys {
 		if foreignKey == structField {
-			return errors.NewDetf(ClassModelDefinition, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
+			return errors.WrapDetf(ErrModelDefinition, "duplicated foreign key name: '%s' for model: '%v'", structField.NeuronName(), m.Type().Name())
 		}
 	}
 	t := structField.ReflectField().Type
@@ -698,7 +698,7 @@ func (m *ModelStruct) setForeignKeyField(structField *StructField) error {
 func (m *ModelStruct) setPrimaryField(structField *StructField) error {
 	structField.kind = KindPrimary
 	if m.primary != nil {
-		return errors.NewDetf(ClassModelDefinition, "primary field is already defined for the model: '%s'", m.Type().Name())
+		return errors.WrapDetf(ErrModelDefinition, "primary field is already defined for the model: '%s'", m.Type().Name())
 	}
 	m.primary = structField
 	m.fields = append(m.fields, structField)
@@ -713,7 +713,7 @@ func (m *ModelStruct) setRelationshipField(structField *StructField) error {
 
 	for _, relation := range m.relationships {
 		if relation == structField {
-			return errors.NewDetf(ClassModelDefinition, "duplicated neuron relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
+			return errors.WrapDetf(ErrModelDefinition, "duplicated neuron relationship field name: '%s' for model: '%v'", structField.neuronName, m.Type().Name())
 		}
 	}
 	m.relationships = append(m.relationships, structField)
@@ -724,30 +724,30 @@ func (m *ModelStruct) setTimeRelatedField(field *StructField, flag fieldFlag) er
 	switch flag {
 	case fCreatedAt:
 		if !(field.isTime() || field.isPtrTime()) {
-			return errors.NewDetf(ClassModelDefinition, "created at field: '%s' is not a time.Time field", field.Name())
+			return errors.WrapDetf(ErrModelDefinition, "created at field: '%s' is not a time.Time field", field.Name())
 		}
 		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(ClassModelDefinition, "duplicated created at field for model: '%s'", m.Type().Name())
+			return errors.WrapDetf(ErrModelDefinition, "duplicated created at field for model: '%s'", m.Type().Name())
 		}
 		m.createdAt = field
 	case fUpdatedAt:
 		if !(field.isTime() || field.isPtrTime()) {
-			return errors.NewDetf(ClassModelDefinition, "updated at field: '%s' is not a time.Time field", field.Name())
+			return errors.WrapDetf(ErrModelDefinition, "updated at field: '%s' is not a time.Time field", field.Name())
 		}
 		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(ClassModelDefinition, "duplicated updated at field for model: '%s'", m.Type().Name())
+			return errors.WrapDetf(ErrModelDefinition, "duplicated updated at field for model: '%s'", m.Type().Name())
 		}
 		m.updatedAt = field
 	case fDeletedAt:
 		if !field.isPtrTime() {
-			return errors.NewDetf(ClassModelDefinition, "deleted at field: '%s' is not a pointer to time.Time field", field.Name())
+			return errors.WrapDetf(ErrModelDefinition, "deleted at field: '%s' is not a pointer to time.Time field", field.Name())
 		}
 		if field.fieldFlags.containsFlag(flag) {
-			return errors.NewDetf(ClassModelDefinition, "duplicated deleted at field for model: '%s'", m.Type().Name())
+			return errors.WrapDetf(ErrModelDefinition, "duplicated deleted at field for model: '%s'", m.Type().Name())
 		}
 		m.deletedAt = field
 	default:
-		return errors.NewDetf(ClassInternal, "invalid related field flag: '%s'", field)
+		return errors.WrapDetf(ErrInternal, "invalid related field flag: '%s'", field)
 	}
 	field.setFlag(flag)
 	return nil

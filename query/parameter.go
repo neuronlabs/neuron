@@ -92,7 +92,7 @@ type Parameter struct {
 func (p Parameter) Int() (int, error) {
 	v, err := strconv.Atoi(p.Value)
 	if err != nil {
-		return 0, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
+		return 0, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }
@@ -101,7 +101,7 @@ func (p Parameter) Int() (int, error) {
 func (p Parameter) Int64() (int64, error) {
 	v, err := strconv.ParseInt(p.Value, 10, intSize)
 	if err != nil {
-		return 0, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
+		return 0, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }
@@ -110,7 +110,7 @@ func (p Parameter) Int64() (int64, error) {
 func (p Parameter) Float64() (float64, error) {
 	v, err := strconv.ParseFloat(p.Value, 64)
 	if err != nil {
-		return 0, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not a floating point value: '%s'", p.Key, p.Value)
+		return 0, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not a floating point value: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }
@@ -119,7 +119,7 @@ func (p Parameter) Float64() (float64, error) {
 func (p Parameter) Uint() (uint, error) {
 	u, err := strconv.ParseUint(p.Value, 10, intSize)
 	if err != nil {
-		return 0, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
+		return 0, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
 	}
 	return uint(u), err
 }
@@ -128,7 +128,7 @@ func (p Parameter) Uint() (uint, error) {
 func (p Parameter) Uint64() (uint64, error) {
 	v, err := strconv.ParseUint(p.Value, 10, intSize)
 	if err != nil {
-		return 0, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
+		return 0, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not an integer: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }
@@ -137,7 +137,7 @@ func (p Parameter) Uint64() (uint64, error) {
 func (p Parameter) UUID() (uuid.UUID, error) {
 	v, err := uuid.Parse(p.Value)
 	if err != nil {
-		return uuid.UUID{}, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not a valid UUID: '%s'", p.Key, p.Value)
+		return uuid.UUID{}, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not a valid UUID: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }
@@ -146,7 +146,7 @@ func (p Parameter) UUID() (uuid.UUID, error) {
 func (p Parameter) Boolean() (bool, error) {
 	v, err := strconv.ParseBool(p.Value)
 	if err != nil {
-		return false, errors.NewDetf(ClassInvalidParameter, "parameter: '%s' is not a valid boolean: '%s'", p.Key, p.Value)
+		return false, errors.WrapDetf(ErrInvalidParameter, "parameter: '%s' is not a valid boolean: '%s'", p.Key, p.Value)
 	}
 	return v, nil
 }

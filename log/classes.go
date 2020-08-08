@@ -5,13 +5,8 @@ import (
 )
 
 var (
-	// MjrLogger is the major logger error classification.
-	MjrLogger errors.Major
-	// ClassInvalidLogger is the classification for the invalid logger.
-	ClassInvalidLogger errors.Class
+	// ErrLogger is the major logger error classification.
+	ErrLogger = errors.New("logger")
+	// ErrInvalidLogger is the classification for the invalid logger.
+	ErrInvalidLogger = errors.New("invalid")
 )
-
-func init() {
-	MjrLogger = errors.MustNewMajor()
-	ClassInvalidLogger = errors.MustNewMajorClass(MjrLogger)
-}

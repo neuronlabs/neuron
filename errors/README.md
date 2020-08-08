@@ -83,15 +83,15 @@ Created by the `New` and `Newf` functions.
 ```go
 import "github.com/neuronlabs/neuron/errors"
 // let's assume we have some ClassInvalidRequest already defined.
-var ClassInvalidInput errors.Class
+var ErrInvalidInput errors.Class
 
 func createValue(input int) error {
     if input < 0 {
-        return errors.New(ClassInvalidInput, "provided input lower than zero")
+        return errors.New(ErrInvalidInput, "provided input lower than zero")
     }
 
     if input > 50 {
-        return errors.Newf(ClassInvalidInput, "provided input value: '%d' is not valid", input) 
+        return errors.Newf(ErrInvalidInput, "provided input value: '%d' is not valid", input) 
     }
     // do the logic here
     return nil
@@ -173,7 +173,7 @@ func checkInput(input int) error {
     }
 
     if input > 50 {
-        err := errors.NewDetf(ClassInvalidInput, "provided input value: '%d' is not valid", input) 
+        err := errors.NewDetf(ErrInvalidInput, "provided input value: '%d' is not valid", input) 
         err.SetDetailsf("The input value: '%d' provided to the function is invalid. The value can't be greater than '50'.", input)
         return err
     }

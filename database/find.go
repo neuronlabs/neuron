@@ -28,7 +28,7 @@ func queryFind(ctx context.Context, db DB, s *query.Scope) ([]mapping.Model, err
 			s.FieldSets[0] = s.ModelStruct.Fields()
 		}
 	default:
-		return nil, errors.NewDetf(query.ClassInvalidFieldSet, "provided too many fieldsets for the find query")
+		return nil, errors.WrapDetf(query.ErrInvalidFieldSet, "provided too many fieldsets for the find query")
 	}
 	// If the query contains any relationship filters, reduce them to this models fields filter.
 	if err := reduceRelationshipFilters(ctx, db, s); err != nil {
@@ -74,7 +74,7 @@ func queryGet(ctx context.Context, db DB, s *query.Scope) (mapping.Model, error)
 	var err error
 	// Check if the pagination is already set.
 	if s.Pagination != nil && (s.Pagination.Limit != 1 || s.Pagination.Offset != 0) {
-		return nil, errors.Newf(query.ClassInvalidField, "cannot get single model with custom pagination")
+		return nil, errors.Wrapf(query.ErrInvalidField, "cannot get single model with custom pagination")
 	}
 	// Assure that the result would be only a single value.
 	s.Limit(1)
@@ -84,7 +84,7 @@ func queryGet(ctx context.Context, db DB, s *query.Scope) (mapping.Model, error)
 	}
 	// if there is no result return an error of class QueryValueNoResult.
 	if len(results) == 0 {
-		return nil, errors.New(query.ClassNoResult, "model not found")
+		return nil, errors.Wrap(query.ErrQueryNoResult, "model not found")
 	}
 	return results[0], nil
 }
@@ -187,7 +187,7 @@ func findBelongsToRelation(ctx context.Context, db DB, s *query.Scope, included 
 		for _, index := range indexes {
 			relationer, ok := s.Models[index].(mapping.SingleRelationer)
 			if !ok {
-				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement mapping.SingleRelationer", s.ModelStruct.String())
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.SingleRelationer", s.ModelStruct.String())
 			}
 
 			if err = relationer.SetRelationModel(included.StructField, relModel); err != nil {
@@ -204,7 +204,7 @@ func findBelongsToRelationShort(s *query.Scope, included *query.IncludedRelation
 	for _, model := range s.Models {
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements,
+			return errors.Wrapf(mapping.ErrModelNotImplements,
 				"model: '%s' does not implement mapping.Fielder interface",
 				s.ModelStruct.String())
 		}
@@ -224,7 +224,7 @@ func findBelongsToRelationShort(s *query.Scope, included *query.IncludedRelation
 
 		relationer, ok := model.(mapping.SingleRelationer)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements,
+			return errors.Wrapf(mapping.ErrModelNotImplements,
 				"model: '%s' doesn't implement mapping.SingleRelationer",
 				s.ModelStruct.String())
 		}
@@ -296,7 +296,7 @@ func findHasRelation(ctx context.Context, db DB, s *query.Scope, included *query
 		case mapping.RelHasOne:
 			relationer, ok := s.Models[index].(mapping.SingleRelationer)
 			if !ok {
-				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' does not implement mapping.SingleRelationer interface", s.ModelStruct.String())
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' does not implement mapping.SingleRelationer interface", s.ModelStruct.String())
 			}
 			if err = relationer.SetRelationModel(included.StructField, relatedModel); err != nil {
 				return err
@@ -304,7 +304,7 @@ func findHasRelation(ctx context.Context, db DB, s *query.Scope, included *query
 		case mapping.RelHasMany:
 			relationer, ok := s.Models[index].(mapping.MultiRelationer)
 			if !ok {
-				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' does not implement mapping.MultiRelationer interface", s.ModelStruct.String())
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' does not implement mapping.MultiRelationer interface", s.ModelStruct.String())
 			}
 			if err = relationer.AddRelationModel(included.StructField, relatedModel); err != nil {
 				return err
@@ -357,7 +357,7 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
 		}
 		isZero, err := fielder.IsFieldZero(backReferenceFK)
 		if err != nil {
@@ -403,7 +403,7 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		for _, index := range indexes {
 			relationer, ok := s.Models[index].(mapping.MultiRelationer)
 			if !ok {
-				return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement interface MultiRelationer", s.ModelStruct)
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement interface MultiRelationer", s.ModelStruct)
 			}
 			if err = relationer.AddRelationModel(included.StructField, model); err != nil {
 				return err
@@ -418,7 +418,7 @@ func findManyToManyRelationShort(s *query.Scope, included *query.IncludedRelatio
 	for _, model := range models {
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
 		}
 		// Find related model value from the root scope by matching it's primary key with the back reference foreign key.
 		foreignKeyValue, err := fielder.GetHashableFieldValue(relationship.ForeignKey())
@@ -443,7 +443,7 @@ func findManyToManyRelationShort(s *query.Scope, included *query.IncludedRelatio
 
 		rootRelationer, ok := s.Models[index].(mapping.MultiRelationer)
 		if !ok {
-			return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement MultiRelationer", s.ModelStruct.String())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement MultiRelationer", s.ModelStruct.String())
 		}
 		if err = rootRelationer.AddRelationModel(included.StructField, relationModel); err != nil {
 			return err
@@ -452,6 +452,6 @@ func findManyToManyRelationShort(s *query.Scope, included *query.IncludedRelatio
 	return nil
 }
 
-func errModelNotAFielder(s *query.Scope) errors.ClassError {
-	return errors.Newf(mapping.ClassModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
+func errModelNotAFielder(s *query.Scope) error {
+	return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct)
 }

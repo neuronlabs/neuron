@@ -59,7 +59,7 @@ func (s *Scope) createSortFields(sortFields ...string) ([]Sort, error) {
 
 		fields[sort] = count
 		if count > 1 {
-			return nil, errors.NewDet(ClassInvalidSort, "duplicated sort field").
+			return nil, errors.WrapDet(ErrInvalidSort, "duplicated sort field").
 				WithDetailf("OrderBy parameter: %v used more than once.", sort)
 		}
 

@@ -11,8 +11,8 @@ func TestDetailedError(t *testing.T) {
 	resetContainer()
 
 	message := "some testing message"
-	first := NewDet(ClInvalidIndex, message)
-	second := NewDetf(ClInvalidIndex, "formatted: '%d'", 2)
+	first := WrapDet(ClInvalidIndex, message)
+	second := WrapDetf(ClInvalidIndex, "formatted: '%d'", 2)
 
 	assert.Equal(t, "some testing message", first.Error())
 	assert.Equal(t, "formatted: '2'", second.Error())
