@@ -21,5 +21,5 @@ func TestExtractTags(t *testing.T) {
 	require.True(t, ok)
 
 	extracted := synced.ExtractFieldTags("neuron")
-	assert.Len(t, extracted, 4)
+	assert.Len(t, extracted, 3)
 }
