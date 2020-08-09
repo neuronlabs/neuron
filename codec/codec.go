@@ -28,7 +28,7 @@ type ModelMarshaler interface {
 	MarshalModels(models []mapping.Model, options MarshalOptions) ([]byte, error)
 }
 
-// Model Unmarshaler is an interface that allows to unmarshal provided models of given model struct.
+// ModelUnmarshaler is an interface that allows to unmarshal provided models of given model struct.
 type ModelUnmarshaler interface {
 	// UnmarshalModels unmarshals provided data into mapping.Model slice. The data should simply be only encoded models.
 	UnmarshalModels(data []byte, options UnmarshalOptions) ([]mapping.Model, error)

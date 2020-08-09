@@ -106,6 +106,7 @@ type QueryRelationClearer interface {
 }
 
 // New creates new DB for given controller.
+//nolint:golint
 func New(c *controller.Controller) *db {
 	return &db{c: c}
 }
