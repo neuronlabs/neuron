@@ -10,8 +10,8 @@ import (
 	"github.com/neuronlabs/neuron/store"
 )
 
-// Verifier sets the authorizer for the service.
-func Authorizer(authorizer auth.Verifier) core.Option {
+// AuthorizationVerifier sets the authorization verifier for the service.
+func AuthorizationVerifier(authorizer auth.Verifier) core.Option {
 	return func(o *core.Options) {
 		o.Authorizer = authorizer
 	}

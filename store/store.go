@@ -7,13 +7,13 @@ import (
 
 // Store is an interface for key - value stores.
 type Store interface {
-	// Set sets the record within the store.
+	// Set sets the record within the store. This function should replace any existing record with provided key.
 	Set(ctx context.Context, record *Record) error
-	// SetWithTTL sets the record with specified ttl value.
+	// SetWithTTL sets the record with specified ttl value. This function should replace any existing record with provided key.
 	SetWithTTL(ctx context.Context, record *Record, ttl time.Duration) error
-	// Get gets the record stored under 'key'.
+	// Get gets the record stored under 'key'. If the record is not found the function should return ErrRecordNotFound.
 	Get(ctx context.Context, key string) (*Record, error)
-	// Delete deletes the record stored using a 'key'.
+	// Delete deletes the record stored using a 'key'. If the record is not found the function should return ErrRecordNotFound.
 	Delete(ctx context.Context, key string) error
 	// Find finds the records stored using some specific pattern.
 	Find(ctx context.Context, options ...FindOption) ([]*Record, error)

@@ -11,21 +11,25 @@ type RepositoryNamer interface {
 	RepositoryName() string
 }
 
-// StructFielder is the interfaces used for getting the pointer to itself
-type StructFielder interface {
-	Self() *StructField
-}
-
-// NestedStructFielder is the interface used for nested struct fields.
-type NestedStructFielder interface {
-	StructFielder
-	SelfNested() *NestedField
-}
-
+// DatabaseNamer is the interface used for defining model's database name - 'Table', 'Collection'.
 type DatabaseNamer interface {
 	DatabaseName() string
 }
 
+// DatabaseSchemaNamer is the interface that defines the optional database schema name for the model.
 type DatabaseSchemaNamer interface {
 	DatabaseSchemaName() string
+}
+
+// Internal interfaces.
+
+// structFielder is the interfaces used for getting the pointer to itself
+type structFielder interface {
+	Self() *StructField
+}
+
+// nestedStructFielder is the interface used for nested struct fields.
+type nestedStructFielder interface {
+	structFielder
+	SelfNested() *NestedField
 }

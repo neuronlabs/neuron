@@ -112,21 +112,6 @@ func (c *Controller) registerRepositoryModels(r repository.Repository, modelStru
 	return nil
 }
 
-// defaultRepositoryModels gest default repository models.
-func (c *Controller) defaultRepositoryModels() []*mapping.ModelStruct {
-	if c.DefaultRepository == nil {
-		return nil
-	}
-	var defaultModels []*mapping.ModelStruct
-	for _, model := range c.ModelMap.Models() {
-		_, ok := c.ModelRepositories[model]
-		if !ok {
-			defaultModels = append(defaultModels, model)
-		}
-	}
-	return defaultModels
-}
-
 func (c *Controller) getModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {
 	if model == nil {
 		return nil, errors.WrapDet(mapping.ErrModelDefinition, "provided nil model value")

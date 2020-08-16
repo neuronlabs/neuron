@@ -18,9 +18,9 @@ import (
 //
 // Example codec tag:
 // codec:"-" 					- skip this field in marshal/unmarshal process
-// codec:"codec_name;omitempty" - defined codec_name and codec field if empty is omited on marshaling process.
-// codec:";omitempty" 			- codec field if empty is omited on marshaling process
-// codec:"_;omitempty" 			- codec field if empty is omited on marshaling process
+// codec:"codec_name;omitempty" - defined codec_name and codec field if empty is omitted on marshaling process.
+// codec:";omitempty" 			- codec field if empty is omitted on marshaling process
+// codec:"_;omitempty" 			- codec field if empty is omitted on marshaling process
 
 func (m *ModelStruct) extractCodecTags() error {
 	for _, field := range m.structFields {
@@ -41,14 +41,15 @@ func (m *ModelStruct) extractCodecTags() error {
 				return errors.Wrapf(ErrMapping, "model's: %s field: '%s' codec tag name defined without value", m, field)
 			}
 			field.codecName = name.Values[0]
+		case "omitempty":
+			field.fieldFlags |= fOmitempty
 		case "_":
 		default:
 			field.codecName = name.Key
 		}
 
 		for _, tag := range tags[1:] {
-			switch tag.Key {
-			case "omitempty":
+			if tag.Key == "omitempty" {
 				field.fieldFlags |= fOmitempty
 			}
 		}

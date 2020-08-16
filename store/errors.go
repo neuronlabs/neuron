@@ -5,7 +5,11 @@ import (
 )
 
 var (
-	ErrStore         = errors.New("store")
-	ErrValueNotFound = errors.Wrap(ErrStore, "value not foud")
-	ErrInternal      = errors.Wrap(errors.ErrInternal, "store")
+	// ErrStore is the main store error.
+	ErrStore = errors.New("store")
+	// ErrRecordNotFound is the error when the value stored with 'key' is not found.
+	// This should be implemented by all stores.
+	ErrRecordNotFound = errors.Wrap(ErrStore, "record not found")
+	// ErrInternal is an internal error for the stores.
+	ErrInternal = errors.Wrap(errors.ErrInternal, "store")
 )

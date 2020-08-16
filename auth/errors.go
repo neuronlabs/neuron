@@ -13,7 +13,7 @@ var (
 	ErrAccountNotValid = errors.Wrap(ErrAuth, "account not valid")
 	// ErrAccountModelNotDefined is an error that occurs when the account model is not defined.
 	ErrAccountModelNotDefined = errors.Wrap(ErrAuth, "account model not defined")
-	// ErrAccountAlreadyExists
+	// ErrAccountAlreadyExists is an error when the account already exists.
 	ErrAccountAlreadyExists = errors.Wrap(ErrAuth, "an account with provided username already exists")
 	// ErrInternalError is an auth package internal error.
 	ErrInternalError = errors.Wrap(errors.ErrInternal, "auth")

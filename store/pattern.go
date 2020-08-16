@@ -1,5 +1,6 @@
 package store
 
+// FindPattern is the pattern used for querying the store.
 type FindPattern struct {
 	Suffix string
 	Prefix string

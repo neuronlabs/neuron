@@ -582,7 +582,7 @@ func buildModelStruct(model interface{}, namer NamingConvention) (modelStruct *M
 	return modelStruct, nil
 }
 
-func getNestedStruct(t reflect.Type, sFielder StructFielder, namerFunc NamingConvention) (*NestedStruct, error) {
+func getNestedStruct(t reflect.Type, sFielder structFielder, namerFunc NamingConvention) (*NestedStruct, error) {
 	nestedStruct := newNestedStruct(t, sFielder)
 	v := reflect.New(t).Elem()
 	var marshalFields []reflect.StructField

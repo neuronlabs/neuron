@@ -9,7 +9,7 @@ import (
 // It may contain multiple fields *NestedFields.
 type NestedStruct struct {
 	// structField is the reference to it's root struct field
-	structField StructFielder
+	structField structFielder
 	// modelType is the NestedStruct's model type
 	modelType reflect.Type
 	// fields - nestedStruct may have it's nested fields
@@ -40,7 +40,7 @@ func (n *NestedStruct) StructField() *StructField {
 }
 
 // newNestedStruct returns new nested structure
-func newNestedStruct(t reflect.Type, structField StructFielder) *NestedStruct {
+func newNestedStruct(t reflect.Type, structField structFielder) *NestedStruct {
 	return &NestedStruct{structField: structField, modelType: t, fields: map[string]*NestedField{}}
 }
 
@@ -53,7 +53,7 @@ func (n *NestedStruct) attr() *StructField {
 	var attr *StructField
 	sFielder := n.structField
 	for {
-		if nested, ok := sFielder.(NestedStructFielder); ok {
+		if nested, ok := sFielder.(nestedStructFielder); ok {
 			sFielder = nested.SelfNested().root.structField
 		} else {
 			attr = sFielder.Self()
@@ -101,7 +101,7 @@ type NestedField struct {
 
 // newNestedField returns New NestedField
 // nolint:gocritic
-func newNestedField(root *NestedStruct, structFielder StructFielder, nField reflect.StructField) *NestedField {
+func newNestedField(root *NestedStruct, structFielder structFielder, nField reflect.StructField) *NestedField {
 	nestedField := &NestedField{
 		structField: &StructField{
 			mStruct:      structFielder.Self().mStruct,
@@ -133,7 +133,7 @@ func (n *NestedField) attr() *StructField {
 	var attr *StructField
 	sFielder := n.root.structField
 	for {
-		if nested, ok := sFielder.(NestedStructFielder); ok {
+		if nested, ok := sFielder.(nestedStructFielder); ok {
 			sFielder = nested.SelfNested().root.structField
 		} else {
 			attr = sFielder.Self()

@@ -17,6 +17,7 @@ import (
 // Compile time check for the DB interface implementations.
 var _ DB = &Tx{}
 
+// TxFunc is the execute function for the the RunInTransaction function.
 type TxFunc func(db DB) error
 
 // RunInTransaction runs specific function 'txFunc' within a transaction. If an error would return from that function the transaction would be rolled back.

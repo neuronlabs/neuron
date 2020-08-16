@@ -67,7 +67,7 @@ func (m *Memory) SetWithTTL(ctx context.Context, record *store.Record, ttl time.
 func (m *Memory) Get(ctx context.Context, key string) (*store.Record, error) {
 	r, found := m.cache.Get(m.key(key))
 	if !found {
-		return nil, store.ErrValueNotFound
+		return nil, store.ErrRecordNotFound
 	}
 	rec, ok := r.(*store.Record)
 	if !ok {
@@ -78,6 +78,10 @@ func (m *Memory) Get(ctx context.Context, key string) (*store.Record, error) {
 
 // Delete implements store.Store interface.
 func (m *Memory) Delete(ctx context.Context, key string) error {
+	_, found := m.cache.Get(m.key(key))
+	if !found {
+		return store.ErrRecordNotFound
+	}
 	m.cache.Delete(m.key(key))
 	return nil
 }

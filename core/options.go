@@ -12,7 +12,7 @@ import (
 	"github.com/neuronlabs/neuron/store"
 )
 
-// AuthenticatorOptions is the structure that contains service options.
+// Options is the structure that contains service options.
 type Options struct {
 	Name              string
 	Version           string
@@ -52,5 +52,5 @@ func defaultOptions() *Options {
 	}
 }
 
-// AuthenticatorOption is the function that sets the options for the service.
+// Option is the function that sets the options for the service.
 type Option func(o *Options)
