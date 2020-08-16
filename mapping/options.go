@@ -10,7 +10,7 @@ type MapOptions struct {
 // MapOption is a function that sets the map options.
 type MapOption func(o *MapOptions)
 
-// WithNamingConventionOption sets the 'convention' as the naming convention for the model map.
+// WithNamingConvention sets the 'convention' as the naming convention for the model map.
 func WithNamingConvention(convention NamingConvention) MapOption {
 	return func(o *MapOptions) {
 		o.NamingConvention = convention

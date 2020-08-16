@@ -130,7 +130,7 @@ func NewPassword(password string, scorer ...PasswordScorer) *Password {
 // PasswordScorer is a function that sets the score for given password.
 type PasswordScorer func(pw *Password)
 
-// DefaultPasswordScore is the default scoring function for the password.
+// DefaultPasswordScorer is the default scoring function for the password.
 func DefaultPasswordScorer(pw *Password) {
 	// If all of the runes are the same the the password has no score at all, no matter what length it is.
 	if pw.UniqueRunes == 1 && len(pw.Password) != 1 {

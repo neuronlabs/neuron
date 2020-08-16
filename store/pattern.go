@@ -32,7 +32,7 @@ func WithFindPrefix(prefix string) FindOption {
 	}
 }
 
-// WithFindPrefix sets the suffix for the find pattern.
+// WithFindSuffix sets the suffix for the find pattern.
 func WithFindSuffix(suffix string) FindOption {
 	return func(o *FindPattern) {
 		o.Suffix = suffix
