@@ -10,75 +10,6 @@ import (
 	"github.com/neuronlabs/neuron/log"
 )
 
-// FieldSet is a slice of fields, with some basic search functions.
-type FieldSet []*StructField
-
-// Contains checks if given fieldset contains given 'sField'.
-func (f FieldSet) Contains(sField *StructField) bool {
-	for _, field := range f {
-		if field == sField {
-			return true
-		}
-	}
-	return false
-}
-
-// ContainsFieldName checks if a field with 'fieldName' exists in given set.
-func (f FieldSet) ContainsFieldName(fieldName string) bool {
-	for _, field := range f {
-		if field.neuronName == fieldName || field.Name() == fieldName {
-			return true
-		}
-	}
-	return false
-}
-
-// Copy creates a copy of the fieldset.
-func (f FieldSet) Copy() FieldSet {
-	cp := make(FieldSet, len(f))
-	copy(cp, f)
-	return cp
-}
-
-// Hash returns the map entry
-func (f FieldSet) Hash() (hash string) {
-	for _, field := range f {
-		hash += field.neuronName
-	}
-	return hash
-}
-
-// Sort sorts given fieldset by fields indices.
-func (f FieldSet) Sort() {
-	sort.Sort(f)
-}
-
-// Len implements sort.Interface interface.
-func (f FieldSet) Len() int {
-	return len(f)
-}
-
-// Less implements sort.Interface interface.
-func (f FieldSet) Less(i, j int) bool {
-	return f.less(f[i], f[j])
-}
-
-// Swap implements sort.Interface interface.
-func (f FieldSet) Swap(i, j int) {
-	f[i], f[j] = f[j], f[i]
-}
-
-func (f FieldSet) less(first, second *StructField) bool {
-	var result bool
-	for k := 0; k < len(first.Index); k++ {
-		if first.Index[k] != second.Index[k] {
-			result = first.Index[k] < second.Index[k]
-			break
-		}
-	}
-	return result
-}
-
 // StructField represents a field structure with its json api parameters.
 // and model relationships.
 type StructField struct {
@@ -86,6 +17,7 @@ type StructField struct {
 	mStruct *ModelStruct
 	// NeuronName is neuron field name.
 	neuronName string
+
 	// kind
 	kind FieldKind
 
@@ -98,6 +30,15 @@ type StructField struct {
 	// store is the key value store used for the local usage
 	store map[string]interface{}
 	Index []int
+
+	// Database tags
+	DatabaseName        string
+	DatabaseType        string
+	DatabaseUnknownTags []*FieldTag
+	databaseIndexes     []*DatabaseIndex
+
+	// Codec tags.
+	codecName string
 }
 
 // BaseType returns the base 'reflect.Type' for the provided field.
@@ -109,6 +50,44 @@ func (s *StructField) BaseType() reflect.Type {
 // CanBeSorted returns if the struct field can be sorted.
 func (s *StructField) CanBeSorted() bool {
 	return s.canBeSorted()
+}
+
+// CodecSkip checks if the field is hidden for marshaling processes.
+func (s *StructField) CodecSkip() bool {
+	return s.codecSkip()
+}
+
+// CodecName gets the name of the field in the codec equivalent,
+func (s *StructField) CodecName() string {
+	if s.codecName == "" {
+		return s.neuronName
+	}
+	return s.codecName
+}
+
+// CodecOmitEmpty checks if the given field has a omitempty flag.
+func (s *StructField) CodecOmitEmpty() bool {
+	return s.isOmitEmpty()
+}
+
+// DatabaseSkip checks if the field should be skipped in the database.
+func (s *StructField) DatabaseSkip() bool {
+	return s.fieldFlags&fDatabaseSkip != 0
+}
+
+// DatabaseUnique checks if the field is marked as database unique. It is not equivalent as unique index.
+func (s *StructField) DatabaseUnique() bool {
+	return s.fieldFlags&fDatabaseUnique != 0
+}
+
+// DatabaseIndexes gets the indexes where given field is being used.
+func (s *StructField) DatabaseIndexes() []*DatabaseIndex {
+	return s.databaseIndexes
+}
+
+// DatabaseNotNull checks if the field is marked as database nullable.
+func (s *StructField) DatabaseNotNull() bool {
+	return s.fieldFlags&fDatabaseNotNull != 0
 }
 
 // Kind returns struct fields kind.
@@ -139,11 +118,6 @@ func (s *StructField) IsCreatedAt() bool {
 // IsDeletedAt returns the boolean if the field is a 'DeletedAt' field.
 func (s *StructField) IsDeletedAt() bool {
 	return s.isDeletedAt()
-}
-
-// IsHidden checks if the field is hidden for marshaling processes.
-func (s *StructField) IsHidden() bool {
-	return s.isHidden()
 }
 
 // IsI18n returns flag if the struct fields is an i18n.
@@ -179,11 +153,6 @@ func (s *StructField) IsNestedStruct() bool {
 // IsNoFilter checks whether the field uses no filter flag.
 func (s *StructField) IsNoFilter() bool {
 	return s.isNoFilter()
-}
-
-// IsOmitEmpty checks if the given field has a omitempty flag.
-func (s *StructField) IsOmitEmpty() bool {
-	return s.isOmitEmpty()
 }
 
 // IsPrimary checks if the field is the primary field type.
@@ -332,6 +301,10 @@ func (s *StructField) baseFieldType() reflect.Type {
 		elem = elem.Elem()
 	}
 	return elem
+}
+
+func (s *StructField) codecSkip() bool {
+	return s.fieldFlags&fCodecSkip != 0
 }
 
 func (s *StructField) canBeSorted() bool {
@@ -490,10 +463,6 @@ func (s *StructField) isDeletedAt() bool {
 	return s.fieldFlags&fDeletedAt != 0
 }
 
-func (s *StructField) isHidden() bool {
-	return s.fieldFlags&fHidden != 0
-}
-
 func (s *StructField) isI18n() bool {
 	return s.fieldFlags&fI18n != 0
 }
@@ -635,14 +604,10 @@ func (s *StructField) setFlags(flags ...string) error {
 			s.setFlag(fClientID)
 		case AnnotationNoFilter:
 			s.setFlag(fNoFilter)
-		case AnnotationHidden:
-			s.setFlag(fHidden)
 		case AnnotationNotSortable:
 			s.setFlag(fSortable)
 		case AnnotationISO8601:
 			s.setFlag(fISO8601)
-		case AnnotationOmitEmpty:
-			s.setFlag(fOmitempty)
 		case AnnotationI18n:
 			s.setFlag(fI18n)
 		case AnnotationDeletedAt:

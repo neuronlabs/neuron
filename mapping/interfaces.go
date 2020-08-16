@@ -21,3 +21,11 @@ type NestedStructFielder interface {
 	StructFielder
 	SelfNested() *NestedField
 }
+
+type DatabaseNamer interface {
+	DatabaseName() string
+}
+
+type DatabaseSchemaNamer interface {
+	DatabaseSchemaName() string
+}

@@ -1,5 +1,78 @@
 package mapping
 
+import (
+	"sort"
+)
+
+// FieldSet is a slice of fields, with some basic search functions.
+type FieldSet []*StructField
+
+// Contains checks if given fieldset contains given 'sField'.
+func (f FieldSet) Contains(sField *StructField) bool {
+	for _, field := range f {
+		if field == sField {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsFieldName checks if a field with 'fieldName' exists in given set.
+func (f FieldSet) ContainsFieldName(fieldName string) bool {
+	for _, field := range f {
+		if field.neuronName == fieldName || field.Name() == fieldName {
+			return true
+		}
+	}
+	return false
+}
+
+// Copy creates a copy of the fieldset.
+func (f FieldSet) Copy() FieldSet {
+	cp := make(FieldSet, len(f))
+	copy(cp, f)
+	return cp
+}
+
+// Hash returns the map entry
+func (f FieldSet) Hash() (hash string) {
+	for _, field := range f {
+		hash += field.neuronName
+	}
+	return hash
+}
+
+// Sort sorts given fieldset by fields indices.
+func (f FieldSet) Sort() {
+	sort.Sort(f)
+}
+
+// Len implements sort.Interface interface.
+func (f FieldSet) Len() int {
+	return len(f)
+}
+
+// Less implements sort.Interface interface.
+func (f FieldSet) Less(i, j int) bool {
+	return f.less(f[i], f[j])
+}
+
+// Swap implements sort.Interface interface.
+func (f FieldSet) Swap(i, j int) {
+	f[i], f[j] = f[j], f[i]
+}
+
+func (f FieldSet) less(first, second *StructField) bool {
+	var result bool
+	for k := 0; k < len(first.Index); k++ {
+		if first.Index[k] != second.Index[k] {
+			result = first.Index[k] < second.Index[k]
+			break
+		}
+	}
+	return result
+}
+
 // BulkFieldSet is the bulk query fieldset container. It stores unique
 type BulkFieldSet struct {
 	FieldSets []FieldSet       `json:"fieldSets"`

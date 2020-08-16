@@ -6,17 +6,6 @@ import (
 	"github.com/neuronlabs/neuron/mapping"
 )
 
-// Closer is the interface used to close the repository connections.
-type Closer interface {
-	// Close closes the connection for given repository.
-	Close(ctx context.Context) error
-}
-
-// Dialer is the interface used to establish a connection for the repository.
-type Dialer interface {
-	Dial(ctx context.Context) error
-}
-
 // ModelRegistrar is the interface used to register the models in the repository.
 type ModelRegistrar interface {
 	// RegisterModels registers provided 'models' into Repository specific mappings.

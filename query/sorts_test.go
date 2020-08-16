@@ -12,7 +12,7 @@ import (
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.SnakeCase)
+	ms := mapping.NewModelMap(&mapping.MapOptions{Namer: mapping.SnakeCase})
 
 	err := ms.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.SnakeCase)
+	ms := mapping.NewModelMap(&mapping.MapOptions{Namer: mapping.SnakeCase})
 
 	err := ms.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
 	require.NoError(t, err)

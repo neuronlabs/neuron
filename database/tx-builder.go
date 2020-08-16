@@ -117,7 +117,7 @@ func (b *txQuery) Get() (mapping.Model, error) {
 	}
 	result, err := queryGet(b.tx.Transaction.Ctx, b.tx, b.scope)
 	if err != nil {
-		if !errors.Is(err, query.ErrQueryNoResult) {
+		if !errors.Is(err, query.ErrNoResult) {
 			b.tx.err = err
 		}
 		return nil, err

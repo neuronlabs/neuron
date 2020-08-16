@@ -17,6 +17,45 @@ import (
 // Compile time check for the DB interface implementations.
 var _ DB = &Tx{}
 
+type TxFunc func(db DB) error
+
+// RunInTransaction runs specific function 'txFunc' within a transaction. If an error would return from that function the transaction would be rolled back.
+// Otherwise it commits the changes. If an input 'db' is already within a transaction it would just execute txFunc for given transaction.
+func RunInTransaction(ctx context.Context, db DB, options *query.TxOptions, txFunc TxFunc) error {
+	if tx, ok := db.(*Tx); ok {
+		return txFunc(tx)
+	}
+
+	// In all other cases create a new transaction and execute 'txFn'
+	tx, err := Begin(ctx, db, options)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		p := recover()
+		switch {
+		case p != nil:
+			// a panic occurred, rollback and repanic
+			// A panic occurred, rollback and panic again.
+			if er := tx.Rollback(); er != nil {
+				log.Errorf("Rolling back on recover failed: %v", er)
+			}
+			panic(p)
+		case err != nil:
+			// If something went wrong, rollback
+			if er := tx.Rollback(); er != nil {
+				log.Errorf("Rolling back failed: %v", er)
+			}
+		default:
+			// all good, commit
+			// Everything is fine, commit given transaction.
+			err = tx.Commit()
+		}
+	}()
+	err = txFunc(tx)
+	return err
+}
+
 // Tx is an in-progress transaction orm. A transaction must end with a call to Commit or Rollback.
 // After a call to Commit or Rollback all operations on the transaction fail with an error of class
 type Tx struct {

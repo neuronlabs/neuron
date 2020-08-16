@@ -84,7 +84,7 @@ func queryGet(ctx context.Context, db DB, s *query.Scope) (mapping.Model, error)
 	}
 	// if there is no result return an error of class QueryValueNoResult.
 	if len(results) == 0 {
-		return nil, errors.Wrap(query.ErrQueryNoResult, "model not found")
+		return nil, errors.Wrap(query.ErrNoResult, "model not found")
 	}
 	return results[0], nil
 }

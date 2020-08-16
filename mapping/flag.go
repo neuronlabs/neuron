@@ -20,8 +20,6 @@ const (
 	fNoFilter
 	// fLanguage is the language field flag.
 	fLanguage
-	// fHidden is a flag for hidden field.
-	fHidden
 	// fSortable is a flag used for sortable fields.
 	fSortable
 	// fClientID is flag used to mark field as allowable to set ClientID.
@@ -48,4 +46,12 @@ const (
 	fUpdatedAt
 	// fDeletedAt defines the deleted at field
 	fDeletedAt
+	// fDatabaseSkip is the flag that defines if a field should be skipped in the database.
+	fDatabaseSkip
+	// fDatabaseNotNull is the flag that defines that the field is database not nullable.
+	fDatabaseNotNull
+	// fDatabaseUnique is the flag that defines that the field is database unique.
+	fDatabaseUnique
+	// fCodecSkip is the flag that defines if a field should be skipped in the codecs.
+	fCodecSkip
 )

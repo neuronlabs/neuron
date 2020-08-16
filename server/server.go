@@ -26,10 +26,11 @@ type EndpointsGetter interface {
 	GetEndpoints() []*Endpoint
 }
 
-// Options are the server initialization options.
+// AuthenticatorOptions are the server initialization options.
 type Options struct {
-	Authorizer    auth.Authorizer
+	Authorizer    auth.Verifier
 	Authenticator auth.Authenticator
+	Tokener       auth.Tokener
 	Controller    *controller.Controller
 	DB            database.DB
 }

@@ -10,7 +10,7 @@ import (
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	m := NewModelMap(SnakeCase)
+	m := NewModelMap(&MapOptions{Namer: SnakeCase})
 	return m
 }
 

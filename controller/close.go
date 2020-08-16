@@ -7,8 +7,12 @@ import (
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
-	"github.com/neuronlabs/neuron/repository"
 )
+
+// Closer is an interface that closes all connection for given instance.
+type Closer interface {
+	Close(ctx context.Context) error
+}
 
 // CloseAll gently closes repository connections.
 func (c *Controller) CloseAll(ctx context.Context) error {
@@ -52,16 +56,17 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan repository.Closer, error) {
+func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan Closer, error) {
 	if len(c.Repositories) == 0 {
 		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
 	}
-	out := make(chan repository.Closer)
+	out := make(chan Closer)
 	go func() {
 		defer close(out)
 
+		// Close all repositories.
 		for _, repo := range c.Repositories {
-			closer, isCloser := repo.(repository.Closer)
+			closer, isCloser := repo.(Closer)
 			if !isCloser {
 				continue
 			}
@@ -72,11 +77,21 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (
 				return
 			}
 		}
+
+		// Close all stores.
+		for _, s := range c.Stores {
+			wg.Add(1)
+			select {
+			case out <- s:
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 	return out, nil
 }
 
-func (c *Controller) closeRepo(ctx context.Context, repo repository.Closer, wg *sync.WaitGroup, errChan chan<- error) {
+func (c *Controller) closeRepo(ctx context.Context, repo Closer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := repo.Close(ctx); err != nil {

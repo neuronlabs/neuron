@@ -7134,7 +7134,7 @@ func (u *User) GetFieldsAddress(field *StructField) (interface{}, error) {
 		return &u.FirstName, nil
 	case 6: // LastName
 		return &u.LastName, nil
-	case 7: // Email
+	case 7: // Username
 		return &u.Email, nil
 	}
 	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
@@ -7155,7 +7155,7 @@ func (u *User) GetFieldZeroValue(field *StructField) (interface{}, error) {
 		return "", nil
 	case 6: // LastName
 		return "", nil
-	case 7: // Email
+	case 7: // Username
 		return "", nil
 	default:
 		return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
@@ -7177,7 +7177,7 @@ func (u *User) IsFieldZero(field *StructField) (bool, error) {
 		return u.FirstName == "", nil
 	case 6: // LastName
 		return u.LastName == "", nil
-	case 7: // Email
+	case 7: // Username
 		return u.Email == "", nil
 	}
 	return false, errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
@@ -7198,7 +7198,7 @@ func (u *User) SetFieldZeroValue(field *StructField) error {
 		u.FirstName = ""
 	case 6: // LastName
 		u.LastName = ""
-	case 7: // Email
+	case 7: // Username
 		u.Email = ""
 	default:
 		return errors.Wrapf(ErrInvalidModelField, "provided invalid field name: '%s'", field.Name())
@@ -7224,7 +7224,7 @@ func (u *User) GetHashableFieldValue(field *StructField) (interface{}, error) {
 		return u.FirstName, nil
 	case 6: // LastName
 		return u.LastName, nil
-	case 7: // Email
+	case 7: // Username
 		return u.Email, nil
 	}
 	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: 'User'", field.Name())
@@ -7245,7 +7245,7 @@ func (u *User) GetFieldValue(field *StructField) (interface{}, error) {
 		return u.FirstName, nil
 	case 6: // LastName
 		return u.LastName, nil
-	case 7: // Email
+	case 7: // Username
 		return u.Email, nil
 	}
 	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())
@@ -7320,13 +7320,13 @@ func (u *User) SetFieldValue(field *StructField, value interface{}) (err error) 
 			return nil
 		}
 		return errors.Wrapf(ErrFieldValue, "provided invalid field type: '%T' for the field: %s", value, field.Name())
-	case 7: // Email
+	case 7: // Username
 		if v, ok := value.(string); ok {
 			u.Email = v
 			return nil
 		}
 
-		// Check alternate types for the Email.
+		// Check alternate types for the Username.
 		if v, ok := value.([]byte); ok {
 			u.Email = string(v)
 			return nil
@@ -7380,7 +7380,7 @@ func (u *User) ParseFieldsStringValue(field *StructField, value string) (interfa
 		return value, nil
 	case 6: // LastName
 		return value, nil
-	case 7: // Email
+	case 7: // Username
 		return value, nil
 	}
 	return nil, errors.Wrapf(ErrInvalidModelField, "provided invalid field: '%s' for given model: User'", field.Name())

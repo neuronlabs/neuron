@@ -10,8 +10,8 @@ var (
 
 	// ErrInternal is the internal error classification.
 	ErrInternal = errors.Wrap(errors.ErrInternal, "query")
-	// ErrQueryNoResult is the error classification when for the query that returns no result.
-	ErrQueryNoResult = errors.Wrap(ErrQuery, "no results")
+	// ErrNoResult is the error classification when for the query that returns no result.
+	ErrNoResult = errors.Wrap(ErrQuery, "no results")
 
 	// ErrInput is the minor error classification related to the query input.
 	ErrInput = errors.Wrap(ErrQuery, "input")

@@ -13,4 +13,6 @@ var (
 	ErrRepositoryNotFound = errors.Wrap(ErrRepository, "not found")
 	// ErrRepositoryAlreadyRegistered class of errors when repository is already registered.
 	ErrRepositoryAlreadyRegistered = errors.Wrap(ErrRepository, "already registered")
+	// ErrStoreAlreadySet is an error when the store is already set at some name.
+	ErrStoreAlreadySet = errors.Wrap(ErrController, "store already set")
 )

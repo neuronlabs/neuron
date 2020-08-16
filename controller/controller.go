@@ -7,6 +7,7 @@ import (
 
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/repository"
+	"github.com/neuronlabs/neuron/store"
 )
 
 // Controller is the structure that contains, initialize and control the flow of the application.
@@ -22,6 +23,10 @@ type Controller struct {
 	ModelRepositories map[*mapping.ModelStruct]repository.Repository
 	// DefaultService is the default service or given controller.
 	DefaultRepository repository.Repository
+	// Stores is the mapping of the stores with their names.
+	Stores map[string]store.Store
+	// DefaultStore is the default key-value store used by this controller.
+	DefaultStore store.Store
 }
 
 // New creates new controller for provided options.
@@ -62,12 +67,17 @@ func newController(options *Options) *Controller {
 	c := &Controller{
 		Repositories:      map[string]repository.Repository{},
 		ModelRepositories: map[*mapping.ModelStruct]repository.Repository{},
+		Stores:            map[string]store.Store{},
 	}
 	if options == nil {
 		options = &Options{}
 		options.NamingConvention = mapping.SnakeCase
 	}
 	c.Options = options
-	c.ModelMap = mapping.NewModelMap(c.Options.NamingConvention)
+	c.ModelMap = mapping.NewModelMap(&mapping.MapOptions{
+		DefaultNotNull: c.Options.DefaultNotNullFields,
+		ModelNotNull:   c.Options.ModelNotNullFields,
+		Namer:          c.Options.NamingConvention,
+	})
 	return c
 }

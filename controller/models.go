@@ -86,14 +86,45 @@ func (c *Controller) MapRepositoryModels(r repository.Repository, models ...mapp
 	if _, ok := c.Repositories[r.ID()]; !ok {
 		c.Repositories[r.ID()] = r
 	}
-	for _, model := range models {
+	if len(models) == 0 {
+		return nil
+	}
+
+	modelStructs := make([]*mapping.ModelStruct, len(models))
+	for i, model := range models {
 		mStruct, err := c.getModelStruct(model)
 		if err != nil {
 			return err
 		}
 		c.ModelRepositories[mStruct] = r
+		modelStructs[i] = mStruct
+	}
+
+	return c.registerRepositoryModels(r, modelStructs...)
+}
+
+func (c *Controller) registerRepositoryModels(r repository.Repository, modelStructs ...*mapping.ModelStruct) error {
+	if registrar, isRegistrar := r.(repository.ModelRegistrar); isRegistrar {
+		if err := registrar.RegisterModels(modelStructs...); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// defaultRepositoryModels gest default repository models.
+func (c *Controller) defaultRepositoryModels() []*mapping.ModelStruct {
+	if c.DefaultRepository == nil {
+		return nil
+	}
+	var defaultModels []*mapping.ModelStruct
+	for _, model := range c.ModelMap.Models() {
+		_, ok := c.ModelRepositories[model]
+		if !ok {
+			defaultModels = append(defaultModels, model)
+		}
+	}
+	return defaultModels
 }
 
 func (c *Controller) getModelStruct(model mapping.Model) (*mapping.ModelStruct, error) {

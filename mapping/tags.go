@@ -49,9 +49,9 @@ func (s *StructField) extractFieldTags(fieldTag, tagSeparator, valuesSeparator s
 
 	// find all the separators
 	for i, r := range tag {
-		if i != 0 && r == tagSeparatorRune {
+		if r == tagSeparatorRune {
 			// check if the  rune before is not an 'escape'
-			if tag[i-1] != '\\' {
+			if i == 0 || tag[i-1] != '\\' {
 				separators = append(separators, i)
 			}
 		}

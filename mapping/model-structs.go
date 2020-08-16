@@ -46,6 +46,12 @@ type ModelStruct struct {
 
 	namer NamingConvention
 
+	databaseIndexes []*DatabaseIndex
+	// DatabaseSchemaName gets the database schema name.
+	DatabaseSchemaName string
+	// DatabaseName gets the database model equivalent (e.g. table) name.
+	DatabaseName string
+
 	store            map[interface{}]interface{}
 	structFieldCount int
 }
@@ -91,6 +97,11 @@ func (m *ModelStruct) Collection() string {
 // CreatedAt gets the 'CreatedAt' field for the model struct.
 func (m *ModelStruct) CreatedAt() (*StructField, bool) {
 	return m.createdAt, m.createdAt != nil
+}
+
+// DatabaseIndexes gets database indexes for given field.
+func (m *ModelStruct) DatabaseIndexes() []*DatabaseIndex {
+	return m.databaseIndexes
 }
 
 // DeletedAt gets the 'DeletedAt' field for the model struct.

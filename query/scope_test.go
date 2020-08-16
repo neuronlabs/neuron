@@ -13,7 +13,7 @@ import (
 
 // TestFormatQuery tests the format query methods
 func TestFormatQuery(t *testing.T) {
-	mp := mapping.NewModelMap(mapping.SnakeCase)
+	mp := mapping.NewModelMap(&mapping.MapOptions{Namer: mapping.SnakeCase})
 
 	err := mp.RegisterModels(&internal.Formatter{}, &internal.FormatterRelation{})
 	require.NoError(t, err)

@@ -24,7 +24,7 @@ type Service struct {
 	// Server serves defined models.
 	Server        server.Server
 	DB            database.DB
-	Authorizer    auth.Authorizer
+	Authorizer    auth.Verifier
 	Authenticator auth.Authenticator
 }
 
@@ -129,7 +129,12 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 	}
 
 	// Verify if all models have mapped repository or if there is a default one.
-	if err = s.Controller.VerifyModelRepositories(); err != nil {
+	if err = s.Controller.SetUnmappedModelRepositories(); err != nil {
+		return err
+	}
+
+	// Register models in their repositories.
+	if err = s.Controller.RegisterRepositoryModels(); err != nil {
 		return err
 	}
 
@@ -140,6 +145,20 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 			if err = initializer.Initialize(s.Controller); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Set default store if exists.
+	if s.Options.DefaultStore != nil {
+		if err = s.Controller.SetDefaultStore(s.Options.DefaultStore); err != nil {
+			return err
+		}
+	}
+
+	// Register named stores.
+	for name, store := range s.Options.Stores {
+		if err = s.Controller.RegisterStore(name, store); err != nil {
+			return err
 		}
 	}
 

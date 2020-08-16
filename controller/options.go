@@ -17,6 +17,10 @@ type Options struct {
 	SynchronousConnections bool
 	// UTCTimestamps is the flag that defines the format of the timestamps.
 	UTCTimestamps bool
+	// DefaultNotNullFields defines if the model non-pointer fields should be marked as not null by default.
+	DefaultNotNullFields bool
+	// ModelNotNullFields defines not null fields for specified model only.
+	ModelNotNullFields map[mapping.Model]struct{}
 }
 
 func defaultOptions() *Options {

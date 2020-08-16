@@ -50,23 +50,40 @@ func (c *Controller) RegisterRepositories(repositories ...repository.Repository)
 	}
 }
 
-// VerifyModelRepositories checks if all models have their repositories mapped.
-func (c *Controller) VerifyModelRepositories() error {
-	if c.DefaultRepository != nil {
-		return nil
-	}
-	var nonRepositoryModels string
+// SetUnmappedModelRepositories checks if all models have their repositories mapped.
+func (c *Controller) SetUnmappedModelRepositories() error {
+	var nonRepositoryModels []*mapping.ModelStruct
 	for _, model := range c.ModelMap.Models() {
 		_, ok := c.ModelRepositories[model]
 		if !ok {
-			if nonRepositoryModels != "" {
-				nonRepositoryModels += " "
+			nonRepositoryModels = append(nonRepositoryModels, model)
+			if c.DefaultRepository != nil {
+				c.ModelRepositories[model] = c.DefaultRepository
 			}
-			nonRepositoryModels += model.String()
 		}
 	}
-	if nonRepositoryModels != "" {
-		return errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the models: %s", nonRepositoryModels)
+	if c.DefaultRepository == nil && len(nonRepositoryModels) > 0 {
+		return errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the models: %v", nonRepositoryModels)
+	}
+	return nil
+}
+
+// RegisterRepositoryModels registers models in the repositories that implements repository.ModelRegistrar.
+func (c *Controller) RegisterRepositoryModels() error {
+	repositories := map[repository.Repository][]*mapping.ModelStruct{}
+	for _, model := range c.ModelMap.Models() {
+		r, err := c.GetRepositoryByModelStruct(model)
+		if err != nil {
+			return err
+		}
+		repositories[r] = append(repositories[r], model)
+	}
+	for repo, models := range repositories {
+		if registrar, isRegistrar := repo.(repository.ModelRegistrar); isRegistrar {
+			if err := registrar.RegisterModels(models...); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

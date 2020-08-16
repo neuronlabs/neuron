@@ -97,7 +97,6 @@ func TestNestedFields(t *testing.T) {
 				if assert.True(t, ok) {
 					assert.Equal(t, reflect.Float64, subNestedField.structField.reflectField.Type.Kind())
 					assert.Equal(t, nestedField.structField.Kind(), KindNested)
-					assert.True(t, subNestedField.structField.isOmitEmpty())
 				}
 			}
 		})

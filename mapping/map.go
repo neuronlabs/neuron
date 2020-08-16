@@ -17,17 +17,24 @@ import (
 type ModelMap struct {
 	collections map[string]*ModelStruct
 
-	DefaultRepository string
-	NameConvention    NamingConvention
-
+	// DefaultNotNull defines if the non pointer fields are by default database not nulls defined.
+	Options             *MapOptions
+	DefaultRepository   string
 	nestedIncludedLimit int
 }
 
+// MapOptions are the options for the model map.
+type MapOptions struct {
+	DefaultNotNull bool
+	ModelNotNull   map[Model]struct{}
+	Namer          NamingConvention
+}
+
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
-func NewModelMap(namer NamingConvention) *ModelMap {
+func NewModelMap(o *MapOptions) *ModelMap {
 	return &ModelMap{
-		collections:    make(map[string]*ModelStruct),
-		NameConvention: namer,
+		Options:     o,
+		collections: make(map[string]*ModelStruct),
 	}
 }
 
@@ -82,7 +89,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return errors.Wrapf(ErrModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
 		}
 		// build the model's structure and set into model map.
-		mStruct, err := buildModelStruct(model, m.NameConvention)
+		mStruct, err := buildModelStruct(model, m.Options.Namer)
 		if err != nil {
 			return err
 		}
@@ -91,7 +98,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return err
 		}
 		thisModels = append(thisModels, mStruct)
-		mStruct.namer = m.NameConvention
+		mStruct.namer = m.Options.Namer
 	}
 
 	var err error
@@ -136,6 +143,27 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 	for _, model := range thisModels {
 		model.structFieldCount = len(model.StructFields())
 		model.clearInitializeStoreKeys()
+	}
+
+	// Extract database and codec indexes.
+	for _, model := range thisModels {
+		defaultNotNull := m.Options.DefaultNotNull
+		for md := range m.Options.ModelNotNull {
+			mStruct, ok := m.GetModelStruct(md)
+			if !ok {
+				continue
+			}
+			if mStruct == model {
+				defaultNotNull = true
+				break
+			}
+		}
+		if err = model.extractDatabaseTags(defaultNotNull); err != nil {
+			return err
+		}
+		if err = model.extractCodecTags(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -273,7 +301,7 @@ func (m *ModelMap) setRelationships() error {
 					modelWithFK := relationship.joinModel
 
 					// get the name from the NamingConvention.
-					foreignKeyName := m.NameConvention.Namer(foreignKey)
+					foreignKeyName := m.Options.Namer.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
@@ -294,7 +322,7 @@ func (m *ModelMap) setRelationships() error {
 					}
 
 					// get the name from the NamingConvention.
-					m2mForeignKeyName := m.NameConvention.Namer(m2mForeignKey)
+					m2mForeignKeyName := m.Options.Namer.Namer(m2mForeignKey)
 
 					// check if given FK exists in the model's definitions.
 					m2mFK, ok := modelWithFK.ForeignKey(m2mForeignKeyName)
@@ -320,13 +348,13 @@ func (m *ModelMap) setRelationships() error {
 
 					modelWithFK := relationship.mStruct
 					// get the name from the NamingConvention.
-					foreignKeyName := m.NameConvention.Namer(foreignKey)
+					foreignKeyName := m.Options.Namer.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
 					if !ok {
 						foreignKey = model.modelType.Name() + "ID"
-						fk, ok = modelWithFK.ForeignKey(m.NameConvention.Namer(foreignKey))
+						fk, ok = modelWithFK.ForeignKey(m.Options.Namer.Namer(foreignKey))
 						if !ok {
 							log.Errorf("Foreign key: '%s' not found within Model: '%s'", foreignKeyName, modelWithFK.Type().Name())
 							return errors.WrapDetf(ErrModelDefinition, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKeyName, relField.Name(), model.Type().Name())
@@ -352,7 +380,7 @@ func (m *ModelMap) setRelationships() error {
 					foreignKey = relField.ReflectField().Name + "ID"
 				}
 				// Use the namer func to get the field's name
-				foreignKeyName := m.NameConvention.Namer(foreignKey)
+				foreignKeyName := m.Options.Namer.Namer(foreignKey)
 
 				// Search for the foreign key within the given model
 				fk, ok := model.ForeignKey(foreignKeyName)
@@ -367,7 +395,7 @@ func (m *ModelMap) setRelationships() error {
 					// check if the model might have a name of belong's to
 					modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
 					// check if the foreign key would be the name of the related structure
-					relatedTypeName := m.NameConvention.Namer(modelsForeign)
+					relatedTypeName := m.Options.Namer.Namer(modelsForeign)
 					fk, ok = model.ForeignKey(relatedTypeName)
 					if !ok {
 						fk, ok = model.findUntypedInvalidAttribute(relatedTypeName)
@@ -403,7 +431,7 @@ func (m *ModelMap) setRelationships() error {
 					continue
 				}
 
-				modelsForeign := m.NameConvention.Namer(relField.mStruct.Type().Name() + "ID")
+				modelsForeign := m.Options.Namer.Namer(relField.mStruct.Type().Name() + "ID")
 
 				fk, ok = relationship.mStruct.ForeignKey(modelsForeign)
 				if ok {

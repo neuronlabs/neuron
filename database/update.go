@@ -97,9 +97,9 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	if modelsAffected != int64(len(s.Models)) {
 		switch len(s.Models) {
 		case 1:
-			return 0, errors.Wrapf(query.ErrQueryNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
+			return 0, errors.Wrapf(query.ErrNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
 		default:
-			return 0, errors.Wrap(query.ErrQueryNoResult, "one or more of provided models doesn't exists")
+			return 0, errors.Wrap(query.ErrNoResult, "one or more of provided models doesn't exists")
 		}
 	}
 
