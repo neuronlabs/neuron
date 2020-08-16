@@ -1,0 +1,3 @@
+[submodule "neurogonesis"]
+	path = neurogonesis
+	url = git@github.com:neuronlabs/neurogonesis.git
