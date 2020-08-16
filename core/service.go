@@ -11,6 +11,7 @@ import (
 	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/controller"
 	"github.com/neuronlabs/neuron/database"
+	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/server"
 )
@@ -37,9 +38,7 @@ func New(options ...Option) *Service {
 	svc.Controller = controller.New(svc.Options.controllerOptions())
 	svc.DB = database.New(svc.Controller)
 	svc.Server = svc.Options.Server
-	if svc.Server == nil {
-		log.Fatalf("no server defined for the service")
-	}
+
 	if len(svc.Options.Models) == 0 {
 		log.Fatal("no models defined for the service")
 	}
@@ -51,6 +50,9 @@ func New(options ...Option) *Service {
 
 // Run starts the service.
 func (s *Service) Run(ctx context.Context) error {
+	if s.Server == nil {
+		return errors.Wrap(server.ErrServer, "no server defined for the service")
+	}
 	if !s.Options.HandleSignals {
 		return s.Server.Serve()
 	}
@@ -140,7 +142,7 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 
 	// Initialize all repositories that implements Initializer interface.
 	for _, repo := range s.Controller.Repositories {
-		initializer, ok := repo.(Initializer)
+		initializer, ok := repo.(controller.Initializer)
 		if ok {
 			if err = initializer.Initialize(s.Controller); err != nil {
 				return err
@@ -198,9 +200,4 @@ func (s *Service) serverOptions() server.Options {
 		DB:            s.DB,
 	}
 	return o
-}
-
-// Initializer is an interface used to initialize services, repositories etc.
-type Initializer interface {
-	Initialize(c *controller.Controller) error
 }

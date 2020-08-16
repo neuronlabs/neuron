@@ -74,10 +74,22 @@ func newController(options *Options) *Controller {
 		options.NamingConvention = mapping.SnakeCase
 	}
 	c.Options = options
-	c.ModelMap = mapping.NewModelMap(&mapping.MapOptions{
-		DefaultNotNull: c.Options.DefaultNotNullFields,
-		ModelNotNull:   c.Options.ModelNotNullFields,
-		Namer:          c.Options.NamingConvention,
-	})
+
+	// Set the naming convention for the model map.
+	mapOptions := []mapping.MapOption{mapping.WithNamingConvention(c.Options.NamingConvention)}
+	// Set all not null models.
+	for model := range c.Options.ModelNotNullFields {
+		mapOptions = append(mapOptions, mapping.WithDefaultNotNullModel(model))
+	}
+	// Set optional all not null fields.
+	if c.Options.DefaultNotNullFields {
+		mapOptions = append(mapOptions, mapping.WithDefaultNotNull)
+	}
+	c.ModelMap = mapping.NewModelMap(mapOptions...)
 	return c
+}
+
+// Initializer is an interface used to initialize services, repositories etc.
+type Initializer interface {
+	Initialize(c *Controller) error
 }

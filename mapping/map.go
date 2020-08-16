@@ -23,15 +23,12 @@ type ModelMap struct {
 	nestedIncludedLimit int
 }
 
-// MapOptions are the options for the model map.
-type MapOptions struct {
-	DefaultNotNull bool
-	ModelNotNull   map[Model]struct{}
-	Namer          NamingConvention
-}
-
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
-func NewModelMap(o *MapOptions) *ModelMap {
+func NewModelMap(options ...MapOption) *ModelMap {
+	o := &MapOptions{}
+	for _, option := range options {
+		option(o)
+	}
 	return &ModelMap{
 		Options:     o,
 		collections: make(map[string]*ModelStruct),
@@ -89,7 +86,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return errors.Wrapf(ErrModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
 		}
 		// build the model's structure and set into model map.
-		mStruct, err := buildModelStruct(model, m.Options.Namer)
+		mStruct, err := buildModelStruct(model, m.Options.NamingConvention)
 		if err != nil {
 			return err
 		}
@@ -98,7 +95,7 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 			return err
 		}
 		thisModels = append(thisModels, mStruct)
-		mStruct.namer = m.Options.Namer
+		mStruct.namer = m.Options.NamingConvention
 	}
 
 	var err error
@@ -301,7 +298,7 @@ func (m *ModelMap) setRelationships() error {
 					modelWithFK := relationship.joinModel
 
 					// get the name from the NamingConvention.
-					foreignKeyName := m.Options.Namer.Namer(foreignKey)
+					foreignKeyName := m.Options.NamingConvention.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
@@ -322,7 +319,7 @@ func (m *ModelMap) setRelationships() error {
 					}
 
 					// get the name from the NamingConvention.
-					m2mForeignKeyName := m.Options.Namer.Namer(m2mForeignKey)
+					m2mForeignKeyName := m.Options.NamingConvention.Namer(m2mForeignKey)
 
 					// check if given FK exists in the model's definitions.
 					m2mFK, ok := modelWithFK.ForeignKey(m2mForeignKeyName)
@@ -348,13 +345,13 @@ func (m *ModelMap) setRelationships() error {
 
 					modelWithFK := relationship.mStruct
 					// get the name from the NamingConvention.
-					foreignKeyName := m.Options.Namer.Namer(foreignKey)
+					foreignKeyName := m.Options.NamingConvention.Namer(foreignKey)
 
 					// check if given FK exists in the model's definitions.
 					fk, ok := modelWithFK.ForeignKey(foreignKeyName)
 					if !ok {
 						foreignKey = model.modelType.Name() + "ID"
-						fk, ok = modelWithFK.ForeignKey(m.Options.Namer.Namer(foreignKey))
+						fk, ok = modelWithFK.ForeignKey(m.Options.NamingConvention.Namer(foreignKey))
 						if !ok {
 							log.Errorf("Foreign key: '%s' not found within Model: '%s'", foreignKeyName, modelWithFK.Type().Name())
 							return errors.WrapDetf(ErrModelDefinition, "Foreign key: '%s' not found for the relationship: '%s'. Model: '%s'", foreignKeyName, relField.Name(), model.Type().Name())
@@ -380,7 +377,7 @@ func (m *ModelMap) setRelationships() error {
 					foreignKey = relField.ReflectField().Name + "ID"
 				}
 				// Use the namer func to get the field's name
-				foreignKeyName := m.Options.Namer.Namer(foreignKey)
+				foreignKeyName := m.Options.NamingConvention.Namer(foreignKey)
 
 				// Search for the foreign key within the given model
 				fk, ok := model.ForeignKey(foreignKeyName)
@@ -395,7 +392,7 @@ func (m *ModelMap) setRelationships() error {
 					// check if the model might have a name of belong's to
 					modelsForeign := relField.relationship.mStruct.Type().Name() + "ID"
 					// check if the foreign key would be the name of the related structure
-					relatedTypeName := m.Options.Namer.Namer(modelsForeign)
+					relatedTypeName := m.Options.NamingConvention.Namer(modelsForeign)
 					fk, ok = model.ForeignKey(relatedTypeName)
 					if !ok {
 						fk, ok = model.findUntypedInvalidAttribute(relatedTypeName)
@@ -431,7 +428,7 @@ func (m *ModelMap) setRelationships() error {
 					continue
 				}
 
-				modelsForeign := m.Options.Namer.Namer(relField.mStruct.Type().Name() + "ID")
+				modelsForeign := m.Options.NamingConvention.Namer(relField.mStruct.Type().Name() + "ID")
 
 				fk, ok = relationship.mStruct.ForeignKey(modelsForeign)
 				if ok {
