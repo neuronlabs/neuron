@@ -1,3 +1,0 @@
-[submodule "generator"]
-	path = generator
-	url = git@github.com:neuronlabs/neuron-generator.git
