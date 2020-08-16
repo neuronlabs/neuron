@@ -219,7 +219,7 @@ func queryClearRelations(ctx context.Context, db DB, s *query.Scope, relField *m
 
 func clearBelongsToRelation(ctx context.Context, db DB, s *query.Scope, relField *mapping.StructField) (int64, error) {
 	// Removing relations from the belongs to relationship involves setting foreign key field's value to nullable.
-	if !relField.Relationship().ForeignKey().IsPtr() {
+	if !relField.Relationship().ForeignKey().DatabaseNotNull() {
 		return 0, errors.Wrapf(mapping.ErrFieldNotNullable, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	if err := requireNoFilters(s); err != nil {
@@ -244,7 +244,7 @@ func clearBelongsToRelation(ctx context.Context, db DB, s *query.Scope, relField
 
 func clearHasOneRelation(ctx context.Context, db DB, s *query.Scope, relField *mapping.StructField) (int64, error) {
 	// Removing relations from the HasOne relationships involves setting related foreign key value to zero.
-	if !relField.Relationship().ForeignKey().IsPtr() {
+	if !relField.Relationship().ForeignKey().DatabaseNotNull() {
 		return 0, errors.Wrapf(mapping.ErrFieldNotNullable, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	// If the relationship structure implements update hooks we need to firstly get he
@@ -296,7 +296,7 @@ func clearHasOneRelation(ctx context.Context, db DB, s *query.Scope, relField *m
 
 func clearHasManyRelations(ctx context.Context, db DB, s *query.Scope, relField *mapping.StructField) (int64, error) {
 	// Removing relations from the HasOne relationships involves setting related foreign key value to zero.
-	if !relField.Relationship().ForeignKey().IsPtr() {
+	if !relField.Relationship().ForeignKey().DatabaseNotNull() {
 		return 0, errors.Wrapf(mapping.ErrFieldNotNullable, "provided relation field: '%s' doesn't allow setting null values", relField)
 	}
 	// If the relationship structure implements update hooks we need to firstly get he
