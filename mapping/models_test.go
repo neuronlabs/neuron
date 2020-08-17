@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-//go:generate neurogonesis models methods --single-file --format=goimports .
+//go:generate neurogns models methods methods --single-file --format=goimports .
 
 // Model1WithMany2Many is the model with the many2many relationship.
 type Model1WithMany2Many struct {

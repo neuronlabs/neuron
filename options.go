@@ -10,13 +10,6 @@ import (
 	"github.com/neuronlabs/neuron/store"
 )
 
-// AuthorizationVerifier sets the authorization verifier for the service.
-func AuthorizationVerifier(authorizer auth.Verifier) core.Option {
-	return func(o *core.Options) {
-		o.Authorizer = authorizer
-	}
-}
-
 // Authenticator sets the authenticator option.
 func Authenticator(authenticator auth.Authenticator) core.Option {
 	return func(o *core.Options) {
@@ -115,9 +108,23 @@ func SynchronousConnections(sync bool) core.Option {
 	}
 }
 
+// Tokener sets provided tokener for the service options.
+func Tokener(tokener auth.Tokener) core.Option {
+	return func(o *core.Options) {
+		o.Tokener = tokener
+	}
+}
+
 // UTCTimestamps would set the timestamps of the service to UTC time zoned.
 func UTCTimestamps(utcTimestamps bool) core.Option {
 	return func(o *core.Options) {
 		o.UTCTimestamps = utcTimestamps
+	}
+}
+
+// Verifier sets the authorization verifier for the service.
+func Verifier(authorizer auth.Verifier) core.Option {
+	return func(o *core.Options) {
+		o.Verifier = authorizer
 	}
 }

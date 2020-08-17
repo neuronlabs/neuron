@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate neurogonesis models --format=goimports --single-file --exclude=Transaction,Operator,Scope .
+//go:generate neurogns models methods --format=goimports --single-file --exclude=Transaction,Operator,Scope .
 
 // Formatter is the test model for the query tests.
 type Formatter struct {

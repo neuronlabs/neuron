@@ -25,8 +25,9 @@ type Service struct {
 	// Server serves defined models.
 	Server        server.Server
 	DB            database.DB
-	Authorizer    auth.Verifier
+	Verifier      auth.Verifier
 	Authenticator auth.Authenticator
+	Tokener       auth.Tokener
 }
 
 // New creates new service for provided controller config.
@@ -38,6 +39,9 @@ func New(options ...Option) *Service {
 	svc.Controller = controller.New(svc.Options.controllerOptions())
 	svc.DB = database.New(svc.Controller)
 	svc.Server = svc.Options.Server
+	svc.Authenticator = svc.Options.Authenticator
+	svc.Verifier = svc.Options.Verifier
+	svc.Tokener = svc.Options.Tokener
 
 	if len(svc.Options.Models) == 0 {
 		log.Fatal("no models defined for the service")
@@ -194,7 +198,8 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 
 func (s *Service) serverOptions() server.Options {
 	o := server.Options{
-		Authorizer:    s.Authorizer,
+		Tokener:       s.Tokener,
+		Verifier:      s.Verifier,
 		Authenticator: s.Authenticator,
 		Controller:    s.Controller,
 		DB:            s.DB,

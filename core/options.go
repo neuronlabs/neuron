@@ -26,8 +26,9 @@ type Options struct {
 	MigrateModels     []mapping.Model
 	DefaultNotNull    bool
 	Server            server.Server
-	Authorizer        auth.Verifier
+	Verifier          auth.Verifier
 	Authenticator     auth.Authenticator
+	Tokener           auth.Tokener
 	HandleSignals     bool
 	Context           context.Context
 	SynchronousORM    bool

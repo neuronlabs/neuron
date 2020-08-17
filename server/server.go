@@ -28,9 +28,14 @@ type EndpointsGetter interface {
 
 // Options are the server initialization options.
 type Options struct {
-	Authorizer    auth.Verifier
+	// Authentication, authorization instances.
+	Verifier      auth.Verifier
 	Authenticator auth.Authenticator
 	Tokener       auth.Tokener
-	Controller    *controller.Controller
-	DB            database.DB
+
+	// Model, repositories and stores controller.
+	Controller *controller.Controller
+
+	// Database query executioner.
+	DB database.DB
 }
