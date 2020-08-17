@@ -61,10 +61,10 @@ The whole process of the transaction is being orchestrated by the `database.Tx`.
 
 ## Related packages
 
-##### [Code Generation](https://github.com/neuronlabs/neuron-generator)
+##### [Code Generation](https://github.com/neuronlabs/neurogonesis)
 
 Neuron requires the model to implement multiple interfaces. In order to make this process faster and easier a code generation 
-tool `neuron-generator` - [https://github.com/neuronlabs/neuron-generator](https://github.com/neuronlabs/neuron-generator) is implemented. 
+tool `neurogonesis` - [https://github.com/neuronlabs/neurogonesis](https://github.com/neuronlabs/neurogonesis) is implemented. 
 
 It contains a CLI tool that might be used as `go:generate` to scan golang code and implement all required interfaces for your models.
 See to check more details about `go:generate` - [https://blog.golang.org/generate](https://blog.golang.org/generate).
@@ -96,8 +96,8 @@ for specific usages.
 package main
 
 // Define go:generate generators and use it every time you change any model - using go:generate.
-//go:generate neuron-generator models --format=goimports --single-file .
-//go:generate neuron-generator collections --format=goimports  --single-file .
+//go:generate neurogonesis models --format=goimports --single-file .
+//go:generate neurogonesis collections --format=goimports  --single-file .
 
 // User is the model that is stored on the 'main' repository.
 // It is related to multiple 'Pet' models.
@@ -267,6 +267,7 @@ The `neuron` is composed of the following packages:
 * `query/filters` 	- contains query filters structures and implementations.
 * `repository` 	- is a package used to store and register the repositories.
 * `server`			- defines interfaces used as the servers.
+* `store`           - key-value stores structures and implementations.
 
 
 ## Docs
