@@ -154,6 +154,28 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 		}
 	}
 
+	// Initialize authenticators, tokeners and verifiers.
+	if s.Authenticator != nil {
+		if i, ok := s.Authenticator.(controller.Initializer); ok {
+			if err = i.Initialize(s.Controller); err != nil {
+				return err
+			}
+		}
+	}
+	if s.Tokener != nil {
+		if i, ok := s.Tokener.(controller.Initializer); ok {
+			if err = i.Initialize(s.Controller); err != nil {
+				return err
+			}
+		}
+	}
+	if s.Verifier != nil {
+		if i, ok := s.Verifier.(controller.Initializer); ok {
+			if err = i.Initialize(s.Controller); err != nil {
+				return err
+			}
+		}
+	}
 	// Set default store if exists.
 	if s.Options.DefaultStore != nil {
 		if err = s.Controller.SetDefaultStore(s.Options.DefaultStore); err != nil {
