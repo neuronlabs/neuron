@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
@@ -12,7 +12,7 @@ import (
 // DB is the common interface that allows to do the queries.
 type DB interface {
 	// Controller returns orm based controller.
-	Controller() *controller.Controller
+	Controller() *core.Controller
 
 	// Query creates a new query for provided 'model'.
 	Query(model *mapping.ModelStruct, models ...mapping.Model) Builder
@@ -107,7 +107,7 @@ type QueryRelationClearer interface {
 
 // New creates new DB for given controller.
 //nolint:golint
-func New(c *controller.Controller) *db {
+func New(c *core.Controller) *db {
 	return &db{c: c}
 }
 
@@ -116,7 +116,7 @@ var _ DB = &db{}
 
 // Composer is the default query composer that implements DB interface.
 type db struct {
-	c *controller.Controller
+	c *core.Controller
 }
 
 // Begin starts new transaction with respect to the transaction context and transaction options with controller 'c'.
@@ -125,7 +125,7 @@ func (d *db) Begin(ctx context.Context, options *query.TxOptions) *Tx {
 }
 
 // Controller implements DB interface.
-func (d *db) Controller() *controller.Controller {
+func (d *db) Controller() *core.Controller {
 	return d.c
 }
 

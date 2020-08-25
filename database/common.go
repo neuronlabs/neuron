@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -27,7 +27,7 @@ func Exists(ctx context.Context, db DB, s *query.Scope) (bool, error) {
 	return exister.Exists(ctx, s)
 }
 
-func getRepository(c *controller.Controller, s *query.Scope) repository.Repository {
+func getRepository(c *core.Controller, s *query.Scope) repository.Repository {
 	repo, err := c.GetRepositoryByModelStruct(s.ModelStruct)
 	if err != nil {
 		log.Panic(err)
@@ -35,7 +35,7 @@ func getRepository(c *controller.Controller, s *query.Scope) repository.Reposito
 	return repo
 }
 
-func getModelRepository(c *controller.Controller, model *mapping.ModelStruct) repository.Repository {
+func getModelRepository(c *core.Controller, model *mapping.ModelStruct) repository.Repository {
 	repo, err := c.GetRepositoryByModelStruct(model)
 	if err != nil {
 		log.Panic(err)

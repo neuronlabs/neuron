@@ -2,17 +2,11 @@ package server
 
 import (
 	"context"
-
-	"github.com/neuronlabs/neuron/auth"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/database"
 )
 
 // Server is the interface used
 type Server interface {
 	EndpointsGetter
-	// Initialize apply controller and initialize given server.
-	Initialize(options Options) error
 	// ListenAndServe starts listen and serve the requests.
 	Serve() error
 	// Shutdown defines gentle shutdown of the server and all it's connections.
@@ -24,18 +18,4 @@ type Server interface {
 type EndpointsGetter interface {
 	// GetEndpoints is a method that gets server endpoints after initialization process.
 	GetEndpoints() []*Endpoint
-}
-
-// Options are the server initialization options.
-type Options struct {
-	// Authentication, authorization instances.
-	Verifier      auth.Verifier
-	Authenticator auth.Authenticator
-	Tokener       auth.Tokener
-
-	// Model, repositories and stores controller.
-	Controller *controller.Controller
-
-	// Database query executioner.
-	DB database.DB
 }

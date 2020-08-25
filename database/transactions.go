@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -62,7 +62,7 @@ func RunInTransaction(ctx context.Context, db DB, options *query.TxOptions, txFu
 type Tx struct {
 	Transaction *query.Transaction
 
-	c                  *controller.Controller
+	c                  *core.Controller
 	err                error
 	uniqueTransactions []*uniqueTx
 }
@@ -187,7 +187,7 @@ func (t *Tx) ID() uuid.UUID {
 }
 
 // Controller returns transaction controller.
-func (t *Tx) Controller() *controller.Controller {
+func (t *Tx) Controller() *core.Controller {
 	return t.c
 }
 
@@ -587,7 +587,7 @@ func (t *Tx) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, mod
 	return relationModels, nil
 }
 
-func begin(ctx context.Context, c *controller.Controller, options *query.TxOptions) *Tx {
+func begin(ctx context.Context, c *core.Controller, options *query.TxOptions) *Tx {
 	if options == nil {
 		options = &query.TxOptions{}
 	}

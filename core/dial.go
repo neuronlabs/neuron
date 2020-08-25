@@ -1,11 +1,10 @@
-package controller
+package core
 
 import (
 	"context"
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
@@ -29,17 +28,14 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	wg := &sync.WaitGroup{}
 	waitChan := make(chan struct{})
 
-	jobs, err := c.dialJobsCreator(ctx, wg)
-	if err != nil {
-		return err
-	}
-	// create error channel
+	jobs := c.dialJobsCreator(ctx, wg)
+	// Create error channel.
 	errChan := make(chan error)
-	// dial to all repositories
+	// Dial to all repositories.
 	for job := range jobs {
 		c.dial(ctx, job, wg, errChan)
 	}
-	// create wait group channel finish function.
+	// Create wait group channel finish function.
 	go func() {
 		wg.Wait()
 		close(waitChan)
@@ -58,10 +54,7 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan Dialer, error) {
-	if len(c.Repositories) == 0 {
-		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
-	}
+func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Dialer {
 	out := make(chan Dialer)
 	go func() {
 		defer close(out)
@@ -91,8 +84,22 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<
 				return
 			}
 		}
+
+		// Iterate over file stores.
+		for _, s := range c.FileStores {
+			dialer, isDialer := s.(Dialer)
+			if !isDialer {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- dialer:
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
-	return out, nil
+	return out
 }
 
 func (c *Controller) dial(ctx context.Context, dialer Dialer, wg *sync.WaitGroup, errChan chan<- error) {

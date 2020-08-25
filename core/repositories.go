@@ -1,4 +1,4 @@
-package controller
+package core
 
 import (
 	"github.com/neuronlabs/neuron/errors"

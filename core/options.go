@@ -1,57 +1,27 @@
 package core
 
 import (
-	"context"
-
 	"github.com/neuronlabs/neuron/auth"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/database"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/repository"
-	"github.com/neuronlabs/neuron/server"
-	"github.com/neuronlabs/neuron/store"
 )
 
-// Options is the structure that contains service options.
+// Options defines the configuration for the Options.
 type Options struct {
-	Name              string
-	Version           string
-	NamingConvention  mapping.NamingConvention
-	DefaultRepository repository.Repository
-	RepositoryModels  map[repository.Repository][]mapping.Model
-	DefaultStore      store.Store
-	Stores            map[string]store.Store
-	Collections       []database.Collection
-	Models            []mapping.Model
-	MigrateModels     []mapping.Model
-	DefaultNotNull    bool
-	Server            server.Server
-	Verifier          auth.Verifier
-	Authenticator     auth.Authenticator
-	Tokener           auth.Tokener
-	HandleSignals     bool
-	Context           context.Context
-	SynchronousORM    bool
-	UTCTimestamps     bool
-}
-
-func (o *Options) controllerOptions() *controller.Options {
-	cfg := &controller.Options{
-		NamingConvention:       o.NamingConvention,
-		SynchronousConnections: o.SynchronousORM,
-		UTCTimestamps:          o.UTCTimestamps,
-	}
-	return cfg
+	AccountModel auth.Account
+	// NamingConvention is the naming convention used while mapping the models.
+	NamingConvention mapping.NamingConvention
+	// SynchronousConnections defines if the query relation includes would be taken concurrently.
+	SynchronousConnections bool
+	// UTCTimestamps is the flag that defines the format of the timestamps.
+	UTCTimestamps bool
+	// DefaultNotNullFields defines if the model non-pointer fields should be marked as not null by default.
+	DefaultNotNullFields bool
+	// ModelNotNullFields defines not null fields for specified model only.
+	ModelNotNullFields map[mapping.Model]struct{}
 }
 
 func defaultOptions() *Options {
 	return &Options{
-		HandleSignals:    true,
 		NamingConvention: mapping.SnakeCase,
-		RepositoryModels: map[repository.Repository][]mapping.Model{},
-		Stores:           map[string]store.Store{},
 	}
 }
-
-// Option is the function that sets the options for the service.
-type Option func(o *Options)

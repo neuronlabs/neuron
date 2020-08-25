@@ -1,4 +1,4 @@
-package core
+package service
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"github.com/neuronlabs/neuron/server"
 )
 
-// ServiceVersion is a structure that maps the service with it's version.
-type ServiceVersion struct {
+// Version is a structure that maps the service with it's version.
+type Version struct {
 	Version string
 	Service *Service
 }
@@ -26,7 +26,7 @@ type VersionedService struct {
 // VersionedOptions are the multi version service options.
 type VersionedOptions struct {
 	HandleSignals bool
-	Versions      []ServiceVersion
+	Versions      []Version
 	Server        server.VersionedServer
 }
 
@@ -56,7 +56,7 @@ func (v *VersionedService) Initialize(ctx context.Context) error {
 		if err := versioned.Service.Initialize(ctx); err != nil {
 			return err
 		}
-		if err := v.Options.Server.InitializeVersion(versioned.Version, versioned.Service.serverOptions()); err != nil {
+		if err := v.Options.Server.InitializeVersion(versioned.Version, versioned.Service.Controller); err != nil {
 			return err
 		}
 	}

@@ -14,7 +14,7 @@ type Tokener interface {
 	// InspectToken extracts claims from the token.
 	InspectToken(ctx context.Context, token string) (claims Claims, err error)
 	// Token creates the token for provided options.
-	Token(account Account, options ...TokenOption) (Token, error)
+	Token(ctx context.Context, account Account, options ...TokenOption) (Token, error)
 	// RevokeToken revokes provided 'token'
 	RevokeToken(ctx context.Context, token string) error
 }
@@ -37,6 +37,19 @@ type TokenOptions struct {
 	ExpirationTime time.Duration
 	// RefreshExpirationTime is the expiration time for refresh token
 	RefreshExpirationTime time.Duration
+	// RefreshToken is the optional refresh token used on token creation, when the refresh token is still valid (optional).
+	RefreshToken string
+
+	// Optional settings.
+	//
+	// Scope contains space separated authorization scopes that the token is available for (optional).
+	Scope string
+	// Audience is the audience of the token.
+	Audience string
+	// Issuer is the token issuer name.
+	Issuer string
+	// NotBefore is an option that sets the token to be valid not before provided time.
+	NotBefore time.Time
 }
 
 // TokenOption is the token options changer function.
@@ -56,22 +69,77 @@ func TokenRefreshExpirationTime(d time.Duration) TokenOption {
 	}
 }
 
+// TokenRefreshToken sets the refresh token for the token creation.
+func TokenRefreshToken(refreshToken string) TokenOption {
+	return func(o *TokenOptions) {
+		o.RefreshToken = refreshToken
+	}
+}
+
+// TokenScope sets the space separated scopes where the token should have an access.
+func TokenScope(scope string) TokenOption {
+	return func(o *TokenOptions) {
+		o.Scope = scope
+	}
+}
+
+// TokenWithAudience sets the token audience.
+func TokenWithAudience(audience string) TokenOption {
+	return func(o *TokenOptions) {
+		o.Audience = audience
+	}
+}
+
+// TokenWithIssuer is the token option that sets up the issuer.
+func TokenWithIssuer(issuer string) TokenOption {
+	return func(o *TokenOptions) {
+		o.Issuer = issuer
+	}
+}
+
+// TokenWithNotBefore is the token option that sets up the not before option.
+func TokenWithNotBefore(notBefore time.Time) TokenOption {
+	return func(o *TokenOptions) {
+		o.NotBefore = notBefore
+	}
+}
+
 // AccessClaims is an interface used for the access token claims. It should store the whole user account.
 type AccessClaims interface {
-	Claims
+	// GetAccount gets the account stored in given token.
 	GetAccount() Account
+	Claims
 }
 
 // Claims is an interface used for the tokens.
 type Claims interface {
+	// Subject should contain account id string value.
+	Subject() string
+	// ExpiresIn should define when (in seconds) the claims will expire.
 	ExpiresIn() int64
+	// Valid validates the claims.
 	Valid() error
 }
 
-// RefreshClaims is an interface used for the refresh token claims. It should store string - user account id.
-type RefreshClaims interface {
-	GetAccountID() string
-	Claims
+// NotBeforer is an interface that allows to get Token's NotBefore (nbf) value.
+type NotBeforer interface {
+	NotBefore() int64
+}
+
+// Scoper is an interface that allows to get Token's authorization scope value. This should return all of the scopes
+// for which the token is authorized, space separated.
+type Scoper interface {
+	Scope() string
+}
+
+// Audiencer is an interface that allows to get token's optional audience value.
+type Audiencer interface {
+	Audience() string
+}
+
+// Issuer is an interface that allows to get the token issuer.
+type Issuer interface {
+	Issuer() string
 }
 
 // SigningMethod is an interface used for signing and verify the string.
@@ -142,5 +210,12 @@ func TokenerRefreshTokenExpiration(op time.Duration) TokenerOption {
 func TokenerSigningMethod(op SigningMethod) TokenerOption {
 	return func(o *TokenerOptions) {
 		o.SigningMethod = op
+	}
+}
+
+// TokenerStore sets the store for the tokener.
+func TokenerStore(s store.Store) TokenerOption {
+	return func(o *TokenerOptions) {
+		o.Store = s
 	}
 }

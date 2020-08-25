@@ -1,9 +1,10 @@
-package controller
+package core
 
 import (
 	"context"
 	"time"
 
+	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -77,6 +78,16 @@ func (c *Controller) RegisterModels(models ...mapping.Model) (err error) {
 	}
 
 	log.Debug3f("Models registered in: %s", time.Since(start))
+	return nil
+}
+
+// SetAccountModel sets the account model for the controller.
+func (c *Controller) SetAccountModel(account auth.Account) error {
+	mStruct, err := c.getModelStruct(account)
+	if err != nil {
+		return err
+	}
+	c.AccountModel = mStruct
 	return nil
 }
 

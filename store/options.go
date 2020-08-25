@@ -12,6 +12,10 @@ type Options struct {
 	CleanupInterval time.Duration
 	// Prefix, Suffix are the default prefix, suffix for the record key.
 	Prefix, Suffix string
+	// ConnectionURL is the optional url for store connection.
+	ConnectionURL string
+	// FileName is the an optional setting when the store's temporary value are being stored.
+	FileName string
 }
 
 // DefaultOptions creates the default store options.
@@ -19,7 +23,6 @@ func DefaultOptions() *Options {
 	return &Options{
 		DefaultExpiration: -1,
 		CleanupInterval:   -1,
-		Prefix:            "nrn_",
 	}
 }
 
@@ -44,5 +47,19 @@ func WithPrefix(prefix string) Option {
 func WithSuffix(suffix string) Option {
 	return func(o *Options) {
 		o.Suffix = suffix
+	}
+}
+
+// WithConnectionURL sets the connectionURL for the store.
+func WithConnectionURL(connectionURL string) Option {
+	return func(o *Options) {
+		o.ConnectionURL = connectionURL
+	}
+}
+
+// WithFileName sets the filename setting for the store.
+func WithFileName(fileName string) Option {
+	return func(o *Options) {
+		o.FileName = fileName
 	}
 }

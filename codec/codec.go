@@ -3,7 +3,7 @@ package codec
 import (
 	"io"
 
-	"github.com/neuronlabs/neuron/controller"
+	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 )
@@ -36,10 +36,10 @@ type ModelUnmarshaler interface {
 
 // ParameterParser is an interface that parses parameters in given codec format.
 type ParameterParser interface {
-	ParseParameters(c *controller.Controller, q *query.Scope, parameters query.Parameters) error
+	ParseParameters(c *core.Controller, q *query.Scope, parameters query.Parameters) error
 }
 
 // ParameterExtractor is an interface that extracts query parameters from given scope.
 type ParameterExtractor interface {
-	ExtractParameters(c *controller.Controller, q *query.Scope) (query.Parameters, error)
+	ExtractParameters(c *core.Controller, q *query.Scope) (query.Parameters, error)
 }

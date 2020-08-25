@@ -1,4 +1,4 @@
-package controller
+package core
 
 import (
 	"github.com/neuronlabs/neuron/errors"
@@ -24,7 +24,7 @@ func (c *Controller) RegisterStore(name string, s store.Store) error {
 	return nil
 }
 
-// SetDefaultStore sets the default store.in the controller.
+// SetDefaultStore sets the default store in the controller.
 func (c *Controller) SetDefaultStore(s store.Store) error {
 	if c.DefaultStore != nil {
 		return errors.Wrap(ErrStoreAlreadySet, "default store already exists")

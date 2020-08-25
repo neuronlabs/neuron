@@ -24,6 +24,13 @@ type Account interface {
 	PasswordHashField() string
 }
 
+// Salter is an interface for accounts that has the 'salt' field.
+type Salter interface {
+	SaltFielder
+	SaltSetter
+	SaltGetter
+}
+
 // SaltSetter is an interface for Account that sets it's salt field value.
 type SaltSetter interface {
 	SetSalt(salt []byte)

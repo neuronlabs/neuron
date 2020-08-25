@@ -17,8 +17,6 @@ type Authenticator interface {
 type AuthenticatorOptions struct {
 	// Store is a store used for some authenticator implementations.
 	Store store.Store
-	// AccountModel is the option that defines account model for the authenticator.
-	AccountModel Account
 	// BCryptCost is an option that defines the cost of given password.
 	BCryptCost int
 	// AuthenticateMethod is a method used for authentication.
@@ -48,13 +46,6 @@ const (
 func AuthenticatorStore(op store.Store) AuthenticatorOption {
 	return func(o *AuthenticatorOptions) {
 		o.Store = op
-	}
-}
-
-// AuthenticatorAccountModel is an option that sets AccountModel in the auth options.
-func AuthenticatorAccountModel(op Account) AuthenticatorOption {
-	return func(o *AuthenticatorOptions) {
-		o.AccountModel = op
 	}
 }
 

@@ -1,11 +1,10 @@
-package controller
+package core
 
 import (
 	"context"
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
 
@@ -27,17 +26,15 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
-	jobs, err := c.closeJobsCreator(ctx, wg)
-	if err != nil {
-		return err
-	}
+	waitChan := make(chan struct{})
+	jobs := c.closeJobsCreator(ctx, wg)
 
 	errChan := make(chan error)
 	for job := range jobs {
-		c.closeRepo(ctx, job, wg, errChan)
+		log.Debugf("Closing: %T", job)
+		c.closeCloser(ctx, job, wg, errChan)
 	}
 
-	waitChan := make(chan struct{})
 	go func() {
 		wg.Wait()
 		close(waitChan)
@@ -56,10 +53,7 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (<-chan Closer, error) {
-	if len(c.Repositories) == 0 {
-		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
-	}
+func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Closer {
 	out := make(chan Closer)
 	go func() {
 		defer close(out)
@@ -80,21 +74,39 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) (
 
 		// Close all stores.
 		for _, s := range c.Stores {
+			closer, isCloser := s.(Closer)
+			if !isCloser {
+				continue
+			}
 			wg.Add(1)
 			select {
-			case out <- s:
+			case out <- closer:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		// Close all file stores.
+		for _, s := range c.FileStores {
+			closer, isCloser := s.(Closer)
+			if !isCloser {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- closer:
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-	return out, nil
+	return out
 }
 
-func (c *Controller) closeRepo(ctx context.Context, repo Closer, wg *sync.WaitGroup, errChan chan<- error) {
+func (c *Controller) closeCloser(ctx context.Context, closer Closer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
-		if err := repo.Close(ctx); err != nil {
+		if err := closer.Close(ctx); err != nil {
 			errChan <- err
 			return
 		}

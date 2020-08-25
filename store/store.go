@@ -17,8 +17,6 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 	// Find finds the records stored using some specific pattern.
 	Find(ctx context.Context, options ...FindOption) ([]*Record, error)
-	// Close closes the store connection.
-	Close(ctx context.Context) error
 }
 
 // Record is a single entry stored within a store.

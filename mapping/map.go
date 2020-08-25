@@ -82,8 +82,16 @@ func (m *ModelMap) RegisterModels(models ...Model) error {
 	for _, model := range models {
 		log.Debug3f("Registering Model: '%T'", model)
 		// check if the model wasn't already registered within the ModelMap 'm'.
-		if m.collections[model.NeuronCollectionName()] != nil {
-			return errors.Wrapf(ErrModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
+		if mStruct, ok := m.collections[model.NeuronCollectionName()]; ok {
+			t := reflect.TypeOf(model)
+			if t.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			if mStruct.modelType != t {
+				return errors.Wrapf(ErrModelContainer, "model: '%s' was already registered.", model.NeuronCollectionName())
+			}
+			// This model was already registered. Continue.
+			continue
 		}
 		// build the model's structure and set into model map.
 		mStruct, err := buildModelStruct(model, m.Options.NamingConvention)

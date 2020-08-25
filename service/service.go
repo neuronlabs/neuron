@@ -1,4 +1,4 @@
-package core
+package service
 
 import (
 	"context"
@@ -8,9 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/neuronlabs/neuron/auth"
-	"github.com/neuronlabs/neuron/controller"
-	"github.com/neuronlabs/neuron/database"
+	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/server"
@@ -19,15 +17,10 @@ import (
 // Service is the neuron service struct definition.
 type Service struct {
 	Options *Options
-
 	// Controller controls service model definitions, repositories and configuration.
-	Controller *controller.Controller
+	Controller *core.Controller
 	// Server serves defined models.
-	Server        server.Server
-	DB            database.DB
-	Verifier      auth.Verifier
-	Authenticator auth.Authenticator
-	Tokener       auth.Tokener
+	Server server.Server
 }
 
 // New creates new service for provided controller config.
@@ -36,13 +29,16 @@ func New(options ...Option) *Service {
 	for _, opt := range options {
 		opt(svc.Options)
 	}
-	svc.Controller = controller.New(svc.Options.controllerOptions())
-	svc.DB = database.New(svc.Controller)
 	svc.Server = svc.Options.Server
-	svc.Authenticator = svc.Options.Authenticator
-	svc.Verifier = svc.Options.Verifier
-	svc.Tokener = svc.Options.Tokener
+	svc.Controller = core.New(svc.Options.controllerOptions())
+	svc.Controller.Authenticator = svc.Options.Authenticator
+	svc.Controller.Verifier = svc.Options.Verifier
+	svc.Controller.Tokener = svc.Options.Tokener
+	svc.Controller.Initializers = svc.Options.Initializers
 
+	if svc.Options.AccountModel != nil {
+		svc.Options.Models = append(svc.Options.Models, svc.Options.AccountModel)
+	}
 	if len(svc.Options.Models) == 0 {
 		log.Fatal("no models defined for the service")
 	}
@@ -80,6 +76,11 @@ func (s *Service) Run(ctx context.Context) error {
 		log.Infof("Received Signal: '%s'. Shutdown Server begins...", sig.String())
 	case err := <-errorChan:
 		// the error from the server listen and serve
+
+		// Close all connections.
+		if err := s.Controller.CloseAll(ctx); err != nil {
+			return err
+		}
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
@@ -144,38 +145,12 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 		return err
 	}
 
-	// Initialize all repositories that implements Initializer interface.
-	for _, repo := range s.Controller.Repositories {
-		initializer, ok := repo.(controller.Initializer)
-		if ok {
-			if err = initializer.Initialize(s.Controller); err != nil {
-				return err
-			}
+	if s.Options.AccountModel != nil {
+		if err = s.Controller.SetAccountModel(s.Options.AccountModel); err != nil {
+			return err
 		}
 	}
 
-	// Initialize authenticators, tokeners and verifiers.
-	if s.Authenticator != nil {
-		if i, ok := s.Authenticator.(controller.Initializer); ok {
-			if err = i.Initialize(s.Controller); err != nil {
-				return err
-			}
-		}
-	}
-	if s.Tokener != nil {
-		if i, ok := s.Tokener.(controller.Initializer); ok {
-			if err = i.Initialize(s.Controller); err != nil {
-				return err
-			}
-		}
-	}
-	if s.Verifier != nil {
-		if i, ok := s.Verifier.(controller.Initializer); ok {
-			if err = i.Initialize(s.Controller); err != nil {
-				return err
-			}
-		}
-	}
 	// Set default store if exists.
 	if s.Options.DefaultStore != nil {
 		if err = s.Controller.SetDefaultStore(s.Options.DefaultStore); err != nil {
@@ -190,6 +165,30 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 		}
 	}
 
+	// Set default store if exists.
+	if s.Options.DefaultFileStore != nil {
+		if err = s.Controller.SetDefaultFileStore(s.Options.DefaultFileStore); err != nil {
+			return err
+		}
+	}
+
+	// Register named stores.
+	for name, store := range s.Options.FileStores {
+		if err = s.Controller.RegisterFileStore(name, store); err != nil {
+			return err
+		}
+	}
+
+	// Initialize all structure that implements controller.Initializer interface.
+	if err = s.Controller.InitializeAll(); err != nil {
+		return err
+	}
+
+	// Initialize server.
+	if err = s.initializeServer(); err != nil {
+		return err
+	}
+
 	// Establish connection with all repositories.
 	if err = s.Controller.DialAll(ctx); err != nil {
 		return err
@@ -202,29 +201,16 @@ func (s *Service) Initialize(ctx context.Context) (err error) {
 		}
 	}
 
-	// Initialize all collections.
-	for _, collection := range s.Options.Collections {
-		if err = collection.InitializeCollection(s.Controller); err != nil {
-			return err
-		}
-	}
-
-	if s.Server != nil {
-		o := s.serverOptions()
-		if err = s.Server.Initialize(o); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (s *Service) serverOptions() server.Options {
-	o := server.Options{
-		Tokener:       s.Tokener,
-		Verifier:      s.Verifier,
-		Authenticator: s.Authenticator,
-		Controller:    s.Controller,
-		DB:            s.DB,
+func (s *Service) initializeServer() error {
+	if s.Server != nil {
+		if i, ok := s.Server.(core.Initializer); ok {
+			if err := i.Initialize(s.Controller); err != nil {
+				return err
+			}
+		}
 	}
-	return o
+	return nil
 }

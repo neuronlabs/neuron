@@ -257,16 +257,17 @@ The `neuron` is composed of the following packages:
 
 * `auth`			- defines basic interfaces and structures used for neuron authentication and authorization.
 * `codec` 			- is a set structures and interfaces used on marshal process.
-* `controller` 	- defines a structure that keeps and maps all models to related repositories.
-* `core` 			- contains core neuron service definitions.
+* `core` 	        - defines a structure that keeps and maps all models to related repositories.
 * `database`		- defines interfaces, functions and structures that allows to execute queries.
-* `errors` 		- neuron defined errors.
+* `errors` 		    - neuron defined errors.
 * `log` 			- is the neuron service logging interface structure for the neuron based applications.
+* `filestore`       - defines common interface for the file stores.
 * `mapping` 		- contains the information about the mapped models their fields and settings.
 * `query` 			- contains structures used to create queries, sort, pagination on base of mapped models.
 * `query/filters` 	- contains query filters structures and implementations.
-* `repository` 	- is a package used to store and register the repositories.
+* `repository` 	    - is a package used to store and register the repositories.
 * `server`			- defines interfaces used as the servers.
+* `service`			- contains core neuron service definitions.
 * `store`           - key-value stores structures and implementations.
 
 

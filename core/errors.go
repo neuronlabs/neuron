@@ -1,4 +1,4 @@
-package controller
+package core
 
 import (
 	"github.com/neuronlabs/neuron/errors"
@@ -15,4 +15,6 @@ var (
 	ErrRepositoryAlreadyRegistered = errors.Wrap(ErrRepository, "already registered")
 	// ErrStoreAlreadySet is an error when the store is already set at some name.
 	ErrStoreAlreadySet = errors.Wrap(ErrController, "store already set")
+	// ErrFileStoreAlreadySet is an error when the store is already set at some name.
+	ErrFileStoreAlreadySet = errors.Wrap(ErrController, "file store already set")
 )
