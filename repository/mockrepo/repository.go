@@ -44,6 +44,7 @@ func (r *Repository) OnBegin(transFunc TransFunc, options ...Option) {
 	r.Beginners = append(r.Beginners, &TransExecuter{Options: o, ExecuteFunc: transFunc})
 }
 
+// Begin implements repository.Transactioner interface.
 func (r *Repository) Begin(ctx context.Context, tx *query.Transaction) error {
 	if len(r.Beginners) == 0 {
 		log.Panicf("no beginners found")
@@ -80,7 +81,6 @@ func (r *Repository) Commit(ctx context.Context, tx *query.Transaction) error {
 		r.Committers = r.Committers[1:]
 	}
 	return committer.ExecuteFunc(ctx, tx)
-
 }
 
 // OnRollback adds the committer executer.

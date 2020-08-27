@@ -474,7 +474,6 @@ func TestFind(t *testing.T) {
 			}
 
 			t.Run("OnlyForeign", func(t *testing.T) {
-
 				// This should query join model and then the model by itself.
 				repo.OnFind(func(_ context.Context, s *query.Scope) error {
 					jm := c.MustModelStruct(&testmodels.JoinModel{})

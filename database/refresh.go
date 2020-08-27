@@ -32,7 +32,7 @@ func refreshSingle(ctx context.Context, db DB, q *query.Scope) error {
 	if err != nil {
 		return err
 	}
-	if err = setFrom(q.ModelStruct, model, result); err != nil {
+	if err = setFrom(model, result); err != nil {
 		return err
 	}
 	return nil
@@ -59,7 +59,7 @@ func refreshMany(ctx context.Context, db DB, q *query.Scope) error {
 	}
 
 	if len(results) != len(primaryKeys) {
-		// One of provided values were not found. Refresh function need to throw an error in such an ocasion.
+		// One of provided values were not found. Refresh function need to throw an error in such an occasion.
 		return errors.Wrap(query.ErrNoResult, "one of provided model's is not found")
 	}
 	for _, result := range results {
@@ -68,14 +68,14 @@ func refreshMany(ctx context.Context, db DB, q *query.Scope) error {
 			continue
 		}
 		model := models[index]
-		if err := setFrom(q.ModelStruct, model, result); err != nil {
+		if err := setFrom(model, result); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelations ...*query.IncludedRelation) error {
+func setFrom(to, from mapping.Model) error {
 	fromSetter, ok := to.(mapping.FromSetter)
 	if !ok {
 		return errors.Wrap(mapping.ErrModelNotImplements, "model doesn't implement FromSetter interface")

@@ -165,6 +165,7 @@ func TestTransactionMultiRepo(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = tx.Query(blogMStruct, &testmodels.Blog{ID: 10, CurrentPostID: 2}).Update()
+	require.NoError(t, err)
 
 	err = tx.Commit()
 	require.NoError(t, err)

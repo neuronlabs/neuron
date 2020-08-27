@@ -666,6 +666,9 @@ func getRelationsMany2Many(ctx context.Context, db DB, models []mapping.Model, r
 			return nil, err
 		}
 		joinModelForeignKeys[foreignKeyHashValue], err = fielder.GetFieldValue(joinModelFK)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if len(joinModelForeignKeys) == 0 {
 		return []mapping.Model{}, nil

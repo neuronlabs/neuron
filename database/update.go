@@ -93,13 +93,6 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		log.Debugf(logFormat(s, "update failed: '%s'"), err)
 		return 0, err
 	}
-	// Affected models number must match the number of models updated.
-	if modelsAffected != int64(len(s.Models)) {
-		switch len(s.Models) {
-		case 1:
-			return 0, errors.Wrapf(query.ErrNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
-		}
-	}
 
 	// Execute after update hook if model implements AfterUpdater.
 	for i, model := range s.Models {
