@@ -22,7 +22,7 @@ type Scope struct {
 	// mStruct is a modelStruct this scope is based on.
 	ModelStruct *mapping.ModelStruct
 	// Models are the models values used within the context of this query.
-	Models []mapping.Model
+	Models mapping.Models
 	// Fieldset represents fieldset defined for the whole scope of this query.
 	FieldSets []mapping.FieldSet
 	// Filters contains all filters for given query.

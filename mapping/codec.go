@@ -41,16 +41,21 @@ func (m *ModelStruct) extractCodecTags() error {
 				return errors.Wrapf(ErrMapping, "model's: %s field: '%s' codec tag name defined without value", m, field)
 			}
 			field.codecName = name.Values[0]
-		case "omitempty":
+		case AnnotationOmitEmpty:
 			field.fieldFlags |= fOmitempty
 		case "_":
+		case AnnotationISO8601:
+			field.fieldFlags |= fCodecISO8601
 		default:
 			field.codecName = name.Key
 		}
 
 		for _, tag := range tags[1:] {
-			if tag.Key == "omitempty" {
+			switch tag.Key {
+			case AnnotationOmitEmpty:
 				field.fieldFlags |= fOmitempty
+			case AnnotationISO8601:
+				field.fieldFlags |= fCodecISO8601
 			}
 		}
 	}

@@ -12,8 +12,6 @@ const (
 	fDefault fieldFlag = 1 << iota
 	// fOmitEmpty is a field flag for omitting empty value.
 	fOmitempty
-	// fISO8601 is a time field flag marking it usable with IS08601 formatting.
-	fISO8601
 	// fI18n is the i18n field flag.
 	fI18n
 	// fNoFilter is the 'no filter' field flag.
@@ -54,4 +52,6 @@ const (
 	fDatabaseUnique
 	// fCodecSkip is the flag that defines if a field should be skipped in the codecs.
 	fCodecSkip
+	// fCodecISO8601 is a time field flag marking it usable with IS08601 formatting.
+	fCodecISO8601
 )

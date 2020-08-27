@@ -8,17 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/internal"
 )
 
 // TestFormatQuery tests the format query methods
 func TestFormatQuery(t *testing.T) {
 	mp := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
 
-	err := mp.RegisterModels(&internal.Formatter{}, &internal.FormatterRelation{})
+	err := mp.RegisterModels(&Formatter{}, &FormatterRelation{})
 	require.NoError(t, err)
 
-	mStruct, ok := mp.GetModelStruct(&internal.Formatter{})
+	mStruct, ok := mp.GetModelStruct(&Formatter{})
 	require.True(t, ok)
 
 	t.Run("Pagination", func(t *testing.T) {

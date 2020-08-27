@@ -20,7 +20,8 @@ type Options struct {
 	ModelNotNullFields map[mapping.Model]struct{}
 }
 
-func defaultOptions() *Options {
+// DefaultOptions are the default options for the controller.
+func DefaultOptions() *Options {
 	return &Options{
 		NamingConvention: mapping.SnakeCase,
 	}

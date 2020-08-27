@@ -244,6 +244,7 @@ func (d *db) QuerySetRelations(ctx context.Context, s *query.Scope, relationFiel
 // ClearRelations clears all 'relationField' relations for given input models.
 // The relation's foreign key must be allowed to set to null.
 func (d *db) ClearRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField) (int64, error) {
+	// TODO(kucjac): allow to clear only selected relation models.
 	mStruct, err := d.c.ModelStruct(model)
 	if err != nil {
 		return 0, err

@@ -24,6 +24,9 @@ var (
 	ErrUnmarshalFieldValue = errors.Wrap(ErrUnmarshal, "field value")
 	// ErrUnmarshalFieldName is an error related t unmarshaling field name
 	ErrUnmarshalFieldName = errors.Wrap(ErrUnmarshal, "field name")
+
+	// ErrOptions is an error that defines invalid marshal/unmarshal options.
+	ErrOptions = errors.Wrap(ErrCodec, "options")
 )
 
 // Error is the error structure used for used for codec processes.

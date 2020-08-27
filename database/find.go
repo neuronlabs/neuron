@@ -347,10 +347,12 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		return findManyToManyRelationShort(s, included, models, primariesToIndex)
 	}
 
+	// The result contains join model foreign key and m2m foreign key.
 	relationPrimariesToIndexes := map[interface{}][]int{}
+	var relationPrimaries []interface{}
 	// If the field was included the relations needs to find with new scope.
 	// Iterate over relatedScope Models
-	for index, model := range models {
+	for _, model := range models {
 		if model == nil {
 			continue
 		}
@@ -365,19 +367,37 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		if isZero {
 			continue
 		}
-		foreignKeyValue, err := fielder.GetHashableFieldValue(backReferenceFK)
+		backReferenceFKValue, err := fielder.GetHashableFieldValue(backReferenceFK)
 		if err != nil {
 			return err
 		}
-		relationPrimariesToIndexes[foreignKeyValue] = append(relationPrimariesToIndexes[foreignKeyValue], index)
+
+		index := primariesToIndex[backReferenceFKValue]
+
+		isZero, err = fielder.IsFieldZero(joinModelFK)
+		if err != nil {
+			return err
+		}
+		if isZero {
+			continue
+		}
+
+		relatedFkHashValue, err := fielder.GetHashableFieldValue(joinModelFK)
+		if err != nil {
+			return err
+		}
+		relationPrimaryIndexes, ok := relationPrimariesToIndexes[relatedFkHashValue]
+		if !ok {
+			relatedFkValue, err := fielder.GetFieldValue(joinModelFK)
+			if err != nil {
+				return err
+			}
+			relationPrimaries = append(relationPrimaries, relatedFkValue)
+		}
+		relationPrimariesToIndexes[relatedFkHashValue] = append(relationPrimaryIndexes, index)
 	}
 
-	// create a scope for the relation
-	var relationPrimaries []interface{}
-	for k := range relationPrimariesToIndexes {
-		relationPrimaries = append(relationPrimaries, k)
-	}
-
+	// Add the related model struct primary key as one of the field in fieldset  and filter.
 	fieldSet := included.Fieldset
 	if !included.Fieldset.Contains(relationship.RelatedModelStruct().Primary()) {
 		fieldSet = append(fieldSet, relationship.RelatedModelStruct().Primary())
@@ -386,6 +406,7 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		Filter(filter.New(relationship.RelatedModelStruct().Primary(), filter.OpIn, relationPrimaries...)).
 		Select(fieldSet...)
 	if len(included.IncludedRelations) != 0 {
+		// If there are any subIncluded relations get them now.
 		q.Scope().IncludedRelations = included.IncludedRelations
 	}
 	relationModels, err := q.Find()
@@ -393,6 +414,7 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		return err
 	}
 
+	// Iterate over relation models and map their values to the root models.
 	for _, model := range relationModels {
 		if model.IsPrimaryKeyZero() {
 			continue

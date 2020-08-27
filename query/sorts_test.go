@@ -7,17 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query/internal"
 )
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
 	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
 
-	err := ms.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
+	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&internal.Blog{})
+	mStruct, ok := ms.GetModelStruct(&Blog{})
 	require.True(t, ok)
 
 	t.Run("Duplicated", func(t *testing.T) {
@@ -47,10 +46,10 @@ func TestNewUniques(t *testing.T) {
 func TestNew(t *testing.T) {
 	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
 
-	err := ms.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
+	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&internal.Blog{})
+	mStruct, ok := ms.GetModelStruct(&Blog{})
 	require.True(t, ok)
 
 	t.Run("NoOrder", func(t *testing.T) {
@@ -105,10 +104,10 @@ func TestNew(t *testing.T) {
 func TestSortField(t *testing.T) {
 	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.KebabCase))
 
-	err := ms.RegisterModels(&internal.Blog{}, &internal.Post{}, &internal.Comment{})
+	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&internal.Blog{})
+	mStruct, ok := ms.GetModelStruct(&Blog{})
 	require.True(t, ok)
 
 	sField, err := NewSort(mStruct, "posts.id")

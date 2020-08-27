@@ -136,6 +136,7 @@ func (m *ModelStruct) MustFieldByName(name string) *StructField {
 			return field
 		}
 	}
+	log.Panicf("no '%s' field found for the model: '%s'", name, m)
 	return nil
 }
 

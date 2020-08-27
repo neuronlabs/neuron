@@ -2,7 +2,6 @@ package codec
 
 import (
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query"
 )
 
 // ISO8601TimeFormat is the time formatting for the ISO 8601.
@@ -22,13 +21,17 @@ const (
 // PaginationLinks is the structure that contain options for the pagination links.
 // https://jsonapi.org/examples/#pagination
 type PaginationLinks struct {
-	// Self should be just a query too
-	Self  string `json:"self,omitempty"`
+	// Self should define this page query url.
+	Self string `json:"self,omitempty"`
+	// First should specify the first page query url.
 	First string `json:"first,omitempty"`
-	Prev  string `json:"prev,omitempty"`
-	Next  string `json:"next,omitempty"`
-	Last  string `json:"last,omitempty"`
-
+	// Prev specify previous page query url.
+	Prev string `json:"prev,omitempty"`
+	// Next specify next page query url.
+	Next string `json:"next,omitempty"`
+	// Last specify the last page query url.
+	Last string `json:"last,omitempty"`
+	// Total defines the total number of the pages.
 	Total int64 `json:"total"`
 }
 
@@ -52,15 +55,64 @@ type MarshalOptions struct {
 	SingleResult bool
 }
 
+// MarshalOption is the option function that sets up the marshal options.
+type MarshalOption func(o *MarshalOptions)
+
+// MarshalWithLinks marshals the output with provided links
+func MarshalWithLinks(links LinkOptions) MarshalOption {
+	return func(o *MarshalOptions) {
+		o.Link = links
+	}
+}
+
+// MarshalSingleModel marshals the output with single model encoding type.
+func MarshalSingleModel() MarshalOption {
+	return func(o *MarshalOptions) {
+		o.SingleResult = true
+	}
+}
+
 // Meta is used to represent a `meta` object.
 // http://jsonapi.org/format/#document-meta
 type Meta map[string]interface{}
 
 // UnmarshalOptions is the structure that contains unmarshal options.
+// UnmarshalOptions requires model or model struct to be defined.
 type UnmarshalOptions struct {
-	StrictUnmarshal   bool
-	IncludedRelations []*query.IncludedRelation
-	ModelStruct       *mapping.ModelStruct
+	StrictUnmarshal, ExpectSingle bool
+	ModelStruct                   *mapping.ModelStruct
+	Model                         mapping.Model
+}
+
+// UnmarshalOption is function that changes unmarshal options.
+type UnmarshalOption func(o *UnmarshalOptions)
+
+// UnmarshalStrictly is an unmarshal option that sets up option to strictly check the fields when unmarshaled the fields.
+func UnmarshalStrictly() UnmarshalOption {
+	return func(o *UnmarshalOptions) {
+		o.StrictUnmarshal = true
+	}
+}
+
+// UnmarshalWithModel is an unmarshal option that sets up model that should be unmarshaled.
+func UnmarshalWithModel(model mapping.Model) UnmarshalOption {
+	return func(o *UnmarshalOptions) {
+		o.Model = model
+	}
+}
+
+// UnmarshalWithModelStruct is an unmarshal option that sets up model struct that should be unmarshaled.
+func UnmarshalWithModelStruct(modelStruct *mapping.ModelStruct) UnmarshalOption {
+	return func(o *UnmarshalOptions) {
+		o.ModelStruct = modelStruct
+	}
+}
+
+// UnmarshalWithSingleExpectation is an unmarshal option that sets up the single model unmarshal expectation.
+func UnmarshalWithSingleExpectation() UnmarshalOption {
+	return func(o *UnmarshalOptions) {
+		o.ExpectSingle = true
+	}
 }
 
 // FieldAnnotations is structure that is extracted from the given sField codec specific annotation.
@@ -72,8 +124,8 @@ type FieldAnnotations struct {
 }
 
 // ExtractFieldAnnotations extracts codec specific tags.
-func ExtractFieldAnnotations(sField *mapping.StructField, tag string) FieldAnnotations {
-	tags := sField.ExtractCustomFieldTags(tag, ",", " ")
+func ExtractFieldAnnotations(sField *mapping.StructField, tag, tagSeparator, valuesSeparator string) FieldAnnotations {
+	tags := sField.ExtractCustomFieldTags(tag, tagSeparator, valuesSeparator)
 	if len(tags) == 0 {
 		return FieldAnnotations{}
 	}

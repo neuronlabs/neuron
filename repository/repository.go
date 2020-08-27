@@ -16,8 +16,10 @@ type Repository interface {
 	Insert(ctx context.Context, s *query.Scope) error
 	// Find finds the models for provided query scope.
 	Find(ctx context.Context, s *query.Scope) error
-	// Update updates the models for provided query scope.
+	// Update updates the query using a single model that  affects multiple database rows/entries.
 	Update(ctx context.Context, s *query.Scope) (int64, error)
+	// UpdateModels updates the models for provided query scope.
+	UpdateModels(ctx context.Context, s *query.Scope) (int64, error)
 	// Delete deletes the models defined by provided query scope.
 	Delete(ctx context.Context, s *query.Scope) (int64, error)
 }

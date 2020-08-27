@@ -88,7 +88,7 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		log.Debug3f(logFormat(s, "update: '%d' models"), len(s.Models))
 	}
 
-	modelsAffected, err := updater.Update(ctx, s)
+	modelsAffected, err := updater.UpdateModels(ctx, s)
 	if err != nil {
 		log.Debugf(logFormat(s, "update failed: '%s'"), err)
 		return 0, err
@@ -98,8 +98,6 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 		switch len(s.Models) {
 		case 1:
 			return 0, errors.Wrapf(query.ErrNoResult, "model with id: '%v' doesn't exists", s.Models[0].GetPrimaryKeyValue())
-		default:
-			return 0, errors.Wrap(query.ErrNoResult, "one or more of provided models doesn't exists")
 		}
 	}
 
@@ -126,6 +124,11 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	switch len(s.Models) {
 	case 0:
+		// TODO(kucjac): allow to update filtered models without a base model.
+		//  only applicable if the model struct implements:
+		//  - BeforeUpdater
+		//  - AfterUpdater
+		//  - or has UpdatedAt field.
 		return 0, errors.Wrap(query.ErrNoModels, "no models provided to update")
 	case 1:
 		// Only a single model value is allowed to update with the filters.
@@ -141,9 +144,6 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	_, requireFind := model.(BeforeUpdater)
 	if !requireFind {
 		_, requireFind = model.(AfterUpdater)
-		if !requireFind {
-			_, requireFind = s.ModelStruct.UpdatedAt()
-		}
 	}
 	if len(s.FieldSets) > 1 {
 		return 0, errors.WrapDetf(query.ErrInvalidFieldSet, "too many field sets for the filtered update query")
@@ -246,9 +246,6 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 	for _, filter := range s.Filters {
 		findQuery.Filter(filter)
 	}
-	if s.Pagination != nil {
-		findQuery.Scope().Pagination = s.Pagination
-	}
 	models, err := findQuery.Find()
 	if err != nil {
 		return 0, err
@@ -264,7 +261,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 	for _, resultModel := range models {
 		findModelFielder := resultModel.(mapping.Fielder)
 		for _, field := range updateFields {
-			fieldValue, err := fielder.GetHashableFieldValue(field)
+			fieldValue, err := fielder.GetFieldValue(field)
 			if err != nil {
 				return 0, err
 			}
@@ -274,7 +271,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 		}
 	}
 	updatedAt, hasUpdatedAt := s.ModelStruct.UpdatedAt()
-	// If given model has a 'UpdatedAt' field and it is not in the fieldset, set it's value for all models.
+	// If given model has an 'UpdatedAt' field and it is not in the fieldset, set it's value for all models.
 	if hasUpdatedAt && !findFieldset.Contains(updatedAt) {
 		tsNow := db.Controller().Now()
 		for i, singleModel := range models {
@@ -344,4 +341,12 @@ func createSingleUpdateFieldSet(s *query.Scope, index int, startTS time.Time) (m
 		fieldSet = append(fieldSet, field)
 	}
 	return fieldSet, nil
+}
+
+func fieldSetWithUpdatedAt(model *mapping.ModelStruct, fields ...*mapping.StructField) mapping.FieldSet {
+	updatedAt, hasUpdatedAt := model.UpdatedAt()
+	if hasUpdatedAt {
+		fields = append(fields, updatedAt)
+	}
+	return fields
 }

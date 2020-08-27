@@ -58,6 +58,10 @@ func refreshMany(ctx context.Context, db DB, q *query.Scope) error {
 		return err
 	}
 
+	if len(results) != len(primaryKeys) {
+		// One of provided values were not found. Refresh function need to throw an error in such an ocasion.
+		return errors.Wrap(query.ErrNoResult, "one of provided model's is not found")
+	}
 	for _, result := range results {
 		index, ok := idToIndex[result.GetPrimaryKeyHashableValue()]
 		if !ok {
@@ -73,83 +77,11 @@ func refreshMany(ctx context.Context, db DB, q *query.Scope) error {
 
 func setFrom(mStruct *mapping.ModelStruct, to, from mapping.Model, includedRelations ...*query.IncludedRelation) error {
 	fromSetter, ok := to.(mapping.FromSetter)
-	if ok {
-		if err := fromSetter.SetFrom(from); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	resultFielder, ok := from.(mapping.Fielder)
 	if !ok {
-		return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
+		return errors.Wrap(mapping.ErrModelNotImplements, "model doesn't implement FromSetter interface")
 	}
-	modelFielder, ok := to.(mapping.Fielder)
-	if !ok {
-		return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", mStruct)
-	}
-	for _, sField := range mStruct.Fields() {
-		fieldValue, err := resultFielder.GetFieldValue(sField)
-		if err != nil {
-			return err
-		}
-		if err = modelFielder.SetFieldValue(sField, fieldValue); err != nil {
-			return err
-		}
-	}
-
-	if len(includedRelations) == 0 {
-		return nil
-	}
-	var (
-		resultMulti, modelMulti   mapping.MultiRelationer
-		resultSingle, modelSingle mapping.SingleRelationer
-	)
-	for _, included := range includedRelations {
-		switch included.StructField.Kind() {
-		case mapping.KindRelationshipMultiple:
-			if resultMulti == nil {
-				resultMulti, ok = from.(mapping.MultiRelationer)
-				if !ok {
-					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
-				}
-			}
-			if modelMulti == nil {
-				modelMulti, ok = to.(mapping.MultiRelationer)
-				if !ok {
-					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
-				}
-			}
-			relation, err := resultMulti.GetRelationModels(included.StructField)
-			if err != nil {
-				return err
-			}
-			if err = modelMulti.SetRelationModels(included.StructField, relation...); err != nil {
-				return err
-			}
-		case mapping.KindRelationshipSingle:
-			if resultSingle == nil {
-				resultSingle, ok = from.(mapping.SingleRelationer)
-				if !ok {
-					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
-				}
-			}
-			if modelSingle == nil {
-				modelSingle, ok = to.(mapping.SingleRelationer)
-				if !ok {
-					return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement MultiRelationer interface", mStruct)
-				}
-			}
-			relation, err := resultSingle.GetRelationModel(included.StructField)
-			if err != nil {
-				return err
-			}
-			if err = modelSingle.SetRelationModel(included.StructField, relation); err != nil {
-				return err
-			}
-		default:
-			return errors.Wrap(query.ErrInternal, "provided invalid included relation field")
-		}
+	if err := fromSetter.SetFrom(from); err != nil {
+		return err
 	}
 	return nil
 }

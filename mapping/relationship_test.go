@@ -9,7 +9,7 @@ import (
 	"github.com/neuronlabs/neuron/errors"
 )
 
-//go:generate neurogns models methods methods .
+//go:generate neurogonesis models methods methods .
 
 // TestMappedRelationships tests the mapped relationships.
 func TestMappedRelationships(t *testing.T) {

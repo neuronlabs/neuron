@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/neuronlabs/neuron/errors"
+	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filter"
@@ -74,14 +76,19 @@ func deleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected in
 
 	primaries := make([]interface{}, len(s.Models))
 	// Otherwise get all models primary keys and set it as the filter for the deleteQuery method.
-	for _, model := range s.Models {
+	for i, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.Wrap(query.ErrInvalidModels, "one of the models have primary key with zero value")
 		}
-		primaries = append(primaries, model.GetPrimaryKeyValue())
+		primaries[i] = model.GetPrimaryKeyValue()
 	}
+	operator := filter.OpEqual
+	if len(primaries) > 1 {
+		operator = filter.OpIn
+	}
+
 	// addModel primary key filter that matches all primaries from the models
-	s.Filters = append(s.Filters, filter.New(s.ModelStruct.Primary(), filter.OpIn, primaries...))
+	s.Filters = append(s.Filters, filter.New(s.ModelStruct.Primary(), operator, primaries...))
 
 	// Execute BeforeDelete hook if the model implements BeforeDeleter interface.
 	if err = hookBeforeDelete(ctx, db, s); err != nil {
@@ -118,7 +125,7 @@ func softDeleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, erro
 	}
 
 	// Only the Primary Key and DeletedAt fields should be selected.
-	s.FieldSets = []mapping.FieldSet{{s.ModelStruct.Primary(), deletedAt}}
+	s.FieldSets = []mapping.FieldSet{{deletedAt}}
 	s.Models = []mapping.Model{updateModel}
 	modelsAffected, err := repository.Update(ctx, s)
 	if err != nil {
@@ -128,6 +135,15 @@ func softDeleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, erro
 }
 
 func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected int64, err error) {
+	// Create a draft update model which would be used for updating filtered soft deletes.
+	updateModel := mapping.NewModel(s.ModelStruct)
+	// If the model implements any of the before or after delete hooks set the timestamps for all models.
+	_, isBeforeDeleter := updateModel.(BeforeDeleter)
+	_, isAfterDeleter := updateModel.(AfterDeleter)
+	if isBeforeDeleter || isAfterDeleter {
+		return softDeleteModelsWithHooks(ctx, db, s, isBeforeDeleter, isAfterDeleter)
+	}
+
 	repository := getRepository(db.Controller(), s)
 
 	// Soft delete should update only the DeletedAt timestamp field.
@@ -136,16 +152,18 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 
 	// Get all primary key values and set it as the filter.
 	primaries := make([]interface{}, len(s.Models))
-	for _, model := range s.Models {
+	for i, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
 			return 0, errors.Wrap(query.ErrInvalidModels, "one of the models have primary key with zero value")
 		}
-		primaries = append(primaries, model.GetPrimaryKeyValue())
+		primaries[i] = model.GetPrimaryKeyValue()
 	}
-	s.Filters = append(s.Filters, filter.New(s.ModelStruct.Primary(), filter.OpIn, primaries...))
+	operator := filter.OpEqual
+	if len(primaries) > 1 {
+		operator = filter.OpIn
+	}
+	s.Filters = append(s.Filters, filter.New(s.ModelStruct.Primary(), operator, primaries...))
 
-	// Create a draft update model which would be used for updating filtered soft deletes.
-	updateModel := mapping.NewModel(s.ModelStruct)
 	fielder, isFielder := updateModel.(mapping.Fielder)
 	if !isFielder {
 		return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
@@ -154,19 +172,22 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 		return 0, err
 	}
 
-	// If the model implements any of the before or after delete hooks set the timestamps for all models.
-	_, isBeforeDeleter := updateModel.(BeforeDeleter)
-	_, isAfterDeleter := updateModel.(AfterDeleter)
-	if isBeforeDeleter || isAfterDeleter {
-		// Iterate over all models and set the 'DeletedAt' timestamp to current value.
-		for _, model := range s.Models {
-			fielder, ok := model.(mapping.Fielder)
-			if !ok {
-				return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
-			}
-			if err = fielder.SetFieldValue(deletedAt, deletedAtTS); err != nil {
-				return 0, err
-			}
+	// Get the models into temporary slice variable and set the models to the draft update model.
+	s.Models = []mapping.Model{updateModel}
+	// Only the Primary Key and DeletedAt fields should be selected.
+	s.FieldSets = []mapping.FieldSet{{deletedAt}}
+	modelsAffected, err = repository.UpdateModels(ctx, s)
+	if err != nil {
+		return 0, err
+	}
+	return modelsAffected, nil
+}
+
+func softDeleteModelsWithHooks(ctx context.Context, db DB, s *query.Scope, isBeforeDeleter, isAfterDeleter bool) (modelsAffected int64, err error) {
+	// Iterate over all models and check if their primary key value is not zero.
+	for _, model := range s.Models {
+		if model.IsPrimaryKeyZero() {
+			return 0, errors.Wrap(query.ErrInvalidModels, "one of the models have primary key with zero value")
 		}
 	}
 
@@ -177,25 +198,74 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 		}
 	}
 
-	// Get the models into temporary slice variable and set the models to the draft update model.
-	models := s.Models
-	s.Models = []mapping.Model{updateModel}
-	// Only the Primary Key and DeletedAt fields should be selected.
-	s.FieldSets = []mapping.FieldSet{{s.ModelStruct.Primary(), deletedAt}}
-	modelsAffected, err = repository.Update(ctx, s)
+	startTS := db.Controller().Now()
+	// If the fieldset is already is provided by the user don't create batch field sets.
+	switch len(s.FieldSets) {
+	case 0:
+		var err error
+		s.FieldSets = make([]mapping.FieldSet, len(s.Models))
+		for i := range s.Models {
+			s.FieldSets[i], err = createSingleSoftDeleteFieldSet(s, i, startTS)
+			if err != nil {
+				return 0, err
+			}
+		}
+	default:
+		return 0, errors.WrapDetf(query.ErrInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
+	}
+
+	modelsAffected, err = getRepository(db.Controller(), s).UpdateModels(ctx, s)
 	if err != nil {
 		return 0, err
 	}
 
-	// Execute AfterDelete hook if the model implements AfterDeleter interface.
 	if isAfterDeleter {
-		// Reset the models so that the hookAfterDelete method could use it.
-		s.Models = models
 		if err = hookAfterDelete(ctx, db, s); err != nil {
-			return 0, err
+			return modelsAffected, err
 		}
 	}
 	return modelsAffected, nil
+}
+
+func createSingleSoftDeleteFieldSet(s *query.Scope, index int, startTS time.Time) (mapping.FieldSet, error) {
+	model := s.Models[index]
+	deletedAt, _ := s.ModelStruct.DeletedAt()
+
+	fieldSet := mapping.FieldSet{}
+	fielder, ok := model.(mapping.Fielder)
+	if !ok {
+		return nil, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
+	}
+
+	for _, field := range s.ModelStruct.Fields() {
+		isZero, err := fielder.IsFieldZero(field)
+		if err != nil {
+			return nil, err
+		}
+		if isZero {
+			switch {
+			case field.IsPrimary():
+				return nil, errors.Wrapf(query.ErrInvalidModels, "cannot delete model at: '%d' index. The primary key field have zero value.", index)
+			case field == deletedAt:
+				if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
+					log.Debug3f(logFormat(s, "model[%d], setting deletedAt at field to: '%s'"), index, startTS)
+				}
+				if err = fielder.SetFieldValue(field, startTS); err != nil {
+					return nil, err
+				}
+			default:
+				if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
+					log.Debug3f(logFormat(s, "model[%d], field: '%s' has zero value"), index, field)
+				}
+				continue
+			}
+		}
+		if log.CurrentLevel().IsAllowed(log.LevelDebug3) {
+			log.Debug3f(logFormat(s, "model[%d] adding field: '%s' to fieldset"), index, field)
+		}
+		fieldSet = append(fieldSet, field)
+	}
+	return fieldSet, nil
 }
 
 func hookBeforeDelete(ctx context.Context, db DB, s *query.Scope) (err error) {

@@ -57,7 +57,7 @@ func New(options *Options) *Controller {
 
 // NewDefault creates new default controller based on the default config.
 func NewDefault() *Controller {
-	return newController(defaultOptions())
+	return newController(DefaultOptions())
 }
 
 // Now gets and returns current timestamp. If the configs specify the function might return UTC timestamp.

@@ -1,10 +1,10 @@
-package internal
+package query
 
 import (
 	"time"
 )
 
-//go:generate neurogns models methods --format=goimports --single-file --exclude=Transaction,Operator,Scope .
+//go:generate neurogonesis models methods --format=goimports --single-file --exclude=Transaction,Operator,Scope .
 
 // Formatter is the test model for the query tests.
 type Formatter struct {
@@ -102,17 +102,19 @@ type Blog struct {
 
 // Post is a post model.
 type Post struct {
-	ID            uint64     `neuron:"type=primary"`
-	BlogID        int        `neuron:"type=foreign"`
-	Title         string     `neuron:"type=attr;name=title"`
-	Body          string     `neuron:"type=attr;name=body"`
-	Comments      []*Comment `neuron:"type=relation;name=comments;foreign=PostID"`
-	LatestComment *Comment   `neuron:"type=relation;name=latest_comment;foreign=PostID"`
+	ID              uint64     `neuron:"type=primary"`
+	BlogID          int        `neuron:"type=foreign"`
+	Title           string     `neuron:"type=attr;name=title"`
+	Body            string     `neuron:"type=attr;name=body"`
+	Comments        []*Comment `neuron:"type=relation;name=comments;foreign=PostID"`
+	LatestComment   *Comment   `neuron:"type=relation;name=latest_comment;foreign=LatestCommentID"`
+	LatestCommentID int
 }
 
 // Comment is a comment model.
 type Comment struct {
-	ID     int    `neuron:"type=primary"`
+	ID     int `neuron:"type=primary"`
+	Post   *Post
 	PostID uint64 `neuron:"type=foreign"`
 	Body   string `neuron:"type=attr;name=body"`
 }

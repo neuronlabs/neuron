@@ -63,3 +63,18 @@ func WithFileName(fileName string) Option {
 		o.FileName = fileName
 	}
 }
+
+// SetOptions are the options used for setting the record.
+type SetOptions struct {
+	TTL time.Duration
+}
+
+// SetOption is an option that sets the set options.
+type SetOption func(o *SetOptions)
+
+// SetWithTTL sets the TTL while setting the record.
+func SetWithTTL(ttl time.Duration) SetOption {
+	return func(o *SetOptions) {
+		o.TTL = ttl
+	}
+}

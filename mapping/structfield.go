@@ -125,8 +125,8 @@ func (s *StructField) IsI18n() bool {
 	return s.isI18n()
 }
 
-// IsISO8601 checks if it is a time field with ISO8601 formatting.
-func (s *StructField) IsISO8601() bool {
+// CodecISO8601 checks if it is a time field with ISO8601 formatting.
+func (s *StructField) CodecISO8601() bool {
 	return s.isISO8601()
 }
 
@@ -468,7 +468,7 @@ func (s *StructField) isI18n() bool {
 }
 
 func (s *StructField) isISO8601() bool {
-	return s.fieldFlags&fISO8601 != 0
+	return s.fieldFlags&fCodecISO8601 != 0
 }
 
 func (s *StructField) isLanguage() bool {
@@ -606,8 +606,6 @@ func (s *StructField) setFlags(flags ...string) error {
 			s.setFlag(fNoFilter)
 		case AnnotationNotSortable:
 			s.setFlag(fSortable)
-		case AnnotationISO8601:
-			s.setFlag(fISO8601)
 		case AnnotationI18n:
 			s.setFlag(fI18n)
 		case AnnotationDeletedAt:

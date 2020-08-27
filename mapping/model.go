@@ -1,5 +1,29 @@
 package mapping
 
+// Models is the slice of models.
+type Models []Model
+
+// PrimaryKeyValues gets primary key values for provided models.
+func (m Models) PrimaryKeyValues() (values []interface{}) {
+	values = make([]interface{}, len(m))
+	for i := range m {
+		values[i] = m[i].GetPrimaryKeyValue()
+	}
+	return values
+}
+
+// PrimaryKeyStringValues gets primary key string values for given models.
+func (m Models) PrimaryKeyStringValues() (values []string, err error) {
+	values = make([]string, len(m))
+	for i := range m {
+		values[i], err = m[i].GetPrimaryKeyStringValue()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return values, nil
+}
+
 // Model is the interface used for getting and setting model primary values.
 type Model interface {
 	NeuronCollectionName() string

@@ -55,7 +55,11 @@ func queryInsert(ctx context.Context, db DB, s *query.Scope) (err error) {
 				return err
 			}
 		}
-	case 1, len(s.Models):
+	case len(s.Models):
+		if err = fieldsetPerModelInsertSetTimestamps(s, startTS); err != nil {
+			return err
+		}
+	case 1:
 		// Common fieldset for the insert or each fieldset per model. Do nothing.
 		if err = singleFieldsetInsertSetTimestamps(s, startTS); err != nil {
 			return err
@@ -179,6 +183,55 @@ func singleFieldsetInsertSetTimestamps(s *query.Scope, startTS time.Time) error 
 		s.FieldSets[0] = append(s.FieldSets[0], updatedAt)
 	}
 	for _, model := range s.Models {
+		fielder, ok := model.(mapping.Fielder)
+		if !ok {
+			return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", s.ModelStruct)
+		}
+		if setCreatedAt {
+			if err := fielder.SetFieldValue(createdAt, startTS); err != nil {
+				return err
+			}
+		}
+		if setUpdatedAt {
+			if err := fielder.SetFieldValue(updatedAt, startTS); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func fieldsetPerModelInsertSetTimestamps(s *query.Scope, startTS time.Time) error {
+	// Check if given model has created at and updated at fields.
+	createdAt, hasCreatedAt := s.ModelStruct.CreatedAt()
+	updatedAt, hasUpdatedAt := s.ModelStruct.UpdatedAt()
+	if !hasCreatedAt && !hasUpdatedAt {
+		return nil
+	}
+
+	for i, fieldSet := range s.FieldSets {
+		setCreatedAt, setUpdatedAt := hasCreatedAt, hasUpdatedAt
+		for _, field := range fieldSet {
+			if field == createdAt {
+				setCreatedAt = false
+				continue
+			}
+			if field == updatedAt {
+				setUpdatedAt = false
+				continue
+			}
+		}
+		if !setCreatedAt && !setUpdatedAt {
+			return nil
+		}
+
+		if setCreatedAt {
+			s.FieldSets[i] = append(s.FieldSets[i], createdAt)
+		}
+		if setUpdatedAt {
+			s.FieldSets[i] = append(s.FieldSets[i], updatedAt)
+		}
+		model := s.Models[i]
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
 			return errors.WrapDetf(mapping.ErrModelNotImplements, "model: %s doesn't implement Fielder interface", s.ModelStruct)

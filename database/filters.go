@@ -109,7 +109,7 @@ func reduceBelongsToRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	// the filter from relationship into the foreign key for the scope 's'
 	var onlyPrimes = true
 	for _, nested := range f.Nested {
-		if simple, ok := nested.(*filter.Simple); ok {
+		if simple, ok := nested.(filter.Simple); ok {
 			if simple.StructField.Kind() != mapping.KindPrimary {
 				onlyPrimes = false
 				break
@@ -145,9 +145,10 @@ func reduceBelongsToRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	// Get primary key values and set as the scope's foreign key field filters.
 	primaries := make([]interface{}, len(models))
 	for i, model := range models {
-		primaries[i] = model.GetPrimaryKeyHashableValue()
+		primaries[i] = model.GetPrimaryKeyValue()
 	}
-	s.Filters = append(s.Filters, filter.New(s.ModelStruct.Primary(), filter.OpIn, primaries...))
+
+	s.Filters = append(s.Filters, filter.New(f.StructField.Relationship().ForeignKey(), filter.OpIn, primaries...))
 	return nil
 }
 
@@ -190,7 +191,7 @@ func reduceHasManyRelationshipFilter(ctx context.Context, db DB, s *query.Scope,
 	if err != nil {
 		return err
 	}
-	uniqueForeignKeyValues := make(map[interface{}]struct{})
+	uniqueForeignKeyValues := make(map[interface{}]interface{})
 	for _, relationModel := range relationModels {
 		relationFielder, ok := relationModel.(mapping.Fielder)
 		if !ok {
@@ -208,7 +209,10 @@ func reduceHasManyRelationshipFilter(ctx context.Context, db DB, s *query.Scope,
 		if err != nil {
 			return err
 		}
-		uniqueForeignKeyValues[foreignKeyValue] = struct{}{}
+		uniqueForeignKeyValues[foreignKeyValue], err = relationFielder.GetFieldValue(foreignKey)
+		if err != nil {
+			return err
+		}
 	}
 	// If there is no foreign key values then no query matches given filter. Return error QueryNoResult.
 	if len(uniqueForeignKeyValues) == 0 {
@@ -217,9 +221,10 @@ func reduceHasManyRelationshipFilter(ctx context.Context, db DB, s *query.Scope,
 	}
 	// Create primary filter that matches all relationship foreign key values.
 	primaryFilter := filter.Simple{StructField: s.ModelStruct.Primary(), Operator: filter.OpIn}
-	for foreignKeyValue := range uniqueForeignKeyValues {
+	for _, foreignKeyValue := range uniqueForeignKeyValues {
 		primaryFilter.Values = append(primaryFilter.Values, foreignKeyValue)
 	}
+	s.Filter(primaryFilter)
 	return nil
 }
 
@@ -321,7 +326,7 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 		return err
 	}
 
-	uniqueForeignKeyValues := make(map[interface{}]struct{})
+	uniqueForeignKeyValues := make(map[interface{}]interface{})
 	for _, joinModel := range joinModels {
 		relationFielder, ok := joinModel.(mapping.Fielder)
 		if !ok {
@@ -339,7 +344,10 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 		if err != nil {
 			return err
 		}
-		uniqueForeignKeyValues[foreignKeyValue] = struct{}{}
+		uniqueForeignKeyValues[foreignKeyValue], err = relationFielder.GetFieldValue(foreignKey)
+		if err != nil {
+			return err
+		}
 	}
 	// If there is no foreign key values then no query matches given filter. Return error QueryNoResult.
 	if len(uniqueForeignKeyValues) == 0 {
@@ -350,8 +358,9 @@ func reduceMany2ManyRelationshipFilter(ctx context.Context, db DB, s *query.Scop
 	// Create primary filter that matches all relationship foreign key values.
 	primaryFilter := filter.Simple{StructField: s.ModelStruct.Primary(), Operator: filter.OpIn, Values: make([]interface{}, len(uniqueForeignKeyValues))}
 	var i int
-	for foreignKeyValue := range uniqueForeignKeyValues {
+	for _, foreignKeyValue := range uniqueForeignKeyValues {
 		primaryFilter.Values[i] = foreignKeyValue
+		i++
 	}
 	s.Filters = append(s.Filters, primaryFilter)
 	return nil

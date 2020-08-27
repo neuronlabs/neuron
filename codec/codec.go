@@ -25,13 +25,18 @@ type Codec interface {
 type ModelMarshaler interface {
 	// MarshalModels marshal provided models into given codec encoding type. The function should
 	// simply encode only provided models without any additional payload like metadata.
-	MarshalModels(models []mapping.Model, options MarshalOptions) ([]byte, error)
+	MarshalModels(models []mapping.Model, options ...MarshalOption) ([]byte, error)
+	// MarshalModel marshal single models into given codec encoding type.
+	MarshalModel(model mapping.Model, options ...MarshalOption) ([]byte, error)
 }
 
 // ModelUnmarshaler is an interface that allows to unmarshal provided models of given model struct.
 type ModelUnmarshaler interface {
 	// UnmarshalModels unmarshals provided data into mapping.Model slice. The data should simply be only encoded models.
-	UnmarshalModels(data []byte, options UnmarshalOptions) ([]mapping.Model, error)
+	// Requires model or model struct option.
+	UnmarshalModels(data []byte, options ...UnmarshalOption) ([]mapping.Model, error)
+	// UnmarshalModel unmarshal single model from provided input data. Requires model or model struct option.
+	UnmarshalModel(data []byte, options ...UnmarshalOption) (mapping.Model, error)
 }
 
 // ParameterParser is an interface that parses parameters in given codec format.

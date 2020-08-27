@@ -15,24 +15,20 @@ type Payload struct {
 	Data []mapping.Model
 	// FieldSets is the index based field sets that maps it's indexes with the data.
 	FieldSets []mapping.FieldSet
-	// Meta is an object containing non-standard meta-information about the error.
+	// Meta is an object containing non-standard meta-data information about the payload.
 	Meta Meta
 	// IncludedRelations is the information about included relations in the payload.
 	IncludedRelations []*query.IncludedRelation
-	// Options are the options for the codecs how to treat the payload.
+	// PaginationLinks are the links used for pagination.
 	PaginationLinks *PaginationLinks
-	// MarshalLinks are the links used to marshal for specific codecs.
-	MarshalLinks LinkOptions
-	// MarshalSingularFormat marshals single model in a singular format for given codec.
-	MarshalSingularFormat bool
 }
 
 // PayloadMarshaler is the interface used to marshal payload into provided writer..
 type PayloadMarshaler interface {
-	MarshalPayload(w io.Writer, payload *Payload) error
+	MarshalPayload(w io.Writer, payload *Payload, options ...MarshalOption) error
 }
 
 // PayloadUnmarshaler is the interface used to unmarshal payload from given reader for provided codec type.
 type PayloadUnmarshaler interface {
-	UnmarshalPayload(r io.Reader, options UnmarshalOptions) (*Payload, error)
+	UnmarshalPayload(r io.Reader, options ...UnmarshalOption) (*Payload, error)
 }
