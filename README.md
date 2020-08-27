@@ -61,10 +61,10 @@ The whole process of the transaction is being orchestrated by the `database.Tx`.
 
 ## Related packages
 
-##### [Code Generation](https://github.com/neuronlabs/neurogonesis)
+##### [Code Generation](https://github.com/neuronlabs/neuron-extensions/tree/master/neurogonesis)
 
 Neuron requires the model to implement multiple interfaces. In order to make this process faster and easier a code generation 
-tool `neurogonesis` - [https://github.com/neuronlabs/neurogonesis](https://github.com/neuronlabs/neurogonesis) is implemented. 
+tool `neurogonesis` - [https://github.com/neuronlabs/neuron-extensions/tree/master/neurogonesis](https://github.com/neuronlabs/neuron-extensions/tree/master/neurogonesis) is implemented. 
 
 It contains a CLI tool that might be used as `go:generate` to scan golang code and implement all required interfaces for your models.
 See to check more details about `go:generate` - [https://blog.golang.org/generate](https://blog.golang.org/generate).
@@ -96,7 +96,7 @@ for specific usages.
 package main
 
 // Define go:generate generators and use it every time you change any model - using go:generate.
-//go:generate neurogonesis models --format=goimports --single-file .
+//go:generate neurogonesis models methods --format=goimports --single-file .
 //go:generate neurogonesis collections --format=goimports  --single-file .
 
 // User is the model that is stored on the 'main' repository.
@@ -258,10 +258,10 @@ The `neuron` is composed of the following packages:
 * `auth`			- defines basic interfaces and structures used for neuron authentication and authorization.
 * `codec` 			- is a set structures and interfaces used on marshal process.
 * `core` 	        - defines a structure that keeps and maps all models to related repositories.
-* `database`		- defines interfaces, functions and structures that allows to execute queries.
+* `database`		- defines interfaces, functions and structures that allows execution of queries.
 * `errors` 		    - neuron defined errors.
 * `log` 			- is the neuron service logging interface structure for the neuron based applications.
-* `filestore`       - defines common interface for the file stores.
+* `filestore`       - defines a common interface for the file stores.
 * `mapping` 		- contains the information about the mapped models their fields and settings.
 * `query` 			- contains structures used to create queries, sort, pagination on base of mapped models.
 * `query/filters` 	- contains query filters structures and implementations.
