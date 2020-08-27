@@ -176,7 +176,7 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 	s.Models = []mapping.Model{updateModel}
 	// Only the Primary Key and DeletedAt fields should be selected.
 	s.FieldSets = []mapping.FieldSet{{deletedAt}}
-	modelsAffected, err = repository.UpdateModels(ctx, s)
+	modelsAffected, err = repository.Update(ctx, s)
 	if err != nil {
 		return 0, err
 	}

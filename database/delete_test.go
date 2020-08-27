@@ -103,7 +103,7 @@ func TestSoftDelete(t *testing.T) {
 			require.NoError(t, err)
 
 			// Soft delete is an update with the deleted at field selected.
-			repo.OnUpdateModels(func(ctx context.Context, s *query.Scope) (int64, error) {
+			repo.OnUpdate(func(ctx context.Context, s *query.Scope) (int64, error) {
 				require.Equal(t, mStruct, s.ModelStruct)
 				if assert.Len(t, s.Filters, 1) {
 					sf, ok := s.Filters[0].(filter.Simple)
