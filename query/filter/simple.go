@@ -2,7 +2,6 @@ package filter
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/neuronlabs/neuron/mapping"
 )
@@ -22,9 +21,7 @@ func (f Simple) Copy() Filter {
 
 // String implements fmt.Stringer interface.
 func (f Simple) String() string {
-	sb := &strings.Builder{}
-	sb.WriteString(fmt.Sprintf("%s %s", f.StructField.NeuronName(), f.Operator.URLAlias))
-	return sb.String()
+	return fmt.Sprintf("%s %s %v", f.StructField.NeuronName(), f.Operator.URLAlias, f.Values)
 }
 
 func (f Simple) copy() Simple {
