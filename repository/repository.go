@@ -45,6 +45,7 @@ type Transactioner interface {
 	Rollback(ctx context.Context, tx *query.Transaction) error
 }
 
+// Savepointer is an interface that allows using transaction savepoints for repositories.
 type Savepointer interface {
 	Savepoint(ctx context.Context, tx *query.Transaction, name string) error
 	RollbackSavepoint(ctx context.Context, tx *query.Transaction, name string) error

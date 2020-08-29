@@ -64,7 +64,7 @@ func TestSavepoints(t *testing.T) {
 		return nil
 	})
 
-	err = tx.Savepoint(ctx, "first")
+	err = tx.Savepoint("first")
 	require.NoError(t, err)
 
 	require.True(t, isSpFirst)
@@ -87,7 +87,7 @@ func TestSavepoints(t *testing.T) {
 		return nil
 	})
 
-	err = tx.Savepoint(ctx, "second")
+	err = tx.Savepoint("second")
 	require.NoError(t, err)
 
 	require.True(t, isSecondSP)
@@ -133,7 +133,7 @@ func TestSavepoints(t *testing.T) {
 		return nil
 	})
 
-	err = tx.RollbackSavepoint(ctx, "first")
+	err = tx.RollbackSavepoint("first")
 	require.NoError(t, err)
 
 	require.True(t, rollbackBlog)

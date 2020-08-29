@@ -264,6 +264,7 @@ func (r *Repository) OnSavepoint(savepointFunc SavepointFunc, options ...Option)
 	r.Savepointers = append(r.Savepointers, &SavepointExecuter{Options: o, ExecuteFunc: savepointFunc})
 }
 
+// Savepoint implements repository.Savepointer
 func (r *Repository) Savepoint(ctx context.Context, tx *query.Transaction, name string) error {
 	if len(r.Savepointers) == 0 {
 		log.Panicf("no deleter found: %+v", tx.ID)
@@ -287,6 +288,7 @@ func (r *Repository) OnRollbackSavepoint(savepointFunc SavepointFunc, options ..
 	r.RollbackerSavepointers = append(r.RollbackerSavepointers, &SavepointExecuter{Options: o, ExecuteFunc: savepointFunc})
 }
 
+// RollbackSavepoint implements repository.Savepointer.
 func (r *Repository) RollbackSavepoint(ctx context.Context, tx *query.Transaction, name string) error {
 	if len(r.RollbackerSavepointers) == 0 {
 		log.Panicf("no deleter found: %+v", tx.ID)

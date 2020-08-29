@@ -184,7 +184,7 @@ func (t *Tx) Rollback() error {
 }
 
 // Savepoint creates a savepoint for given transaction.
-func (t *Tx) Savepoint(ctx context.Context, name string) error {
+func (t *Tx) Savepoint(name string) error {
 	savepointTransactions := make([]*uniqueTx, len(t.uniqueTransactions))
 	for i, s := range t.uniqueTransactions {
 		_, ok := s.transactioner.(repository.Savepointer)
@@ -194,6 +194,9 @@ func (t *Tx) Savepoint(ctx context.Context, name string) error {
 		savepointTransactions[i] = s
 	}
 	t.savePoints = append(t.savePoints, &savePoint{Transactions: savepointTransactions, Name: name})
+
+	ctx, cancelFunc := context.WithCancel(t.Transaction.Ctx)
+	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
 	txChan := t.produceUniqueTxChan(ctx, wg, savepointTransactions...)
@@ -231,7 +234,7 @@ func (t *Tx) Savepoint(ctx context.Context, name string) error {
 }
 
 // RollbackSavepoint rollbacks the transaction savepoint with 'name'.
-func (t *Tx) RollbackSavepoint(ctx context.Context, name string) error {
+func (t *Tx) RollbackSavepoint(name string) error {
 	var (
 		sp    *savePoint
 		index int
@@ -257,7 +260,7 @@ func (t *Tx) RollbackSavepoint(ctx context.Context, name string) error {
 				// This shouldn't happen as all the save point transaction had to done using repository.Savepointer.
 				return errors.Wrap(repository.ErrNotImplements, "repository doesn't implement savepointer interface")
 			}
-			if err := savepointer.RollbackSavepoint(ctx, t.Transaction, name); err != nil {
+			if err := savepointer.RollbackSavepoint(t.Transaction.Ctx, t.Transaction, name); err != nil {
 				return err
 			}
 		}
@@ -427,7 +430,6 @@ func (t *Tx) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 	}
 	affected, err := queryUpdate(ctx, t, q)
 	if err != nil {
-
 		return 0, err
 	}
 	return affected, nil
@@ -770,6 +772,9 @@ func (t *Tx) beginModelsTransaction(mStruct *mapping.ModelStruct) error {
 	repo := getModelRepository(t.c, mStruct)
 	// Check if given repository is a transactioner.
 	transactioner, ok := repo.(repository.Transactioner)
+	if !ok {
+		return errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't implement Transactioner interface", mStruct)
+	}
 	utx := t.createUniqueTransaction(transactioner, mStruct)
 	if utx == nil {
 		// If the uniqueTransaction was not created it doesn't need to begin.
