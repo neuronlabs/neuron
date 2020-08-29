@@ -15,16 +15,18 @@ var (
 
 // Repository is a mock repository implementation.
 type Repository struct {
-	IDValue       string
-	Beginners     []*TransExecuter
-	Committers    []*TransExecuter
-	Rollbackers   []*TransExecuter
-	Inserters     []*CommonExecuter
-	Finders       []*CommonExecuter
-	Counters      []*ResultExecuter
-	Updaters      []*ResultExecuter
-	ModelUpdaters []*ResultExecuter
-	Deleters      []*ResultExecuter
+	IDValue                string
+	Beginners              []*TransExecuter
+	Committers             []*TransExecuter
+	Rollbackers            []*TransExecuter
+	Savepointers           []*SavepointExecuter
+	RollbackerSavepointers []*SavepointExecuter
+	Inserters              []*CommonExecuter
+	Finders                []*CommonExecuter
+	Counters               []*ResultExecuter
+	Updaters               []*ResultExecuter
+	ModelUpdaters          []*ResultExecuter
+	Deleters               []*ResultExecuter
 }
 
 // ID implements repository.Repository.
@@ -249,4 +251,52 @@ func (r *Repository) Delete(ctx context.Context, s *query.Scope) (int64, error) 
 		r.Deleters = r.Deleters[1:]
 	}
 	return deleter.ExecuteFunc(ctx, s)
+}
+
+var _ repository.Savepointer = &Repository{}
+
+// OnSavepoint adds the delete function executioner.
+func (r *Repository) OnSavepoint(savepointFunc SavepointFunc, options ...Option) {
+	o := &Options{}
+	for _, option := range options {
+		option(o)
+	}
+	r.Savepointers = append(r.Savepointers, &SavepointExecuter{Options: o, ExecuteFunc: savepointFunc})
+}
+
+func (r *Repository) Savepoint(ctx context.Context, tx *query.Transaction, name string) error {
+	if len(r.Savepointers) == 0 {
+		log.Panicf("no deleter found: %+v", tx.ID)
+	}
+	savepointer := r.Savepointers[0]
+	if savepointer.Options.Count > 0 {
+		savepointer.Options.Count--
+	}
+	if savepointer.Options.Count == 0 && !savepointer.Options.Permanent {
+		r.Savepointers = r.Savepointers[1:]
+	}
+	return savepointer.ExecuteFunc(ctx, tx, name)
+}
+
+// OnRollbackSavepoint adds the delete function executioner.
+func (r *Repository) OnRollbackSavepoint(savepointFunc SavepointFunc, options ...Option) {
+	o := &Options{}
+	for _, option := range options {
+		option(o)
+	}
+	r.RollbackerSavepointers = append(r.RollbackerSavepointers, &SavepointExecuter{Options: o, ExecuteFunc: savepointFunc})
+}
+
+func (r *Repository) RollbackSavepoint(ctx context.Context, tx *query.Transaction, name string) error {
+	if len(r.RollbackerSavepointers) == 0 {
+		log.Panicf("no deleter found: %+v", tx.ID)
+	}
+	savepointer := r.RollbackerSavepointers[0]
+	if savepointer.Options.Count > 0 {
+		savepointer.Options.Count--
+	}
+	if savepointer.Options.Count == 0 && !savepointer.Options.Permanent {
+		r.RollbackerSavepointers = r.RollbackerSavepointers[1:]
+	}
+	return savepointer.ExecuteFunc(ctx, tx, name)
 }

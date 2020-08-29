@@ -63,17 +63,19 @@ type Tx struct {
 	Transaction *query.Transaction
 
 	c                  *core.Controller
-	err                error
 	uniqueTransactions []*uniqueTx
+	savePoints         []*savePoint
+}
+
+type savePoint struct {
+	Name         string
+	Transactions []*uniqueTx
 }
 
 // Begin starts new transaction with respect to the transaction context and transaction options with controller 'c'.
 // If the 'db' is already a transaction the function
 func Begin(ctx context.Context, db DB, options *query.TxOptions) (*Tx, error) {
 	if tx, ok := db.(*Tx); ok {
-		if tx.err != nil {
-			return nil, tx.err
-		}
 		if tx.Transaction.State.Done() {
 			return nil, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", tx.Transaction.ID.String())
 		}
@@ -181,6 +183,117 @@ func (t *Tx) Rollback() error {
 	return nil
 }
 
+// Savepoint creates a savepoint for given transaction.
+func (t *Tx) Savepoint(ctx context.Context, name string) error {
+	savepointTransactions := make([]*uniqueTx, len(t.uniqueTransactions))
+	for i, s := range t.uniqueTransactions {
+		_, ok := s.transactioner.(repository.Savepointer)
+		if !ok {
+			return errors.Wrap(repository.ErrNotImplements, "one of the repositories doesn't implement savepointer interfaces")
+		}
+		savepointTransactions[i] = s
+	}
+	t.savePoints = append(t.savePoints, &savePoint{Transactions: savepointTransactions, Name: name})
+
+	wg := &sync.WaitGroup{}
+	txChan := t.produceUniqueTxChan(ctx, wg, savepointTransactions...)
+
+	errChan := make(chan error, 1)
+	for tx := range txChan {
+		go func(tx *uniqueTx) {
+			defer wg.Done()
+			log.Debug3f("Savepoint '%s' transaction: '%s' for model: '%s'", name, t.Transaction.ID, tx.model)
+
+			if err := tx.transactioner.(repository.Savepointer).Savepoint(ctx, t.Transaction, name); err != nil {
+				errChan <- err
+			}
+		}(tx)
+	}
+
+	waitChan := make(chan struct{}, 1)
+	go func() {
+		log.Debug3f("Transaction: '%s' waiting for savepoints...", t.Transaction.ID)
+		wg.Wait()
+		waitChan <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Debugf("Savepoint: '%s' transaction: '%s' canceled by context: %v.", name, t.Transaction.ID.String(), ctx.Err())
+		return ctx.Err()
+	case e := <-errChan:
+		log.Debugf("Savepoint: '%s' transaction: '%s' failed: %v.", name, t.Transaction.ID.String(), e)
+		return e
+	case <-waitChan:
+		log.Debugf("Savepoint: '%s' transaction: '%s' with success.", name, t.Transaction.ID.String())
+	}
+	return nil
+}
+
+// RollbackSavepoint rollbacks the transaction savepoint with 'name'.
+func (t *Tx) RollbackSavepoint(ctx context.Context, name string) error {
+	var (
+		sp    *savePoint
+		index int
+	)
+	for i, s := range t.savePoints {
+		if s.Name == name {
+			sp = s
+			index = i
+			break
+		}
+	}
+	if sp == nil {
+		return errors.Wrapf(query.ErrTxInvalid, "provided transaction doesn't have savepoint with name: '%s'", name)
+	}
+
+	if index == len(t.savePoints)-1 ||
+		len(t.uniqueTransactions) == 1 ||
+		len(t.uniqueTransactions) == len(sp.Transactions) {
+		// This is the last one
+		for _, ut := range sp.Transactions {
+			savepointer, ok := ut.transactioner.(repository.Savepointer)
+			if !ok {
+				// This shouldn't happen as all the save point transaction had to done using repository.Savepointer.
+				return errors.Wrap(repository.ErrNotImplements, "repository doesn't implement savepointer interface")
+			}
+			if err := savepointer.RollbackSavepoint(ctx, t.Transaction, name); err != nil {
+				return err
+			}
+		}
+		t.savePoints = t.savePoints[:index+1]
+		return nil
+	}
+	var toRollback []*uniqueTx
+	for i := len(t.uniqueTransactions) - 1; i >= 0; i-- {
+		utFinal := t.uniqueTransactions[i]
+		var found bool
+		for j := len(sp.Transactions) - 1; j >= 0; j-- {
+			utSavePoint := sp.Transactions[j]
+			if utSavePoint == utFinal {
+				found = true
+				break
+			}
+		}
+		if !found {
+			toRollback = append(toRollback, utFinal)
+		}
+	}
+	// Rollback changes that were not in the savepoint
+	for _, ut := range toRollback {
+		if err := ut.transactioner.Rollback(t.Transaction.Ctx, t.Transaction); err != nil {
+			return err
+		}
+	}
+	for _, ut := range sp.Transactions {
+		if err := ut.transactioner.(repository.Savepointer).RollbackSavepoint(t.Transaction.Ctx, t.Transaction, name); err != nil {
+			return err
+		}
+	}
+	t.savePoints = t.savePoints[:index+1]
+	return nil
+}
+
 // ID gets unique transaction uuid.
 func (t *Tx) ID() uuid.UUID {
 	return t.Transaction.ID
@@ -189,11 +302,6 @@ func (t *Tx) ID() uuid.UUID {
 // Controller returns transaction controller.
 func (t *Tx) Controller() *core.Controller {
 	return t.c
-}
-
-// Err returns current transaction runtime error.
-func (t *Tx) Err() error {
-	return t.err
 }
 
 // Options gets transaction TransactionOptions.
@@ -230,7 +338,6 @@ func (t *Tx) QueryFind(ctx context.Context, q *query.Scope) ([]mapping.Model, er
 	}
 	models, err := queryFind(ctx, t, q)
 	if err != nil {
-		t.err = err
 		return nil, err
 	}
 	return models, nil
@@ -248,7 +355,6 @@ func (t *Tx) QueryGet(ctx context.Context, q *query.Scope) (mapping.Model, error
 	}
 	model, err := queryGet(ctx, t, q)
 	if err != nil {
-		t.err = err
 		return nil, err
 	}
 	return model, nil
@@ -260,8 +366,7 @@ func (t *Tx) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 		return err
 	}
 	if len(models) == 0 {
-		t.err = errors.Wrap(query.ErrNoModels, "nothing to insert")
-		return t.err
+		return errors.Wrap(query.ErrNoModels, "nothing to insert")
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return err
@@ -269,7 +374,6 @@ func (t *Tx) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 	s := query.NewScope(mStruct, models...)
 	s.Transaction = t.Transaction
 	if err := queryInsert(ctx, t, s); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -286,7 +390,6 @@ func (t *Tx) InsertQuery(ctx context.Context, q *query.Scope) error {
 		return err
 	}
 	if err := queryInsert(ctx, t, q); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -298,8 +401,7 @@ func (t *Tx) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 		return 0, err
 	}
 	if len(models) == 0 {
-		t.err = errors.Wrap(query.ErrNoModels, "nothing to update")
-		return 0, t.err
+		return 0, errors.Wrap(query.ErrNoModels, "nothing to update")
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return 0, err
@@ -308,7 +410,6 @@ func (t *Tx) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 	s.Transaction = t.Transaction
 	affected, err := queryUpdate(ctx, t, s)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	return affected, nil
@@ -322,12 +423,11 @@ func (t *Tx) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 		return 0, err
 	}
 	if err := t.beginScopeTransaction(q); err != nil {
-		t.err = err
 		return 0, err
 	}
 	affected, err := queryUpdate(ctx, t, q)
 	if err != nil {
-		t.err = err
+
 		return 0, err
 	}
 	return affected, nil
@@ -335,16 +435,11 @@ func (t *Tx) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 
 // Delete implements DB interface.
 func (t *Tx) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
-	if t.err != nil {
-		return 0, t.err
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
-		return 0, t.err
+		return 0, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
 	if len(models) == 0 {
-		t.err = errors.Wrap(query.ErrNoModels, "nothing to delete")
-		return 0, t.err
+		return 0, errors.Wrap(query.ErrNoModels, "nothing to delete")
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return 0, err
@@ -353,7 +448,6 @@ func (t *Tx) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ..
 	s.Transaction = t.Transaction
 	affected, err := deleteQuery(ctx, t, s)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	return affected, nil
@@ -371,7 +465,6 @@ func (t *Tx) DeleteQuery(ctx context.Context, s *query.Scope) (int64, error) {
 	}
 	affected, err := deleteQuery(ctx, t, s)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	return affected, nil
@@ -383,8 +476,7 @@ func (t *Tx) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models .
 		return err
 	}
 	if len(models) == 0 {
-		t.err = errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
-		return t.err
+		return errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return err
@@ -392,7 +484,6 @@ func (t *Tx) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models .
 	q := query.NewScope(mStruct, models...)
 	q.Transaction = t.Transaction
 	if err := refreshQuery(ctx, t, q); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -406,14 +497,12 @@ func (t *Tx) QueryRefresh(ctx context.Context, q *query.Scope) error {
 		return err
 	}
 	if len(q.Models) == 0 {
-		t.err = errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
-		return t.err
+		return errors.WrapDetf(query.ErrNoModels, "nothing to refresh")
 	}
 	if err := t.beginScopeTransaction(q); err != nil {
 		return err
 	}
 	if err := refreshQuery(ctx, t, q); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -430,7 +519,6 @@ func (t *Tx) AddRelations(ctx context.Context, model mapping.Model, relationFiel
 	}
 	mStruct, err := t.c.ModelStruct(model)
 	if err != nil {
-		t.err = err
 		return err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -439,7 +527,6 @@ func (t *Tx) AddRelations(ctx context.Context, model mapping.Model, relationFiel
 	q := query.NewScope(mStruct, model)
 	q.Transaction = t.Transaction
 	if err = queryAddRelations(ctx, t, q, relationField, relations...); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -456,7 +543,6 @@ func (t *Tx) QueryAddRelations(ctx context.Context, s *query.Scope, relationFiel
 		return err
 	}
 	if err := queryAddRelations(ctx, t, s, relationField, relationModels...); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -470,7 +556,6 @@ func (t *Tx) SetRelations(ctx context.Context, model mapping.Model, relationFiel
 	}
 	mStruct, err := t.c.ModelStruct(model)
 	if err != nil {
-		t.err = err
 		return err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -479,7 +564,6 @@ func (t *Tx) SetRelations(ctx context.Context, model mapping.Model, relationFiel
 	q := query.NewScope(mStruct, model)
 	q.Transaction = t.Transaction
 	if err = querySetRelations(ctx, t, q, relationField, relations...); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -496,7 +580,6 @@ func (t *Tx) QuerySetRelations(ctx context.Context, q *query.Scope, relationFiel
 		return err
 	}
 	if err := querySetRelations(ctx, t, q, relationField, relations...); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -505,16 +588,11 @@ func (t *Tx) QuerySetRelations(ctx context.Context, q *query.Scope, relationFiel
 // ClearRelations clears all 'relationField' relations for given input models.
 // The relation's foreign key must be allowed to set to null.
 func (t *Tx) ClearRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField) (int64, error) {
-	if t.err != nil {
-		return 0, t.err
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
-		return 0, t.err
+		return 0, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
 	mStruct, err := t.c.ModelStruct(model)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
@@ -524,7 +602,6 @@ func (t *Tx) ClearRelations(ctx context.Context, model mapping.Model, relationFi
 	q.Transaction = t.Transaction
 	affected, err := queryClearRelations(ctx, t, q, relationField)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	return affected, nil
@@ -542,7 +619,6 @@ func (t *Tx) QueryClearRelations(ctx context.Context, q *query.Scope, relationFi
 	}
 	affected, err := queryClearRelations(ctx, t, q, relationField)
 	if err != nil {
-		t.err = err
 		return 0, err
 	}
 	return affected, nil
@@ -550,18 +626,13 @@ func (t *Tx) QueryClearRelations(ctx context.Context, q *query.Scope, relationFi
 
 // IncludeRelations implements DB interface.
 func (t *Tx) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error {
-	if t.err != nil {
-		return t.err
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
-		return t.err
+		return errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return err
 	}
 	if err := queryIncludeRelation(ctx, t, mStruct, models, relationField, relationFieldset...); err != nil {
-		t.err = err
 		return err
 	}
 	return nil
@@ -569,19 +640,14 @@ func (t *Tx) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct,
 
 // GetRelations implements DB interface.
 func (t *Tx) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
-	if t.err != nil {
-		return []mapping.Model{}, t.err
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
-		return []mapping.Model{}, t.err
+		return []mapping.Model{}, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
 	if err := t.beginModelsTransaction(mStruct); err != nil {
 		return []mapping.Model{}, err
 	}
 	relationModels, err := queryGetRelations(ctx, t, mStruct, models, relationField, relationFieldset...)
 	if err != nil {
-		t.err = err
 		return []mapping.Model{}, err
 	}
 	return relationModels, nil
@@ -605,12 +671,8 @@ func begin(ctx context.Context, c *core.Controller, options *query.TxOptions) *T
 }
 
 func (t *Tx) checkTransaction() error {
-	if t.err != nil {
-		return t.err
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
-		return t.err
+		return errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
 	return nil
 }
@@ -648,11 +710,8 @@ func (t *Tx) getUniqueTransactions(reverse bool) []*uniqueTx {
 
 func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery {
 	tb := &txQuery{tx: t}
-	if t.err != nil {
-		return tb
-	}
 	if t.Transaction.State.Done() {
-		t.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
+		tb.err = errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 		return tb
 	}
 	// create new scope and add it to the txQuery.
@@ -662,6 +721,7 @@ func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery
 	tb.scope = s
 
 	if err := t.beginScopeTransaction(s); err != nil {
+		tb.err = err
 		return tb
 	}
 	return tb
@@ -672,16 +732,35 @@ func (t *Tx) beginScopeTransaction(s *query.Scope) error {
 	repo := getRepository(t.c, s)
 	// Check if given repository is a transactioner.
 	transactioner, ok := repo.(repository.Transactioner)
-	if ok {
-		if err := t.beginUniqueTransaction(transactioner, s.ModelStruct); err != nil {
-			t.err = err
+	if !ok {
+		return errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't implement Transactioner interface", s.ModelStruct)
+	}
+	utx := t.createUniqueTransaction(transactioner, s.ModelStruct)
+	if utx == nil {
+		// If the uniqueTransaction was not created it doesn't need to begin.
+		return nil
+	}
+	if s.Transaction == nil {
+		s.Transaction = t.Transaction
+	}
+	if len(t.savePoints) == 0 {
+		if err := utx.transactioner.Begin(t.Transaction.Ctx, t.Transaction); err != nil {
 			return err
 		}
-		if s.Transaction == nil {
-			s.Transaction = t.Transaction
-		}
-	} else {
-		log.Debugf("Repository for model: '%s' doesn't support transactions", s.ModelStruct.String())
+		return nil
+	}
+	// If there is any savepoint the repository for given model must implement Savepointer - than begin transaction and set the savepoint.
+	sp, ok := utx.transactioner.(repository.Savepointer)
+	if !ok {
+		return errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't support savepoints", s.ModelStruct)
+	}
+	if err := utx.transactioner.Begin(t.Transaction.Ctx, t.Transaction); err != nil {
+		return err
+	}
+	latestSavePoint := t.savePoints[len(t.savePoints)-1]
+	latestSavePoint.Transactions = append(latestSavePoint.Transactions, utx)
+	if err := sp.Savepoint(t.Transaction.Ctx, t.Transaction, latestSavePoint.Name); err != nil {
+		return err
 	}
 	return nil
 }
@@ -691,18 +770,34 @@ func (t *Tx) beginModelsTransaction(mStruct *mapping.ModelStruct) error {
 	repo := getModelRepository(t.c, mStruct)
 	// Check if given repository is a transactioner.
 	transactioner, ok := repo.(repository.Transactioner)
-	if ok {
-		if err := t.beginUniqueTransaction(transactioner, mStruct); err != nil {
-			t.err = err
+	utx := t.createUniqueTransaction(transactioner, mStruct)
+	if utx == nil {
+		// If the uniqueTransaction was not created it doesn't need to begin.
+		return nil
+	}
+	if len(t.savePoints) == 0 {
+		if err := utx.transactioner.Begin(t.Transaction.Ctx, t.Transaction); err != nil {
 			return err
 		}
-	} else {
-		log.Debugf("Repository for model: '%s' doesn't support transactions", mStruct.String())
+		return nil
+	}
+	// If there is any savepoint the repository for given model must implement Savepointer - than begin transaction and set the savepoint.
+	sp, ok := utx.transactioner.(repository.Savepointer)
+	if !ok {
+		return errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't support savepoints", mStruct)
+	}
+	if err := utx.transactioner.Begin(t.Transaction.Ctx, t.Transaction); err != nil {
+		return err
+	}
+	latestSavePoint := t.savePoints[len(t.savePoints)-1]
+	latestSavePoint.Transactions = append(latestSavePoint.Transactions, utx)
+	if err := sp.Savepoint(t.Transaction.Ctx, t.Transaction, latestSavePoint.Name); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (t *Tx) beginUniqueTransaction(transactioner repository.Transactioner, model *mapping.ModelStruct) error {
+func (t *Tx) createUniqueTransaction(transactioner repository.Transactioner, model *mapping.ModelStruct) *uniqueTx {
 	singleRepository := len(t.uniqueTransactions) == 1 || len(t.uniqueTransactions) == 0
 	repoPosition := -1
 
@@ -714,13 +809,15 @@ func (t *Tx) beginUniqueTransaction(transactioner repository.Transactioner, mode
 		}
 	}
 
+	var utx *uniqueTx
 	switch {
 	case singleRepository && repoPosition != -1:
 		// there is only one repository and it is 'transactioner'
 		return nil
 	case singleRepository:
 		// there is only a single repository and it is not a 'transactioner'
-		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+		utx = &uniqueTx{transactioner: transactioner, id: id, model: model}
+		t.uniqueTransactions = append(t.uniqueTransactions, utx)
 	case repoPosition != -1:
 		if len(t.uniqueTransactions)-1 == repoPosition {
 			// the last repository in the transaction is of given type - do nothing
@@ -728,15 +825,17 @@ func (t *Tx) beginUniqueTransaction(transactioner repository.Transactioner, mode
 		}
 		// move transactioner from 'repoPosition' to the last
 		t.uniqueTransactions = append(t.uniqueTransactions[:repoPosition], t.uniqueTransactions[repoPosition+1:]...)
-		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+		utx = &uniqueTx{transactioner: transactioner, id: id, model: model}
+		t.uniqueTransactions = append(t.uniqueTransactions, utx)
 	default:
 		// current repository was not found - add it to the end of the queue.
-		t.uniqueTransactions = append(t.uniqueTransactions, &uniqueTx{transactioner: transactioner, id: id, model: model})
+		utx = &uniqueTx{transactioner: transactioner, id: id, model: model}
+		t.uniqueTransactions = append(t.uniqueTransactions, utx)
 	}
 
+	// Check if the repository had already began the transaction.
 	if repoPosition == -1 {
-		log.Debug2f("Begin transaction '%s' for model: '%s'", t.Transaction.ID.String(), model.String())
-		return transactioner.Begin(t.Transaction.Ctx, t.Transaction)
+		return utx
 	}
 	return nil
 }

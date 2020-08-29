@@ -44,3 +44,8 @@ type Transactioner interface {
 	// Rollback the scope's transaction.
 	Rollback(ctx context.Context, tx *query.Transaction) error
 }
+
+type Savepointer interface {
+	Savepoint(ctx context.Context, tx *query.Transaction, name string) error
+	RollbackSavepoint(ctx context.Context, tx *query.Transaction, name string) error
+}

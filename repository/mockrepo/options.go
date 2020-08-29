@@ -38,6 +38,15 @@ type TransExecuter struct {
 // TransFunc is trans execution function.
 type TransFunc func(context.Context, *query.Transaction) error
 
+// SavepointExecuter is an executor of the transaction functions.
+type SavepointExecuter struct {
+	Options     *Options
+	ExecuteFunc SavepointFunc
+}
+
+// SavepointFunc is trans execution function.
+type SavepointFunc func(context.Context, *query.Transaction, string) error
+
 // ResultExecuter is an executor of the result function.
 type ResultExecuter struct {
 	Options     *Options
