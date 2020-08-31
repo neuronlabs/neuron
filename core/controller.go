@@ -43,6 +43,8 @@ type Controller struct {
 
 	// Initializers are the components that needs to initialized, that are not repository, store or one of auth interfaces.
 	Initializers []Initializer
+	// NamedInitializers are the initializers with some unique name that would allow to get them back from controller.
+	NamedInitializers map[string]Initializer
 
 	// FileStores is the mapping of the stores with their names.
 	FileStores map[string]filestore.Store
@@ -88,6 +90,7 @@ func newController(options *Options) *Controller {
 	c := &Controller{
 		Repositories:      map[string]repository.Repository{},
 		ModelRepositories: map[*mapping.ModelStruct]repository.Repository{},
+		NamedInitializers: map[string]Initializer{},
 		Stores:            map[string]store.Store{},
 	}
 	if options == nil {

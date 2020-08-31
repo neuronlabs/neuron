@@ -102,6 +102,13 @@ func NamingConvention(convention mapping.NamingConvention) service.Option {
 	}
 }
 
+// NamedInitializer adds the initializer with the given name.
+func NamedInitializer(name string, initializer core.Initializer) service.Option {
+	return func(o *service.Options) {
+		o.NamedInitializers[name] = initializer
+	}
+}
+
 // RepositoryModels maps the repository 'r' to provided 'models'.
 func RepositoryModels(r repository.Repository, models ...mapping.Model) service.Option {
 	return func(o *service.Options) {

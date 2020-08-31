@@ -99,6 +99,32 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <
 				return
 			}
 		}
+
+		for _, i := range c.Initializers {
+			closer, isCloser := i.(Closer)
+			if !isCloser {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- closer:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		for _, i := range c.NamedInitializers {
+			closer, isCloser := i.(Closer)
+			if !isCloser {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- closer:
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 	return out
 }

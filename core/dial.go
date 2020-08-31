@@ -98,6 +98,32 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-
 				return
 			}
 		}
+
+		for _, i := range c.Initializers {
+			dialer, isDialer := i.(Dialer)
+			if !isDialer {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- dialer:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		for _, i := range c.NamedInitializers {
+			dialer, isDialer := i.(Dialer)
+			if !isDialer {
+				continue
+			}
+			wg.Add(1)
+			select {
+			case out <- dialer:
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 	return out
 }

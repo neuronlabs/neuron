@@ -64,5 +64,11 @@ func (c *Controller) InitializeAll() (err error) {
 			return err
 		}
 	}
+
+	for _, i := range c.NamedInitializers {
+		if err = i.Initialize(c); err != nil {
+			return err
+		}
+	}
 	return nil
 }

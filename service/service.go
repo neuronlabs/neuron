@@ -35,6 +35,7 @@ func New(options ...Option) *Service {
 	svc.Controller.Verifier = svc.Options.Verifier
 	svc.Controller.Tokener = svc.Options.Tokener
 	svc.Controller.Initializers = svc.Options.Initializers
+	svc.Controller.NamedInitializers = svc.Options.NamedInitializers
 
 	if svc.Options.AccountModel != nil {
 		svc.Options.Models = append(svc.Options.Models, svc.Options.AccountModel)

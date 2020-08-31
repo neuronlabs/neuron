@@ -14,6 +14,8 @@ import (
 type Options struct {
 	// Initializers.
 	Initializers []core.Initializer
+	// NamedInitializers provide the named initializers.
+	NamedInitializers map[string]core.Initializer
 	// Repositories and mapped models.
 	DefaultRepository repository.Repository
 	RepositoryModels  map[repository.Repository][]mapping.Model
@@ -55,11 +57,12 @@ func (o *Options) controllerOptions() *core.Options {
 
 func defaultOptions() *Options {
 	return &Options{
-		HandleSignals:    true,
-		NamingConvention: mapping.SnakeCase,
-		RepositoryModels: map[repository.Repository][]mapping.Model{},
-		Stores:           map[string]store.Store{},
-		FileStores:       map[string]filestore.Store{},
+		HandleSignals:     true,
+		NamingConvention:  mapping.SnakeCase,
+		NamedInitializers: map[string]core.Initializer{},
+		RepositoryModels:  map[repository.Repository][]mapping.Model{},
+		Stores:            map[string]store.Store{},
+		FileStores:        map[string]filestore.Store{},
 	}
 }
 
