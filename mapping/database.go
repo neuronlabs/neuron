@@ -2,6 +2,7 @@ package mapping
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
@@ -131,8 +132,12 @@ func (m *ModelStruct) extractDatabaseTags(defaultNotNull bool) error {
 					}
 				}
 			case "type":
-				if len(tag.Values) != 1 || tag.Values[0] == "" {
+				switch len(tag.Values) {
+				case 0:
 					return errors.Wrapf(ErrMapping, "database field: '%s' type value not defined.", field.Name())
+				case 1:
+				default:
+					tag.Values[0] = strings.Join(tag.Values, ",")
 				}
 				field.DatabaseType = tag.Values[0]
 			case "notnull":
