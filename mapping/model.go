@@ -26,7 +26,6 @@ func (m Models) PrimaryKeyStringValues() (values []string, err error) {
 
 // Model is the interface used for getting and setting model primary values.
 type Model interface {
-	NeuronCollectionName() string
 	// GetPrimaryKeyStringValue gets the primary key string value.
 	GetPrimaryKeyStringValue() (string, error)
 	// GetPrimaryKeyValue returns the primary key field value.

@@ -56,7 +56,7 @@ func addRelationMany2Many(ctx context.Context, db DB, s *query.Scope, relField *
 			joinModel := mapping.NewModel(relationship.JoinModel())
 			joinModelFielder, ok := joinModel.(mapping.Fielder)
 			if !ok {
-				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", joinModel.NeuronCollectionName())
+				return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%v' doesn't implement Fielder interface", joinModel)
 			}
 			err = joinModelFielder.SetFieldValue(relationship.ForeignKey(), model.GetPrimaryKeyHashableValue())
 			if err != nil {
@@ -652,7 +652,7 @@ func getRelationsMany2Many(ctx context.Context, db DB, models []mapping.Model, r
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return nil, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
+			return nil, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%v' doesn't implement Fielder interface", model)
 		}
 		isZero, err := fielder.IsFieldZero(joinModelFK)
 		if err != nil {

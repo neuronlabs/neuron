@@ -358,7 +358,7 @@ func findManyToManyRelation(ctx context.Context, db DB, s *query.Scope, included
 		}
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%v' doesn't implement Fielder interface", model)
 		}
 		isZero, err := fielder.IsFieldZero(backReferenceFK)
 		if err != nil {
@@ -439,7 +439,7 @@ func findManyToManyRelationShort(s *query.Scope, included *query.IncludedRelatio
 	for _, model := range models {
 		fielder, ok := model.(mapping.Fielder)
 		if !ok {
-			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", model.NeuronCollectionName())
+			return errors.Wrapf(mapping.ErrModelNotImplements, "model: '%v' doesn't implement Fielder interface", model)
 		}
 		// Find related model value from the root scope by matching it's primary key with the back reference foreign key.
 		foreignKeyValue, err := fielder.GetHashableFieldValue(relationship.ForeignKey())
