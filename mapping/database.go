@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/neuronlabs/inflection"
+
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 )
@@ -20,6 +22,33 @@ type DatabaseIndex struct {
 	Unique bool
 	// Fields defined fields mapped for this index.
 	Fields []*StructField
+}
+
+func (m *ModelMap) databaseModel(mStruct *ModelStruct, defaultNotNull bool) error {
+	model := NewModel(mStruct)
+	if dbNamer, ok := model.(DatabaseNamer); ok {
+		mStruct.DatabaseName = dbNamer.DatabaseName()
+	} else if m.Options.DatabasePluralCollections {
+		mStruct.DatabaseName = inflection.Plural(m.Options.DBNamingConvention.Namer(mStruct.Type().Name()))
+	} else {
+		mStruct.DatabaseName = m.Options.DBNamingConvention.Namer(mStruct.Type().Name())
+	}
+
+	if dbSchemaNamer, ok := model.(DatabaseSchemaNamer); ok {
+		mStruct.DatabaseSchemaName = dbSchemaNamer.DatabaseSchemaName()
+	} else if m.Options.DefaultDatabaseSchema != "" {
+		mStruct.DatabaseSchemaName = m.Options.DefaultDatabaseSchema
+	}
+	if err := mStruct.extractDatabaseTags(defaultNotNull); err != nil {
+		return err
+	}
+
+	for _, field := range mStruct.fields {
+		if field.DatabaseName == "" {
+			field.DatabaseName = m.Options.DBNamingConvention.Namer(field.Name())
+		}
+	}
+	return nil
 }
 
 // By default the model's database equivalent name (table - in SQL) is the model's collection name.
@@ -56,14 +85,6 @@ type DatabaseIndex struct {
 // db:"db_name;index=index_name" 	- database name defined, index with given name defined.
 // db:"_;index"						- no database name defined, default index name for given field.
 func (m *ModelStruct) extractDatabaseTags(defaultNotNull bool) error {
-	model := NewModel(m)
-	if namer, ok := model.(DatabaseSchemaNamer); ok {
-		m.DatabaseSchemaName = namer.DatabaseSchemaName()
-	}
-	if namer, ok := model.(DatabaseNamer); ok {
-		m.DatabaseName = namer.DatabaseName()
-	}
-
 	namedIndexes := map[string]*DatabaseIndex{}
 	for _, field := range m.fields {
 		// If the defaultNotNull is set and the field is not a pointer set it to notnull.

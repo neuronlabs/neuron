@@ -6,6 +6,7 @@ import (
 
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
+	"github.com/neuronlabs/neuron/repository"
 )
 
 // DB is the common interface that allows to do the queries.
@@ -54,6 +55,18 @@ type DB interface {
 type repositoryMapper interface {
 	// Repositories gets the repository mapper.
 	mapper() *RepositoryMapper
+}
+
+// RepositoryGetter gets the repository for provided model.
+type RepositoryGetter interface {
+	// GetRepository gets the repository mapped to this model.
+	GetRepository(model mapping.Model) (repository.Repository, error)
+}
+
+// DefaultRepositoryGetter is the default repository getter.
+type DefaultRepositoryGetter interface {
+	// GetDefaultRepository gets the default repository.
+	GetDefaultRepository() (repository.Repository, bool)
 }
 
 // QueryFinder is an interface that allows to list results from the query.

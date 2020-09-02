@@ -23,13 +23,22 @@ type ModelMap struct {
 
 // NewModelMap creates new model map with default 'namerFunc' and a controller config 'c'.
 func New(options ...MapOption) *ModelMap {
-	o := &MapOptions{}
+	o := defaultMapOptions()
 	for _, option := range options {
 		option(o)
 	}
 	return &ModelMap{
 		Options: o,
 		models:  map[reflect.Type]*ModelStruct{},
+	}
+}
+
+func defaultMapOptions() *MapOptions {
+	return &MapOptions{
+		NamingConvention:          SnakeCase,
+		DBNamingConvention:        SnakeCase,
+		PluralCollections:         true,
+		DatabasePluralCollections: true,
 	}
 }
 
@@ -182,7 +191,7 @@ func (m *ModelMap) RegisterModels(input ...Model) error {
 				break
 			}
 		}
-		if err = model.extractDatabaseTags(defaultNotNull); err != nil {
+		if err = m.databaseModel(model, defaultNotNull); err != nil {
 			return err
 		}
 		if err = model.extractCodecTags(); err != nil {

@@ -13,7 +13,7 @@ import (
 )
 
 // New creates new DB for given controller.
-func New(options ...Option) (*base, error) {
+func New(options ...Option) (*Database, error) {
 	o := &Options{
 		RepositoryModels: map[repository.Repository][]mapping.Model{},
 		TimeFunc:         time.Now,
@@ -27,7 +27,7 @@ func New(options ...Option) (*base, error) {
 	if len(o.RepositoryModels) == 0 && o.DefaultRepository == nil {
 		return nil, errors.Wrap(ErrRepository, "no repositories registered")
 	}
-	d := &base{
+	d := &Database{
 		repositories: &RepositoryMapper{
 			Repositories:      map[string]repository.Repository{},
 			ModelRepositories: map[*mapping.ModelStruct]repository.Repository{},
@@ -52,22 +52,22 @@ func New(options ...Option) (*base, error) {
 }
 
 // Compile time check for the DB interface implementations.
-var _ DB = &base{}
+var _ DB = &Database{}
 
-// Composer is the default query composer that implements DB interface.
-type base struct {
+// base is the default query composer that implements DB interface.
+type Database struct {
 	options      *Options
 	repositories *RepositoryMapper
 	closed       bool
 }
 
 // Begin starts new transaction with respect to the transaction context and transaction options with controller 'c'.
-func (b *base) Begin(ctx context.Context, options *query.TxOptions) *Tx {
+func (b *Database) Begin(ctx context.Context, options *query.TxOptions) *Tx {
 	return begin(ctx, b, options)
 }
 
 // Dial initialize connection with the database.
-func (b *base) Dial(ctx context.Context) error {
+func (b *Database) Dial(ctx context.Context) error {
 	var cancelFunc context.CancelFunc
 	if _, deadlineSet := ctx.Deadline(); !deadlineSet {
 		// if no default timeout is already set - try with 30 second timeout.
@@ -93,7 +93,7 @@ func (b *base) Dial(ctx context.Context) error {
 	return nil
 }
 
-func (b *base) migrateModels(ctx context.Context) error {
+func (b *Database) migrateModels(ctx context.Context) error {
 	for _, model := range b.options.MigrateModels {
 		mStruct, err := b.repositories.ModelMap.ModelStruct(model)
 		if err != nil {
@@ -114,7 +114,7 @@ func (b *base) migrateModels(ctx context.Context) error {
 	return nil
 }
 
-func (b *base) dialRepositories(ctx context.Context) error {
+func (b *Database) dialRepositories(ctx context.Context) error {
 	wg := &sync.WaitGroup{}
 	waitChan := make(chan struct{})
 
@@ -144,10 +144,15 @@ func (b *base) dialRepositories(ctx context.Context) error {
 	return nil
 }
 
-func (b *base) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan repository.Dialer {
+func (b *Database) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan repository.Dialer {
 	out := make(chan repository.Dialer)
 	go func() {
 		defer close(out)
+
+		if dialer, isDialer := b.repositories.DefaultRepository.(repository.Dialer); isDialer {
+			wg.Add(1)
+			out <- dialer
+		}
 
 		for _, repo := range b.repositories.Repositories {
 			dialer, isDialer := repo.(repository.Dialer)
@@ -165,7 +170,7 @@ func (b *base) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan r
 	return out
 }
 
-func (b *base) dial(ctx context.Context, dialer repository.Dialer, wg *sync.WaitGroup, errChan chan<- error) {
+func (b *Database) dial(ctx context.Context, dialer repository.Dialer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := dialer.Dial(ctx); err != nil {
@@ -176,7 +181,7 @@ func (b *base) dial(ctx context.Context, dialer repository.Dialer, wg *sync.Wait
 }
 
 //  Close closes the database connections.
-func (b *base) Close(ctx context.Context) error {
+func (b *Database) Close(ctx context.Context) error {
 	var cancelFunc context.CancelFunc
 	if _, deadlineSet := ctx.Deadline(); !deadlineSet {
 		// if no default timeout is already set - try with 30 second timeout.
@@ -215,10 +220,15 @@ func (b *base) Close(ctx context.Context) error {
 	return nil
 }
 
-func (b *base) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan repository.Closer {
+func (b *Database) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan repository.Closer {
 	out := make(chan repository.Closer)
 	go func() {
 		defer close(out)
+
+		if closer, isCloser := b.repositories.DefaultRepository.(repository.Closer); isCloser {
+			wg.Add(1)
+			out <- closer
+		}
 
 		// Close all repositories.
 		for _, repo := range b.repositories.Repositories {
@@ -237,7 +247,7 @@ func (b *base) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan 
 	return out
 }
 
-func (b *base) closeCloser(ctx context.Context, closer repository.Closer, wg *sync.WaitGroup, errChan chan<- error) {
+func (b *Database) closeCloser(ctx context.Context, closer repository.Closer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := closer.Close(ctx); err != nil {
@@ -248,42 +258,55 @@ func (b *base) closeCloser(ctx context.Context, closer repository.Closer, wg *sy
 }
 
 // Repositories gets the repository mapping.
-func (b *base) mapper() *RepositoryMapper {
+func (b *Database) mapper() *RepositoryMapper {
 	return b.repositories
 }
 
 // ModelMap returns model map.
-func (b *base) ModelMap() *mapping.ModelMap {
+func (b *Database) ModelMap() *mapping.ModelMap {
 	return b.repositories.ModelMap
 }
 
+// GetRepository implements RepositoryGetter interface.
+func (b *Database) GetRepository(model mapping.Model) (repository.Repository, error) {
+	return b.repositories.GetRepository(model)
+}
+
+// GetDefaultRepository implements DefaultRepositoryGetter interface.
+func (b *Database) GetDefaultRepository() (repository.Repository, bool) {
+	if b.repositories.DefaultRepository == nil {
+		return nil, false
+	}
+	return b.repositories.DefaultRepository, true
+}
+
 // Now
-func (b *base) Now() time.Time {
+func (b *Database) Now() time.Time {
 	return b.options.TimeFunc()
 }
 
 // Query creates new query builder for given 'model' and it's optional instances 'models'.
-func (b *base) Query(model *mapping.ModelStruct, models ...mapping.Model) Builder {
+func (b *Database) Query(model *mapping.ModelStruct, models ...mapping.Model) Builder {
 	return b.query(context.Background(), model, models...)
 }
 
 // QueryCtx creates new query builder for given 'model' and it's optional instances 'models'.
-func (b *base) QueryCtx(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) Builder {
+func (b *Database) QueryCtx(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) Builder {
 	return b.query(ctx, model, models...)
 }
 
 // QueryGet implements QueryGetter interface.
-func (b *base) QueryGet(ctx context.Context, q *query.Scope) (mapping.Model, error) {
+func (b *Database) QueryGet(ctx context.Context, q *query.Scope) (mapping.Model, error) {
 	return queryGet(ctx, b, q)
 }
 
 // QueryGet implements QueryGetter interface.
-func (b *base) QueryFind(ctx context.Context, q *query.Scope) ([]mapping.Model, error) {
+func (b *Database) QueryFind(ctx context.Context, q *query.Scope) ([]mapping.Model, error) {
 	return queryFind(ctx, b, q)
 }
 
 // Insert implements DB interface.
-func (b *base) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
+func (b *Database) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
 	if len(models) == 0 {
 		return errors.Wrap(query.ErrNoModels, "nothing to insert")
 	}
@@ -292,12 +315,12 @@ func (b *base) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models 
 }
 
 // InsertQuery implements QueryInserter interface.
-func (b *base) InsertQuery(ctx context.Context, q *query.Scope) error {
+func (b *Database) InsertQuery(ctx context.Context, q *query.Scope) error {
 	return queryInsert(ctx, b, q)
 }
 
 // Update implements DB interface.
-func (b *base) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
+func (b *Database) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
 	if len(models) == 0 {
 		return 0, errors.Wrap(query.ErrNoModels, "nothing to update")
 	}
@@ -306,12 +329,12 @@ func (b *base) Update(ctx context.Context, mStruct *mapping.ModelStruct, models 
 }
 
 // UpdateQuery implements QueryUpdater interface.
-func (b *base) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
+func (b *Database) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
 	return queryUpdate(ctx, b, q)
 }
 
 // deleteQuery implements DB interface.
-func (b *base) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
+func (b *Database) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
 	if len(models) == 0 {
 		return 0, errors.Wrap(query.ErrNoModels, "nothing to delete")
 	}
@@ -320,12 +343,12 @@ func (b *base) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models 
 }
 
 // DeleteQuery implements QueryDeleter interface.
-func (b *base) DeleteQuery(ctx context.Context, q *query.Scope) (int64, error) {
+func (b *Database) DeleteQuery(ctx context.Context, q *query.Scope) (int64, error) {
 	return deleteQuery(ctx, b, q)
 }
 
 // Refresh implements DB interface.
-func (b *base) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
+func (b *Database) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
 	if len(models) == 0 {
 		return nil
 	}
@@ -334,7 +357,7 @@ func (b *base) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models
 }
 
 // QueryRefresh implements QueryRefresher interface.
-func (b *base) QueryRefresh(ctx context.Context, q *query.Scope) error {
+func (b *Database) QueryRefresh(ctx context.Context, q *query.Scope) error {
 	return refreshQuery(ctx, b, q)
 }
 
@@ -342,7 +365,7 @@ func (b *base) QueryRefresh(ctx context.Context, q *query.Scope) error {
 // Relations
 //
 
-func (b *base) AddRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
+func (b *Database) AddRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
 	mStruct, err := b.mapper().ModelMap.ModelStruct(model)
 	if err != nil {
 		return err
@@ -352,13 +375,13 @@ func (b *base) AddRelations(ctx context.Context, model mapping.Model, relationFi
 }
 
 // QueryAddRelations implements QueryRelationAdder interface.
-func (b *base) QueryAddRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
+func (b *Database) QueryAddRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
 	return queryAddRelations(ctx, b, s, relationField, relations...)
 }
 
 // querySetRelations clears all 'relationField' for the input models and set their values to the 'relations'.
 // The relation's foreign key must be allowed to set to null.
-func (b *base) SetRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
+func (b *Database) SetRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
 	mStruct, err := b.mapper().ModelMap.ModelStruct(model)
 	if err != nil {
 		return err
@@ -367,16 +390,16 @@ func (b *base) SetRelations(ctx context.Context, model mapping.Model, relationFi
 	return querySetRelations(ctx, b, q, relationField, relations...)
 }
 
-var _ QueryRelationSetter = &base{}
+var _ QueryRelationSetter = &Database{}
 
 // QuerySetRelations implements QueryRelationSetter interface.
-func (b *base) QuerySetRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
+func (b *Database) QuerySetRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
 	return querySetRelations(ctx, b, s, relationField, relations...)
 }
 
 // ClearRelations clears all 'relationField' relations for given input models.
 // The relation's foreign key must be allowed to set to null.
-func (b *base) ClearRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField) (int64, error) {
+func (b *Database) ClearRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField) (int64, error) {
 	// TODO(kucjac): allow to clear only selected relation models.
 	mStruct, err := b.mapper().ModelMap.ModelStruct(model)
 	if err != nil {
@@ -386,29 +409,29 @@ func (b *base) ClearRelations(ctx context.Context, model mapping.Model, relation
 	return queryClearRelations(ctx, b, q, relationField)
 }
 
-var _ QueryRelationClearer = &base{}
+var _ QueryRelationClearer = &Database{}
 
 // QueryClearRelations implements QueryRelationClearer interface.
-func (b *base) QueryClearRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField) (int64, error) {
+func (b *Database) QueryClearRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField) (int64, error) {
 	return queryClearRelations(ctx, b, s, relationField)
 }
 
 // IncludeRelation gets the relations at the 'relationField' for provided models. An optional relationFieldset might be provided.
-func (b *base) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error {
+func (b *Database) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error {
 	return queryIncludeRelation(ctx, b, mStruct, models, relationField, relationFieldset...)
 }
 
 // GetRelations implements DB interface.
-func (b *base) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
+func (b *Database) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
 	return queryGetRelations(ctx, b, mStruct, models, relationField, relationFieldset...)
 }
 
-func (b *base) query(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) *dbQuery {
+func (b *Database) query(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) *dbQuery {
 	q := &dbQuery{ctx: ctx, db: b}
 	q.scope = query.NewScope(model, models...)
 	return q
 }
 
-func (b *base) synchronousConnections() bool {
+func (b *Database) synchronousConnections() bool {
 	return b.options.SynchronousConnections
 }

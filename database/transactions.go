@@ -77,7 +77,7 @@ type savePoint struct {
 // If the 'db' is already a transaction the function
 func Begin(ctx context.Context, db DB, options *query.TxOptions) (*Tx, error) {
 	switch dbt := db.(type) {
-	case *base:
+	case *Database:
 		return begin(ctx, dbt, options), nil
 	case *Tx:
 		if dbt.Transaction.State.Done() {
@@ -330,6 +330,19 @@ func (t *Tx) mapper() *RepositoryMapper {
 // ModelMap gets the model mapping.
 func (t *Tx) ModelMap() *mapping.ModelMap {
 	return t.repositories.ModelMap
+}
+
+// GetRepository implements RepositoryGetter interface.
+func (t *Tx) GetRepository(model mapping.Model) (repository.Repository, error) {
+	return t.repositories.GetRepository(model)
+}
+
+// GetDefaultRepository implements DefaultRepositoryGetter interface.
+func (t *Tx) GetDefaultRepository() (repository.Repository, bool) {
+	if t.repositories.DefaultRepository == nil {
+		return nil, false
+	}
+	return t.repositories.DefaultRepository, true
 }
 
 // Query builds up a new query for given 'model'.
@@ -670,7 +683,7 @@ func (t *Tx) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, mod
 	return relationModels, nil
 }
 
-func begin(ctx context.Context, db *base, options *query.TxOptions) *Tx {
+func begin(ctx context.Context, db *Database, options *query.TxOptions) *Tx {
 	if options == nil {
 		options = &query.TxOptions{}
 	}

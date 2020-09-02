@@ -72,7 +72,7 @@ type Builder interface {
 // query is the query builder that allows to execute Queries in a callback manner.
 type dbQuery struct {
 	ctx   context.Context
-	db    *base
+	db    *Database
 	scope *query.Scope
 	err   error
 }
