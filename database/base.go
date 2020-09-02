@@ -252,6 +252,11 @@ func (b *base) mapper() *RepositoryMapper {
 	return b.repositories
 }
 
+// ModelMap returns model map.
+func (b *base) ModelMap() *mapping.ModelMap {
+	return b.repositories.ModelMap
+}
+
 // Now
 func (b *base) Now() time.Time {
 	return b.options.TimeFunc()

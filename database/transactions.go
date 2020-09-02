@@ -327,6 +327,11 @@ func (t *Tx) mapper() *RepositoryMapper {
 	return t.repositories
 }
 
+// ModelMap gets the model mapping.
+func (t *Tx) ModelMap() *mapping.ModelMap {
+	return t.repositories.ModelMap
+}
+
 // Query builds up a new query for given 'model'.
 // The query is executed using transaction context.
 func (t *Tx) Query(model *mapping.ModelStruct, models ...mapping.Model) Builder {

@@ -46,6 +46,9 @@ type DB interface {
 
 	// Now returns current time used by the database layer.
 	Now() time.Time
+
+	// ModelMap gets related model map.
+	ModelMap() *mapping.ModelMap
 }
 
 type repositoryMapper interface {
