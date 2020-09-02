@@ -152,6 +152,8 @@ type SigningMethod interface {
 
 // TokenerOptions are the options that defines the settings for the Tokener.
 type TokenerOptions struct {
+	// Model is the account model used by the tokener.
+	Model Account
 	// Store is a store used for some authenticator implementations.
 	Store store.Store
 	// Secret is the authorization secret.
@@ -166,10 +168,19 @@ type TokenerOptions struct {
 	RefreshTokenExpiration time.Duration
 	// SigningMethod is the token signing method.
 	SigningMethod SigningMethod
+	// TimeFunc sets the time function for given tokener.
+	TimeFunc func() time.Time
 }
 
 // TokenerOption is a function that sets the TokenerOptions.
 type TokenerOption func(o *TokenerOptions)
+
+// TokenerAccount sets the account for the tokener.
+func TokenerAccount(model Account) TokenerOption {
+	return func(o *TokenerOptions) {
+		o.Model = model
+	}
+}
 
 // TokenerSecret is an option that sets Secret in the auth options.
 func TokenerSecret(secret []byte) TokenerOption {
@@ -217,5 +228,12 @@ func TokenerSigningMethod(op SigningMethod) TokenerOption {
 func TokenerStore(s store.Store) TokenerOption {
 	return func(o *TokenerOptions) {
 		o.Store = s
+	}
+}
+
+// TokenerTimeFunc sets the default time function for the tokener.
+func TokenerTimeFunc(tf func() time.Time) TokenerOption {
+	return func(o *TokenerOptions) {
+		o.TimeFunc = tf
 	}
 }

@@ -16,6 +16,8 @@ type Options struct {
 	ConnectionURL string
 	// FileName is the an optional setting when the store's temporary value are being stored.
 	FileName string
+	// TimeFunc sets the time func for given options.
+	TimeFunc func() time.Time
 }
 
 // DefaultOptions creates the default store options.
@@ -23,6 +25,7 @@ func DefaultOptions() *Options {
 	return &Options{
 		DefaultExpiration: -1,
 		CleanupInterval:   -1,
+		TimeFunc:          time.Now,
 	}
 }
 
@@ -61,6 +64,13 @@ func WithConnectionURL(connectionURL string) Option {
 func WithFileName(fileName string) Option {
 	return func(o *Options) {
 		o.FileName = fileName
+	}
+}
+
+// WithTimeFunc sets the time function used by the store.
+func WithTimeFunc(tf func() time.Time) Option {
+	return func(o *Options) {
+		o.TimeFunc = tf
 	}
 }
 
