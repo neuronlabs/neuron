@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
@@ -16,17 +15,16 @@ import (
 )
 
 func TestTransactions(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+
+	db, err := New(WithDefaultRepository(repo), WithModelMap(mm))
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&testmodels.HasOneModel{})
+	mStruct, err := mm.ModelStruct(&testmodels.HasOneModel{})
 	require.NoError(t, err)
 
 	t.Run("Commit", func(t *testing.T) {
@@ -101,28 +99,24 @@ func TestTransactions(t *testing.T) {
 }
 
 func TestTransactionMultiRepo(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{IDValue: "first"}
-	err = c.SetDefaultRepository(repo)
-	require.NoError(t, err)
-
 	repo2 := &mockrepo.Repository{IDValue: "second"}
 
-	err = c.MapRepositoryModels(repo2, &testmodels.Blog{})
+	db, err := New(
+		WithModelMap(mm),
+		WithDefaultRepository(repo),
+		WithRepositoryModels(repo2, &testmodels.Blog{}),
+	)
 	require.NoError(t, err)
 
-	err = c.RegisterRepositoryModels()
+	postMStruct, err := mm.ModelStruct(&testmodels.Post{})
 	require.NoError(t, err)
 
-	db := New(c)
-
-	postMStruct, err := c.ModelStruct(&testmodels.Post{})
-	require.NoError(t, err)
-
-	blogMStruct, err := c.ModelStruct(&testmodels.Blog{})
+	blogMStruct, err := mm.ModelStruct(&testmodels.Blog{})
 	require.NoError(t, err)
 
 	tx := db.Begin(context.Background(), nil)

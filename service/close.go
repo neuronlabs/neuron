@@ -1,4 +1,4 @@
-package core
+package service
 
 import (
 	"context"
@@ -13,8 +13,8 @@ type Closer interface {
 	Close(ctx context.Context) error
 }
 
-// CloseAll gently closes repository connections.
-func (c *Controller) CloseAll(ctx context.Context) error {
+// Close closes all connection within provided context.
+func (s *Service) Close(ctx context.Context) error {
 	var cancelFunc context.CancelFunc
 	if _, deadlineSet := ctx.Deadline(); !deadlineSet {
 		// if no default timeout is already set - try with 30 second timeout.
@@ -27,12 +27,12 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 
 	wg := &sync.WaitGroup{}
 	waitChan := make(chan struct{})
-	jobs := c.closeJobsCreator(ctx, wg)
+	jobs := s.closeJobsCreator(ctx, wg)
 
 	errChan := make(chan error)
 	for job := range jobs {
 		log.Debugf("Closing: %T", job)
-		c.closeCloser(ctx, job, wg, errChan)
+		s.closeCloser(ctx, job, wg, errChan)
 	}
 
 	go func() {
@@ -53,27 +53,19 @@ func (c *Controller) CloseAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Closer {
+func (s *Service) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Closer {
 	out := make(chan Closer)
 	go func() {
 		defer close(out)
 
-		// Close all repositories.
-		for _, repo := range c.Repositories {
-			closer, isCloser := repo.(Closer)
-			if !isCloser {
-				continue
-			}
+		// Added DB closer.
+		if closer, isCloser := s.DB.(Closer); isCloser {
 			wg.Add(1)
-			select {
-			case out <- closer:
-			case <-ctx.Done():
-				return
-			}
+			out <- closer
 		}
 
 		// Close all stores.
-		for _, s := range c.Stores {
+		for _, s := range s.Stores {
 			closer, isCloser := s.(Closer)
 			if !isCloser {
 				continue
@@ -87,34 +79,8 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <
 		}
 
 		// Close all file stores.
-		for _, s := range c.FileStores {
+		for _, s := range s.FileStores {
 			closer, isCloser := s.(Closer)
-			if !isCloser {
-				continue
-			}
-			wg.Add(1)
-			select {
-			case out <- closer:
-			case <-ctx.Done():
-				return
-			}
-		}
-
-		for _, i := range c.Initializers {
-			closer, isCloser := i.(Closer)
-			if !isCloser {
-				continue
-			}
-			wg.Add(1)
-			select {
-			case out <- closer:
-			case <-ctx.Done():
-				return
-			}
-		}
-
-		for _, i := range c.NamedInitializers {
-			closer, isCloser := i.(Closer)
 			if !isCloser {
 				continue
 			}
@@ -129,7 +95,7 @@ func (c *Controller) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <
 	return out
 }
 
-func (c *Controller) closeCloser(ctx context.Context, closer Closer, wg *sync.WaitGroup, errChan chan<- error) {
+func (s *Service) closeCloser(ctx context.Context, closer Closer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := closer.Close(ctx); err != nil {

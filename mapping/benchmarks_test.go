@@ -40,7 +40,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			m := NewModelMap(WithNamingConvention(SnakeCase))
+			m := New(WithNamingConvention(SnakeCase))
 			b.StartTimer()
 
 			err := m.RegisterModels(&TModel{})
@@ -51,7 +51,7 @@ func BenchmarkMapping(b *testing.B) {
 	b.Run("Relationship", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			m := NewModelMap(WithNamingConvention(SnakeCase))
+			m := New(WithNamingConvention(SnakeCase))
 			b.StartTimer()
 
 			err := m.RegisterModels(&Model1WithMany2Many{}, &Model2WithMany2Many{}, &JoinModel{}, &First{}, &Second{}, &FirstSeconds{})
@@ -67,8 +67,8 @@ func prepareBench(b *testing.B) *ModelStruct {
 	err := mm.RegisterModels(&BenchModel{})
 	require.NoError(b, err)
 
-	mStruct, ok := mm.GetModelStruct(&BenchModel{})
-	require.True(b, ok)
+	mStruct, err := mm.ModelStruct(&BenchModel{})
+	require.NoError(b, err)
 
 	return mStruct
 }

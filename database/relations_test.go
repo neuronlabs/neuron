@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
@@ -17,20 +16,18 @@ import (
 )
 
 func TestAddRelations(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithModelMap(mm), WithDefaultRepository(repo))
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
-	db := New(c)
-
 	t.Run("HasMany", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasManyModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasMany")
@@ -96,7 +93,7 @@ func TestAddRelations(t *testing.T) {
 	})
 
 	t.Run("HasOne", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasOneModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasOneModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasOne")
@@ -166,7 +163,7 @@ func TestAddRelations(t *testing.T) {
 	})
 
 	t.Run("Many2Many", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.ManyToManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.ManyToManyModel{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("Many2Many")
@@ -210,7 +207,7 @@ func TestAddRelations(t *testing.T) {
 	})
 
 	t.Run("BelongsTo", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.Post{})
+		mStruct, err := mm.ModelStruct(&testmodels.Post{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("LatestComment")
@@ -242,20 +239,18 @@ func TestAddRelations(t *testing.T) {
 }
 
 func TestClearRelations(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo), WithModelMap(mm))
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
-	db := New(c)
-
 	t.Run("HasMany", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasManyModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasMany")
@@ -291,7 +286,7 @@ func TestClearRelations(t *testing.T) {
 	})
 
 	t.Run("HasOne", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasOneModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasOneModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasOne")
@@ -326,7 +321,7 @@ func TestClearRelations(t *testing.T) {
 	})
 
 	t.Run("Many2Many", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.ManyToManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.ManyToManyModel{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("Many2Many")
@@ -357,7 +352,7 @@ func TestClearRelations(t *testing.T) {
 	})
 
 	t.Run("BelongsTo", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.Post{})
+		mStruct, err := mm.ModelStruct(&testmodels.Post{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("LatestComment")
@@ -388,20 +383,18 @@ func TestClearRelations(t *testing.T) {
 }
 
 func TestSetRelations(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithModelMap(mm), WithDefaultRepository(repo))
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
-	db := New(c)
-
 	t.Run("HasMany", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasManyModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasMany")
@@ -481,7 +474,7 @@ func TestSetRelations(t *testing.T) {
 	})
 
 	t.Run("HasOne", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasOneModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasOneModel{})
 		require.NoError(t, err)
 
 		relationField, ok := mStruct.RelationByName("HasOne")
@@ -568,7 +561,7 @@ func TestSetRelations(t *testing.T) {
 	})
 
 	t.Run("Many2Many", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.ManyToManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.ManyToManyModel{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("Many2Many")
@@ -626,7 +619,7 @@ func TestSetRelations(t *testing.T) {
 	})
 
 	t.Run("BelongsTo", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.Post{})
+		mStruct, err := mm.ModelStruct(&testmodels.Post{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("LatestComment")
@@ -658,18 +651,16 @@ func TestSetRelations(t *testing.T) {
 }
 
 func TestGetRelations(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo), WithModelMap(mm))
 	require.NoError(t, err)
 
-	db := New(c)
-
 	t.Run("HasMany", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasManyModel{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("HasMany")
@@ -711,7 +702,7 @@ func TestGetRelations(t *testing.T) {
 		assert.ElementsMatch(t, []interface{}{4, 5, 6, 7, 8}, mapping.Models(relations).PrimaryKeyValues())
 	})
 	t.Run("HasOne", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.HasOneModel{})
+		mStruct, err := mm.ModelStruct(&testmodels.HasOneModel{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("HasOne")
@@ -752,7 +743,7 @@ func TestGetRelations(t *testing.T) {
 
 	t.Run("Many2Many", func(t *testing.T) {
 		t.Run("FullFieldset", func(t *testing.T) {
-			mStruct, err := c.ModelStruct(&testmodels.ManyToManyModel{})
+			mStruct, err := mm.ModelStruct(&testmodels.ManyToManyModel{})
 			require.NoError(t, err)
 
 			relation, ok := mStruct.RelationByName("Many2Many")
@@ -819,7 +810,7 @@ func TestGetRelations(t *testing.T) {
 			assert.ElementsMatch(t, []interface{}{1, 2, 3, 4, 5}, mapping.Models(relations).PrimaryKeyValues())
 		})
 		t.Run("OnlyPrimaries", func(t *testing.T) {
-			mStruct, err := c.ModelStruct(&testmodels.ManyToManyModel{})
+			mStruct, err := mm.ModelStruct(&testmodels.ManyToManyModel{})
 			require.NoError(t, err)
 
 			relation, ok := mStruct.RelationByName("Many2Many")
@@ -865,7 +856,7 @@ func TestGetRelations(t *testing.T) {
 	})
 
 	t.Run("BelongsTo", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&testmodels.Blog{})
+		mStruct, err := mm.ModelStruct(&testmodels.Blog{})
 		require.NoError(t, err)
 
 		relation, ok := mStruct.RelationByName("CurrentPost")

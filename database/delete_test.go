@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/query/filter"
@@ -18,18 +17,19 @@ import (
 )
 
 func TestDelete(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(
+		WithDefaultRepository(repo),
+		WithModelMap(mm),
+	)
 	require.NoError(t, err)
 
-	db := New(c)
-
 	m := &testmodels.Blog{ID: 3}
-	mStruct, err := c.ModelStruct(m)
+	mStruct, err := mm.ModelStruct(m)
 	require.NoError(t, err)
 
 	repo.OnDelete(func(ctx context.Context, s *query.Scope) (int64, error) {
@@ -53,17 +53,16 @@ func TestDelete(t *testing.T) {
 }
 
 func TestSoftDelete(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+
+	db, err := New(WithDefaultRepository(repo))
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&TestModel{})
+	mStruct, err := mm.ModelStruct(&TestModel{})
 	require.NoError(t, err)
 
 	t.Run("Models", func(t *testing.T) {
@@ -99,7 +98,7 @@ func TestSoftDelete(t *testing.T) {
 
 		t.Run("NoHooks", func(t *testing.T) {
 			m := &SoftDeletableNoHooks{ID: 3}
-			mStruct, err := c.ModelStruct(m)
+			mStruct, err := mm.ModelStruct(m)
 			require.NoError(t, err)
 
 			// Soft delete is an update with the deleted at field selected.
@@ -201,7 +200,7 @@ func TestSoftDelete(t *testing.T) {
 			assert.Equal(t, int64(2), res)
 		})
 		t.Run("NoHooks", func(t *testing.T) {
-			mStruct, err := c.ModelStruct(&SoftDeletableNoHooks{})
+			mStruct, err := mm.ModelStruct(&SoftDeletableNoHooks{})
 			require.NoError(t, err)
 
 			q := query.NewScope(mStruct)

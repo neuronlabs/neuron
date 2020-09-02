@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
@@ -16,17 +15,15 @@ import (
 )
 
 func TestFind(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	m := mapping.New()
+	err := m.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo))
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&testmodels.Blog{})
+	mStruct, err := m.ModelStruct(&testmodels.Blog{})
 	require.NoError(t, err)
 
 	repo.OnFind(func(ctx context.Context, s *query.Scope) error {
@@ -85,7 +82,7 @@ func TestFind(t *testing.T) {
 		t.Run("HasMany", func(t *testing.T) {
 			// At first the function would like to find the posts that matches given query.
 			repo.OnFind(func(ctx context.Context, s *query.Scope) error {
-				postMStruct, err := c.ModelStruct(&testmodels.Post{})
+				postMStruct, err := m.ModelStruct(&testmodels.Post{})
 				require.NoError(t, err)
 
 				require.Equal(t, postMStruct, s.ModelStruct)
@@ -199,7 +196,7 @@ func TestFind(t *testing.T) {
 		t.Run("BelongsTo", func(t *testing.T) {
 			// At first the function would like to find the posts that matches given query.
 			repo.OnFind(func(ctx context.Context, s *query.Scope) error {
-				postMStruct, err := c.ModelStruct(&testmodels.Post{})
+				postMStruct, err := m.ModelStruct(&testmodels.Post{})
 				require.NoError(t, err)
 
 				require.Equal(t, postMStruct, s.ModelStruct)
@@ -310,9 +307,9 @@ func TestFind(t *testing.T) {
 		})
 
 		t.Run("HasOne", func(t *testing.T) {
-			hom := c.MustModelStruct(&testmodels.HasOneModel{})
+			hom := m.MustModelStruct(&testmodels.HasOneModel{})
 			repo.OnFind(func(_ context.Context, s *query.Scope) error {
-				fm := c.MustModelStruct(&testmodels.ForeignModel{})
+				fm := m.MustModelStruct(&testmodels.ForeignModel{})
 				require.Equal(t, fm, s.ModelStruct)
 				if assert.Len(t, s.Filters, 1) {
 					sf, ok := s.Filters[0].(filter.Simple)
@@ -389,10 +386,10 @@ func TestFind(t *testing.T) {
 		})
 
 		t.Run("ManyToMany", func(t *testing.T) {
-			tm := c.MustModelStruct(&testmodels.ManyToManyModel{})
+			tm := m.MustModelStruct(&testmodels.ManyToManyModel{})
 
 			repo.OnFind(func(_ context.Context, s *query.Scope) error {
-				relModel := c.MustModelStruct(&testmodels.RelatedModel{})
+				relModel := m.MustModelStruct(&testmodels.RelatedModel{})
 				require.Equal(t, relModel, s.ModelStruct)
 
 				if assert.Len(t, s.Filters, 1) {
@@ -417,7 +414,7 @@ func TestFind(t *testing.T) {
 			})
 
 			repo.OnFind(func(_ context.Context, s *query.Scope) error {
-				jm := c.MustModelStruct(&testmodels.JoinModel{})
+				jm := m.MustModelStruct(&testmodels.JoinModel{})
 				require.Equal(t, jm, s.ModelStruct)
 
 				if assert.Len(t, s.Filters, 1) {
@@ -476,7 +473,7 @@ func TestFind(t *testing.T) {
 			t.Run("OnlyForeign", func(t *testing.T) {
 				// This should query join model and then the model by itself.
 				repo.OnFind(func(_ context.Context, s *query.Scope) error {
-					jm := c.MustModelStruct(&testmodels.JoinModel{})
+					jm := m.MustModelStruct(&testmodels.JoinModel{})
 					require.Equal(t, jm, s.ModelStruct)
 
 					if assert.Len(t, s.Filters, 1) {
@@ -536,17 +533,18 @@ func TestFind(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(
+		WithDefaultRepository(repo),
+		WithModelMap(mm),
+	)
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&testmodels.Blog{})
+	mStruct, err := mm.ModelStruct(&testmodels.Blog{})
 	require.NoError(t, err)
 
 	repo.OnFind(func(ctx context.Context, s *query.Scope) error {

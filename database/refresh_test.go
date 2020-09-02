@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
@@ -17,17 +16,16 @@ import (
 )
 
 func TestRefreshFind(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+
+	db, err := New(WithModelMap(mm), WithDefaultRepository(repo))
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&testmodels.Blog{})
+	mStruct, err := mm.ModelStruct(&testmodels.Blog{})
 	require.NoError(t, err)
 
 	t.Run("Many", func(t *testing.T) {

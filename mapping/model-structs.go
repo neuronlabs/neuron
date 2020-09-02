@@ -313,13 +313,6 @@ func (m *ModelStruct) clearInitializeStoreKeys() {
 	log.Debug3f("Cleared model: '%s' internal store key", m.Collection())
 }
 
-// computeNestedIncludedCount computes the included count for given limit
-func (m *ModelStruct) computeNestedIncludedCount(limit int) {
-	nestedIncludeCount := m.initComputeNestedIncludedCount(0, limit)
-
-	m.StoreSet(nestedIncludedCountKey, nestedIncludeCount)
-}
-
 func (m *ModelStruct) findTimeRelatedFields() error {
 	namerFunc := m.NamingConvention()
 	var err error
@@ -393,31 +386,12 @@ func (m *ModelStruct) increaseAssignedFields() {
 	m.store[assignedFieldsKey] = assignedFields
 }
 
-func (m *ModelStruct) initComputeNestedIncludedCount(level, maxNestedRelLevel int) int {
-	var nestedCount int
-	if level != 0 {
-		thisIncludedCount, _ := m.StoreGet(thisIncludedCountKey)
-		nestedCount += thisIncludedCount.(int)
-	}
-
-	for _, relationship := range m.relationships {
-		if level < maxNestedRelLevel {
-			nestedCount += relationship.relationship.mStruct.initComputeNestedIncludedCount(level+1, maxNestedRelLevel)
-		}
-	}
-	return nestedCount
-}
-
 func (m *ModelStruct) initComputeSortedFields() {
 	for _, sField := range m.structFields {
 		if sField.canBeSorted() {
 			m.sortScopeCount++
 		}
 	}
-}
-
-func (m *ModelStruct) initComputeThisIncludedCount() {
-	m.StoreSet(thisIncludedCountKey, len(m.relationships))
 }
 
 func (m *ModelStruct) initCheckFieldTypes() (err error) {

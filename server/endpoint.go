@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/neuronlabs/neuron/auth"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 )
@@ -12,4 +13,5 @@ type Endpoint struct {
 	QueryMethod query.Method
 	ModelStruct *mapping.ModelStruct
 	Relation    *mapping.StructField
+	Roles       []auth.Role
 }

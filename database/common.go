@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -14,12 +13,12 @@ import (
 // Count gets given scope models count.
 func Count(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	filterSoftDeleted(s)
-	return getRepository(db.Controller(), s).Count(ctx, s)
+	return getRepository(db, s).Count(ctx, s)
 }
 
 // Exists checks if given query model exists.
 func Exists(ctx context.Context, db DB, s *query.Scope) (bool, error) {
-	exister, isExister := getRepository(db.Controller(), s).(repository.Exister)
+	exister, isExister := getRepository(db, s).(repository.Exister)
 	if !isExister {
 		return false, errors.Wrapf(repository.ErrNotImplements, "repository for model: '%s' doesn't implement Exister interface", s.ModelStruct)
 	}
@@ -27,16 +26,18 @@ func Exists(ctx context.Context, db DB, s *query.Scope) (bool, error) {
 	return exister.Exists(ctx, s)
 }
 
-func getRepository(c *core.Controller, s *query.Scope) repository.Repository {
-	repo, err := c.GetRepositoryByModelStruct(s.ModelStruct)
+func getRepository(db DB, s *query.Scope) repository.Repository {
+	mapper := db.(repositoryMapper).mapper()
+	repo, err := mapper.GetRepositoryByModelStruct(s.ModelStruct)
 	if err != nil {
 		log.Panic(err)
 	}
 	return repo
 }
 
-func getModelRepository(c *core.Controller, model *mapping.ModelStruct) repository.Repository {
-	repo, err := c.GetRepositoryByModelStruct(model)
+func getModelRepository(db DB, model *mapping.ModelStruct) repository.Repository {
+	mapper := db.(repositoryMapper).mapper()
+	repo, err := mapper.GetRepositoryByModelStruct(model)
 	if err != nil {
 		log.Panic(err)
 	}

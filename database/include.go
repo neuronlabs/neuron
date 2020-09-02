@@ -23,7 +23,7 @@ func findIncludedRelations(ctx context.Context, db DB, s *query.Scope) (err erro
 		log.Debugf(logFormat(s, "Finding included relations taken: '%s'"), time.Since(ts))
 	}()
 
-	if db.Controller().Options.SynchronousConnections {
+	if sc, ok := db.(synchronousConnector); ok && sc.synchronousConnections() {
 		return findIncludedRelationsSynchronous(ctx, db, s)
 	}
 	return findIncludedRelationsAsynchronous(ctx, db, s)

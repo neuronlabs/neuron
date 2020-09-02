@@ -22,6 +22,8 @@ var (
 
 	// ErrModel is the minor error classification related to the models.
 	ErrModel = errors.Wrap(ErrMapping, "model")
+	// ErrNilModel is an error when the input model is nil.
+	ErrNilModel = errors.Wrap(ErrModel, "nil")
 	// ErrModelNotMatch is an error where the model doesn't match with it's relationship.
 	ErrModelNotMatch = errors.Wrap(ErrMapping, "not match")
 	// ErrModelContainer is the error classification with models mapping container.

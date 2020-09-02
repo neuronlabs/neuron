@@ -7,8 +7,7 @@
 // - auth			- defines basic interfaces and structures used for neuron authentication and authorization.
 // - codec 			- is a set structures and interfaces used on marshal process.
 // - controller 	- defines a structure that keeps and maps all models to related repositories.
-// - core 			- contains core neuron service definitions.
-// - database		- defines interfaces, functions and structures that allows to execute queries.
+// - database		- defines database connection and interface, functions and structures that allows to execute queries.
 // - errors 		- neuron defined errors.
 // - log 			- is the neuron service logging interface structure for the neuron based applications.
 // - mapping 		- contains the information about the mapped models their fields and settings.

@@ -3,9 +3,7 @@ package codec
 import (
 	"io"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/mapping"
-	"github.com/neuronlabs/neuron/query"
 )
 
 // StructTag is a constant used as a tag that defines models codecs.
@@ -37,14 +35,4 @@ type ModelUnmarshaler interface {
 	UnmarshalModels(data []byte, options ...UnmarshalOption) ([]mapping.Model, error)
 	// UnmarshalModel unmarshal single model from provided input data. Requires model or model struct option.
 	UnmarshalModel(data []byte, options ...UnmarshalOption) (mapping.Model, error)
-}
-
-// ParameterParser is an interface that parses parameters in given codec format.
-type ParameterParser interface {
-	ParseParameters(c *core.Controller, q *query.Scope, parameters query.Parameters) error
-}
-
-// ParameterExtractor is an interface that extracts query parameters from given scope.
-type ParameterExtractor interface {
-	ExtractParameters(c *core.Controller, q *query.Scope) (query.Parameters, error)
 }

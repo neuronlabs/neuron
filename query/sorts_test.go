@@ -11,13 +11,13 @@ import (
 
 // TestNewUniques tests the NewUniques function.
 func TestNewUniques(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
+	ms := mapping.New(mapping.WithNamingConvention(mapping.SnakeCase))
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&Blog{})
-	require.True(t, ok)
+	mStruct, err := ms.ModelStruct(&Blog{})
+	require.NoError(t, err)
 
 	t.Run("Duplicated", func(t *testing.T) {
 		_, err := NewSortFields(mStruct, "id", "-id", "id")
@@ -44,13 +44,13 @@ func TestNewUniques(t *testing.T) {
 
 // TestNew tests New sort field method.
 func TestNew(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
+	ms := mapping.New(mapping.WithNamingConvention(mapping.SnakeCase))
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&Blog{})
-	require.True(t, ok)
+	mStruct, err := ms.ModelStruct(&Blog{})
+	require.NoError(t, err)
 
 	t.Run("NoOrder", func(t *testing.T) {
 		sField, err := NewSort(mStruct, "-id")
@@ -102,13 +102,13 @@ func TestNew(t *testing.T) {
 
 // TestSortField tests the sort field copy method.
 func TestSortField(t *testing.T) {
-	ms := mapping.NewModelMap(mapping.WithNamingConvention(mapping.KebabCase))
+	ms := mapping.New(mapping.WithNamingConvention(mapping.KebabCase))
 
 	err := ms.RegisterModels(&Blog{}, &Post{}, &Comment{})
 	require.NoError(t, err)
 
-	mStruct, ok := ms.GetModelStruct(&Blog{})
-	require.True(t, ok)
+	mStruct, err := ms.ModelStruct(&Blog{})
+	require.NoError(t, err)
 
 	sField, err := NewSort(mStruct, "posts.id")
 	require.NoError(t, err)

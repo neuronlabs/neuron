@@ -33,7 +33,7 @@ func reduceRelationshipFilters(ctx context.Context, db DB, s *query.Scope) error
 		return nil
 	}
 
-	if db.Controller().Options.SynchronousConnections {
+	if sc, ok := db.(synchronousConnector); ok && sc.synchronousConnections() {
 		return reduceRelationshipFiltersSynchronous(ctx, db, s, relationFilters...)
 	}
 	return reduceRelationshipFiltersAsynchronous(ctx, db, s, relationFilters...)

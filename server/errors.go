@@ -14,6 +14,9 @@ var (
 	ErrServerOptions = errors.Wrap(ErrServer, "options")
 	// ErrURIParameter is an error related with uri parameters.
 	ErrURIParameter = errors.Wrap(ErrServer, "uri parameter")
+	// ErrServerClosed is an error thrown when the server is closed.
+	ErrServerClosed = errors.Wrap(ErrServer, "closed")
+
 	// ErrHeader errors.Minor
 	ErrHeader = errors.Wrap(ErrServer, "header")
 	// ErrHeaderNotAcceptable is an error related to not acceptable request header.

@@ -28,7 +28,7 @@ func queryFind(ctx context.Context, db DB, s *query.Scope) ([]mapping.Model, err
 			s.FieldSets[0] = s.ModelStruct.Fields()
 		}
 	default:
-		return nil, errors.WrapDetf(query.ErrInvalidFieldSet, "provided too many fieldsets for the find query")
+		return nil, errors.WrapDetf(query.ErrInvalidFieldSet, "provided too many field sets for the find query")
 	}
 	// If the query contains any relationship filters, reduce them to this models fields filter.
 	if err := reduceRelationshipFilters(ctx, db, s); err != nil {
@@ -44,7 +44,7 @@ func queryFind(ctx context.Context, db DB, s *query.Scope) ([]mapping.Model, err
 	}
 
 	// Execute find interface.
-	if err := getRepository(db.Controller(), s).Find(ctx, s); err != nil {
+	if err := getRepository(db, s).Find(ctx, s); err != nil {
 		return nil, err
 	}
 	if len(s.Models) == 0 {

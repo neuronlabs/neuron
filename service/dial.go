@@ -1,4 +1,4 @@
-package core
+package service
 
 import (
 	"context"
@@ -13,8 +13,8 @@ type Dialer interface {
 	Dial(ctx context.Context) error
 }
 
-// DialAll establish connections for all repositories.
-func (c *Controller) DialAll(ctx context.Context) error {
+// Dial establish connection for all dialers in the service.
+func (s *Service) Dial(ctx context.Context) error {
 	var cancelFunc context.CancelFunc
 	if _, deadlineSet := ctx.Deadline(); !deadlineSet {
 		// if no default timeout is already set - try with 30 second timeout.
@@ -28,12 +28,12 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	wg := &sync.WaitGroup{}
 	waitChan := make(chan struct{})
 
-	jobs := c.dialJobsCreator(ctx, wg)
+	jobs := s.dialJobsCreator(ctx, wg)
 	// Create error channel.
 	errChan := make(chan error)
 	// Dial to all repositories.
 	for job := range jobs {
-		c.dial(ctx, job, wg, errChan)
+		s.dial(ctx, job, wg, errChan)
 	}
 	// Create wait group channel finish function.
 	go func() {
@@ -54,25 +54,17 @@ func (c *Controller) DialAll(ctx context.Context) error {
 	return nil
 }
 
-func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Dialer {
+func (s *Service) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-chan Dialer {
 	out := make(chan Dialer)
 	go func() {
 		defer close(out)
 
-		for _, repo := range c.Repositories {
-			dialer, isDialer := repo.(Dialer)
-			if !isDialer {
-				continue
-			}
+		if dialer, ok := s.DB.(Dialer); ok {
 			wg.Add(1)
-			select {
-			case out <- dialer:
-			case <-ctx.Done():
-				return
-			}
+			out <- dialer
 		}
 		// Iterate over stores and try to establish connection.
-		for _, s := range c.Stores {
+		for _, s := range s.Stores {
 			dialer, isDialer := s.(Dialer)
 			if !isDialer {
 				continue
@@ -86,34 +78,8 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-
 		}
 
 		// Iterate over file stores.
-		for _, s := range c.FileStores {
+		for _, s := range s.FileStores {
 			dialer, isDialer := s.(Dialer)
-			if !isDialer {
-				continue
-			}
-			wg.Add(1)
-			select {
-			case out <- dialer:
-			case <-ctx.Done():
-				return
-			}
-		}
-
-		for _, i := range c.Initializers {
-			dialer, isDialer := i.(Dialer)
-			if !isDialer {
-				continue
-			}
-			wg.Add(1)
-			select {
-			case out <- dialer:
-			case <-ctx.Done():
-				return
-			}
-		}
-
-		for _, i := range c.NamedInitializers {
-			dialer, isDialer := i.(Dialer)
 			if !isDialer {
 				continue
 			}
@@ -128,7 +94,7 @@ func (c *Controller) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-
 	return out
 }
 
-func (c *Controller) dial(ctx context.Context, dialer Dialer, wg *sync.WaitGroup, errChan chan<- error) {
+func (s *Service) dial(ctx context.Context, dialer Dialer, wg *sync.WaitGroup, errChan chan<- error) {
 	go func() {
 		defer wg.Done()
 		if err := dialer.Dial(ctx); err != nil {

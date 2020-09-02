@@ -3,10 +3,10 @@ package database
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/mapping"
@@ -60,9 +60,10 @@ func RunInTransaction(ctx context.Context, db DB, options *query.TxOptions, txFu
 // Tx is an in-progress transaction orm. A transaction must end with a call to Commit or Rollback.
 // After a call to Commit or Rollback all operations on the transaction fail with an error of class
 type Tx struct {
-	Transaction *query.Transaction
+	repositories *RepositoryMapper
+	options      *Options
 
-	c                  *core.Controller
+	Transaction        *query.Transaction
 	uniqueTransactions []*uniqueTx
 	savePoints         []*savePoint
 }
@@ -75,13 +76,17 @@ type savePoint struct {
 // Begin starts new transaction with respect to the transaction context and transaction options with controller 'c'.
 // If the 'db' is already a transaction the function
 func Begin(ctx context.Context, db DB, options *query.TxOptions) (*Tx, error) {
-	if tx, ok := db.(*Tx); ok {
-		if tx.Transaction.State.Done() {
-			return nil, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", tx.Transaction.ID.String())
+	switch dbt := db.(type) {
+	case *base:
+		return begin(ctx, dbt, options), nil
+	case *Tx:
+		if dbt.Transaction.State.Done() {
+			return nil, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", dbt.Transaction.ID.String())
 		}
-		return tx, nil
+		return dbt, nil
+	default:
+		return nil, errors.Wrap(errors.ErrInternal, "provided unknown DB")
 	}
-	return begin(ctx, db.Controller(), options), nil
 }
 
 // Commit commits the transaction.
@@ -302,11 +307,6 @@ func (t *Tx) ID() uuid.UUID {
 	return t.Transaction.ID
 }
 
-// Controller returns transaction controller.
-func (t *Tx) Controller() *core.Controller {
-	return t.c
-}
-
 // Options gets transaction TransactionOptions.
 func (t *Tx) Options() query.TxOptions {
 	return *t.Transaction.Options
@@ -315,6 +315,16 @@ func (t *Tx) Options() query.TxOptions {
 // State gets current transaction Transaction.State.
 func (t *Tx) State() query.TxState {
 	return t.Transaction.State
+}
+
+// Now implements DB interface.
+func (t *Tx) Now() time.Time {
+	return t.options.TimeFunc()
+}
+
+// Repositories implements DB interface.
+func (t *Tx) mapper() *RepositoryMapper {
+	return t.repositories
 }
 
 // Query builds up a new query for given 'model'.
@@ -519,7 +529,7 @@ func (t *Tx) AddRelations(ctx context.Context, model mapping.Model, relationFiel
 	if err := t.checkTransaction(); err != nil {
 		return err
 	}
-	mStruct, err := t.c.ModelStruct(model)
+	mStruct, err := t.repositories.ModelMap.ModelStruct(model)
 	if err != nil {
 		return err
 	}
@@ -556,7 +566,7 @@ func (t *Tx) SetRelations(ctx context.Context, model mapping.Model, relationFiel
 	if err := t.checkTransaction(); err != nil {
 		return err
 	}
-	mStruct, err := t.c.ModelStruct(model)
+	mStruct, err := t.repositories.ModelMap.ModelStruct(model)
 	if err != nil {
 		return err
 	}
@@ -593,7 +603,7 @@ func (t *Tx) ClearRelations(ctx context.Context, model mapping.Model, relationFi
 	if t.Transaction.State.Done() {
 		return 0, errors.WrapDetf(query.ErrTxDone, "transaction: '%s' is already done", t.Transaction.ID.String())
 	}
-	mStruct, err := t.c.ModelStruct(model)
+	mStruct, err := t.repositories.ModelMap.ModelStruct(model)
 	if err != nil {
 		return 0, err
 	}
@@ -655,12 +665,13 @@ func (t *Tx) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, mod
 	return relationModels, nil
 }
 
-func begin(ctx context.Context, c *core.Controller, options *query.TxOptions) *Tx {
+func begin(ctx context.Context, db *base, options *query.TxOptions) *Tx {
 	if options == nil {
 		options = &query.TxOptions{}
 	}
 	tx := &Tx{
-		c: c,
+		options:      db.options,
+		repositories: db.repositories,
 		Transaction: &query.Transaction{
 			ID:      uuid.New(),
 			Ctx:     ctx,
@@ -731,7 +742,7 @@ func (t *Tx) query(model *mapping.ModelStruct, models ...mapping.Model) *txQuery
 
 func (t *Tx) beginScopeTransaction(s *query.Scope) error {
 	// Get the repository mapped to given model.
-	repo := getRepository(t.c, s)
+	repo := getRepository(t, s)
 	// Check if given repository is a transactioner.
 	transactioner, ok := repo.(repository.Transactioner)
 	if !ok {
@@ -769,7 +780,7 @@ func (t *Tx) beginScopeTransaction(s *query.Scope) error {
 
 func (t *Tx) beginModelsTransaction(mStruct *mapping.ModelStruct) error {
 	// Get the repository mapped to given model.
-	repo := getModelRepository(t.c, mStruct)
+	repo := getModelRepository(t, mStruct)
 	// Check if given repository is a transactioner.
 	transactioner, ok := repo.(repository.Transactioner)
 	if !ok {

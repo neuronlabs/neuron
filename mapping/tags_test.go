@@ -14,8 +14,8 @@ func TestExtractTags(t *testing.T) {
 	err := m.RegisterModels(&Model1WithMany2Many{}, &Model2WithMany2Many{}, &JoinModel{})
 	require.NoError(t, err)
 
-	first, ok := m.GetModelStruct(&Model1WithMany2Many{})
-	require.True(t, ok)
+	first, err := m.ModelStruct(&Model1WithMany2Many{})
+	require.NoError(t, err)
 
 	synced, ok := first.RelationByName("Synced")
 	require.True(t, ok)

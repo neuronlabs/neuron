@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
@@ -16,15 +15,13 @@ import (
 )
 
 func TestInclude(t *testing.T) {
-	c := core.NewDefault()
+	c := mapping.New()
 	err := c.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo))
 	require.NoError(t, err)
-
-	db := New(c)
 
 	t.Run("HasMany", func(t *testing.T) {
 		mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
@@ -310,17 +307,19 @@ func TestInclude(t *testing.T) {
 }
 
 func TestIncludeOnFind(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(testmodels.Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+
+	db, err := New(
+		WithDefaultRepository(repo),
+		WithModelMap(mm),
+	)
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&testmodels.HasManyModel{})
+	mStruct, err := mm.ModelStruct(&testmodels.HasManyModel{})
 	require.NoError(t, err)
 
 	relation, ok := mStruct.RelationByName("HasMany")

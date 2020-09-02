@@ -12,13 +12,13 @@ import (
 
 // TestFormatQuery tests the format query methods
 func TestFormatQuery(t *testing.T) {
-	mp := mapping.NewModelMap(mapping.WithNamingConvention(mapping.SnakeCase))
+	mp := mapping.New(mapping.WithNamingConvention(mapping.SnakeCase))
 
 	err := mp.RegisterModels(&Formatter{}, &FormatterRelation{})
 	require.NoError(t, err)
 
-	mStruct, ok := mp.GetModelStruct(&Formatter{})
-	require.True(t, ok)
+	mStruct, err := mp.ModelStruct(&Formatter{})
+	require.NoError(t, err)
 
 	t.Run("Pagination", func(t *testing.T) {
 		s := newScope(mStruct)

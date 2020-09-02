@@ -2,18 +2,14 @@ package database
 
 import (
 	"context"
+	"time"
 
-	"github.com/neuronlabs/neuron/core"
-	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 )
 
 // DB is the common interface that allows to do the queries.
 type DB interface {
-	// Controller returns orm based controller.
-	Controller() *core.Controller
-
 	// Query creates a new query for provided 'model'.
 	Query(model *mapping.ModelStruct, models ...mapping.Model) Builder
 	// QueryCtx creates a new query for provided 'model'. The query should take a context on it's
@@ -47,6 +43,14 @@ type DB interface {
 	IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error
 	// GetRelations gets the 'relatedField' Models for provided the input 'models. An optional relationFieldset might be provided for the relation models.
 	GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error)
+
+	// Now returns current time used by the database layer.
+	Now() time.Time
+}
+
+type repositoryMapper interface {
+	// Repositories gets the repository mapper.
+	mapper() *RepositoryMapper
 }
 
 // QueryFinder is an interface that allows to list results from the query.
@@ -105,173 +109,6 @@ type QueryRelationClearer interface {
 	QueryClearRelations(ctx context.Context, s *query.Scope, relField *mapping.StructField) (int64, error)
 }
 
-// New creates new DB for given controller.
-//nolint:golint
-func New(c *core.Controller) *db {
-	return &db{c: c}
-}
-
-// Compile time check for the DB interface implementations.
-var _ DB = &db{}
-
-// Composer is the default query composer that implements DB interface.
-type db struct {
-	c *core.Controller
-}
-
-// Begin starts new transaction with respect to the transaction context and transaction options with controller 'c'.
-func (d *db) Begin(ctx context.Context, options *query.TxOptions) *Tx {
-	return begin(ctx, d.c, options)
-}
-
-// Controller implements DB interface.
-func (d *db) Controller() *core.Controller {
-	return d.c
-}
-
-// Query creates new query builder for given 'model' and it's optional instances 'models'.
-func (d *db) Query(model *mapping.ModelStruct, models ...mapping.Model) Builder {
-	return d.query(context.Background(), model, models...)
-}
-
-// QueryCtx creates new query builder for given 'model' and it's optional instances 'models'.
-func (d *db) QueryCtx(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) Builder {
-	return d.query(ctx, model, models...)
-}
-
-// QueryGet implements QueryGetter interface.
-func (d *db) QueryGet(ctx context.Context, q *query.Scope) (mapping.Model, error) {
-	return queryGet(ctx, d, q)
-}
-
-// QueryGet implements QueryGetter interface.
-func (d *db) QueryFind(ctx context.Context, q *query.Scope) ([]mapping.Model, error) {
-	return queryFind(ctx, d, q)
-}
-
-// Insert implements DB interface.
-func (d *db) Insert(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
-	if len(models) == 0 {
-		return errors.Wrap(query.ErrNoModels, "nothing to insert")
-	}
-	s := query.NewScope(mStruct, models...)
-	return queryInsert(ctx, d, s)
-}
-
-// InsertQuery implements QueryInserter interface.
-func (d *db) InsertQuery(ctx context.Context, q *query.Scope) error {
-	return queryInsert(ctx, d, q)
-}
-
-// Update implements DB interface.
-func (d *db) Update(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
-	if len(models) == 0 {
-		return 0, errors.Wrap(query.ErrNoModels, "nothing to update")
-	}
-	s := query.NewScope(mStruct, models...)
-	return queryUpdate(ctx, d, s)
-}
-
-// UpdateQuery implements QueryUpdater interface.
-func (d *db) UpdateQuery(ctx context.Context, q *query.Scope) (int64, error) {
-	return queryUpdate(ctx, d, q)
-}
-
-// deleteQuery implements DB interface.
-func (d *db) Delete(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) (int64, error) {
-	if len(models) == 0 {
-		return 0, errors.Wrap(query.ErrNoModels, "nothing to delete")
-	}
-	s := query.NewScope(mStruct, models...)
-	return deleteQuery(ctx, d, s)
-}
-
-// DeleteQuery implements QueryDeleter interface.
-func (d *db) DeleteQuery(ctx context.Context, q *query.Scope) (int64, error) {
-	return deleteQuery(ctx, d, q)
-}
-
-// Refresh implements DB interface.
-func (d *db) Refresh(ctx context.Context, mStruct *mapping.ModelStruct, models ...mapping.Model) error {
-	if len(models) == 0 {
-		return nil
-	}
-	q := query.NewScope(mStruct, models...)
-	return refreshQuery(ctx, d, q)
-}
-
-// QueryRefresh implements QueryRefresher interface.
-func (d *db) QueryRefresh(ctx context.Context, q *query.Scope) error {
-	return refreshQuery(ctx, d, q)
-}
-
-//
-// Relations
-//
-
-func (d *db) AddRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
-	mStruct, err := d.c.ModelStruct(model)
-	if err != nil {
-		return err
-	}
-	q := query.NewScope(mStruct, model)
-	return queryAddRelations(ctx, d, q, relationField, relations...)
-}
-
-// QueryAddRelations implements QueryRelationAdder interface.
-func (d *db) QueryAddRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
-	return queryAddRelations(ctx, d, s, relationField, relations...)
-}
-
-// querySetRelations clears all 'relationField' for the input models and set their values to the 'relations'.
-// The relation's foreign key must be allowed to set to null.
-func (d *db) SetRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField, relations ...mapping.Model) error {
-	mStruct, err := d.c.ModelStruct(model)
-	if err != nil {
-		return err
-	}
-	q := query.NewScope(mStruct, model)
-	return querySetRelations(ctx, d, q, relationField, relations...)
-}
-
-var _ QueryRelationSetter = &db{}
-
-// QuerySetRelations implements QueryRelationSetter interface.
-func (d *db) QuerySetRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField, relations ...mapping.Model) error {
-	return querySetRelations(ctx, d, s, relationField, relations...)
-}
-
-// ClearRelations clears all 'relationField' relations for given input models.
-// The relation's foreign key must be allowed to set to null.
-func (d *db) ClearRelations(ctx context.Context, model mapping.Model, relationField *mapping.StructField) (int64, error) {
-	// TODO(kucjac): allow to clear only selected relation models.
-	mStruct, err := d.c.ModelStruct(model)
-	if err != nil {
-		return 0, err
-	}
-	q := query.NewScope(mStruct, model)
-	return queryClearRelations(ctx, d, q, relationField)
-}
-
-var _ QueryRelationClearer = &db{}
-
-// QueryClearRelations implements QueryRelationClearer interface.
-func (d *db) QueryClearRelations(ctx context.Context, s *query.Scope, relationField *mapping.StructField) (int64, error) {
-	return queryClearRelations(ctx, d, s, relationField)
-}
-
-// IncludeRelation gets the relations at the 'relationField' for provided models. An optional relationFieldset might be provided.
-func (d *db) IncludeRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) error {
-	return queryIncludeRelation(ctx, d, mStruct, models, relationField, relationFieldset...)
-}
-
-// GetRelations implements DB interface.
-func (d *db) GetRelations(ctx context.Context, mStruct *mapping.ModelStruct, models []mapping.Model, relationField *mapping.StructField, relationFieldset ...*mapping.StructField) ([]mapping.Model, error) {
-	return queryGetRelations(ctx, d, mStruct, models, relationField, relationFieldset...)
-}
-
-func (d *db) query(ctx context.Context, model *mapping.ModelStruct, models ...mapping.Model) *dbQuery {
-	b := &dbQuery{ctx: ctx, db: d}
-	b.scope = query.NewScope(model, models...)
-	return b
+type synchronousConnector interface {
+	synchronousConnections() bool
 }

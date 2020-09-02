@@ -7,24 +7,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
 	"github.com/neuronlabs/neuron/repository/mockrepo"
 )
 
 func TestInsert(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(
+		WithDefaultRepository(repo),
+		WithModelMap(mm),
+	)
 	require.NoError(t, err)
 
-	db := New(c)
-
-	mStruct, err := c.ModelStruct(&TestModel{})
+	mStruct, err := mm.ModelStruct(&TestModel{})
 	require.NoError(t, err)
 
 	createdAt, _ := mStruct.CreatedAt()

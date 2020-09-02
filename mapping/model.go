@@ -50,6 +50,11 @@ type FromSetter interface {
 	SetFrom(model Model) error
 }
 
+// StructFieldValuer is an interface that gets the value for provided struct fields.
+type StructFieldValuer interface {
+	StructFieldValue(sField *StructField) (interface{}, error)
+}
+
 // Fielder is the interface used to get and set model field values.
 type Fielder interface {
 	// GetFieldZeroValue gets 'field' zero value. A zero value is an initial - non set value.

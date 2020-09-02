@@ -15,9 +15,8 @@ func TestNestedFields(t *testing.T) {
 	err := ms.RegisterModels(&ModelWithNested{})
 	require.NoError(t, err)
 
-	m, ok := ms.GetModelStruct(&ModelWithNested{})
-	require.True(t, ok)
-	require.NotNil(t, m)
+	m, err := ms.ModelStruct(&ModelWithNested{})
+	require.NoError(t, err)
 
 	t.Run("ptr-composed", func(t *testing.T) {
 		ptrField, ok := m.Attribute("ptr-composed")

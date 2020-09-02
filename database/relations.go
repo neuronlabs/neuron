@@ -39,7 +39,7 @@ func addRelationMany2Many(ctx context.Context, db DB, s *query.Scope, relField *
 	// This function insert new models with selected fields, thus automatic timestamps settings doesn't work.
 	createdAt, hasCreatedAt := relationship.JoinModel().CreatedAt()
 	updatedAt, hasUpdatedAt := relationship.JoinModel().UpdatedAt()
-	nowTS := db.Controller().Now()
+	nowTS := db.Now()
 
 	for _, model := range s.Models {
 		if model.IsPrimaryKeyZero() {
@@ -111,7 +111,7 @@ func addRelationHasMany(ctx context.Context, db DB, s *query.Scope, relField *ma
 	}
 	relationship := relField.Relationship()
 	updatedAt, hasUpdatedAt := relationship.RelatedModelStruct().UpdatedAt()
-	updatedAtTS := db.Controller().Now()
+	updatedAtTS := db.Now()
 	// Iterate over all relation models and set relation's foreign key to the primary key of the 'model'.
 	for _, relationModel := range relationModels {
 		if relationModel.IsPrimaryKeyZero() {
@@ -179,7 +179,7 @@ func addRelationHasOne(ctx context.Context, db DB, s *query.Scope, relationField
 
 	updatedAt, hasUpdatedAt := relationship.RelatedModelStruct().UpdatedAt()
 	if hasUpdatedAt {
-		if err := fielder.SetFieldValue(updatedAt, db.Controller().Now()); err != nil {
+		if err := fielder.SetFieldValue(updatedAt, db.Now()); err != nil {
 			return err
 		}
 		fieldSet = append(fieldSet, updatedAt)
@@ -467,7 +467,7 @@ func setBelongsToRelation(ctx context.Context, db DB, s *query.Scope, relationFi
 
 	// If the model has UpdatedAt timestamp set it manually.
 	updatedAt, hasUpdated := s.ModelStruct.UpdatedAt()
-	tsNow := db.Controller().Now()
+	tsNow := db.Now()
 
 	// For models in the query scope set foreign key field value to the relation's primary.
 	for i, model := range s.Models {

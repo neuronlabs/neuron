@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//go:generate neurogonesis models methods --format=goimports --single-file --type=SoftDeletable,SoftDeletableNoHooks,Updateable .
+//go:generate neurogonesis models methods --format=goimports --single-file --type=TestModel,SoftDeletableNoHooks,Updateable .
 
 type TestModel struct {
 	ID             int

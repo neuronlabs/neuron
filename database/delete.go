@@ -44,7 +44,7 @@ func deleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	}
 
 	// If the model doesn't implement any of the hooks and doesn't use soft delete just deleteQuery given query scope.
-	repository := getRepository(db.Controller(), s)
+	repository := getRepository(db, s)
 	return repository.Delete(ctx, s)
 }
 
@@ -95,7 +95,7 @@ func deleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected in
 		return 0, err
 	}
 
-	modelsAffected, err = getRepository(db.Controller(), s).Delete(ctx, s)
+	modelsAffected, err = getRepository(db, s).Delete(ctx, s)
 	if err != nil {
 		return 0, err
 	}
@@ -111,7 +111,7 @@ func deleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffected in
 // softDeleteFiltered is the function that updates all the models defined by provided filters and sets the
 // 'DeletedAt' timestamp to current time.
 func softDeleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
-	repository := getRepository(db.Controller(), s)
+	repository := getRepository(db, s)
 
 	// Create update model with 'DeletedAt' field set with current timestamp.
 	updateModel := mapping.NewModel(s.ModelStruct)
@@ -120,7 +120,7 @@ func softDeleteFiltered(ctx context.Context, db DB, s *query.Scope) (int64, erro
 	if !isFielder {
 		return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement mapping.Fielder interface", s.ModelStruct)
 	}
-	if err := fielder.SetFieldValue(deletedAt, db.Controller().Now()); err != nil {
+	if err := fielder.SetFieldValue(deletedAt, db.Now()); err != nil {
 		return 0, err
 	}
 
@@ -144,11 +144,11 @@ func softDeleteModels(ctx context.Context, db DB, s *query.Scope) (modelsAffecte
 		return softDeleteModelsWithHooks(ctx, db, s, isBeforeDeleter, isAfterDeleter)
 	}
 
-	repository := getRepository(db.Controller(), s)
+	repository := getRepository(db, s)
 
 	// Soft delete should update only the DeletedAt timestamp field.
 	deletedAt, _ := s.ModelStruct.DeletedAt()
-	deletedAtTS := db.Controller().Now()
+	deletedAtTS := db.Now()
 
 	// Get all primary key values and set it as the filter.
 	primaries := make([]interface{}, len(s.Models))
@@ -198,7 +198,7 @@ func softDeleteModelsWithHooks(ctx context.Context, db DB, s *query.Scope, isBef
 		}
 	}
 
-	startTS := db.Controller().Now()
+	startTS := db.Now()
 	// If the fieldset is already is provided by the user don't create batch field sets.
 	switch len(s.FieldSets) {
 	case 0:
@@ -214,7 +214,7 @@ func softDeleteModelsWithHooks(ctx context.Context, db DB, s *query.Scope, isBef
 		return 0, errors.WrapDetf(query.ErrInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
 	}
 
-	modelsAffected, err = getRepository(db.Controller(), s).UpdateModels(ctx, s)
+	modelsAffected, err = getRepository(db, s).UpdateModels(ctx, s)
 	if err != nil {
 		return 0, err
 	}

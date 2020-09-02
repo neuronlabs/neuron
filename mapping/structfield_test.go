@@ -15,8 +15,8 @@ func TestOrderedFields(t *testing.T) {
 	err := mm.RegisterModels(&OrderModel{})
 	require.NoError(t, err)
 
-	m, ok := mm.GetModelStruct(&OrderModel{})
-	require.True(t, ok)
+	m, err := mm.ModelStruct(&OrderModel{})
+	require.NoError(t, err)
 
 	fields := m.Fields()
 	fields[0], fields[3], fields[2], fields[4] = fields[3], fields[0], fields[4], fields[2]

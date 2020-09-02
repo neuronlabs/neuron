@@ -24,6 +24,16 @@ type Repository interface {
 	Delete(ctx context.Context, s *query.Scope) (int64, error)
 }
 
+// Dialer is an interface that starts the connection for the store.
+type Dialer interface {
+	Dial(ctx context.Context) error
+}
+
+// Closer is an interface that closes all connection for given instance.
+type Closer interface {
+	Close(ctx context.Context) error
+}
+
 // Exister is the interface used to check if given query object exists.
 type Exister interface {
 	Exists(context.Context, *query.Scope) (bool, error)

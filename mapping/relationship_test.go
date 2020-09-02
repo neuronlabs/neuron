@@ -5,8 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/neuronlabs/neuron/errors"
 )
 
 //go:generate neurogonesis models methods methods .
@@ -20,16 +18,16 @@ func TestMappedRelationships(t *testing.T) {
 			err := m.RegisterModels(&Model1WithMany2Many{}, &Model2WithMany2Many{}, &JoinModel{})
 			require.NoError(t, err)
 
-			join, ok := m.GetModelStruct(&JoinModel{})
-			require.True(t, ok)
+			join, err := m.ModelStruct(&JoinModel{})
+			require.NoError(t, err)
 
 			assert.True(t, join.isJoin)
 
-			first, ok := m.GetModelStruct(&Model1WithMany2Many{})
-			require.True(t, ok)
+			first, err := m.ModelStruct(&Model1WithMany2Many{})
+			require.NoError(t, err)
 
-			second, ok := m.GetModelStruct(&Model2WithMany2Many{})
-			require.True(t, ok)
+			second, err := m.ModelStruct(&Model2WithMany2Many{})
+			require.NoError(t, err)
 
 			t.Run("First", func(t *testing.T) {
 				relField, ok := first.relationshipField("synced")
@@ -84,14 +82,14 @@ func TestMappedRelationships(t *testing.T) {
 			err := m.RegisterModels(&First{}, &Second{}, &FirstSeconds{})
 			require.NoError(t, err)
 
-			first, ok := m.GetModelStruct(&First{})
-			require.True(t, ok)
+			first, err := m.ModelStruct(&First{})
+			require.NoError(t, err)
 
-			second, ok := m.GetModelStruct(&Second{})
-			require.True(t, ok)
+			second, err := m.ModelStruct(&Second{})
+			require.NoError(t, err)
 
-			firstSeconds, ok := m.GetModelStruct(&FirstSeconds{})
-			require.True(t, ok)
+			firstSeconds, err := m.ModelStruct(&FirstSeconds{})
+			require.NoError(t, err)
 
 			firstRel, ok := first.RelationByName("Many")
 			require.True(t, ok)
@@ -119,21 +117,6 @@ func TestMappedRelationships(t *testing.T) {
 				assert.Equal(t, RelMany2Many, relSecond.kind)
 			}
 		})
-
-		t.Run("WithoutJoinTable", func(t *testing.T) {
-			t.Run("NotRegistered", func(t *testing.T) {
-				m := testingModelMap(t)
-
-				err := m.RegisterModels(&First{}, &Second{})
-				require.Error(t, err)
-
-				assert.True(t, errors.Is(err, ErrModelDefinition))
-			})
-
-			t.Run("NotDefinedInTag", func(t *testing.T) {
-
-			})
-		})
 	})
 
 	t.Run("hasMany", func(t *testing.T) {
@@ -144,14 +127,14 @@ func TestMappedRelationships(t *testing.T) {
 			require.NoError(t, m.RegisterModels(&ModelWithHasMany{}, &ModelWithForeignKey{}))
 
 			// get hasMany model
-			hasManyModel, ok := m.GetModelStruct(&ModelWithHasMany{})
-			require.True(t, ok)
+			hasManyModel, err := m.ModelStruct(&ModelWithHasMany{})
+			require.NoError(t, err)
 
 			hasManyField, ok := hasManyModel.relationshipField("has_many")
 			require.True(t, ok)
 
-			fkModel, ok := m.GetModelStruct(&ModelWithForeignKey{})
-			require.True(t, ok)
+			fkModel, err := m.ModelStruct(&ModelWithForeignKey{})
+			require.NoError(t, err)
 
 			fk, ok := fkModel.ForeignKey("foreign_key")
 			require.True(t, ok)
@@ -170,8 +153,8 @@ func TestMappedRelationships(t *testing.T) {
 		require.NoError(t, m.RegisterModels(&ModelWithBelongsTo{}, &ModelWithHasOne{}))
 
 		t.Run("belongsTo", func(t *testing.T) {
-			model, ok := m.GetModelStruct(&ModelWithBelongsTo{})
-			require.True(t, ok)
+			model, err := m.ModelStruct(&ModelWithBelongsTo{})
+			require.NoError(t, err)
 
 			belongsToField, ok := model.relationshipField("belongs_to")
 			require.True(t, ok)
@@ -184,14 +167,14 @@ func TestMappedRelationships(t *testing.T) {
 		})
 
 		t.Run("hasOne", func(t *testing.T) {
-			model, ok := m.GetModelStruct(&ModelWithHasOne{})
-			require.True(t, ok)
+			model, err := m.ModelStruct(&ModelWithHasOne{})
+			require.NoError(t, err)
 
 			hasOneField, ok := model.relationshipField("has_one")
 			require.True(t, ok)
 
-			belongsToModel, ok := m.GetModelStruct(&ModelWithBelongsTo{})
-			require.True(t, ok)
+			belongsToModel, err := m.ModelStruct(&ModelWithBelongsTo{})
+			require.NoError(t, err)
 
 			fk, ok := belongsToModel.ForeignKey("foreign_key")
 			require.True(t, ok)
@@ -211,8 +194,8 @@ func TestMappedRelationships(t *testing.T) {
 		err := m.RegisterModels(&Comment{}, &User{}, &Job{}, &Car{}, &CarBrand{})
 		require.NoError(t, err)
 
-		model, ok := m.GetModelStruct(&Comment{})
-		require.True(t, ok)
+		model, err := m.ModelStruct(&Comment{})
+		require.NoError(t, err)
 
 		relFields := model.RelationFields()
 		assert.Len(t, relFields, 2)

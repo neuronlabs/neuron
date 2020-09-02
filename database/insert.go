@@ -12,7 +12,7 @@ import (
 
 // queryInsert stores the values within the given scope's value repository.
 func queryInsert(ctx context.Context, db DB, s *query.Scope) (err error) {
-	startTS := db.Controller().Now()
+	startTS := db.Now()
 	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(logFormat(s, "Insert %s with %d models begins."), s.ModelStruct.Collection(), len(s.Models))
 	}
@@ -68,7 +68,7 @@ func queryInsert(ctx context.Context, db DB, s *query.Scope) (err error) {
 		return errors.WrapDetf(query.ErrInvalidFieldSet, "provided invalid field sets. Models len: %d, FieldSets len: %d", len(s.Models), len(s.FieldSets))
 	}
 	// Execute repository Insert method.
-	err = getRepository(db.Controller(), s).Insert(ctx, s)
+	err = getRepository(db, s).Insert(ctx, s)
 	if err != nil {
 		log.Debugf(logFormat(s, "inserting failed: '%s'"), err)
 		return err

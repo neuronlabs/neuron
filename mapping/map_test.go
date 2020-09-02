@@ -10,7 +10,7 @@ import (
 func testingModelMap(t testing.TB) *ModelMap {
 	t.Helper()
 
-	m := NewModelMap(WithNamingConvention(SnakeCase))
+	m := New(WithNamingConvention(SnakeCase))
 	return m
 }
 
@@ -19,11 +19,9 @@ func TestRegisterModel(t *testing.T) {
 	t.Run("Tags", func(t *testing.T) {
 		t.Run("Empty", func(t *testing.T) {
 			m := testingModelMap(t)
-			err := m.RegisterModels(&NotTaggedModel{}, &OtherNotTaggedModel{})
-			require.NoError(t, err)
 
-			model, ok := m.GetModelStruct(&NotTaggedModel{})
-			require.True(t, ok)
+			model, err := m.ModelStruct(&NotTaggedModel{})
+			require.NoError(t, err)
 
 			assert.Equal(t, "not_tagged_models", model.Collection())
 
@@ -53,8 +51,8 @@ func TestRegisterModel(t *testing.T) {
 				}
 			}
 
-			otherModel, ok := m.GetModelStruct(&OtherNotTaggedModel{})
-			require.True(t, ok)
+			otherModel, err := m.ModelStruct(&OtherNotTaggedModel{})
+			require.NoError(t, err)
 
 			sField, ok = otherModel.RelationByName("ManyRelation")
 			if assert.True(t, ok) {
@@ -79,8 +77,8 @@ func TestRegisterModel(t *testing.T) {
 		err := mm.RegisterModels(&User{}, &Car{}, &CarBrand{}, &Job{}, &Comment{})
 		require.NoError(t, err)
 
-		car, ok := mm.GetModelStruct(&Car{})
-		require.True(t, ok)
+		car, err := mm.ModelStruct(&Car{})
+		require.NoError(t, err)
 
 		brandID, ok := car.ForeignKey("BrandID")
 		assert.True(t, ok)
@@ -96,8 +94,8 @@ func TestRegisterModel(t *testing.T) {
 		userID, ok := car.ForeignKey("UserID")
 		assert.True(t, ok)
 
-		user, ok := mm.GetModelStruct(&User{})
-		require.True(t, ok)
+		user, err := mm.ModelStruct(&User{})
+		require.NoError(t, err)
 
 		rel, ok := user.RelationByName("Cars")
 		require.True(t, ok)
@@ -115,8 +113,8 @@ func TestTimeRelatedField(t *testing.T) {
 			err := mm.RegisterModels(&Timer{})
 			require.NoError(t, err)
 
-			m, ok := mm.GetModelStruct(&Timer{})
-			require.True(t, ok)
+			m, err := mm.ModelStruct(&Timer{})
+			require.NoError(t, err)
 
 			createdAtField, ok := m.Attribute("CreatedAt")
 			require.True(t, ok)
@@ -171,8 +169,8 @@ func TestTimeRelatedField(t *testing.T) {
 			err := mm.RegisterModels(&Timer{})
 			require.NoError(t, err)
 
-			m, ok := mm.GetModelStruct(&Timer{})
-			require.True(t, ok)
+			m, err := mm.ModelStruct(&Timer{})
+			require.NoError(t, err)
 
 			createdAtField, ok := m.Attribute("CreatedAt")
 			require.True(t, ok)
@@ -221,4 +219,14 @@ func TestTimeRelatedField(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestUnmappedModels(t *testing.T) {
+	mm := testingModelMap(t)
+
+	mStruct, err := mm.ModelStruct(&Model1WithMany2Many{})
+	require.NoError(t, err)
+
+	require.NotNil(t, mStruct)
+	assert.Len(t, mm.models, 3)
 }

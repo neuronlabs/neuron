@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/neuronlabs/neuron/core"
 	"github.com/neuronlabs/neuron/internal/testmodels"
 	"github.com/neuronlabs/neuron/mapping"
 	"github.com/neuronlabs/neuron/query"
@@ -17,18 +16,16 @@ import (
 )
 
 func TestUpdateModels(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo), WithModelMap(mm))
 	require.NoError(t, err)
 
-	db := New(c)
-
 	t.Run("WithHooks", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&TestModel{})
+		mStruct, err := mm.ModelStruct(&TestModel{})
 		require.NoError(t, err)
 
 		m1 := &TestModel{
@@ -77,7 +74,7 @@ func TestUpdateModels(t *testing.T) {
 	})
 
 	t.Run("NoHooksNoUpdatedAt", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&SoftDeletableNoHooks{})
+		mStruct, err := mm.ModelStruct(&SoftDeletableNoHooks{})
 		require.NoError(t, err)
 
 		m1 := &SoftDeletableNoHooks{ID: 1}
@@ -116,20 +113,18 @@ func TestUpdateModels(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	c := core.NewDefault()
-	err := c.RegisterModels(Neuron_Models...)
+	mm := mapping.New()
+	err := mm.RegisterModels(Neuron_Models...)
 	require.NoError(t, err)
-	err = c.RegisterModels(testmodels.Neuron_Models...)
+	err = mm.RegisterModels(testmodels.Neuron_Models...)
 	require.NoError(t, err)
 
 	repo := &mockrepo.Repository{}
-	err = c.SetDefaultRepository(repo)
+	db, err := New(WithDefaultRepository(repo), WithModelMap(mm))
 	require.NoError(t, err)
 
-	db := New(c)
-
 	t.Run("WithHooks", func(t *testing.T) {
-		mStruct, err := c.ModelStruct(&TestModel{})
+		mStruct, err := mm.ModelStruct(&TestModel{})
 		require.NoError(t, err)
 
 		input := &TestModel{Integer: 50}
@@ -203,7 +198,7 @@ func TestUpdate(t *testing.T) {
 
 	t.Run("NoHooks", func(t *testing.T) {
 		t.Run("NoUpdatedAt", func(t *testing.T) {
-			mStruct, err := c.ModelStruct(&SoftDeletableNoHooks{})
+			mStruct, err := mm.ModelStruct(&SoftDeletableNoHooks{})
 			require.NoError(t, err)
 
 			input := &SoftDeletableNoHooks{Integer: 50}
@@ -241,7 +236,7 @@ func TestUpdate(t *testing.T) {
 		})
 
 		t.Run("WithUpdatedAt", func(t *testing.T) {
-			mStruct, err := c.ModelStruct(&Updateable{})
+			mStruct, err := mm.ModelStruct(&Updateable{})
 			require.NoError(t, err)
 
 			input := &Updateable{Integer: 50}

@@ -12,7 +12,7 @@ import (
 
 // queryUpdate updates the models with selected fields or a single model with provided filters.
 func queryUpdate(ctx context.Context, db DB, s *query.Scope) (modelsAffected int64, err error) {
-	startTS := db.Controller().Now()
+	startTS := db.Now()
 	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(logFormat(s, "update %s begins."), s.ModelStruct.Collection())
 	}
@@ -38,7 +38,7 @@ func queryUpdate(ctx context.Context, db DB, s *query.Scope) (modelsAffected int
 }
 
 func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
-	startTS := db.Controller().Now()
+	startTS := db.Now()
 	if log.CurrentLevel().IsAllowed(log.LevelDebug2) {
 		log.Debug2f(logFormat(s, "update %s with %d models begins."), s.ModelStruct.Collection(), len(s.Models))
 	}
@@ -48,7 +48,7 @@ func updateModels(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	}
 
 	// Get models Updater repository.
-	updater := getRepository(db.Controller(), s)
+	updater := getRepository(db, s)
 	// Execute before update hook if model implements BeforeUpdater.
 	for i, model := range s.Models {
 		beforeUpdater, ok := model.(BeforeUpdater)
@@ -186,7 +186,7 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 			return 0, errors.Wrapf(mapping.ErrModelNotImplements, "model: '%s' doesn't implement Fielder interface", s.ModelStruct.String())
 		}
 
-		if err := fielder.SetFieldValue(updatedAt, db.Controller().Now()); err != nil {
+		if err := fielder.SetFieldValue(updatedAt, db.Now()); err != nil {
 			return 0, err
 		}
 	}
@@ -198,7 +198,7 @@ func updateFiltered(ctx context.Context, db DB, s *query.Scope) (int64, error) {
 	if err := reduceRelationshipFilters(ctx, db, s); err != nil {
 		return 0, err
 	}
-	return getRepository(db.Controller(), s).Update(ctx, s)
+	return getRepository(db, s).Update(ctx, s)
 }
 
 func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model mapping.Model) (int64, error) {
@@ -266,7 +266,7 @@ func updateFilteredWithFind(ctx context.Context, db DB, s *query.Scope, model ma
 	updatedAt, hasUpdatedAt := s.ModelStruct.UpdatedAt()
 	// If given model has an 'UpdatedAt' field and it is not in the fieldset, set it's value for all models.
 	if hasUpdatedAt && !findFieldset.Contains(updatedAt) {
-		tsNow := db.Controller().Now()
+		tsNow := db.Now()
 		for i, singleModel := range models {
 			fielder, ok = singleModel.(mapping.Fielder)
 			if !ok {
