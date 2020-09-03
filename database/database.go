@@ -37,6 +37,7 @@ func New(options ...Option) (*Database, error) {
 	}
 	if o.DefaultRepository != nil {
 		d.repositories.DefaultRepository = o.DefaultRepository
+		d.repositories.RegisterRepositories(o.DefaultRepository)
 	}
 	for repo, models := range o.RepositoryModels {
 		d.repositories.RegisterRepositories(repo)
@@ -149,11 +150,6 @@ func (b *Database) dialJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-ch
 	go func() {
 		defer close(out)
 
-		if dialer, isDialer := b.repositories.DefaultRepository.(repository.Dialer); isDialer {
-			wg.Add(1)
-			out <- dialer
-		}
-
 		for _, repo := range b.repositories.Repositories {
 			dialer, isDialer := repo.(repository.Dialer)
 			if !isDialer {
@@ -224,11 +220,6 @@ func (b *Database) closeJobsCreator(ctx context.Context, wg *sync.WaitGroup) <-c
 	out := make(chan repository.Closer)
 	go func() {
 		defer close(out)
-
-		if closer, isCloser := b.repositories.DefaultRepository.(repository.Closer); isCloser {
-			wg.Add(1)
-			out <- closer
-		}
 
 		// Close all repositories.
 		for _, repo := range b.repositories.Repositories {
