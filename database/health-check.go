@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/neuronlabs/neuron/errors"
 	"github.com/neuronlabs/neuron/log"
 	"github.com/neuronlabs/neuron/repository"
 )
@@ -23,40 +22,62 @@ func HealthCheck(ctx context.Context, db DB) (*repository.HealthResponse, error)
 	defer cancelFunc()
 
 	wg := &sync.WaitGroup{}
-	jobs, err := healthCheckJobsCreator(ctx, db.(repositoryMapper), wg)
-	if err != nil {
-		return nil, err
+	jobs := healthCheckJobsCreator(ctx, db.(repositoryMapper), wg)
+	if jobs == nil {
+		return &repository.HealthResponse{Status: repository.StatusPass}, nil
 	}
 
-	hc := make(chan *repository.HealthResponse)
+	hc := make(chan *repository.HealthResponse, len(jobs))
 	errChan := make(chan error)
 	for job := range jobs {
 		healthCheckRepo(ctx, job, wg, errChan, hc)
 	}
 
-	waitChan := make(chan struct{})
 	go func() {
 		wg.Wait()
-		waitChan <- struct{}{}
 		close(hc)
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Errorf("HealthCheck - context deadline exceeded: %v", ctx.Err())
-		return nil, ctx.Err()
-	case e := <-errChan:
-		log.Debugf("HealthCheck error: %v", e)
-		return nil, e
-	case <-waitChan:
-		log.Debug("HealthCheck done for all repositories")
-		return healthCheckAll(ctx, hc), nil
+	var responses []*repository.HealthResponse
+lp:
+	for {
+		select {
+		case <-ctx.Done():
+			log.Errorf("HealthCheck - context deadline exceeded: %v", ctx.Err())
+			return nil, ctx.Err()
+		case e := <-errChan:
+			log.Debugf("HealthCheck error: %v", e)
+			return nil, e
+		case resp, ok := <-hc:
+			if !ok {
+				break lp
+			}
+			responses = append(responses, resp)
+		}
 	}
+	commonHealthCheck := &repository.HealthResponse{
+		Status: repository.StatusPass,
+	}
+	for _, healthCheck := range responses {
+		if healthCheck.Status > commonHealthCheck.Status {
+			commonHealthCheck.Status = healthCheck.Status
+		}
+		if healthCheck.Output != "" {
+			if commonHealthCheck.Output != "" {
+				commonHealthCheck.Output += ". "
+			}
+			commonHealthCheck.Output += healthCheck.Output
+		}
+		if len(healthCheck.Notes) != 0 {
+			commonHealthCheck.Notes = append(commonHealthCheck.Notes, healthCheck.Notes...)
+		}
+	}
+	return commonHealthCheck, nil
 }
 
-func healthCheckJobsCreator(ctx context.Context, mapper repositoryMapper, wg *sync.WaitGroup) (<-chan repository.HealthChecker, error) {
+func healthCheckJobsCreator(ctx context.Context, mapper repositoryMapper, wg *sync.WaitGroup) <-chan repository.HealthChecker {
 	if len(mapper.mapper().Repositories) == 0 {
-		return nil, errors.WrapDetf(ErrRepositoryNotFound, "no repositories found for the model")
+		return nil
 	}
 	out := make(chan repository.HealthChecker)
 	go func() {
@@ -75,33 +96,7 @@ func healthCheckJobsCreator(ctx context.Context, mapper repositoryMapper, wg *sy
 			}
 		}
 	}()
-	return out, nil
-}
-
-func healthCheckAll(ctx context.Context, hc <-chan *repository.HealthResponse) *repository.HealthResponse {
-	commonHealthCheck := &repository.HealthResponse{
-		Status: repository.StatusPass,
-	}
-	for healthCheck := range hc {
-		if healthCheck.Status > commonHealthCheck.Status {
-			commonHealthCheck.Status = healthCheck.Status
-		}
-		if healthCheck.Output != "" {
-			if commonHealthCheck.Output != "" {
-				commonHealthCheck.Output += ". "
-			}
-			commonHealthCheck.Output += healthCheck.Output
-		}
-		if len(healthCheck.Notes) != 0 {
-			commonHealthCheck.Notes = append(commonHealthCheck.Notes, healthCheck.Notes...)
-		}
-		select {
-		case <-ctx.Done():
-			return commonHealthCheck
-		default:
-		}
-	}
-	return commonHealthCheck
+	return out
 }
 
 func healthCheckRepo(ctx context.Context, repo repository.HealthChecker, wg *sync.WaitGroup, errChan chan<- error, hc chan<- *repository.HealthResponse) {
